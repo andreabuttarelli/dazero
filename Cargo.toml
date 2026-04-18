@@ -12,7 +12,7 @@ authors = ["Andrea Buttarelli"]
 [workspace.dependencies]
 anyhow = "1"
 axum = { version = "0.8", features = ["ws", "macros"] }
-clap = { version = "4", features = ["derive"] }
+clap = { version = "=4.5.37", features = ["derive"] }
 futures-util = "0.3"
 portable-pty = "0.9"
 rust-embed = { version = "8", features = ["compression"] }
