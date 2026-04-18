@@ -13,9 +13,19 @@ fn main() -> Result<()> {
 
     let cli = Cli::parse();
     match cli.command {
-        Some(Command::Start { port, no_open: _ }) => {
+        Some(Command::Start { port, no_open }) => {
             let runtime = tokio::runtime::Runtime::new()?;
-            runtime.block_on(dazero::http::serve(port))?;
+            runtime.block_on(async move {
+                if !no_open {
+                    let url = format!("http://127.0.0.1:{port}");
+                    // Apri dopo ~500ms per dare tempo al server di bindarsi
+                    tokio::spawn(async move {
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        let _ = webbrowser::open(&url);
+                    });
+                }
+                dazero::http::serve(port).await
+            })?;
             Ok(())
         }
         Some(Command::Doctor) => {
