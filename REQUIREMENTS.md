@@ -97,6 +97,6 @@ If anything is missing, refer to the runtime or development section above.
 
 ## Notes
 
-- `Cargo.lock` is gitignored until M5 (workspace still in flux). It will be committed for reproducible binaries at the first stable release.
+- `Cargo.lock` is committed (this is a binary crate, not a library — committed lockfiles give reproducible release builds across CI and contributors).
 - No Apple Developer ID is required for development. For the signed release (M5) an Apple Developer account ($99/year) is needed; during alpha, ad-hoc signing is used.
 - No npm account is required for development. Only the repo maintainer needs the `NPM_TOKEN` secret for the `release.yml` pipeline.
