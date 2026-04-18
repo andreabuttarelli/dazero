@@ -1,9 +1,7 @@
 // crates/dazero/src/main.rs
-mod cli;
-
 use anyhow::Result;
 use clap::Parser;
-use cli::{Cli, Command};
+use dazero::cli::{Cli, Command};
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt()
@@ -15,8 +13,9 @@ fn main() -> Result<()> {
 
     let cli = Cli::parse();
     match cli.command {
-        Some(Command::Start { port, no_open }) => {
-            println!("start not yet implemented (port={port}, no_open={no_open})");
+        Some(Command::Start { port, no_open: _ }) => {
+            let runtime = tokio::runtime::Runtime::new()?;
+            runtime.block_on(dazero::http::serve(port))?;
             Ok(())
         }
         Some(Command::Doctor) => {
