@@ -1,22 +1,22 @@
 # dazero — Requirements
 
-Tool e versioni necessarie per usare e sviluppare dazero. Split tra **runtime** (ciò che serve all'utente finale per lanciare `npx dazero`) e **development** (ciò che serve per contribuire al codice).
+Tools and versions required to use and develop dazero. Split between **runtime** (what the end user needs to run `npx dazero`) and **development** (what contributors need to build the code).
 
 ---
 
-## Runtime (utente finale)
+## Runtime (end user)
 
-Per eseguire `npx dazero start`:
+To run `npx dazero start`:
 
-| Tool | Versione minima | Obbligatorio | Scopo | Install |
-|------|-----------------|--------------|-------|---------|
-| **Node.js** | 18.x | ✅ | Lancia lo stub npm che invoca il binario nativo. `npx`/`bunx` derivano da qui. | [nodejs.org](https://nodejs.org) o `brew install node` |
-| **npm** o **bun** | npm 9+ / bun 1.2+ | ✅ | Uno dei due per invocare `npx dazero` / `bunx dazero`. Bun è raccomandato per velocità. | npm viene con Node; `curl -fsSL https://bun.sh/install \| bash` |
-| **tmux** | 3.3+ | ⚠️ M3+ | Persistenza sessioni terminali detached. In M1 non richiesto, necessario da M3 in poi. | `brew install tmux` (macOS) · `apt install tmux` (Linux) |
-| **gh CLI** | 2.0+ | ⚪ opzionale | Abilita la feature "info repo live" nella dashboard progetti (M2+). Senza di esso la feature è silenziosamente disabilitata. | [cli.github.com](https://cli.github.com) o `brew install gh`. Poi `gh auth login` una volta. |
-| **Shell bash/zsh/fish** | qualsiasi versione moderna | ✅ | PTY target — dazero apre il tuo `$SHELL`. | Pre-installato su macOS/Linux. |
+| Tool | Minimum version | Required | Purpose | Install |
+|------|-----------------|----------|---------|---------|
+| **Node.js** | 18.x | ✅ | Runs the npm stub that invokes the native binary. `npx`/`bunx` derive from this. | [nodejs.org](https://nodejs.org) or `brew install node` |
+| **npm** or **bun** | npm 9+ / bun 1.2+ | ✅ | One of the two to invoke `npx dazero` / `bunx dazero`. bun is recommended for speed. | npm comes with Node; `curl -fsSL https://bun.sh/install \| bash` |
+| **tmux** | 3.3+ | ⚠️ M3+ | Detached terminal session persistence. Not required in M1; required from M3 onwards. | `brew install tmux` (macOS) · `apt install tmux` (Linux) |
+| **gh CLI** | 2.0+ | ⚪ optional | Enables the "live repo info" feature in the project dashboard (M2+). Without it the feature is silently disabled. | [cli.github.com](https://cli.github.com) or `brew install gh`. Then `gh auth login` once. |
+| **bash/zsh/fish shell** | any modern version | ✅ | PTY target — dazero opens your `$SHELL`. | Pre-installed on macOS/Linux. |
 
-**Sistemi operativi supportati (binari pre-buildati):**
+**Supported operating systems (pre-built binaries):**
 - macOS Apple Silicon (`darwin-arm64`)
 - macOS Intel (`darwin-x64`)
 - Linux x86_64 (`linux-x64`)
@@ -27,20 +27,20 @@ Per eseguire `npx dazero start`:
 
 ## Development (contributor)
 
-Per clonare il repo, buildarlo e contribuire:
+To clone the repo, build it, and contribute:
 
-| Tool | Versione minima | Obbligatorio | Scopo | Install |
-|------|-----------------|--------------|-------|---------|
-| **rustc** + **cargo** | 1.83 (pinnata in `rust-toolchain.toml`) | ✅ | Compila il daemon Rust. | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh -s -- -y --default-toolchain 1.83` |
-| **rustfmt** + **clippy** | stessa versione di rustc | ✅ | Lint/format gate in CI. Installati automaticamente da `rust-toolchain.toml`. | Auto con rustup |
-| **bun** | 1.2+ | ✅ | Package manager e builder della UI React/Vite. | `curl -fsSL https://bun.sh/install \| bash` |
-| **Node.js** | 18.x | ✅ | Runtime per `npx`/stub npm e postinstall hooks. | [nodejs.org](https://nodejs.org) o `brew install node` |
+| Tool | Minimum version | Required | Purpose | Install |
+|------|-----------------|----------|---------|---------|
+| **rustc** + **cargo** | 1.83 (pinned in `rust-toolchain.toml`) | ✅ | Compiles the Rust daemon. | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh -s -- -y --default-toolchain 1.83` |
+| **rustfmt** + **clippy** | same version as rustc | ✅ | Lint/format gate in CI. Installed automatically by `rust-toolchain.toml`. | Auto via rustup |
+| **bun** | 1.2+ | ✅ | Package manager and builder for the React/Vite UI. | `curl -fsSL https://bun.sh/install \| bash` |
+| **Node.js** | 18.x | ✅ | Runtime for `npx`/npm stub and postinstall hooks. | [nodejs.org](https://nodejs.org) or `brew install node` |
 | **git** | 2.30+ | ✅ | SCM. | `brew install git` · `apt install git` |
-| **gh CLI** | 2.0+ | ✅ | Gestione PR/release, secret `NPM_TOKEN` per CI. | `brew install gh` |
-| **tmux** | 3.3+ | ✅ | Dipendenza runtime dei test di integrazione da M3 in poi. | `brew install tmux` |
-| **cross-rs** | 0.2+ | ⚪ opzionale | Cross-compile `aarch64-unknown-linux-gnu` in release pipeline. Installato automaticamente dal workflow di CI; utile in locale solo per debug. | `cargo install cross --locked` |
+| **gh CLI** | 2.0+ | ✅ | PR/release management, `NPM_TOKEN` secret for CI. | `brew install gh` |
+| **tmux** | 3.3+ | ✅ | Runtime dependency for integration tests from M3 onwards. | `brew install tmux` |
+| **cross-rs** | 0.2+ | ⚪ optional | Cross-compiles `aarch64-unknown-linux-gnu` in the release pipeline. Installed automatically by the CI workflow; useful locally only for debugging. | `cargo install cross --locked` |
 
-**Target Rust addizionali** (per build cross-platform in locale):
+**Additional Rust targets** (for local cross-platform builds):
 
 ```bash
 rustup target add aarch64-apple-darwin x86_64-apple-darwin \
@@ -58,11 +58,11 @@ brew install node bun gh tmux git
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.83
 . "$HOME/.cargo/env"
 
-# 2. Clona
+# 2. Clone
 git clone https://github.com/andreabuttarelli/dazero.git
 cd dazero
 
-# 3. Sviluppa
+# 3. Develop
 cd ui && bun install && cd -   # UI deps
 cargo build                    # Rust deps
 cargo test --all               # smoke
@@ -79,7 +79,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --defaul
 
 ---
 
-## Verifica ambiente
+## Environment check
 
 ```bash
 rustc --version   # → 1.83.x
@@ -91,12 +91,12 @@ gh --version      # → 2.x
 tmux -V           # → tmux 3.3+
 ```
 
-Se manca qualcosa, consulta la sezione runtime o development sopra.
+If anything is missing, refer to the runtime or development section above.
 
 ---
 
-## Note
+## Notes
 
-- `Cargo.lock` è gitignored fino a M5 (workspace ancora fluido). Verrà committato per binari riproducibili al primo release stabile.
-- Nessun Apple Developer ID richiesto per sviluppo. Per la release firmata (M5) serve account Apple Developer ($99/anno); in fase alpha si usa ad-hoc signing.
-- Nessun account npm richiesto per sviluppo. Solo il maintainer del repo ha bisogno del secret `NPM_TOKEN` per la pipeline `release.yml`.
+- `Cargo.lock` is gitignored until M5 (workspace still in flux). It will be committed for reproducible binaries at the first stable release.
+- No Apple Developer ID is required for development. For the signed release (M5) an Apple Developer account ($99/year) is needed; during alpha, ad-hoc signing is used.
+- No npm account is required for development. Only the repo maintainer needs the `NPM_TOKEN` secret for the `release.yml` pipeline.
