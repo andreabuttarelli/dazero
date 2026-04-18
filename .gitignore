@@ -1,1 +1,25 @@
+# Rust
+target/
+Cargo.lock
+
+# Node / bun
+node_modules/
+ui/dist/
+bun.lockb
+.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Dazero runtime
+.dazero/
+*.log
+
+# Worktrees
 .worktrees/
