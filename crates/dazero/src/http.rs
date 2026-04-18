@@ -1,4 +1,5 @@
 use crate::ui_assets::Assets;
+use crate::ws;
 use anyhow::Result;
 use axum::{
     body::Body,
@@ -15,6 +16,7 @@ use tracing::info;
 pub async fn serve(port: u16) -> Result<()> {
     let app = Router::new()
         .route("/health", get(health))
+        .route("/ws/echo", get(ws::echo_handler))
         .fallback(static_handler)
         .layer(TraceLayer::new_for_http());
 
