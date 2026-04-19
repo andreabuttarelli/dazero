@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest,   target: aarch64-apple-darwin }
+          - { os: macos-latest,   target: x86_64-apple-darwin }
+          - { os: ubuntu-latest,  target: x86_64-unknown-linux-gnu }
+          - { os: ubuntu-latest,  target: aarch64-unknown-linux-gnu, use_cross: true }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: ${{ matrix.target }} }
+      - uses: oven-sh/setup-bun@v2
+      - uses: Swatinem/rust-cache@v2
+      - name: UI build
+        working-directory: ui
+        run: bun install --frozen-lockfile && bun run build
+      - name: Install cross
+        if: matrix.use_cross
+        run: cargo install cross --locked
+      - name: Build
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }} -p dazero
+          else
+            cargo build --release --target ${{ matrix.target }} -p dazero
+          fi
+      - name: Populate platform package
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ./scripts/release/populate-platform-packages.sh "$VERSION" "${{ matrix.target }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: platform-${{ matrix.target }}
+          path: npm/platforms/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - name: Merge artifacts into npm/platforms
+        run: |
+          mkdir -p npm/platforms
+          cp -r artifacts/platform-*/* npm/platforms/ || true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - name: Set stub version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          node -e "
+            const fs=require('fs');
+            const p='npm/dazero/package.json';
+            const j=JSON.parse(fs.readFileSync(p));
+            j.version='$VERSION';
+            for (const k of Object.keys(j.optionalDependencies)) j.optionalDependencies[k]='$VERSION';
+            fs.writeFileSync(p, JSON.stringify(j,null,2));
+          "
+      - name: Publish platform packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for d in npm/platforms/*; do
+            (cd "$d" && npm publish --access public --provenance)
+          done
+      - name: Publish stub
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: cd npm/dazero && npm publish --access public --provenance
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            npm/platforms/*/bin/dazero*
