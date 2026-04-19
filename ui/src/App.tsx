@@ -1,17 +1,17 @@
-import { useEffect, useState } from "react";
+import { Terminal } from "./Terminal";
 
 export function App() {
-  const [status, setStatus] = useState<string>("…");
-  useEffect(() => {
-    fetch("/health")
-      .then((r) => r.json())
-      .then((j) => setStatus(`dazero v${j.version}`))
-      .catch((e) => setStatus(`error: ${e.message}`));
-  }, []);
   return (
-    <main style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>dazero</h1>
-      <p style={{ opacity: 0.7 }}>{status}</p>
+    <main style={{ display: "grid", gridTemplateRows: "auto 1fr", height: "100vh" }}>
+      <header style={{ padding: "8px 16px", borderBottom: "1px solid #222", display: "flex", justifyContent: "space-between" }}>
+        <strong>dazero</strong>
+        <span style={{ opacity: 0.6, fontSize: 12 }}>M1 foundations</span>
+      </header>
+      <section style={{ padding: 12 }}>
+        <div style={{ height: "calc(100vh - 60px)", background: "#0b0b0f", border: "1px solid #222", borderRadius: 8, padding: 8 }}>
+          <Terminal />
+        </div>
+      </section>
     </main>
   );
 }
