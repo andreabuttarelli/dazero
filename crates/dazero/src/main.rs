@@ -24,7 +24,10 @@ fn main() -> Result<()> {
                         let _ = webbrowser::open(&url);
                     });
                 }
-                dazero::http::serve(port).await
+                let db_path = dirs::home_dir()
+                    .unwrap_or_default()
+                    .join(".dazero/dazero.db");
+                dazero::http::serve_with_db(port, db_path).await
             })?;
             Ok(())
         }

@@ -32,6 +32,8 @@ portable-pty.workspace = true
 uuid.workspace = true
 rusqlite.workspace = true
 refinery.workspace = true
+chrono.workspace = true
+dirs.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

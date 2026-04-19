@@ -13,6 +13,23 @@ use std::net::SocketAddr;
 use tower_http::trace::TraceLayer;
 use tracing::info;
 
+pub async fn serve_with_db(port: u16, db_path: std::path::PathBuf) -> Result<()> {
+    let db = crate::db::open(&db_path)?;
+    let api_state = crate::api::ApiState { db: db.clone() };
+    let app = Router::new()
+        .route("/health", get(health))
+        .route("/ws/echo", get(ws::echo_handler))
+        .route("/ws/pty", get(ws::pty_handler))
+        .merge(crate::api::routes(api_state))
+        .fallback(static_handler)
+        .layer(TraceLayer::new_for_http());
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    info!(%addr, "dazero listening");
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+    Ok(())
+}
+
 pub async fn serve(port: u16) -> Result<()> {
     let app = Router::new()
         .route("/health", get(health))
