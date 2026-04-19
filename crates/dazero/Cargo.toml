@@ -18,6 +18,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 axum.workspace = true
 clap.workspace = true
+futures-util.workspace = true
 mime_guess = "2"
 rust-embed.workspace = true
 serde.workspace = true
@@ -31,7 +32,6 @@ portable-pty.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
-futures-util = { workspace = true }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio = { workspace = true, features = ["full", "test-util"] }
 tokio-tungstenite = "0.24"
