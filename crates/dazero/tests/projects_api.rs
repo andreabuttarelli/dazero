@@ -100,6 +100,132 @@ async fn create_project_clone_mode_from_local_bare() {
     drop(proj_tmp);
 }
 
+#[tokio::test]
+async fn list_projects_sorted_by_last_opened() {
+    let (addr, _tmp) = spawn_test_daemon().await;
+    let client = reqwest::Client::new();
+
+    // Create two projects
+    let proj_a = tempfile::TempDir::new().unwrap();
+    let proj_b = tempfile::TempDir::new().unwrap();
+    let pa: serde_json::Value = client
+        .post(format!("http://{addr}/api/projects"))
+        .json(&serde_json::json!({"mode":"folder","path":proj_a.path(),"name":"A"}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(1100)).await; // ensure distinct timestamps (seconds resolution)
+    let pb: serde_json::Value = client
+        .post(format!("http://{addr}/api/projects"))
+        .json(&serde_json::json!({"mode":"folder","path":proj_b.path(),"name":"B"}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    let list: Vec<serde_json::Value> = client
+        .get(format!("http://{addr}/api/projects"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert!(list.len() >= 2);
+    // B must come before A (newer last_opened_at first)
+    let names: Vec<&str> = list.iter().map(|p| p["name"].as_str().unwrap()).collect();
+    let idx_a = names.iter().position(|n| *n == "A").unwrap();
+    let idx_b = names.iter().position(|n| *n == "B").unwrap();
+    assert!(idx_b < idx_a, "expected B before A, got {names:?}");
+    let _ = pa;
+    let _ = pb;
+}
+
+#[tokio::test]
+async fn get_and_patch_project() {
+    let (addr, _tmp) = spawn_test_daemon().await;
+    let client = reqwest::Client::new();
+    let proj = tempfile::TempDir::new().unwrap();
+    let p: serde_json::Value = client
+        .post(format!("http://{addr}/api/projects"))
+        .json(&serde_json::json!({"mode":"folder","path":proj.path(),"name":"original"}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let id = p["id"].as_str().unwrap();
+
+    // GET
+    let got: serde_json::Value = client
+        .get(format!("http://{addr}/api/projects/{id}"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(got["name"], "original");
+
+    // PATCH name
+    let patched: serde_json::Value = client
+        .patch(format!("http://{addr}/api/projects/{id}"))
+        .json(&serde_json::json!({"name":"renamed"}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(patched["name"], "renamed");
+
+    // GET 404 for unknown
+    let r = client
+        .get(format!("http://{addr}/api/projects/does-not-exist"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 404);
+}
+
+#[tokio::test]
+async fn delete_project_removes_from_list() {
+    let (addr, _tmp) = spawn_test_daemon().await;
+    let client = reqwest::Client::new();
+    let proj = tempfile::TempDir::new().unwrap();
+    let p: serde_json::Value = client
+        .post(format!("http://{addr}/api/projects"))
+        .json(&serde_json::json!({"mode":"folder","path":proj.path(),"name":"doomed"}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let id = p["id"].as_str().unwrap();
+
+    let r = client
+        .delete(format!("http://{addr}/api/projects/{id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 204);
+
+    // Subsequent GET is 404
+    let r2 = client
+        .get(format!("http://{addr}/api/projects/{id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r2.status(), 404);
+}
+
 async fn spawn_test_daemon() -> (std::net::SocketAddr, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
     let db_path = tmp.path().join("test.db");

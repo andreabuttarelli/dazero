@@ -1,5 +1,6 @@
 use crate::db::Db;
 use anyhow::{Context, Result};
+use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -81,6 +82,83 @@ pub fn create_from_clone(db: &Db, git_url: &str, name: Option<String>) -> Result
         return Err(anyhow::anyhow!("git clone failed with status {status}"));
     }
     create_from_folder(db, &dest, Some(derived_name))
+}
+
+pub fn list(db: &Db) -> Result<Vec<Project>> {
+    let conn = db.lock().unwrap();
+    let mut stmt = conn.prepare(
+        "SELECT p.id,p.name,p.path,p.git_remote,p.created_at,p.last_opened_at,c.id
+         FROM projects p
+         LEFT JOIN canvases c ON c.project_id = p.id
+         ORDER BY COALESCE(p.last_opened_at, 0) DESC, p.created_at DESC",
+    )?;
+    let rows = stmt.query_map([], |r| {
+        Ok(Project {
+            id: r.get(0)?,
+            name: r.get(1)?,
+            path: r.get(2)?,
+            git_remote: r.get(3)?,
+            created_at: r.get(4)?,
+            last_opened_at: r.get(5)?,
+            canvas_id: r.get::<_, Option<String>>(6)?.unwrap_or_default(),
+        })
+    })?;
+    Ok(rows.filter_map(Result::ok).collect())
+}
+
+pub fn get(db: &Db, id: &str) -> Result<Option<Project>> {
+    let conn = db.lock().unwrap();
+    conn.query_row(
+        "SELECT p.id,p.name,p.path,p.git_remote,p.created_at,p.last_opened_at,c.id
+         FROM projects p
+         LEFT JOIN canvases c ON c.project_id = p.id
+         WHERE p.id = ?",
+        [id],
+        |r| {
+            Ok(Project {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                path: r.get(2)?,
+                git_remote: r.get(3)?,
+                created_at: r.get(4)?,
+                last_opened_at: r.get(5)?,
+                canvas_id: r.get::<_, Option<String>>(6)?.unwrap_or_default(),
+            })
+        },
+    )
+    .optional()
+    .map_err(anyhow::Error::from)
+}
+
+#[derive(Debug, serde::Deserialize, Default)]
+pub struct PatchProject {
+    pub name: Option<String>,
+    pub last_opened_at: Option<i64>,
+}
+
+pub fn update(db: &Db, id: &str, patch: PatchProject) -> Result<Option<Project>> {
+    {
+        let conn = db.lock().unwrap();
+        if let Some(n) = patch.name.as_ref() {
+            conn.execute(
+                "UPDATE projects SET name = ? WHERE id = ?",
+                rusqlite::params![n, id],
+            )?;
+        }
+        if let Some(t) = patch.last_opened_at {
+            conn.execute(
+                "UPDATE projects SET last_opened_at = ? WHERE id = ?",
+                rusqlite::params![t, id],
+            )?;
+        }
+    }
+    get(db, id)
+}
+
+pub fn delete(db: &Db, id: &str) -> Result<bool> {
+    let conn = db.lock().unwrap();
+    let n = conn.execute("DELETE FROM projects WHERE id = ?", [id])?;
+    Ok(n > 0)
 }
 
 fn detect_git_remote(path: &Path) -> Option<String> {
