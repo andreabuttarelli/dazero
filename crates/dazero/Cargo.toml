@@ -30,8 +30,11 @@ tracing-subscriber.workspace = true
 webbrowser = "1"
 portable-pty.workspace = true
 uuid.workspace = true
+rusqlite.workspace = true
+refinery.workspace = true
 
 [dev-dependencies]
+tempfile.workspace = true
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio = { workspace = true, features = ["full", "test-util"] }
 tokio-tungstenite = "0.24"
