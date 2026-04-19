@@ -1,0 +1,20 @@
+{
+  "name": "dazero",
+  "version": "0.1.0",
+  "description": "Infinite canvas of real terminals for parallel AI agents",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/andreabuttarelli/dazero.git" },
+  "bin": { "dazero": "bin/dazero.js" },
+  "files": ["bin/", "postinstall.js", "README.md"],
+  "scripts": {
+    "postinstall": "node postinstall.js"
+  },
+  "optionalDependencies": {
+    "@dazero/darwin-arm64": "0.1.0",
+    "@dazero/darwin-x64": "0.1.0",
+    "@dazero/linux-x64": "0.1.0",
+    "@dazero/linux-arm64": "0.1.0",
+    "@dazero/windows-x64": "0.1.0"
+  },
+  "engines": { "node": ">=18" }
+}

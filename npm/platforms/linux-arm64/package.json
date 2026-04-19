@@ -1,0 +1,9 @@
+{
+  "name": "@dazero/linux-arm64",
+  "version": "0.1.0",
+  "description": "dazero binary for linux-arm64",
+  "license": "MIT",
+  "files": ["bin/"],
+  "os": ["linux"],
+  "cpu": ["arm64"]
+}

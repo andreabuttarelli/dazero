@@ -22,3 +22,7 @@ Thumbs.db
 
 # Worktrees
 .worktrees/
+
+# npm packaging artifacts
+npm/platforms/*/bin/
+npm/**/*.tgz

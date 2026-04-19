@@ -1,0 +1,9 @@
+{
+  "name": "@dazero/windows-x64",
+  "version": "0.1.0",
+  "description": "dazero binary for windows-x64",
+  "license": "MIT",
+  "files": ["bin/"],
+  "os": ["win32"],
+  "cpu": ["x64"]
+}
