@@ -37,8 +37,8 @@ async fn create_project(
         CreateProject::Folder { path, name } => {
             project::create_from_folder(&state.db, std::path::Path::new(&path), name)?
         }
-        CreateProject::Clone { .. } => {
-            return Err(AppError(anyhow::anyhow!("clone mode not yet implemented")));
+        CreateProject::Clone { git_url, name } => {
+            project::create_from_clone(&state.db, &git_url, name)?
         }
     };
     Ok((StatusCode::CREATED, Json(p)))

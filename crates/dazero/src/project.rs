@@ -49,6 +49,40 @@ pub fn create_from_folder(db: &Db, path: &Path, name: Option<String>) -> Result<
     })
 }
 
+pub fn create_from_clone(db: &Db, git_url: &str, name: Option<String>) -> Result<Project> {
+    let base = std::env::var("DAZERO_PROJECTS_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| {
+            dirs::home_dir()
+                .unwrap_or_default()
+                .join(".dazero/projects")
+        });
+    std::fs::create_dir_all(&base)?;
+    let derived_name = name.clone().unwrap_or_else(|| {
+        git_url
+            .rsplit('/')
+            .next()
+            .unwrap_or("project")
+            .trim_end_matches(".git")
+            .to_string()
+    });
+    let dest = base.join(&derived_name);
+    if dest.exists() {
+        return Err(anyhow::anyhow!(
+            "target directory already exists: {}",
+            dest.display()
+        ));
+    }
+    let status = std::process::Command::new("git")
+        .args(["clone", git_url, dest.to_str().unwrap()])
+        .status()
+        .context("invoke git clone")?;
+    if !status.success() {
+        return Err(anyhow::anyhow!("git clone failed with status {status}"));
+    }
+    create_from_folder(db, &dest, Some(derived_name))
+}
+
 fn detect_git_remote(path: &Path) -> Option<String> {
     let out = std::process::Command::new("git")
         .args(["-C"])
