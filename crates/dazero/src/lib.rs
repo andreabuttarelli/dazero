@@ -1,5 +1,6 @@
 // crates/dazero/src/lib.rs
 pub mod api;
+pub mod canvas;
 pub mod cli;
 pub mod db;
 pub mod http;

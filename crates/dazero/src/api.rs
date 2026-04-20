@@ -1,10 +1,11 @@
+use crate::canvas;
 use crate::db::Db;
 use crate::project;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{get, patch, post},
     Json, Router,
 };
 use serde::Deserialize;
@@ -36,6 +37,8 @@ pub fn routes(state: ApiState) -> Router {
             "/api/projects/{id}",
             get(get_project).patch(patch_project).delete(delete_project),
         )
+        .route("/api/canvases/{id}", get(get_canvas))
+        .route("/api/canvases/{id}/viewport", patch(patch_viewport))
         .with_state(state)
 }
 
@@ -87,6 +90,27 @@ async fn delete_project(
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err(AppError::not_found("project not found"))
+    }
+}
+
+async fn get_canvas(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+) -> Result<Json<canvas::CanvasFull>, AppError> {
+    canvas::get_full(&state.db, &id)?
+        .map(Json)
+        .ok_or_else(|| AppError::not_found("canvas not found"))
+}
+
+async fn patch_viewport(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+    Json(body): Json<canvas::PatchViewport>,
+) -> Result<StatusCode, AppError> {
+    if canvas::update_viewport(&state.db, &id, body)? {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(AppError::not_found("canvas not found"))
     }
 }
 
