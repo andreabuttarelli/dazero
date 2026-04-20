@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import { wsUrl } from "./lib/ws";
+import { wsUrl } from "../../lib/ws";
 
 export function Terminal() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -31,7 +31,7 @@ export function Terminal() {
 
     ws.onmessage = (ev) => {
       if (typeof ev.data === "string") term.write(ev.data);
-      else term.write(new Uint8Array(ev.data));
+      else term.write(new Uint8Array(ev.data as ArrayBuffer));
     };
     ws.onclose = () => term.writeln("\r\n[dazero: connection closed]");
     ws.onerror = () => term.writeln("\r\n[dazero: ws error]");
@@ -52,3 +52,5 @@ export function Terminal() {
 
   return <div ref={containerRef} style={{ height: "100%", width: "100%" }} />;
 }
+
+export { Terminal as TerminalNode };
