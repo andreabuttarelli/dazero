@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use dashmap::DashMap;
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -89,5 +90,44 @@ impl PtySession {
     pub async fn read_some(&self) -> Result<Vec<u8>> {
         let mut rx = self.rx.lock().await;
         rx.recv().await.context("pty channel closed")
+    }
+}
+
+/// Registry of live PTY sessions keyed by UUID.
+pub struct PtyRegistry {
+    sessions: DashMap<uuid::Uuid, Arc<PtySession>>,
+}
+
+impl PtyRegistry {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            sessions: DashMap::new(),
+        })
+    }
+
+    /// Spawn a new shell session with optional cwd, register it, and return its UUID.
+    pub fn spawn(&self, cwd: Option<PathBuf>) -> Result<uuid::Uuid> {
+        let sess = Arc::new(PtySession::spawn_shell(cwd)?);
+        let id = sess.id;
+        self.sessions.insert(id, sess);
+        Ok(id)
+    }
+
+    /// Look up a session by UUID.
+    pub fn get(&self, id: uuid::Uuid) -> Option<Arc<PtySession>> {
+        self.sessions.get(&id).map(|r| r.clone())
+    }
+
+    /// Remove a session from the registry.
+    pub fn remove(&self, id: uuid::Uuid) {
+        self.sessions.remove(&id);
+    }
+}
+
+impl Default for PtyRegistry {
+    fn default() -> Self {
+        Self {
+            sessions: DashMap::new(),
+        }
     }
 }

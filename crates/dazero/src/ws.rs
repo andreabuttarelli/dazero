@@ -1,6 +1,8 @@
 use crate::pty::PtySession;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::response::Response;
+use axum::extract::{Path, State};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use futures_util::{SinkExt, StreamExt};
 use std::sync::Arc;
 
@@ -51,6 +53,47 @@ async fn pty_socket(socket: WebSocket) {
     });
 
     // Main: WebSocket → PTY
+    while let Some(Ok(msg)) = ws_rx.next().await {
+        match msg {
+            Message::Binary(b) if sess.write(&b).await.is_err() => break,
+            Message::Text(t) if sess.write(t.as_bytes()).await.is_err() => break,
+            Message::Close(_) => break,
+            _ => {}
+        }
+    }
+
+    reader.abort();
+}
+
+/// Per-session WebSocket handler for `/ws/pty/{id}`.
+/// Returns 404 before upgrade if the UUID is invalid or the session is unknown.
+pub async fn pty_by_id_handler(
+    State(state): State<crate::api::ApiState>,
+    Path(id): Path<String>,
+    ws: WebSocketUpgrade,
+) -> Response {
+    let uuid = match uuid::Uuid::parse_str(&id) {
+        Ok(u) => u,
+        Err(_) => return (StatusCode::NOT_FOUND, "bad uuid").into_response(),
+    };
+    let Some(sess) = state.pty.get(uuid) else {
+        return (StatusCode::NOT_FOUND, "agent not found").into_response();
+    };
+    ws.on_upgrade(move |socket| pty_socket_with_session(socket, sess))
+}
+
+async fn pty_socket_with_session(socket: WebSocket, sess: Arc<PtySession>) {
+    let (mut ws_tx, mut ws_rx) = socket.split();
+
+    let reader_sess = sess.clone();
+    let reader = tokio::spawn(async move {
+        while let Ok(chunk) = reader_sess.read_some().await {
+            if ws_tx.send(Message::Binary(chunk.into())).await.is_err() {
+                break;
+            }
+        }
+    });
+
     while let Some(Ok(msg)) = ws_rx.next().await {
         match msg {
             Message::Binary(b) if sess.write(&b).await.is_err() => break,

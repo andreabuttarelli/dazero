@@ -28,4 +28,5 @@ refinery = { version = "0.8", features = ["rusqlite"] }
 tempfile = "3"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 dirs = "5"
+dashmap = "6"
 

@@ -15,7 +15,11 @@ use tracing::info;
 
 pub async fn serve_with_db(port: u16, db_path: std::path::PathBuf) -> Result<()> {
     let db = crate::db::open(&db_path)?;
-    let api_state = crate::api::ApiState { db: db.clone() };
+    let pty = crate::pty::PtyRegistry::new();
+    let api_state = crate::api::ApiState {
+        db: db.clone(),
+        pty,
+    };
     let app = Router::new()
         .route("/health", get(health))
         .route("/ws/echo", get(ws::echo_handler))

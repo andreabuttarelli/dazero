@@ -28,6 +28,7 @@ pub enum CreateProject {
 #[derive(Clone)]
 pub struct ApiState {
     pub db: Db,
+    pub pty: std::sync::Arc<crate::pty::PtyRegistry>,
 }
 
 pub fn routes(state: ApiState) -> Router {
@@ -46,6 +47,8 @@ pub fn routes(state: ApiState) -> Router {
             "/api/tasks/{id}",
             patch(patch_task_handler).delete(delete_task_handler),
         )
+        .route("/api/agents", post(create_agent))
+        .route("/ws/pty/{id}", get(crate::ws::pty_by_id_handler))
         .with_state(state)
 }
 
@@ -189,6 +192,31 @@ async fn delete_task_handler(
     } else {
         Err(AppError::not_found("task not found"))
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateAgent {
+    pub project_id: String,
+    pub node_id: String,
+    pub cwd: Option<String>,
+}
+
+async fn create_agent(
+    State(state): State<ApiState>,
+    Json(body): Json<CreateAgent>,
+) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
+    if project::get(&state.db, &body.project_id)?.is_none() {
+        return Err(AppError::not_found("project not found"));
+    }
+    if canvas::get_node(&state.db, &body.node_id)?.is_none() {
+        return Err(AppError::not_found("node not found"));
+    }
+    let cwd = body.cwd.map(std::path::PathBuf::from);
+    let id = state.pty.spawn(cwd)?;
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({ "agent_id": id.to_string() })),
+    ))
 }
 
 pub struct AppError {
