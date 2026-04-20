@@ -41,6 +41,11 @@ pub fn routes(state: ApiState) -> Router {
         .route("/api/canvases/{id}/viewport", patch(patch_viewport))
         .route("/api/canvases/{id}/nodes", post(create_node))
         .route("/api/nodes/{id}", patch(patch_node).delete(delete_node))
+        .route("/api/task-lists/{id}/tasks", post(create_task_handler))
+        .route(
+            "/api/tasks/{id}",
+            patch(patch_task_handler).delete(delete_task_handler),
+        )
         .with_state(state)
 }
 
@@ -148,6 +153,41 @@ async fn delete_node(
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err(AppError::not_found("node not found"))
+    }
+}
+
+async fn create_task_handler(
+    State(state): State<ApiState>,
+    Path(list_id): Path<String>,
+    Json(body): Json<canvas::CreateTask>,
+) -> Result<(StatusCode, Json<canvas::Task>), AppError> {
+    match canvas::add_task(&state.db, &list_id, body)? {
+        Some(t) => Ok((StatusCode::CREATED, Json(t))),
+        None => Err(AppError::not_found("task list not found")),
+    }
+}
+
+async fn patch_task_handler(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+    Json(body): Json<canvas::PatchTask>,
+) -> Result<Json<canvas::Task>, AppError> {
+    if canvas::get_task(&state.db, &id)?.is_none() {
+        return Err(AppError::not_found("task not found"));
+    }
+    canvas::update_task(&state.db, &id, body)?
+        .map(Json)
+        .ok_or_else(|| AppError::not_found("task not found"))
+}
+
+async fn delete_task_handler(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, AppError> {
+    if canvas::delete_task(&state.db, &id)? {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(AppError::not_found("task not found"))
     }
 }
 
