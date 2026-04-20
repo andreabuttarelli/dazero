@@ -48,6 +48,7 @@ pub fn routes(state: ApiState) -> Router {
             patch(patch_task_handler).delete(delete_task_handler),
         )
         .route("/api/agents", post(create_agent))
+        .route("/api/agents/{id}", axum::routing::delete(delete_agent))
         .route("/ws/pty/{id}", get(crate::ws::pty_by_id_handler))
         .with_state(state)
 }
@@ -217,6 +218,18 @@ async fn create_agent(
         StatusCode::CREATED,
         Json(serde_json::json!({ "agent_id": id.to_string() })),
     ))
+}
+
+async fn delete_agent(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, AppError> {
+    let uuid = uuid::Uuid::parse_str(&id).map_err(|_| AppError::not_found("agent not found"))?;
+    if state.pty.get(uuid).is_none() {
+        return Err(AppError::not_found("agent not found"));
+    }
+    state.pty.remove(uuid);
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub struct AppError {

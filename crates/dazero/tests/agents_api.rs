@@ -100,3 +100,69 @@ async fn ws_pty_unknown_id_rejected() {
     let res = connect_async(url).await;
     assert!(res.is_err(), "expected handshake to fail for unknown id");
 }
+
+#[tokio::test]
+async fn delete_agent_removes_from_registry() {
+    let (addr, _tmp) = spawn().await;
+    let client = reqwest::Client::new();
+
+    // Minimal setup: project + node
+    let proj_dir = tempfile::TempDir::new().unwrap();
+    let proj: serde_json::Value = client
+        .post(format!("http://{addr}/api/projects"))
+        .json(&serde_json::json!({"mode":"folder","path":proj_dir.path(),"name":"p"}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let canvas_id = proj["canvas_id"].as_str().unwrap();
+    let node: serde_json::Value = client
+        .post(format!("http://{addr}/api/canvases/{canvas_id}/nodes"))
+        .json(&serde_json::json!({"kind":"terminal","position_x":0.0,"position_y":0.0,"data":{}}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    std::mem::forget(proj_dir);
+
+    // Spawn
+    let a: serde_json::Value = client
+        .post(format!("http://{addr}/api/agents"))
+        .json(&serde_json::json!({
+            "project_id": proj["id"], "node_id": node["id"], "cwd": proj["path"]
+        }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let agent_id = a["agent_id"].as_str().unwrap();
+
+    // DELETE → 204
+    let r = client
+        .delete(format!("http://{addr}/api/agents/{agent_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 204);
+
+    // Subsequent WS connect must fail (handshake rejected with 404)
+    let res = tokio_tungstenite::connect_async(format!("ws://{addr}/ws/pty/{agent_id}")).await;
+    assert!(res.is_err(), "expected WS handshake rejection after delete");
+}
+
+#[tokio::test]
+async fn delete_unknown_agent_returns_404() {
+    let (addr, _tmp) = spawn().await;
+    let r = reqwest::Client::new()
+        .delete(format!("http://{addr}/api/agents/not-a-uuid"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 404);
+}
