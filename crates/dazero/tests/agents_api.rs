@@ -159,8 +159,10 @@ async fn delete_agent_removes_from_registry() {
 #[tokio::test]
 async fn delete_unknown_agent_returns_404() {
     let (addr, _tmp) = spawn().await;
+    // A well-formed UUID that doesn't exist in the registry → 404
+    let unknown_uuid = uuid::Uuid::new_v4().to_string();
     let r = reqwest::Client::new()
-        .delete(format!("http://{addr}/api/agents/not-a-uuid"))
+        .delete(format!("http://{addr}/api/agents/{unknown_uuid}"))
         .send()
         .await
         .unwrap();

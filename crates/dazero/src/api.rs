@@ -62,7 +62,13 @@ async fn create_project(
             project::create_from_folder(&state.db, std::path::Path::new(&path), name)?
         }
         CreateProject::Clone { git_url, name } => {
-            project::create_from_clone(&state.db, &git_url, name)?
+            match project::create_from_clone(&state.db, &git_url, name) {
+                Ok(p) => p,
+                Err(e) if e.to_string().contains("already exists") => {
+                    return Err(AppError::conflict(e.to_string()));
+                }
+                Err(e) => return Err(AppError::from(e)),
+            }
         }
     };
     Ok((StatusCode::CREATED, Json(p)))
@@ -224,7 +230,7 @@ async fn delete_agent(
     State(state): State<ApiState>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    let uuid = uuid::Uuid::parse_str(&id).map_err(|_| AppError::not_found("agent not found"))?;
+    let uuid = uuid::Uuid::parse_str(&id).map_err(|_| AppError::bad_request("invalid agent id"))?;
     if state.pty.get(uuid).is_none() {
         return Err(AppError::not_found("agent not found"));
     }
@@ -235,6 +241,7 @@ async fn delete_agent(
 pub struct AppError {
     pub err: anyhow::Error,
     pub status: StatusCode,
+    pub code: &'static str,
 }
 
 impl AppError {
@@ -242,6 +249,23 @@ impl AppError {
         Self {
             err: anyhow::anyhow!("{}", msg.into()),
             status: StatusCode::NOT_FOUND,
+            code: "not_found",
+        }
+    }
+
+    pub fn bad_request(msg: impl Into<String>) -> Self {
+        Self {
+            err: anyhow::anyhow!("{}", msg.into()),
+            status: StatusCode::BAD_REQUEST,
+            code: "bad_request",
+        }
+    }
+
+    pub fn conflict(msg: impl Into<String>) -> Self {
+        Self {
+            err: anyhow::anyhow!("{}", msg.into()),
+            status: StatusCode::CONFLICT,
+            code: "conflict",
         }
     }
 }
@@ -251,6 +275,7 @@ impl<E: Into<anyhow::Error>> From<E> for AppError {
         Self {
             err: e.into(),
             status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: "internal_error",
         }
     }
 }
@@ -259,7 +284,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
         (
             self.status,
-            Json(serde_json::json!({"error": self.err.to_string()})),
+            Json(serde_json::json!({"error": self.err.to_string(), "code": self.code})),
         )
             .into_response()
     }
