@@ -39,6 +39,8 @@ pub fn routes(state: ApiState) -> Router {
         )
         .route("/api/canvases/{id}", get(get_canvas))
         .route("/api/canvases/{id}/viewport", patch(patch_viewport))
+        .route("/api/canvases/{id}/nodes", post(create_node))
+        .route("/api/nodes/{id}", patch(patch_node).delete(delete_node))
         .with_state(state)
 }
 
@@ -111,6 +113,41 @@ async fn patch_viewport(
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err(AppError::not_found("canvas not found"))
+    }
+}
+
+async fn create_node(
+    State(state): State<ApiState>,
+    Path(canvas_id): Path<String>,
+    Json(body): Json<canvas::CreateNode>,
+) -> Result<(StatusCode, Json<canvas::CanvasNode>), AppError> {
+    match canvas::create_node(&state.db, &canvas_id, body)? {
+        Some(n) => Ok((StatusCode::CREATED, Json(n))),
+        None => Err(AppError::not_found("canvas not found")),
+    }
+}
+
+async fn patch_node(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+    Json(body): Json<canvas::PatchNode>,
+) -> Result<Json<canvas::CanvasNode>, AppError> {
+    if canvas::get_node(&state.db, &id)?.is_none() {
+        return Err(AppError::not_found("node not found"));
+    }
+    canvas::update_node(&state.db, &id, body)?
+        .map(Json)
+        .ok_or_else(|| AppError::not_found("node not found"))
+}
+
+async fn delete_node(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, AppError> {
+    if canvas::delete_node(&state.db, &id)? {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(AppError::not_found("node not found"))
     }
 }
 

@@ -99,3 +99,133 @@ async fn get_canvas_404_for_unknown_id() {
         .unwrap();
     assert_eq!(r.status(), 404);
 }
+
+#[tokio::test]
+async fn create_and_list_terminal_node() {
+    let (addr, _tmp) = spawn_test_daemon().await;
+    let proj = create_project(addr).await;
+    let canvas_id = proj["canvas_id"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let body = serde_json::json!({
+        "kind": "terminal",
+        "position_x": 120.5,
+        "position_y": 60.0,
+        "data": { "title": "shell-1" }
+    });
+    let r = client
+        .post(format!("http://{addr}/api/canvases/{canvas_id}/nodes"))
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 201);
+    let n: serde_json::Value = r.json().await.unwrap();
+    assert_eq!(n["kind"], "terminal");
+    assert_eq!(n["canvas_id"], canvas_id);
+    assert_eq!(n["position_x"], 120.5);
+    assert_eq!(n["data"]["title"], "shell-1");
+
+    // Now GET canvas — node must appear
+    let c: serde_json::Value = client
+        .get(format!("http://{addr}/api/canvases/{canvas_id}"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(c["nodes"].as_array().unwrap().len(), 1);
+    assert_eq!(c["nodes"][0]["id"], n["id"]);
+}
+
+#[tokio::test]
+async fn patch_node_updates_position_and_data() {
+    let (addr, _tmp) = spawn_test_daemon().await;
+    let proj = create_project(addr).await;
+    let canvas_id = proj["canvas_id"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let created: serde_json::Value = client
+        .post(format!("http://{addr}/api/canvases/{canvas_id}/nodes"))
+        .json(&serde_json::json!({
+            "kind": "terminal",
+            "position_x": 0.0, "position_y": 0.0,
+            "data": {}
+        }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let node_id = created["id"].as_str().unwrap();
+
+    let updated: serde_json::Value = client
+        .patch(format!("http://{addr}/api/nodes/{node_id}"))
+        .json(&serde_json::json!({
+            "position_x": 500.0,
+            "position_y": 300.0,
+            "width": 400.0,
+            "height": 250.0,
+            "data": { "title": "renamed" }
+        }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(updated["position_x"], 500.0);
+    assert_eq!(updated["width"], 400.0);
+    assert_eq!(updated["data"]["title"], "renamed");
+}
+
+#[tokio::test]
+async fn delete_node_removes_it() {
+    let (addr, _tmp) = spawn_test_daemon().await;
+    let proj = create_project(addr).await;
+    let canvas_id = proj["canvas_id"].as_str().unwrap();
+    let client = reqwest::Client::new();
+
+    let created: serde_json::Value = client
+        .post(format!("http://{addr}/api/canvases/{canvas_id}/nodes"))
+        .json(&serde_json::json!({
+            "kind": "task_list",
+            "position_x": 10.0, "position_y": 20.0,
+            "data": {}
+        }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let node_id = created["id"].as_str().unwrap();
+
+    let r = client
+        .delete(format!("http://{addr}/api/nodes/{node_id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 204);
+
+    let c: serde_json::Value = client
+        .get(format!("http://{addr}/api/canvases/{canvas_id}"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(c["nodes"].as_array().unwrap().len(), 0);
+
+    // PATCH on missing node → 404
+    let r2 = client
+        .patch(format!("http://{addr}/api/nodes/{node_id}"))
+        .json(&serde_json::json!({"position_x": 1.0}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r2.status(), 404);
+}
