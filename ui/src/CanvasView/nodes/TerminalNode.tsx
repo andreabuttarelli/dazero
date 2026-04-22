@@ -54,3 +54,33 @@ export function Terminal() {
 }
 
 export { Terminal as TerminalNode };
+
+// --- React Flow placeholder node (Task 16) — replaced by real impl in Task 17 ---
+import type { NodeProps } from "reactflow";
+
+export function TerminalNodePlaceholder({ data }: NodeProps) {
+  const title = (data as { title?: string })?.title ?? "terminal";
+  return (
+    <div
+      style={{
+        width: 220,
+        height: 120,
+        background: "#0f1a1f",
+        border: "1px solid #2a6475",
+        borderRadius: 8,
+        color: "#9de6ff",
+        fontSize: 12,
+        fontFamily: "ui-monospace, monospace",
+        padding: 10,
+        boxSizing: "border-box",
+      }}
+    >
+      <strong style={{ color: "#cceeff" }}>&#11035; {title}</strong>
+      <div style={{ opacity: 0.5, marginTop: 8, fontSize: 11 }}>
+        Terminal placeholder
+        <br />
+        (wired in Task 17)
+      </div>
+    </div>
+  );
+}
