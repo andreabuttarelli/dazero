@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { api, ApiHttpError } from "../lib/api";
 import type { Project } from "../types";
 import { ProjectCard } from "./ProjectCard";
+import { NewProjectWizard } from "./NewProjectWizard";
 
 export function Dashboard() {
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showWizard, setShowWizard] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export function Dashboard() {
       <aside style={{ borderRight: "1px solid #222", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
         <h1 style={{ fontSize: 18, margin: 0, letterSpacing: 0.5 }}>dazero</h1>
         <button
-          onClick={() => alert("New project wizard arrives in Task 15")}
+          onClick={() => setShowWizard(true)}
           style={{
             padding: "8px 12px",
             background: "#2a2a3a",
@@ -102,6 +104,17 @@ export function Dashboard() {
           </div>
         )}
       </main>
+
+      {showWizard && (
+        <NewProjectWizard
+          onClose={() => setShowWizard(false)}
+          onCreated={(p) => {
+            setProjects((cur) => (cur ? [p, ...cur] : [p]));
+            setShowWizard(false);
+            navigate(`/projects/${p.id}`);
+          }}
+        />
+      )}
     </div>
   );
 }
