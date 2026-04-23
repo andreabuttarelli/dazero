@@ -15,6 +15,7 @@ import type { CanvasNode } from "../types";
 import { TerminalNodePlaceholder } from "./nodes/TerminalNode";
 import { TaskListNodePlaceholder } from "./nodes/TaskListNode";
 import { Toolbar } from "./Toolbar";
+import { useCanvasStore } from "../store/canvasStore";
 
 const nodeTypes = {
   terminal: TerminalNodePlaceholder,
@@ -42,7 +43,10 @@ export function CanvasView() {
   const viewportRef = useRef<Viewport>({ x: 0, y: 0, zoom: 1 });
   const patchTimer = useRef<number | null>(null);
 
-  // Load project + canvas on mount
+  const setContext = useCanvasStore((s) => s.setContext);
+  const setRemove = useCanvasStore((s) => s.setRemoveNodeFromCanvas);
+
+  // Load project + canvas on mount; set store context
   useEffect(() => {
     if (!projectId) return;
     let cancelled = false;
@@ -51,6 +55,7 @@ export function CanvasView() {
         const proj = await api.projects.get(projectId);
         if (cancelled) return;
         canvasIdRef.current = proj.canvas_id;
+        setContext({ canvasId: proj.canvas_id, projectId: proj.id, projectPath: proj.path });
         const canvas = await api.canvas.get(proj.canvas_id);
         if (cancelled) return;
         setNodes(canvas.nodes.map(apiNodeToRf));
@@ -61,8 +66,23 @@ export function CanvasView() {
     })();
     return () => {
       cancelled = true;
+      useCanvasStore.getState().reset();
     };
-  }, [projectId, setNodes]);
+  }, [projectId, setNodes, setContext]);
+
+  // Register the removeNode helper so child nodes can trigger deletion
+  useEffect(() => {
+    setRemove(async (nodeId, agentId) => {
+      try {
+        if (agentId) {
+          try { await api.agents.delete(agentId); } catch { /* ignore */ }
+        }
+        await api.canvas.deleteNode(nodeId);
+      } finally {
+        setNodes((cur) => cur.filter((n) => n.id !== nodeId));
+      }
+    });
+  }, [setNodes, setRemove]);
 
   const onMove = (_: MouseEvent | TouchEvent, v: Viewport) => {
     viewportRef.current = v;
@@ -86,6 +106,8 @@ export function CanvasView() {
         kind,
         position_x: center.x,
         position_y: center.y,
+        width: kind === "terminal" ? 420 : 260,
+        height: kind === "terminal" ? 240 : 220,
         data: { title: kind === "terminal" ? "shell" : "todo" },
       });
       setNodes((cur) => [...cur, apiNodeToRf(created)]);

@@ -4,20 +4,28 @@ import type { Node as RfNode } from "reactflow";
 type State = {
   canvasId: string | null;
   projectId: string | null;
+  projectPath: string | null;
   nodes: RfNode[];
-  setContext: (canvasId: string, projectId: string) => void;
+  setContext: (ctx: { canvasId: string; projectId: string; projectPath: string }) => void;
   setNodes: (nodes: RfNode[]) => void;
   addNode: (node: RfNode) => void;
   updateNode: (id: string, patch: Partial<RfNode>) => void;
   deleteNode: (id: string) => void;
+
+  // Used by child nodes to request deletion from server + canvas state
+  removeNodeFromCanvas: null | ((nodeId: string, agentId?: string) => Promise<void>);
+  setRemoveNodeFromCanvas: (fn: (nodeId: string, agentId?: string) => Promise<void>) => void;
+
   reset: () => void;
 };
 
 export const useCanvasStore = create<State>((set) => ({
   canvasId: null,
   projectId: null,
+  projectPath: null,
   nodes: [],
-  setContext: (canvasId, projectId) => set({ canvasId, projectId }),
+  setContext: ({ canvasId, projectId, projectPath }) =>
+    set({ canvasId, projectId, projectPath }),
   setNodes: (nodes) => set({ nodes }),
   addNode: (node) => set((s) => ({ nodes: [...s.nodes, node] })),
   updateNode: (id, patch) =>
@@ -30,5 +38,16 @@ export const useCanvasStore = create<State>((set) => ({
     })),
   deleteNode: (id) =>
     set((s) => ({ nodes: s.nodes.filter((n) => n.id !== id) })),
-  reset: () => set({ canvasId: null, projectId: null, nodes: [] }),
+
+  removeNodeFromCanvas: null,
+  setRemoveNodeFromCanvas: (fn) => set({ removeNodeFromCanvas: fn }),
+
+  reset: () =>
+    set({
+      canvasId: null,
+      projectId: null,
+      projectPath: null,
+      nodes: [],
+      removeNodeFromCanvas: null,
+    }),
 }));
