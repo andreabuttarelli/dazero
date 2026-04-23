@@ -16,6 +16,14 @@ use tracing::info;
 pub async fn serve_with_db(port: u16, db_path: std::path::PathBuf) -> Result<()> {
     let db = crate::db::open(&db_path)?;
     let pty = crate::pty::PtyRegistry::new();
+    let recovered = pty.recover().unwrap_or_default();
+    if !recovered.is_empty() {
+        info!(
+            count = recovered.len(),
+            "recovered {} tmux sessions",
+            recovered.len()
+        );
+    }
     let api_state = crate::api::ApiState {
         db: db.clone(),
         pty,

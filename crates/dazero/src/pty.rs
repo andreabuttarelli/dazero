@@ -226,6 +226,51 @@ impl PtyRegistry {
             sess.kill_tmux_session();
         }
     }
+
+    /// Reattach to any tmux sessions named `dazero-*` that already exist on the host.
+    /// Called once on daemon startup.
+    pub fn recover(&self) -> Result<Vec<uuid::Uuid>> {
+        let out = std::process::Command::new("tmux")
+            .args(["list-sessions", "-F", "#S"])
+            .output();
+        let out = match out {
+            Ok(o) if o.status.success() => o,
+            _ => return Ok(vec![]), // no tmux server running, or no sessions
+        };
+        let mut recovered = Vec::new();
+        for name in String::from_utf8_lossy(&out.stdout).lines() {
+            let name = name.trim();
+            let Some(rest) = name.strip_prefix("dazero-") else {
+                continue;
+            };
+            let Ok(uuid) = uuid::Uuid::parse_str(rest) else {
+                tracing::warn!(session = name, "skipping non-UUID dazero session");
+                continue;
+            };
+            if self.sessions.contains_key(&uuid) {
+                continue; // already tracked (shouldn't happen on first recover)
+            }
+            match PtySession::attach_existing(uuid, name.to_string()) {
+                Ok(sess) => {
+                    self.sessions.insert(uuid, Arc::new(sess));
+                    recovered.push(uuid);
+                    tracing::info!(session = %name, "recovered tmux session");
+                }
+                Err(e) => {
+                    tracing::warn!(session = %name, error = ?e, "failed to reattach");
+                }
+            }
+        }
+        Ok(recovered)
+    }
+
+    pub fn len(&self) -> usize {
+        self.sessions.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.sessions.is_empty()
+    }
 }
 
 impl Default for PtyRegistry {
