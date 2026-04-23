@@ -61,7 +61,22 @@ pub struct CanvasFull {
     pub project_id: String,
     pub viewport: Viewport,
     pub nodes: Vec<serde_json::Value>,
-    pub task_lists: Vec<serde_json::Value>, // empty in Task 5, Task 7 populates
+    pub task_lists: Vec<serde_json::Value>,
+    pub edges: Vec<serde_json::Value>,
+}
+
+// ── Edge input types ─────────────────────────────────────────────────────────
+
+#[derive(Debug, serde::Deserialize)]
+pub struct CreateEdge {
+    pub source_node_id: String,
+    pub target_node_id: String,
+    #[serde(default)]
+    pub kind: Option<String>,
+    #[serde(default)]
+    pub label: Option<String>,
+    #[serde(default)]
+    pub data: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -126,6 +141,11 @@ pub fn get_full(db: &Db, id: &str) -> Result<Option<CanvasFull>> {
         .into_iter()
         .map(|tl| serde_json::to_value(&tl).unwrap_or(serde_json::json!({})))
         .collect();
+    let edges = list_edges(db, &id)?;
+    let edges_json: Vec<serde_json::Value> = edges
+        .into_iter()
+        .map(|e| serde_json::to_value(&e).unwrap_or(serde_json::json!({})))
+        .collect();
     Ok(Some(CanvasFull {
         id,
         project_id,
@@ -136,6 +156,7 @@ pub fn get_full(db: &Db, id: &str) -> Result<Option<CanvasFull>> {
         },
         nodes: nodes_json,
         task_lists: task_lists_json,
+        edges: edges_json,
     }))
 }
 
@@ -445,5 +466,102 @@ pub fn update_task(db: &Db, id: &str, patch: PatchTask) -> Result<Option<Task>> 
 pub fn delete_task(db: &Db, id: &str) -> Result<bool> {
     let conn = db.lock().unwrap();
     let n = conn.execute("DELETE FROM tasks WHERE id = ?", [id])?;
+    Ok(n > 0)
+}
+
+// ── Edge CRUD ────────────────────────────────────────────────────────────────
+
+pub fn create_edge(db: &Db, canvas_id: &str, body: CreateEdge) -> Result<Option<Edge>> {
+    // Verify canvas exists
+    {
+        let conn = db.lock().unwrap();
+        let exists: bool = conn
+            .query_row("SELECT 1 FROM canvases WHERE id=?", [canvas_id], |_| {
+                Ok(true)
+            })
+            .optional()?
+            .unwrap_or(false);
+        if !exists {
+            return Ok(None);
+        }
+    }
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let data_s = body
+        .data
+        .as_ref()
+        .map(serde_json::to_string)
+        .transpose()?;
+
+    {
+        let conn = db.lock().unwrap();
+        conn.execute(
+            "INSERT INTO edges(id,canvas_id,source_node_id,target_node_id,kind,label,data)
+             VALUES(?,?,?,?,?,?,?)",
+            rusqlite::params![
+                id,
+                canvas_id,
+                body.source_node_id,
+                body.target_node_id,
+                body.kind,
+                body.label,
+                data_s
+            ],
+        )?;
+    }
+    get_edge(db, &id)
+}
+
+pub fn get_edge(db: &Db, id: &str) -> Result<Option<Edge>> {
+    let conn = db.lock().unwrap();
+    conn.query_row(
+        "SELECT id,canvas_id,source_node_id,target_node_id,kind,label,data FROM edges WHERE id=?",
+        [id],
+        |r| {
+            let data_s: Option<String> = r.get(6)?;
+            let data = data_s.and_then(|s| serde_json::from_str(&s).ok());
+            Ok(Edge {
+                id: r.get(0)?,
+                canvas_id: r.get(1)?,
+                source_node_id: r.get(2)?,
+                target_node_id: r.get(3)?,
+                kind: r.get(4)?,
+                label: r.get(5)?,
+                data,
+            })
+        },
+    )
+    .optional()
+    .map_err(anyhow::Error::from)
+}
+
+pub fn list_edges(db: &Db, canvas_id: &str) -> Result<Vec<Edge>> {
+    let conn = db.lock().unwrap();
+    let mut stmt = conn.prepare(
+        "SELECT id,canvas_id,source_node_id,target_node_id,kind,label,data
+         FROM edges WHERE canvas_id=?",
+    )?;
+    let rows: Vec<Edge> = stmt
+        .query_map([canvas_id], |r| {
+            let data_s: Option<String> = r.get(6)?;
+            let data = data_s.and_then(|s| serde_json::from_str(&s).ok());
+            Ok(Edge {
+                id: r.get(0)?,
+                canvas_id: r.get(1)?,
+                source_node_id: r.get(2)?,
+                target_node_id: r.get(3)?,
+                kind: r.get(4)?,
+                label: r.get(5)?,
+                data,
+            })
+        })?
+        .filter_map(Result::ok)
+        .collect();
+    Ok(rows)
+}
+
+pub fn delete_edge(db: &Db, id: &str) -> Result<bool> {
+    let conn = db.lock().unwrap();
+    let n = conn.execute("DELETE FROM edges WHERE id=?", [id])?;
     Ok(n > 0)
 }

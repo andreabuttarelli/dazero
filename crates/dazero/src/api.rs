@@ -5,7 +5,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, patch, post},
+    routing::{delete, get, patch, post},
     Json, Router,
 };
 use serde::Deserialize;
@@ -47,6 +47,8 @@ pub fn routes(state: ApiState) -> Router {
             "/api/tasks/{id}",
             patch(patch_task_handler).delete(delete_task_handler),
         )
+        .route("/api/canvases/{id}/edges", post(create_edge_handler))
+        .route("/api/edges/{id}", delete(delete_edge_handler))
         .route("/api/agents", post(create_agent))
         .route("/api/agents/{id}", axum::routing::delete(delete_agent))
         .route("/api/system/pick-directory", post(pick_directory))
@@ -199,6 +201,28 @@ async fn delete_task_handler(
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err(AppError::not_found("task not found"))
+    }
+}
+
+async fn create_edge_handler(
+    State(state): State<ApiState>,
+    Path(canvas_id): Path<String>,
+    Json(body): Json<canvas::CreateEdge>,
+) -> Result<(StatusCode, Json<canvas::Edge>), AppError> {
+    match canvas::create_edge(&state.db, &canvas_id, body)? {
+        Some(e) => Ok((StatusCode::CREATED, Json(e))),
+        None => Err(AppError::not_found("canvas not found")),
+    }
+}
+
+async fn delete_edge_handler(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, AppError> {
+    if canvas::delete_edge(&state.db, &id)? {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(AppError::not_found("edge not found"))
     }
 }
 
