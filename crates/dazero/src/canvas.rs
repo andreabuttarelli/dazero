@@ -118,6 +118,67 @@ pub struct PatchNode {
     pub data: Option<serde_json::Value>,
 }
 
+fn ensure_derived_edges(db: &Db, canvas_id: &str) -> Result<()> {
+    // Collect (source_id, target_id) pairs from terminal nodes
+    let rows: Vec<(String, String)> = {
+        let conn = db.lock().unwrap();
+        let mut stmt =
+            conn.prepare("SELECT id, data FROM nodes WHERE canvas_id = ? AND kind = 'terminal'")?;
+        let rows: Vec<(String, String)> = stmt
+            .query_map([canvas_id], |r| {
+                let id: String = r.get(0)?;
+                let data_s: String = r.get(1)?;
+                Ok((id, data_s))
+            })?
+            .filter_map(|r| r.ok())
+            .filter_map(|(target, data_s)| {
+                let data: serde_json::Value = serde_json::from_str(&data_s).ok()?;
+                let src = data.get("spawned_from_node_id")?.as_str()?.to_string();
+                if src.is_empty() {
+                    None
+                } else {
+                    Some((src, target))
+                }
+            })
+            .collect();
+        rows
+    };
+
+    for (source, target) in rows {
+        let conn = db.lock().unwrap();
+        // Check if an edge with same (source, target, kind='task_spawn') already exists
+        let exists: bool = conn
+            .query_row(
+                "SELECT 1 FROM edges
+                 WHERE canvas_id=? AND source_node_id=? AND target_node_id=? AND kind='task_spawn'",
+                rusqlite::params![canvas_id, source, target],
+                |_| Ok(true),
+            )
+            .optional()?
+            .unwrap_or(false);
+        if exists {
+            continue;
+        }
+
+        // Verify source node still exists before inserting (defensive)
+        let src_exists: bool = conn
+            .query_row("SELECT 1 FROM nodes WHERE id=?", [&source], |_| Ok(true))
+            .optional()?
+            .unwrap_or(false);
+        if !src_exists {
+            continue;
+        }
+
+        let edge_id = uuid::Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO edges(id, canvas_id, source_node_id, target_node_id, kind, label, data)
+             VALUES (?, ?, ?, ?, 'task_spawn', NULL, NULL)",
+            rusqlite::params![edge_id, canvas_id, source, target],
+        )?;
+    }
+    Ok(())
+}
+
 pub fn get_full(db: &Db, id: &str) -> Result<Option<CanvasFull>> {
     let base: Option<(String, String, f64, f64, f64)> = {
         let conn = db.lock().unwrap();
@@ -131,6 +192,10 @@ pub fn get_full(db: &Db, id: &str) -> Result<Option<CanvasFull>> {
     let Some((id, project_id, vx, vy, vz)) = base else {
         return Ok(None);
     };
+
+    // Idempotent migration of M2-style derived edges
+    ensure_derived_edges(db, &id)?;
+
     let nodes_v = list_nodes(db, &id)?;
     let nodes_json: Vec<serde_json::Value> = nodes_v
         .into_iter()
@@ -487,11 +552,7 @@ pub fn create_edge(db: &Db, canvas_id: &str, body: CreateEdge) -> Result<Option<
     }
 
     let id = uuid::Uuid::new_v4().to_string();
-    let data_s = body
-        .data
-        .as_ref()
-        .map(serde_json::to_string)
-        .transpose()?;
+    let data_s = body.data.as_ref().map(serde_json::to_string).transpose()?;
 
     {
         let conn = db.lock().unwrap();

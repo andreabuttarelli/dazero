@@ -139,6 +139,69 @@ async fn delete_edge_removes_it() {
 }
 
 #[tokio::test]
+async fn derived_edge_from_spawned_from_node_id_is_migrated_on_get() {
+    let (addr, _tmp) = spawn().await;
+    let client = reqwest::Client::new();
+
+    // Build a M2-style scenario: create two nodes, stamp spawned_from_node_id in the terminal's data,
+    // but do NOT create an edge explicitly.
+    let (cid, src, _) = make_canvas_with_two_nodes(addr).await;
+
+    let terminal: serde_json::Value = client
+        .post(format!("http://{addr}/api/canvases/{cid}/nodes"))
+        .json(&serde_json::json!({
+            "kind":"terminal",
+            "position_x":600.0,"position_y":0.0,
+            "data":{"spawned_from_node_id": src}
+        }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let term_id = terminal["id"].as_str().unwrap();
+
+    // Before GET: confirm no edges exist yet
+    let c_before: serde_json::Value = client
+        .get(format!("http://{addr}/api/canvases/{cid}"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    // ensure_derived_edges runs DURING GET, so by the time we read the response
+    // the migration has happened.
+
+    let edges = c_before["edges"].as_array().unwrap();
+    assert!(
+        edges.iter().any(|e| e["source_node_id"] == src
+            && e["target_node_id"] == term_id
+            && e["kind"] == "task_spawn"),
+        "expected a derived task_spawn edge, got: {:?}",
+        edges
+    );
+
+    // Second GET is idempotent — still only one such edge
+    let c_again: serde_json::Value = client
+        .get(format!("http://{addr}/api/canvases/{cid}"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let count = c_again["edges"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["source_node_id"] == src && e["target_node_id"] == term_id)
+        .count();
+    assert_eq!(count, 1, "migration must be idempotent");
+}
+
+#[tokio::test]
 async fn edge_cascades_on_node_delete() {
     let (addr, _tmp) = spawn().await;
     let (cid, src, tgt) = make_canvas_with_two_nodes(addr).await;
