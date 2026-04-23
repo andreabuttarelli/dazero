@@ -3,6 +3,19 @@ use anyhow::Result;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 
+// ── Edge type ────────────────────────────────────────────────────────────────
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct Edge {
+    pub id: String,
+    pub canvas_id: String,
+    pub source_node_id: String,
+    pub target_node_id: String,
+    pub kind: Option<String>,
+    pub label: Option<String>,
+    pub data: Option<serde_json::Value>,
+}
+
 // ── Task / TaskList types ────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize)]
