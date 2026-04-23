@@ -150,6 +150,15 @@ export function CanvasView() {
             position_y: node.position.y,
           }).catch(() => { /* ignore */ });
         }}
+        deleteKeyCode={["Backspace", "Delete"]}
+        onNodesDelete={async (deleted) => {
+          for (const n of deleted) {
+            const agentId = (n.data as { agent_id?: string })?.agent_id;
+            if (agentId) { try { await api.agents.delete(agentId); } catch { /* ignore */ } }
+            try { await api.canvas.deleteNode(n.id); } catch { /* ignore */ }
+            // React Flow already removed the node from visual state via onNodesChange.
+          }
+        }}
         defaultViewport={viewportRef.current}
         proOptions={{ hideAttribution: true }}
         style={{ background: "#0b0b0f" }}
