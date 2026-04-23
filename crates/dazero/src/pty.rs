@@ -14,11 +14,45 @@ pub struct PtySession {
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
     rx: Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<Vec<u8>>>>,
     pub id: uuid::Uuid,
+    pub tmux_session: String,
 }
 
 impl PtySession {
-    /// Spawna una shell interattiva (`$SHELL` o `/bin/bash`) con cwd opzionale.
+    /// Spawna una shell interattiva (`$SHELL` o `/bin/bash`) con cwd opzionale,
+    /// wrapped in a detached tmux session for persistence across daemon restarts.
     pub fn spawn_shell(cwd: Option<PathBuf>) -> Result<Self> {
+        let id = uuid::Uuid::new_v4();
+        let tmux_session = format!("dazero-{id}");
+
+        // 1. Create detached tmux session with the user's shell.
+        //    NOTE: `-c start-directory` MUST appear before the shell command in
+        //    tmux's argument list; placing it after would pass it to the shell
+        //    itself (e.g. `zsh -c /path` executes the path as a script).
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+        let mut new_cmd = std::process::Command::new("tmux");
+        new_cmd.args([
+            "new-session",
+            "-d",
+            "-s",
+            &tmux_session,
+            "-x",
+            "200",
+            "-y",
+            "50",
+        ]);
+        if let Some(ref d) = cwd {
+            new_cmd.args(["-c"]).arg(d);
+        }
+        new_cmd.arg(&shell);
+        let out = new_cmd.output().context("tmux new-session")?;
+        if !out.status.success() {
+            return Err(anyhow::anyhow!(
+                "tmux new-session failed: {}",
+                String::from_utf8_lossy(&out.stderr).trim()
+            ));
+        }
+
+        // 2. Attach from inside a PTY we own.
         let pty_system = native_pty_system();
         let pair = pty_system
             .openpty(PtySize {
@@ -29,19 +63,14 @@ impl PtySession {
             })
             .context("openpty failed")?;
 
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-        let mut cmd = CommandBuilder::new(&shell);
-        if let Some(dir) = cwd {
-            cmd.cwd(dir);
-        }
-        // Ensure TERM is set
+        let mut cmd = CommandBuilder::new("tmux");
+        cmd.args(["attach-session", "-t", &tmux_session]);
         cmd.env(
             "TERM",
             std::env::var("TERM").unwrap_or_else(|_| "xterm-256color".to_string()),
         );
-
-        let _child = pair.slave.spawn_command(cmd).context("spawn child")?;
-        drop(pair.slave); // riduciamo fd references
+        let _child = pair.slave.spawn_command(cmd).context("tmux attach spawn")?;
+        drop(pair.slave);
 
         let reader = pair.master.try_clone_reader().context("clone reader")?;
         let writer = pair.master.take_writer().context("take writer")?;
@@ -72,12 +101,60 @@ impl PtySession {
             master: Arc::new(Mutex::new(pair.master)),
             writer: Arc::new(Mutex::new(writer)),
             rx: Arc::new(tokio::sync::Mutex::new(rx)),
-            id: uuid::Uuid::new_v4(),
+            id,
+            tmux_session,
+        })
+    }
+
+    /// Internal constructor for reconnecting to an existing tmux session.
+    /// Task 3 will use this.
+    pub fn attach_existing(id: uuid::Uuid, tmux_session: String) -> Result<Self> {
+        let pty_system = native_pty_system();
+        let pair = pty_system.openpty(PtySize {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        })?;
+        let mut cmd = CommandBuilder::new("tmux");
+        cmd.args(["attach-session", "-t", &tmux_session]);
+        cmd.env(
+            "TERM",
+            std::env::var("TERM").unwrap_or_else(|_| "xterm-256color".to_string()),
+        );
+        let _child = pair.slave.spawn_command(cmd)?;
+        drop(pair.slave);
+        let reader = pair.master.try_clone_reader()?;
+        let writer = pair.master.take_writer()?;
+        let (tx, rx) = mpsc::unbounded_channel::<Vec<u8>>();
+        task::spawn_blocking(move || {
+            let mut reader = reader;
+            let mut buf = [0u8; 4096];
+            loop {
+                match reader.read(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        if tx.send(buf[..n].to_vec()).is_err() {
+                            break;
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
+        Ok(PtySession {
+            master: Arc::new(Mutex::new(pair.master)),
+            writer: Arc::new(Mutex::new(writer)),
+            rx: Arc::new(tokio::sync::Mutex::new(rx)),
+            id,
+            tmux_session,
         })
     }
 
     /// Resize the PTY so the inner program (shell, claude-code, vim...) sees
     /// the correct `$COLUMNS`/`$LINES` and redraws accordingly.
+    /// Note: Task 10 adds tmux resize-window propagation. For now, resize only
+    /// affects the PTY (the tmux-attach one), not tmux's window size.
     pub fn resize(&self, cols: u16, rows: u16) -> Result<()> {
         let master = self.master.lock().unwrap();
         master
@@ -108,6 +185,14 @@ impl PtySession {
         let mut rx = self.rx.lock().await;
         rx.recv().await.context("pty channel closed")
     }
+
+    /// Kill the underlying tmux session. Called by `PtyRegistry::remove` to
+    /// clean up after agent deletion.
+    pub fn kill_tmux_session(&self) {
+        let _ = std::process::Command::new("tmux")
+            .args(["kill-session", "-t", &self.tmux_session])
+            .status();
+    }
 }
 
 /// Registry of live PTY sessions keyed by UUID.
@@ -135,9 +220,11 @@ impl PtyRegistry {
         self.sessions.get(&id).map(|r| r.clone())
     }
 
-    /// Remove a session from the registry.
+    /// Remove a session from the registry, killing its tmux session.
     pub fn remove(&self, id: uuid::Uuid) {
-        self.sessions.remove(&id);
+        if let Some((_, sess)) = self.sessions.remove(&id) {
+            sess.kill_tmux_session();
+        }
     }
 }
 
