@@ -11,7 +11,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { api, ApiHttpError } from "../lib/api";
-import type { CanvasNode } from "../types";
+import type { CanvasNode, TaskList } from "../types";
 import { TerminalNodePlaceholder } from "./nodes/TerminalNode";
 import { TaskListNodePlaceholder } from "./nodes/TaskListNode";
 import { Toolbar } from "./Toolbar";
@@ -22,12 +22,24 @@ const nodeTypes = {
   task_list: TaskListNodePlaceholder,
 };
 
-function apiNodeToRf(n: CanvasNode): RfNode {
+function apiNodeToRf(n: CanvasNode, taskLists: TaskList[] = []): RfNode {
+  let data: Record<string, unknown> = n.data as Record<string, unknown>;
+  if (n.kind === "task_list") {
+    const tl = taskLists.find((t) => t.node_id === n.id);
+    if (tl) {
+      data = {
+        ...data,
+        task_list_id: tl.id,
+        tasks: tl.tasks,
+        title: tl.title ?? data.title,
+      };
+    }
+  }
   return {
     id: n.id,
     type: n.kind,
     position: { x: n.position_x, y: n.position_y },
-    data: n.data,
+    data,
     style:
       n.width && n.height
         ? { width: n.width, height: n.height }
@@ -58,7 +70,7 @@ export function CanvasView() {
         setContext({ canvasId: proj.canvas_id, projectId: proj.id, projectPath: proj.path });
         const canvas = await api.canvas.get(proj.canvas_id);
         if (cancelled) return;
-        setNodes(canvas.nodes.map(apiNodeToRf));
+        setNodes(canvas.nodes.map((n) => apiNodeToRf(n, canvas.task_lists)));
         viewportRef.current = canvas.viewport;
       } catch (e) {
         console.error("failed to load canvas", e);
@@ -100,17 +112,18 @@ export function CanvasView() {
 
   const addNode = async (kind: "terminal" | "task_list") => {
     if (!canvasIdRef.current) return;
-    const center = { x: 120, y: 120 };
     try {
-      const created = await api.canvas.createNode(canvasIdRef.current, {
+      await api.canvas.createNode(canvasIdRef.current, {
         kind,
-        position_x: center.x,
-        position_y: center.y,
+        position_x: 120,
+        position_y: 120,
         width: kind === "terminal" ? 420 : 260,
         height: kind === "terminal" ? 240 : 220,
         data: { title: kind === "terminal" ? "shell" : "todo" },
       });
-      setNodes((cur) => [...cur, apiNodeToRf(created)]);
+      // Re-fetch to get the canonical state (including auto-created task_list for kind=task_list)
+      const canvas = await api.canvas.get(canvasIdRef.current);
+      setNodes(canvas.nodes.map((n) => apiNodeToRf(n, canvas.task_lists)));
     } catch (e) {
       alert(
         `create node failed: ${e instanceof ApiHttpError ? e.message : String(e)}`
