@@ -144,6 +144,12 @@ export function CanvasView() {
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onMove={onMove}
+        onNodeDragStop={(_, node) => {
+          api.canvas.updateNode(node.id, {
+            position_x: node.position.x,
+            position_y: node.position.y,
+          }).catch(() => { /* ignore */ });
+        }}
         defaultViewport={viewportRef.current}
         proOptions={{ hideAttribution: true }}
         style={{ background: "#0b0b0f" }}
