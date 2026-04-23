@@ -16,16 +16,54 @@ export function ProjectCard({ project, onOpen }: { project: Project; onOpen: () 
         flexDirection: "column",
         gap: 6,
         transition: "border-color 120ms",
+        minWidth: 0,
+        overflow: "hidden",
+        fontFamily: "inherit",
       }}
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#444")}
       onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#222")}
     >
-      <strong style={{ fontSize: 16 }}>{project.name}</strong>
-      <span style={{ opacity: 0.6, fontSize: 12, fontFamily: "ui-monospace, monospace" }}>
+      <strong
+        style={{
+          fontSize: 16,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          maxWidth: "100%",
+        }}
+      >
+        {project.name}
+      </strong>
+      <span
+        style={{
+          opacity: 0.6,
+          fontSize: 12,
+          fontFamily: "ui-monospace, monospace",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          direction: "rtl",
+          maxWidth: "100%",
+          textAlign: "left",
+        }}
+        title={project.path}
+      >
         {project.path}
       </span>
       {project.git_remote && (
-        <span style={{ opacity: 0.5, fontSize: 11 }}>{project.git_remote}</span>
+        <span
+          style={{
+            opacity: 0.5,
+            fontSize: 11,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            maxWidth: "100%",
+          }}
+          title={project.git_remote}
+        >
+          {project.git_remote}
+        </span>
       )}
       <span style={{ opacity: 0.4, fontSize: 11, marginTop: 4 }}>
         {project.last_opened_at

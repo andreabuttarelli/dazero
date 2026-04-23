@@ -7,6 +7,7 @@ import "@xterm/xterm/css/xterm.css";
 import { api } from "../../lib/api";
 import { wsUrl } from "../../lib/ws";
 import { useCanvasStore } from "../../store/canvasStore";
+import { AGENT_PRESETS } from "../agentPresets";
 
 export function TerminalNode({ id, data, selected }: NodeProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -20,7 +21,10 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
   const projectPath = useCanvasStore((s) => s.projectPath);
   const removeNode = useCanvasStore((s) => s.removeNodeFromCanvas);
 
-  const title = (data as { title?: string })?.title ?? "shell";
+  const agentType = (data as { agent_type?: string })?.agent_type ?? "shell";
+  const preset = AGENT_PRESETS.find((p) => p.key === agentType) ?? AGENT_PRESETS[0]!;
+  const accent = (data as { accent?: string })?.accent ?? preset.accent;
+  const title = (data as { title?: string })?.title ?? preset.label;
   const agentIdInData = (data as { agent_id?: string })?.agent_id;
 
   useEffect(() => {
@@ -35,7 +39,12 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
       let agentId = agentIdInData;
       if (!agentId) {
         try {
-          const a = await api.agents.spawn(projectId, id, projectPath ?? undefined);
+          const a = await api.agents.spawn(
+            projectId,
+            id,
+            projectPath ?? undefined,
+            preset.initial_command ?? undefined,
+          );
           agentId = a.agent_id;
           await api.canvas.updateNode(id, {
             data: { ...(data as Record<string, unknown>), agent_id: agentId },
@@ -107,13 +116,14 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
   return (
     <div
       ref={wrapRef}
+      className="nowheel"
       style={{
         width: "100%",
         height: "100%",
         minWidth: 260,
         minHeight: 180,
         background: "#0b0b0f",
-        border: `1px solid ${selected ? "#4a7cff" : "#2a6475"}`,
+        border: `1px solid ${selected ? "#4a7cff" : accent}`,
         borderRadius: 8,
         boxSizing: "border-box",
         display: "flex",
@@ -136,7 +146,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
           justifyContent: "space-between",
           padding: "4px 8px",
           background: "#0f1a1f",
-          borderBottom: "1px solid #2a6475",
+          borderBottom: `1px solid ${accent}`,
           fontFamily: "ui-monospace, monospace",
           fontSize: 11,
           color: "#9de6ff",
@@ -160,7 +170,11 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
           &times;
         </button>
       </div>
-      <div ref={termContainerRef} style={{ flex: 1, padding: 4, overflow: "hidden" }} />
+      <div
+        ref={termContainerRef}
+        className="nodrag"
+        style={{ flex: 1, padding: 4, overflow: "hidden" }}
+      />
     </div>
   );
 }

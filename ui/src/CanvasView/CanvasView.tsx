@@ -15,6 +15,7 @@ import type { CanvasNode, TaskList } from "../types";
 import { TerminalNodePlaceholder } from "./nodes/TerminalNode";
 import { TaskListNodePlaceholder } from "./nodes/TaskListNode";
 import { Toolbar } from "./Toolbar";
+import { type AgentPreset } from "./agentPresets";
 import { useCanvasStore } from "../store/canvasStore";
 
 const nodeTypes = {
@@ -110,18 +111,41 @@ export function CanvasView() {
     }, 500);
   };
 
-  const addNode = async (kind: "terminal" | "task_list") => {
+  const addAgent = async (preset: AgentPreset) => {
     if (!canvasIdRef.current) return;
     try {
       await api.canvas.createNode(canvasIdRef.current, {
-        kind,
+        kind: "terminal",
         position_x: 120,
         position_y: 120,
-        width: kind === "terminal" ? 420 : 260,
-        height: kind === "terminal" ? 240 : 220,
-        data: { title: kind === "terminal" ? "shell" : "todo" },
+        width: 460,
+        height: 280,
+        data: {
+          title: preset.label,
+          agent_type: preset.key,
+          accent: preset.accent,
+        },
       });
-      // Re-fetch to get the canonical state (including auto-created task_list for kind=task_list)
+      const canvas = await api.canvas.get(canvasIdRef.current);
+      setNodes(canvas.nodes.map((n) => apiNodeToRf(n, canvas.task_lists)));
+    } catch (e) {
+      alert(
+        `create node failed: ${e instanceof ApiHttpError ? e.message : String(e)}`
+      );
+    }
+  };
+
+  const addTaskList = async () => {
+    if (!canvasIdRef.current) return;
+    try {
+      await api.canvas.createNode(canvasIdRef.current, {
+        kind: "task_list",
+        position_x: 120,
+        position_y: 120,
+        width: 260,
+        height: 220,
+        data: { title: "todo" },
+      });
       const canvas = await api.canvas.get(canvasIdRef.current);
       setNodes(canvas.nodes.map((n) => apiNodeToRf(n, canvas.task_lists)));
     } catch (e) {
@@ -134,8 +158,8 @@ export function CanvasView() {
   return (
     <div style={{ height: "100vh", width: "100vw", background: "#0b0b0f" }}>
       <Toolbar
-        onAddTerminal={() => void addNode("terminal")}
-        onAddTaskList={() => void addNode("task_list")}
+        onAddAgent={(preset) => void addAgent(preset)}
+        onAddTaskList={() => void addTaskList()}
       />
       <ReactFlow
         nodes={nodes}

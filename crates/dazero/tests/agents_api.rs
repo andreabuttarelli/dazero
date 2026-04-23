@@ -168,3 +168,71 @@ async fn delete_unknown_agent_returns_404() {
         .unwrap();
     assert_eq!(r.status(), 404);
 }
+
+#[tokio::test]
+async fn initial_command_executes_in_pty() {
+    let (addr, _tmp) = spawn().await;
+    let client = reqwest::Client::new();
+
+    let proj_dir = tempfile::TempDir::new().unwrap();
+    let proj: serde_json::Value = client
+        .post(format!("http://{addr}/api/projects"))
+        .json(&serde_json::json!({"mode":"folder","path":proj_dir.path(),"name":"p"}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let canvas_id = proj["canvas_id"].as_str().unwrap();
+    let node: serde_json::Value = client
+        .post(format!("http://{addr}/api/canvases/{canvas_id}/nodes"))
+        .json(&serde_json::json!({"kind":"terminal","position_x":0.0,"position_y":0.0,"data":{}}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    let a: serde_json::Value = client
+        .post(format!("http://{addr}/api/agents"))
+        .json(&serde_json::json!({
+            "project_id": proj["id"],
+            "node_id": node["id"],
+            "cwd": proj["path"],
+            "initial_command": "echo dazero-init-ok"
+        }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let agent_id = a["agent_id"].as_str().unwrap();
+
+    let (mut ws, _) = tokio_tungstenite::connect_async(format!("ws://{addr}/ws/pty/{agent_id}"))
+        .await
+        .unwrap();
+    let mut out = Vec::new();
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        use futures_util::StreamExt;
+        tokio::select! {
+            _ = tokio::time::sleep_until(deadline) => break,
+            msg = ws.next() => match msg {
+                Some(Ok(tokio_tungstenite::tungstenite::Message::Binary(b))) => {
+                    out.extend_from_slice(&b);
+                    if String::from_utf8_lossy(&out).contains("dazero-init-ok") { break; }
+                }
+                _ => break,
+            }
+        }
+    }
+    assert!(
+        String::from_utf8_lossy(&out).contains("dazero-init-ok"),
+        "expected initial command output, got {:?}",
+        String::from_utf8_lossy(&out)
+    );
+    std::mem::forget(proj_dir);
+}

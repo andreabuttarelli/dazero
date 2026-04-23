@@ -69,8 +69,25 @@ export const api = {
     delete: (id: string) => req<void>("DELETE", `/api/tasks/${encodeURIComponent(id)}`),
   },
   agents: {
-    spawn: (project_id: string, node_id: string, cwd?: string) =>
-      req<AgentRef>("POST", "/api/agents", { project_id, node_id, ...(cwd ? { cwd } : {}) }),
+    spawn: (project_id: string, node_id: string, cwd?: string, initial_command?: string) =>
+      req<AgentRef>("POST", "/api/agents", {
+        project_id, node_id,
+        ...(cwd ? { cwd } : {}),
+        ...(initial_command ? { initial_command } : {}),
+      }),
     delete: (id: string) => req<void>("DELETE", `/api/agents/${encodeURIComponent(id)}`),
+  },
+  system: {
+    pickDirectory: async (): Promise<{ path: string } | null> => {
+      const r = await fetch("/api/system/pick-directory", { method: "POST" });
+      if (r.status === 204) return null;
+      if (!r.ok) {
+        let err: ApiError;
+        try { err = await r.json() as ApiError; }
+        catch { err = { error: `HTTP ${r.status}`, code: "internal_error" }; }
+        throw new ApiHttpError(r.status, err);
+      }
+      return r.json() as Promise<{ path: string }>;
+    },
   },
 };

@@ -17,6 +17,20 @@ export function NewProjectWizard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const pickFolder = async () => {
+    try {
+      const r = await fetch("/api/system/pick-directory", { method: "POST" });
+      if (r.status === 204) return;
+      if (r.status === 501) {
+        setError("Folder picker not supported on your OS. Paste the path manually.");
+        return;
+      }
+      if (!r.ok) { setError("Picker failed: " + await r.text()); return; }
+      const j = await r.json() as { path: string };
+      setPath(j.path);
+    } catch (e) { setError(String(e)); }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -72,13 +86,23 @@ export function NewProjectWizard({
         {tab === "folder" ? (
           <label style={labelStyle}>
             Absolute path
-            <input
-              value={path}
-              onChange={(e) => setPath(e.target.value)}
-              placeholder="/Users/you/code/myproject"
-              style={inputStyle}
-              autoFocus
-            />
+            <div style={{ display: "flex", gap: 6 }}>
+              <input
+                value={path}
+                onChange={(e) => setPath(e.target.value)}
+                placeholder="/Users/you/code/myproject"
+                style={{ flex: 1, ...inputStyle }}
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => void pickFolder()}
+                title="Open native folder picker"
+                style={{ ...buttonSecondary, padding: "8px 10px" }}
+              >
+                📁
+              </button>
+            </div>
           </label>
         ) : (
           <label style={labelStyle}>

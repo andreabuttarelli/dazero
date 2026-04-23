@@ -4,7 +4,7 @@ use crate::project;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{get, patch, post},
     Json, Router,
 };
@@ -49,6 +49,7 @@ pub fn routes(state: ApiState) -> Router {
         )
         .route("/api/agents", post(create_agent))
         .route("/api/agents/{id}", axum::routing::delete(delete_agent))
+        .route("/api/system/pick-directory", post(pick_directory))
         .route("/ws/pty/{id}", get(crate::ws::pty_by_id_handler))
         .with_state(state)
 }
@@ -206,6 +207,7 @@ pub struct CreateAgent {
     pub project_id: String,
     pub node_id: String,
     pub cwd: Option<String>,
+    pub initial_command: Option<String>,
 }
 
 async fn create_agent(
@@ -220,10 +222,67 @@ async fn create_agent(
     }
     let cwd = body.cwd.map(std::path::PathBuf::from);
     let id = state.pty.spawn(cwd)?;
+    if let Some(cmd) = body.initial_command.as_deref() {
+        let cmd = cmd.trim();
+        if !cmd.is_empty() {
+            if let Some(sess) = state.pty.get(id) {
+                let line = format!("{cmd}\n");
+                // Ignore write errors; the terminal will show the issue.
+                let _ = sess.write(line.as_bytes()).await;
+            }
+        }
+    }
     Ok((
         StatusCode::CREATED,
         Json(serde_json::json!({ "agent_id": id.to_string() })),
     ))
+}
+
+async fn pick_directory() -> Result<Response, AppError> {
+    let os = std::env::consts::OS;
+    let result = tokio::task::spawn_blocking(move || -> anyhow::Result<Option<String>> {
+        let out = match os {
+            "macos" => std::process::Command::new("osascript")
+                .args([
+                    "-e",
+                    "POSIX path of (choose folder with prompt \"Choose a dazero project folder\")",
+                ])
+                .output()?,
+            "linux" => std::process::Command::new("zenity")
+                .args([
+                    "--file-selection",
+                    "--directory",
+                    "--title=Choose a dazero project folder",
+                ])
+                .output()?,
+            _ => return Ok(None),
+        };
+        if !out.status.success() {
+            return Ok(None);
+        }
+        let s = String::from_utf8_lossy(&out.stdout)
+            .trim()
+            .trim_end_matches('/')
+            .to_string();
+        if s.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(s))
+        }
+    })
+    .await??;
+
+    match (std::env::consts::OS, result) {
+        (_, Some(path)) => {
+            Ok((StatusCode::OK, Json(serde_json::json!({ "path": path }))).into_response())
+        }
+        ("windows", None) => Err(AppError {
+            err: anyhow::anyhow!("native folder picker not supported on Windows yet"),
+            status: StatusCode::NOT_IMPLEMENTED,
+            code: "not_implemented",
+        }),
+        (_, None) => Ok(StatusCode::NO_CONTENT.into_response()),
+    }
 }
 
 async fn delete_agent(

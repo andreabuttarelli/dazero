@@ -1,11 +1,12 @@
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
+import { AGENT_PRESETS, type AgentPreset } from "./agentPresets";
 
 export function Toolbar({
-  onAddTerminal,
+  onAddAgent,
   onAddTaskList,
 }: {
-  onAddTerminal: () => void;
+  onAddAgent: (preset: AgentPreset) => void;
   onAddTaskList: () => void;
 }) {
   return (
@@ -25,15 +26,23 @@ export function Toolbar({
         border: "1px solid #2a2a36",
         fontFamily: "ui-monospace, monospace",
         fontSize: 12,
+        flexWrap: "wrap",
       }}
     >
       <Link to="/" style={{ color: "#8af", textDecoration: "none" }}>
         &larr; Dashboard
       </Link>
       <span style={{ width: 1, height: 16, background: "#333" }} />
-      <button onClick={onAddTerminal} style={btn}>
-        + Terminal
-      </button>
+      {AGENT_PRESETS.map((p) => (
+        <button
+          key={p.key}
+          onClick={() => onAddAgent(p)}
+          style={{ ...btn, borderColor: p.accent + "88" }}
+        >
+          + {p.label}
+        </button>
+      ))}
+      <span style={{ width: 1, height: 16, background: "#333" }} />
       <button onClick={onAddTaskList} style={btn}>
         + Task list
       </button>
