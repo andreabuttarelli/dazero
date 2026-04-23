@@ -33,6 +33,15 @@ fn main() -> Result<()> {
         }
         Some(Command::Doctor) => {
             println!("dazero {}", env!("CARGO_PKG_VERSION"));
+            match std::process::Command::new("tmux").arg("-V").output() {
+                Ok(o) if o.status.success() => {
+                    print!("  {}", String::from_utf8_lossy(&o.stdout));
+                }
+                _ => {
+                    println!("  tmux: NOT FOUND (install via `brew install tmux` or your package manager)");
+                    std::process::exit(2);
+                }
+            }
             Ok(())
         }
         None => {

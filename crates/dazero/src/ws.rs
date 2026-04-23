@@ -96,11 +96,10 @@ async fn pty_socket_with_session(socket: WebSocket, sess: Arc<PtySession>) {
 
     while let Some(Ok(msg)) = ws_rx.next().await {
         match msg {
-            Message::Binary(b) => {
-                if sess.write(&b).await.is_err() {
-                    break;
-                }
+            Message::Binary(b) if sess.write(&b).await.is_err() => {
+                break;
             }
+            Message::Binary(_) => {}
             Message::Text(t) => {
                 // Detect a JSON control frame like {"type":"resize","cols":120,"rows":40}.
                 // Anything else is forwarded to the PTY verbatim.
