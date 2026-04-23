@@ -1,11 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import ReactFlow, {
   Background,
   Controls,
   MiniMap,
   useNodesState,
-  useEdgesState,
   type Node as RfNode,
   type Viewport,
 } from "reactflow";
@@ -15,7 +14,7 @@ import type { CanvasNode, TaskList } from "../types";
 import { TerminalNodePlaceholder } from "./nodes/TerminalNode";
 import { TaskListNodePlaceholder } from "./nodes/TaskListNode";
 import { Toolbar } from "./Toolbar";
-import { type AgentPreset } from "./agentPresets";
+import { type AgentPreset, AGENT_PRESETS } from "./agentPresets";
 import { useCanvasStore } from "../store/canvasStore";
 
 const nodeTypes = {
@@ -51,13 +50,35 @@ function apiNodeToRf(n: CanvasNode, taskLists: TaskList[] = []): RfNode {
 export function CanvasView() {
   const { id: projectId } = useParams<{ id: string }>();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, , onEdgesChange] = useEdgesState([]);
   const canvasIdRef = useRef<string | null>(null);
+  const nodesRef = useRef<RfNode[]>([]);
   const viewportRef = useRef<Viewport>({ x: 0, y: 0, zoom: 1 });
   const patchTimer = useRef<number | null>(null);
 
   const setContext = useCanvasStore((s) => s.setContext);
   const setRemove = useCanvasStore((s) => s.setRemoveNodeFromCanvas);
+  const setSpawn = useCanvasStore((s) => s.setSpawnAgentFromTask);
+
+  // Keep nodesRef in sync for spawning position lookup
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  // Derive edges from nodes: terminal nodes with spawned_from_node_id emit an edge
+  const edges = useMemo(() => {
+    return nodes
+      .filter((n) => (n.data as { spawned_from_node_id?: string })?.spawned_from_node_id)
+      .map((n) => ({
+        id: `e-${(n.data as { spawned_from_node_id: string }).spawned_from_node_id}-${n.id}`,
+        source: (n.data as { spawned_from_node_id: string }).spawned_from_node_id,
+        target: n.id,
+        style: {
+          stroke: (n.data as { accent?: string }).accent ?? "#6a8cff",
+          strokeWidth: 1.5,
+        },
+        animated: false,
+      }));
+  }, [nodes]);
 
   // Load project + canvas on mount; set store context
   useEffect(() => {
@@ -96,6 +117,32 @@ export function CanvasView() {
       }
     });
   }, [setNodes, setRemove]);
+
+  // Register the spawnAgentFromTask helper so TaskListNode can spawn terminal nodes
+  useEffect(() => {
+    setSpawn(async ({ sourceNodeId, taskDescription, agentType }) => {
+      if (!canvasIdRef.current) return;
+      const preset = AGENT_PRESETS.find((p) => p.key === agentType) ?? AGENT_PRESETS[0]!;
+      const source = nodesRef.current.find((n) => n.id === sourceNodeId);
+      const basePos = source?.position ?? { x: 120, y: 120 };
+      const sourceWidth = typeof source?.style?.width === "number" ? source.style.width : 260;
+      await api.canvas.createNode(canvasIdRef.current, {
+        kind: "terminal",
+        position_x: basePos.x + sourceWidth + 40,
+        position_y: basePos.y,
+        width: 460,
+        height: 280,
+        data: {
+          title: taskDescription.slice(0, 40),
+          agent_type: preset.key,
+          accent: preset.accent,
+          spawned_from_node_id: sourceNodeId,
+        },
+      });
+      const canvas = await api.canvas.get(canvasIdRef.current);
+      setNodes(canvas.nodes.map((n) => apiNodeToRf(n, canvas.task_lists)));
+    });
+  }, [setSpawn, setNodes]);
 
   const onMove = (_: MouseEvent | TouchEvent, v: Viewport) => {
     viewportRef.current = v;
@@ -165,7 +212,6 @@ export function CanvasView() {
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onMove={onMove}
         onNodeDragStop={(_, node) => {

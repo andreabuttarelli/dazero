@@ -4,6 +4,7 @@ import { NodeResizer } from "reactflow";
 import { api, ApiHttpError } from "../../lib/api";
 import type { Task } from "../../types";
 import { useCanvasStore } from "../../store/canvasStore";
+import { AGENT_PRESETS } from "../agentPresets";
 
 type TaskListData = {
   title?: string;
@@ -18,6 +19,7 @@ export function TaskListNode({ id, data, selected }: NodeProps) {
   const [tasks, setTasks] = useState<Task[]>(d.tasks ?? []);
   const [adding, setAdding] = useState(false);
   const [newDesc, setNewDesc] = useState("");
+  const [runAs, setRunAs] = useState<string>("shell");
   const newDescRef = useRef<HTMLInputElement | null>(null);
   const removeNode = useCanvasStore((s) => s.removeNodeFromCanvas);
 
@@ -145,6 +147,33 @@ export function TaskListNode({ id, data, selected }: NodeProps) {
         </button>
       </div>
 
+      {/* Preset picker row */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "3px 8px",
+          background: "#131320",
+          borderBottom: "1px solid #222236",
+          fontSize: 11,
+          color: "#888",
+        }}
+      >
+        <span>Run as:</span>
+        <select
+          value={runAs}
+          onChange={(e) => setRunAs(e.target.value)}
+          style={presetSelectStyle}
+        >
+          {AGENT_PRESETS.map((p) => (
+            <option key={p.key} value={p.key}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div style={{ flex: 1, overflowY: "auto", padding: 6 }}>
         {tasks.length === 0 && !adding && (
           <div style={{ opacity: 0.4, padding: 8, fontSize: 11 }}>
@@ -158,6 +187,15 @@ export function TaskListNode({ id, data, selected }: NodeProps) {
             onToggle={() => toggleTask(t)}
             onEdit={(desc) => editTaskDescription(t, desc)}
             onDelete={() => deleteTask(t)}
+            onRun={async () => {
+              const spawn = useCanvasStore.getState().spawnAgentFromTask;
+              if (!spawn) return;
+              await spawn({
+                sourceNodeId: id,
+                taskDescription: t.description,
+                agentType: runAs,
+              });
+            }}
           />
         ))}
       </div>
@@ -203,11 +241,13 @@ function TaskRow({
   onToggle,
   onEdit,
   onDelete,
+  onRun,
 }: {
   task: Task;
   onToggle: () => void;
   onEdit: (d: string) => void;
   onDelete: () => void;
+  onRun: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [desc, setDesc] = useState(task.description);
@@ -264,6 +304,15 @@ function TaskRow({
           {task.description}
         </span>
       )}
+      <button
+        onClick={onRun}
+        title="Run in a new terminal"
+        style={runBtnStyle}
+        onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#9ab")}
+        onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#7a7a9a")}
+      >
+        &#9654;
+      </button>
       <button onClick={onDelete} title="delete" style={xBtnStyle}>
         ×
       </button>
@@ -316,6 +365,24 @@ const xBtnStyle: React.CSSProperties = {
   cursor: "pointer",
   fontSize: 12,
   padding: 0,
+};
+const runBtnStyle: React.CSSProperties = {
+  background: "transparent",
+  border: "none",
+  color: "#7a7a9a",
+  cursor: "pointer",
+  fontSize: 11,
+  padding: 0,
+};
+const presetSelectStyle: React.CSSProperties = {
+  background: "#0d0d1a",
+  border: "1px solid #2a2a3e",
+  borderRadius: 3,
+  color: "#aaa",
+  fontFamily: "ui-monospace, monospace",
+  fontSize: 11,
+  padding: "1px 4px",
+  cursor: "pointer",
 };
 
 // Compat alias so existing nodeTypes registration keeps working

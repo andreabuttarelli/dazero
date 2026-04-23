@@ -16,6 +16,10 @@ type State = {
   removeNodeFromCanvas: null | ((nodeId: string, agentId?: string) => Promise<void>);
   setRemoveNodeFromCanvas: (fn: (nodeId: string, agentId?: string) => Promise<void>) => void;
 
+  // Used by TaskListNode to spawn a new terminal node from a task row
+  spawnAgentFromTask: null | ((args: { sourceNodeId: string; taskDescription: string; agentType: string }) => Promise<void>);
+  setSpawnAgentFromTask: (fn: (args: { sourceNodeId: string; taskDescription: string; agentType: string }) => Promise<void>) => void;
+
   reset: () => void;
 };
 
@@ -42,6 +46,9 @@ export const useCanvasStore = create<State>((set) => ({
   removeNodeFromCanvas: null,
   setRemoveNodeFromCanvas: (fn) => set({ removeNodeFromCanvas: fn }),
 
+  spawnAgentFromTask: null,
+  setSpawnAgentFromTask: (fn) => set({ spawnAgentFromTask: fn }),
+
   reset: () =>
     set({
       canvasId: null,
@@ -49,5 +56,6 @@ export const useCanvasStore = create<State>((set) => ({
       projectPath: null,
       nodes: [],
       removeNodeFromCanvas: null,
+      spawnAgentFromTask: null,
     }),
 }));
