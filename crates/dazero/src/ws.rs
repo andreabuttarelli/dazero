@@ -96,12 +96,45 @@ async fn pty_socket_with_session(socket: WebSocket, sess: Arc<PtySession>) {
 
     while let Some(Ok(msg)) = ws_rx.next().await {
         match msg {
-            Message::Binary(b) if sess.write(&b).await.is_err() => break,
-            Message::Text(t) if sess.write(t.as_bytes()).await.is_err() => break,
+            Message::Binary(b) => {
+                if sess.write(&b).await.is_err() {
+                    break;
+                }
+            }
+            Message::Text(t) => {
+                // Detect a JSON control frame like {"type":"resize","cols":120,"rows":40}.
+                // Anything else is forwarded to the PTY verbatim.
+                if let Some(bytes) = handle_control_frame(&sess, &t).await {
+                    if sess.write(bytes).await.is_err() {
+                        break;
+                    }
+                }
+            }
             Message::Close(_) => break,
             _ => {}
         }
     }
 
     reader.abort();
+}
+
+/// If `text` is a JSON control frame, act on it and return None (consumed).
+/// Otherwise return Some(bytes_to_forward) for the normal PTY write path.
+async fn handle_control_frame<'a>(sess: &Arc<PtySession>, text: &'a str) -> Option<&'a [u8]> {
+    let trimmed = text.trim_start();
+    if !trimmed.starts_with('{') {
+        return Some(text.as_bytes());
+    }
+    let Ok(val) = serde_json::from_str::<serde_json::Value>(trimmed) else {
+        return Some(text.as_bytes());
+    };
+    match val.get("type").and_then(|v| v.as_str()) {
+        Some("resize") => {
+            let cols = val.get("cols").and_then(|v| v.as_u64()).unwrap_or(80);
+            let rows = val.get("rows").and_then(|v| v.as_u64()).unwrap_or(24);
+            let _ = sess.resize(cols as u16, rows as u16);
+            None
+        }
+        _ => Some(text.as_bytes()),
+    }
 }

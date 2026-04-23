@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use dashmap::DashMap;
-use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -10,6 +10,7 @@ use tokio::task;
 /// Una sessione PTY con shell figlio.
 /// I byte in arrivo dalla shell sono disponibili via `read_some()`.
 pub struct PtySession {
+    master: Arc<Mutex<Box<dyn MasterPty + Send>>>,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
     rx: Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<Vec<u8>>>>,
     pub id: uuid::Uuid,
@@ -68,10 +69,26 @@ impl PtySession {
         });
 
         Ok(PtySession {
+            master: Arc::new(Mutex::new(pair.master)),
             writer: Arc::new(Mutex::new(writer)),
             rx: Arc::new(tokio::sync::Mutex::new(rx)),
             id: uuid::Uuid::new_v4(),
         })
+    }
+
+    /// Resize the PTY so the inner program (shell, claude-code, vim...) sees
+    /// the correct `$COLUMNS`/`$LINES` and redraws accordingly.
+    pub fn resize(&self, cols: u16, rows: u16) -> Result<()> {
+        let master = self.master.lock().unwrap();
+        master
+            .resize(PtySize {
+                cols,
+                rows,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .context("pty resize")?;
+        Ok(())
     }
 
     pub async fn write(&self, bytes: &[u8]) -> Result<()> {

@@ -77,15 +77,23 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
       ws.binaryType = "arraybuffer";
       wsRef.current = ws;
 
+      const sendResize = () => {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+      };
+
       ws.onmessage = (ev) => {
         if (typeof ev.data === "string") term.write(ev.data);
         else term.write(new Uint8Array(ev.data as ArrayBuffer));
       };
+      ws.onopen = () => sendResize();
       ws.onclose = () => term.writeln("\r\n[dazero: connection closed]");
       ws.onerror = () => term.writeln("\r\n[dazero: ws error]");
       term.onData((s) => {
         if (ws.readyState === WebSocket.OPEN) ws.send(s);
       });
+      // Forward xterm's own resize events (fired by fit()) to the PTY.
+      term.onResize(() => sendResize());
     })();
 
     return () => {
