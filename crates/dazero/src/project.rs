@@ -59,8 +59,12 @@ pub fn create_from_clone(db: &Db, git_url: &str, name: Option<String>) -> Result
                 .join(".dazero/projects")
         });
     std::fs::create_dir_all(&base)?;
+
+    let normalized = normalize_github_shorthand(git_url);
+    let url_for_clone = normalized.as_deref().unwrap_or(git_url);
+
     let derived_name = name.clone().unwrap_or_else(|| {
-        git_url
+        url_for_clone
             .rsplit('/')
             .next()
             .unwrap_or("project")
@@ -74,14 +78,71 @@ pub fn create_from_clone(db: &Db, git_url: &str, name: Option<String>) -> Result
             dest.display()
         ));
     }
-    let status = std::process::Command::new("git")
-        .args(["clone", git_url, dest.to_str().unwrap()])
-        .status()
-        .context("invoke git clone")?;
+
+    let status = if is_github_url(url_for_clone) && gh_cli_available() {
+        let owner_repo =
+            github_owner_repo(url_for_clone).unwrap_or_else(|| url_for_clone.to_string());
+        std::process::Command::new("gh")
+            .args(["repo", "clone", &owner_repo, dest.to_str().unwrap()])
+            .status()
+            .context("invoke gh repo clone")?
+    } else {
+        std::process::Command::new("git")
+            .args(["clone", url_for_clone, dest.to_str().unwrap()])
+            .status()
+            .context("invoke git clone")?
+    };
     if !status.success() {
-        return Err(anyhow::anyhow!("git clone failed with status {status}"));
+        return Err(anyhow::anyhow!("clone failed with status {status}"));
     }
     create_from_folder(db, &dest, Some(derived_name))
+}
+
+/// Expand short GitHub references like `owner/repo` into a full HTTPS URL.
+/// Returns None if the input already looks like a URL or an SSH spec.
+fn normalize_github_shorthand(s: &str) -> Option<String> {
+    let trimmed = s.trim();
+    if trimmed.contains("://") || trimmed.contains('@') || trimmed.starts_with("git") {
+        return None;
+    }
+    let parts: Vec<&str> = trimmed.split('/').collect();
+    if parts.len() == 2 && !parts[0].is_empty() && !parts[1].is_empty() {
+        Some(format!("https://github.com/{}/{}", parts[0], parts[1]))
+    } else {
+        None
+    }
+}
+
+fn is_github_url(s: &str) -> bool {
+    s.contains("github.com")
+}
+
+/// Extract `owner/repo` from a GitHub URL (HTTPS or SSH). Returns None on malformed input.
+fn github_owner_repo(url: &str) -> Option<String> {
+    let path = if let Some(rest) = url.strip_prefix("https://github.com/") {
+        rest.to_string()
+    } else if let Some(rest) = url.strip_prefix("http://github.com/") {
+        rest.to_string()
+    } else if let Some(rest) = url.strip_prefix("git@github.com:") {
+        rest.to_string()
+    } else {
+        return None;
+    };
+    let path = path.trim_end_matches('/').trim_end_matches(".git");
+    let parts: Vec<&str> = path.splitn(2, '/').collect();
+    if parts.len() == 2 && !parts[0].is_empty() && !parts[1].is_empty() {
+        Some(format!("{}/{}", parts[0], parts[1]))
+    } else {
+        None
+    }
+}
+
+fn gh_cli_available() -> bool {
+    std::process::Command::new("gh")
+        .arg("--version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
 
 pub fn list(db: &Db) -> Result<Vec<Project>> {
