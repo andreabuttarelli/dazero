@@ -1,3 +1,4 @@
+use crate::agent_config::Config as AgentCfg;
 use crate::canvas;
 use crate::db::Db;
 use crate::project;
@@ -9,6 +10,8 @@ use axum::{
     Json, Router,
 };
 use serde::Deserialize;
+use std::sync::Arc;
+use tokio::sync::Mutex as TokioMutex;
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "mode", rename_all = "lowercase")]
@@ -28,7 +31,9 @@ pub enum CreateProject {
 #[derive(Clone)]
 pub struct ApiState {
     pub db: Db,
-    pub pty: std::sync::Arc<crate::pty::PtyRegistry>,
+    pub pty: Arc<crate::pty::PtyRegistry>,
+    pub agent_config: Arc<TokioMutex<AgentCfg>>,
+    pub agent_config_path: std::path::PathBuf,
 }
 
 pub fn routes(state: ApiState) -> Router {
@@ -52,8 +57,17 @@ pub fn routes(state: ApiState) -> Router {
         .route("/api/agents", post(create_agent))
         .route("/api/agents/{id}", axum::routing::delete(delete_agent))
         .route("/api/system/pick-directory", post(pick_directory))
+        .route("/api/agent-presets", get(get_agent_presets))
         .route("/ws/pty/{id}", get(crate::ws::pty_by_id_handler))
         .with_state(state)
+}
+
+async fn get_agent_presets(State(state): State<ApiState>) -> Json<serde_json::Value> {
+    let cfg = state.agent_config.lock().await;
+    Json(serde_json::json!({
+        "max_concurrent_agents": cfg.max_concurrent_agents,
+        "presets": cfg.presets,
+    }))
 }
 
 async fn create_project(

@@ -35,6 +35,7 @@ refinery.workspace = true
 chrono.workspace = true
 dirs.workspace = true
 dashmap.workspace = true
+toml.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

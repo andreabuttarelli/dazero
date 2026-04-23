@@ -24,9 +24,27 @@ pub async fn serve_with_db(port: u16, db_path: std::path::PathBuf) -> Result<()>
             recovered.len()
         );
     }
+    let agent_config_path = crate::agent_config::default_config_path();
+    let cfg = crate::agent_config::load_from(&agent_config_path).unwrap_or_else(|e| {
+        tracing::warn!(error = ?e, "failed to load agents.toml, using defaults");
+        crate::agent_config::Config {
+            max_concurrent_agents: 5,
+            presets: crate::agent_config::BUILTIN_PRESETS
+                .iter()
+                .map(|(k, l, ic, a)| crate::agent_config::AgentPreset {
+                    key: (*k).into(),
+                    label: (*l).into(),
+                    initial_command: ic.map(|s| s.to_string()),
+                    accent: (*a).into(),
+                })
+                .collect(),
+        }
+    });
     let api_state = crate::api::ApiState {
         db: db.clone(),
         pty,
+        agent_config: std::sync::Arc::new(tokio::sync::Mutex::new(cfg)),
+        agent_config_path,
     };
     let app = Router::new()
         .route("/health", get(health))
