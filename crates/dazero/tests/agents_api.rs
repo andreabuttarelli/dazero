@@ -298,10 +298,10 @@ async fn budget_cap_returns_429() {
     }
 
     // Spawn 2 agents — both 201
-    for i in 0..2 {
+    for (i, nid) in node_ids.iter().enumerate().take(2) {
         let r = client
             .post(format!("http://127.0.0.1:{port}/api/agents"))
-            .json(&serde_json::json!({"project_id":pid,"node_id":node_ids[i],"cwd":proj["path"]}))
+            .json(&serde_json::json!({"project_id":pid,"node_id":nid,"cwd":proj["path"]}))
             .send()
             .await
             .unwrap();
