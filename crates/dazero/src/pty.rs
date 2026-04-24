@@ -153,18 +153,44 @@ impl PtySession {
 
     /// Resize the PTY so the inner program (shell, claude-code, vim...) sees
     /// the correct `$COLUMNS`/`$LINES` and redraws accordingly.
-    /// Note: Task 10 adds tmux resize-window propagation. For now, resize only
-    /// affects the PTY (the tmux-attach one), not tmux's window size.
+    ///
+    /// Two things happen on every resize:
+    /// 1. The PTY master is resized — this tells the tmux *client* (the
+    ///    `tmux attach-session` process we own) the terminal is now this big.
+    /// 2. `tmux resize-window` is run so the tmux *window* itself (and therefore
+    ///    the inner shell) also sees the new dimensions.  Failure is non-fatal:
+    ///    tmux may reject the command when the window is already at the target
+    ///    size or when other clients are attached with smaller terminals.
     pub fn resize(&self, cols: u16, rows: u16) -> Result<()> {
-        let master = self.master.lock().unwrap();
-        master
-            .resize(PtySize {
-                cols,
-                rows,
-                pixel_width: 0,
-                pixel_height: 0,
-            })
-            .context("pty resize")?;
+        // 1. Resize the PTY (tells the tmux client its terminal is that big).
+        {
+            let master = self.master.lock().unwrap();
+            master
+                .resize(PtySize {
+                    cols,
+                    rows,
+                    pixel_width: 0,
+                    pixel_height: 0,
+                })
+                .context("pty resize")?;
+        }
+
+        // 2. Resize the underlying tmux window so the inner shell redraws at
+        //    the new size.  Non-fatal: tmux may reject if the window is already
+        //    at the target size, or if other clients are attached with smaller
+        //    terminals.
+        let _ = std::process::Command::new("tmux")
+            .args([
+                "resize-window",
+                "-t",
+                &self.tmux_session,
+                "-x",
+                &cols.to_string(),
+                "-y",
+                &rows.to_string(),
+            ])
+            .status();
+
         Ok(())
     }
 
