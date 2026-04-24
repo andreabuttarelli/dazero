@@ -236,3 +236,86 @@ async fn initial_command_executes_in_pty() {
     );
     std::mem::forget(proj_dir);
 }
+
+#[tokio::test]
+async fn budget_cap_returns_429() {
+    // Boot a daemon with max=2 via a custom config file
+    let tmp = tempfile::TempDir::new().unwrap();
+    let db_path = tmp.path().join("test.db");
+    let cfg_path = tmp.path().join("agents.toml");
+    std::fs::write(&cfg_path, "max_concurrent_agents = 2\n").unwrap();
+
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let p1 = db_path.clone();
+    let p2 = cfg_path.clone();
+    tokio::spawn(async move {
+        dazero::http::serve_with_db_and_config(port, p1, p2)
+            .await
+            .unwrap();
+    });
+    for _ in 0..30 {
+        if tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .is_ok()
+        {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+
+    let client = reqwest::Client::new();
+    // Create project + 3 terminal nodes
+    let proj_dir = tempfile::TempDir::new().unwrap();
+    let proj: serde_json::Value = client
+        .post(format!("http://127.0.0.1:{port}/api/projects"))
+        .json(&serde_json::json!({"mode":"folder","path":proj_dir.path(),"name":"cap"}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    std::mem::forget(proj_dir);
+    let pid = proj["id"].as_str().unwrap().to_string();
+    let cid = proj["canvas_id"].as_str().unwrap().to_string();
+
+    let mut node_ids = vec![];
+    for _ in 0..3 {
+        let n: serde_json::Value = client
+            .post(format!("http://127.0.0.1:{port}/api/canvases/{cid}/nodes"))
+            .json(&serde_json::json!({"kind":"terminal","position_x":0,"position_y":0,"data":{}}))
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        node_ids.push(n["id"].as_str().unwrap().to_string());
+    }
+
+    // Spawn 2 agents — both 201
+    for i in 0..2 {
+        let r = client
+            .post(format!("http://127.0.0.1:{port}/api/agents"))
+            .json(&serde_json::json!({"project_id":pid,"node_id":node_ids[i],"cwd":proj["path"]}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(r.status(), 201, "agent {i} should spawn");
+    }
+
+    // 3rd is refused with 429
+    let r = client
+        .post(format!("http://127.0.0.1:{port}/api/agents"))
+        .json(&serde_json::json!({"project_id":pid,"node_id":node_ids[2],"cwd":proj["path"]}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), 429);
+    let body: serde_json::Value = r.json().await.unwrap();
+    assert_eq!(body["code"], "budget_exceeded");
+}

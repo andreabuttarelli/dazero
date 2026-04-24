@@ -332,6 +332,15 @@ async fn create_agent(
     if canvas::get_node(&state.db, &body.node_id)?.is_none() {
         return Err(AppError::not_found("node not found"));
     }
+
+    // Budget cap: check AFTER validation, BEFORE spawn.
+    let max = state.agent_config.lock().await.max_concurrent_agents as usize;
+    if state.pty.len() >= max {
+        return Err(AppError::too_many(format!(
+            "budget exceeded: max_concurrent_agents = {max}"
+        )));
+    }
+
     let cwd = body.cwd.map(std::path::PathBuf::from);
     let id = state.pty.spawn(cwd)?;
     if let Some(cmd) = body.initial_command.as_deref() {
@@ -437,6 +446,14 @@ impl AppError {
             err: anyhow::anyhow!("{}", msg.into()),
             status: StatusCode::CONFLICT,
             code: "conflict",
+        }
+    }
+
+    pub fn too_many(msg: impl Into<String>) -> Self {
+        Self {
+            err: anyhow::anyhow!("{}", msg.into()),
+            status: StatusCode::TOO_MANY_REQUESTS,
+            code: "budget_exceeded",
         }
     }
 }
