@@ -39,6 +39,9 @@ pub const BUILTIN_PRESETS: &[(&str, &str, Option<&str>, &str)] = &[
 ];
 
 pub fn default_config_path() -> PathBuf {
+    if let Ok(p) = std::env::var("DAZERO_CONFIG_PATH") {
+        return PathBuf::from(p);
+    }
     dirs::home_dir()
         .unwrap_or_default()
         .join(".dazero")
@@ -98,4 +101,25 @@ pub fn save_to(path: &Path, presets_user_only: &[AgentPreset], max: u32) -> Resu
 
 pub fn is_builtin(key: &str) -> bool {
     BUILTIN_PRESETS.iter().any(|(k, _, _, _)| *k == key)
+}
+
+impl Config {
+    /// Return only the user-defined presets, suitable for saving back to TOML.
+    /// A preset is "user" if its key doesn't exist as a built-in, or if any
+    /// field differs from the built-in definition.
+    pub fn user_presets(&self) -> Vec<AgentPreset> {
+        self.presets
+            .iter()
+            .filter(|p| {
+                match BUILTIN_PRESETS.iter().find(|(k, _, _, _)| *k == p.key) {
+                    None => true, // key doesn't exist as built-in → user-defined new
+                    Some((_, l, ic, a)) => {
+                        // Key exists as built-in. It's "user" if any field differs.
+                        p.label != *l || p.initial_command.as_deref() != *ic || p.accent != *a
+                    }
+                }
+            })
+            .cloned()
+            .collect()
+    }
 }

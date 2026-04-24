@@ -14,6 +14,14 @@ use tower_http::trace::TraceLayer;
 use tracing::info;
 
 pub async fn serve_with_db(port: u16, db_path: std::path::PathBuf) -> Result<()> {
+    serve_with_db_and_config(port, db_path, crate::agent_config::default_config_path()).await
+}
+
+pub async fn serve_with_db_and_config(
+    port: u16,
+    db_path: std::path::PathBuf,
+    agent_config_path: std::path::PathBuf,
+) -> Result<()> {
     let db = crate::db::open(&db_path)?;
     let pty = crate::pty::PtyRegistry::new();
     let recovered = pty.recover().unwrap_or_default();
@@ -24,7 +32,6 @@ pub async fn serve_with_db(port: u16, db_path: std::path::PathBuf) -> Result<()>
             recovered.len()
         );
     }
-    let agent_config_path = crate::agent_config::default_config_path();
     let cfg = crate::agent_config::load_from(&agent_config_path).unwrap_or_else(|e| {
         tracing::warn!(error = ?e, "failed to load agents.toml, using defaults");
         crate::agent_config::Config {

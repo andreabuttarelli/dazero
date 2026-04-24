@@ -1,4 +1,4 @@
-use crate::agent_config::Config as AgentCfg;
+use crate::agent_config::{self, Config as AgentCfg};
 use crate::canvas;
 use crate::db::Db;
 use crate::project;
@@ -57,7 +57,14 @@ pub fn routes(state: ApiState) -> Router {
         .route("/api/agents", post(create_agent))
         .route("/api/agents/{id}", axum::routing::delete(delete_agent))
         .route("/api/system/pick-directory", post(pick_directory))
-        .route("/api/agent-presets", get(get_agent_presets))
+        .route(
+            "/api/agent-presets",
+            get(get_agent_presets).post(create_or_update_preset),
+        )
+        .route(
+            "/api/agent-presets/{key}",
+            axum::routing::delete(delete_preset),
+        )
         .route("/ws/pty/{id}", get(crate::ws::pty_by_id_handler))
         .with_state(state)
 }
@@ -68,6 +75,73 @@ async fn get_agent_presets(State(state): State<ApiState>) -> Json<serde_json::Va
         "max_concurrent_agents": cfg.max_concurrent_agents,
         "presets": cfg.presets,
     }))
+}
+
+async fn create_or_update_preset(
+    State(state): State<ApiState>,
+    Json(body): Json<agent_config::AgentPreset>,
+) -> Result<(StatusCode, Json<agent_config::AgentPreset>), AppError> {
+    if body.key.is_empty() {
+        return Err(AppError::bad_request("key is required"));
+    }
+    let mut cfg = state.agent_config.lock().await;
+
+    // Upsert into merged list
+    if let Some(slot) = cfg.presets.iter_mut().find(|p| p.key == body.key) {
+        *slot = body.clone();
+    } else {
+        cfg.presets.push(body.clone());
+    }
+
+    // Persist the USER subset back to TOML
+    let user = cfg.user_presets();
+    let max = cfg.max_concurrent_agents;
+    agent_config::save_to(&state.agent_config_path, &user, max)?;
+
+    Ok((StatusCode::CREATED, Json(body)))
+}
+
+async fn delete_preset(
+    State(state): State<ApiState>,
+    Path(key): Path<String>,
+) -> Result<StatusCode, AppError> {
+    let mut cfg = state.agent_config.lock().await;
+
+    let is_builtin = agent_config::is_builtin(&key);
+    let override_exists = cfg.user_presets().iter().any(|p| p.key == key);
+    let pure_user = !is_builtin && cfg.presets.iter().any(|p| p.key == key);
+
+    if !is_builtin && !pure_user {
+        return Err(AppError::not_found("preset not found"));
+    }
+
+    if is_builtin && !override_exists {
+        return Err(AppError::not_found("cannot delete a built-in preset"));
+    }
+
+    // Remove from merged list
+    cfg.presets.retain(|p| p.key != key);
+
+    // If built-in, re-seed with the original built-in spec so it still appears in GET
+    if is_builtin {
+        if let Some((k, l, ic, a)) = agent_config::BUILTIN_PRESETS
+            .iter()
+            .find(|(k, _, _, _)| *k == key)
+        {
+            cfg.presets.push(agent_config::AgentPreset {
+                key: (*k).into(),
+                label: (*l).into(),
+                initial_command: ic.map(|s| s.to_string()),
+                accent: (*a).into(),
+            });
+        }
+    }
+
+    let user = cfg.user_presets();
+    let max = cfg.max_concurrent_agents;
+    agent_config::save_to(&state.agent_config_path, &user, max)?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn create_project(
