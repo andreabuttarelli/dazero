@@ -1,16 +1,21 @@
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import type { AgentPreset } from "../types";
-import { usePresetsStore } from "../store/presetsStore";
 
 export function Toolbar({
+  presets,
   onAddAgent,
   onAddTaskList,
+  current,
+  max,
 }: {
+  presets: AgentPreset[];
   onAddAgent: (preset: AgentPreset) => void;
   onAddTaskList: () => void;
+  current: number;
+  max: number;
 }) {
-  const presets = usePresetsStore((s) => s.presets);
+  const full = current >= max;
 
   return (
     <div
@@ -30,6 +35,7 @@ export function Toolbar({
         fontFamily: "ui-monospace, monospace",
         fontSize: 12,
         flexWrap: "wrap",
+        minWidth: 0,
       }}
     >
       <Link to="/" style={{ color: "#8af", textDecoration: "none" }}>
@@ -40,7 +46,14 @@ export function Toolbar({
         <button
           key={p.key}
           onClick={() => onAddAgent(p)}
-          style={{ ...btn, borderColor: p.accent + "88" }}
+          disabled={full}
+          title={full ? "Budget full — close a terminal first" : undefined}
+          style={{
+            ...btn,
+            borderLeft: `2px solid ${p.accent}`,
+            opacity: full ? 0.4 : 1,
+            cursor: full ? "not-allowed" : "pointer",
+          }}
         >
           + {p.label}
         </button>
@@ -49,6 +62,18 @@ export function Toolbar({
       <button onClick={onAddTaskList} style={btn}>
         + Task list
       </button>
+      <span style={{ flex: 1, minWidth: 8 }} />
+      <span
+        style={{
+          fontSize: 11,
+          color: full ? "#f77" : "#888",
+          fontFamily: "ui-monospace, monospace",
+          whiteSpace: "nowrap",
+        }}
+        title={`${current} of ${max} concurrent agents in use`}
+      >
+        agents {current}/{max}
+      </span>
     </div>
   );
 }

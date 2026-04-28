@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router-dom";
 import ReactFlow, {
   Background,
@@ -70,6 +70,16 @@ export function CanvasView() {
   const viewportRef = useRef<Viewport>({ x: 0, y: 0, zoom: 1 });
   const patchTimer = useRef<number | null>(null);
 
+  const maxAgents = usePresetsStore((s) => s.maxAgents);
+  const currentAgentCount = useMemo(
+    () =>
+      nodes.filter(
+        (n) => n.type === "terminal" && (n.data as { agent_id?: string })?.agent_id,
+      ).length,
+    [nodes],
+  );
+
+  const presets = usePresetsStore((s) => s.presets);
   const setContext = useCanvasStore((s) => s.setContext);
   const setRemove = useCanvasStore((s) => s.setRemoveNodeFromCanvas);
   const setSpawn = useCanvasStore((s) => s.setSpawnAgentFromTask);
@@ -183,6 +193,10 @@ export function CanvasView() {
       const canvas = await api.canvas.get(canvasIdRef.current);
       setNodes(canvas.nodes.map((n) => apiNodeToRf(n, canvas.task_lists)));
     } catch (e) {
+      if (e instanceof ApiHttpError && e.code === "budget_exceeded") {
+        alert("Budget exceeded — close another terminal first.");
+        return;
+      }
       alert(
         `create node failed: ${e instanceof ApiHttpError ? e.message : String(e)}`
       );
@@ -212,8 +226,11 @@ export function CanvasView() {
   return (
     <div style={{ height: "100vh", width: "100vw", background: "#0b0b0f" }}>
       <Toolbar
+        presets={presets}
         onAddAgent={(preset) => void addAgent(preset)}
         onAddTaskList={() => void addTaskList()}
+        current={currentAgentCount}
+        max={maxAgents}
       />
       <ReactFlow
         nodes={nodes}

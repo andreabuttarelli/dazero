@@ -4,7 +4,7 @@ import { NodeResizer } from "reactflow";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import { api } from "../../lib/api";
+import { api, ApiHttpError } from "../../lib/api";
 import { wsUrl } from "../../lib/ws";
 import { useCanvasStore } from "../../store/canvasStore";
 import { usePresetsStore } from "../../store/presetsStore";
@@ -51,6 +51,10 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
             data: { ...(data as Record<string, unknown>), agent_id: agentId },
           });
         } catch (e) {
+          if (e instanceof ApiHttpError && e.code === "budget_exceeded") {
+            alert("Budget exceeded — close another terminal first.");
+            return;
+          }
           console.error("spawn agent failed", e);
           return;
         }

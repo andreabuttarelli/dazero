@@ -60,7 +60,7 @@ export type CanvasFull = {
 
 export type AgentRef = { agent_id: string };
 
-export type ApiError = { error: string; code: "not_found" | "bad_request" | "conflict" | "internal_error" };
+export type ApiError = { error: string; code: "not_found" | "bad_request" | "conflict" | "internal_error" | "budget_exceeded" };
 
 export type AgentPreset = {
   key: string;
