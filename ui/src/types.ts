@@ -39,12 +39,23 @@ export type TaskList = {
 
 export type Viewport = { x: number; y: number; zoom: number };
 
+export type Edge = {
+  id: string;
+  canvas_id: string;
+  source_node_id: string;
+  target_node_id: string;
+  kind: string | null;
+  label: string | null;
+  data: unknown | null;
+};
+
 export type CanvasFull = {
   id: string;
   project_id: string;
   viewport: Viewport;
   nodes: CanvasNode[];
   task_lists: TaskList[];
+  edges: Edge[];
 };
 
 export type AgentRef = { agent_id: string };

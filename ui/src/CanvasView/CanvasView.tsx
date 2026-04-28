@@ -1,16 +1,18 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import ReactFlow, {
   Background,
   Controls,
   MiniMap,
   useNodesState,
+  useEdgesState,
   type Node as RfNode,
+  type Edge as RfEdge,
   type Viewport,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { api, ApiHttpError } from "../lib/api";
-import type { CanvasNode, TaskList } from "../types";
+import type { CanvasNode, TaskList, Edge } from "../types";
 import { TerminalNodePlaceholder } from "./nodes/TerminalNode";
 import { TaskListNodePlaceholder } from "./nodes/TaskListNode";
 import { Toolbar } from "./Toolbar";
@@ -48,9 +50,21 @@ function apiNodeToRf(n: CanvasNode, taskLists: TaskList[] = []): RfNode {
   };
 }
 
+function apiEdgeToRf(e: Edge): RfEdge {
+  return {
+    id: e.id,
+    source: e.source_node_id,
+    target: e.target_node_id,
+    style: { stroke: e.kind === "task_spawn" ? "#6a8cff" : "#aaa", strokeWidth: 1.5 },
+    label: e.label ?? undefined,
+    data: { edgeId: e.id },
+  };
+}
+
 export function CanvasView() {
   const { id: projectId } = useParams<{ id: string }>();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const canvasIdRef = useRef<string | null>(null);
   const nodesRef = useRef<RfNode[]>([]);
   const viewportRef = useRef<Viewport>({ x: 0, y: 0, zoom: 1 });
@@ -63,22 +77,6 @@ export function CanvasView() {
   // Keep nodesRef in sync for spawning position lookup
   useEffect(() => {
     nodesRef.current = nodes;
-  }, [nodes]);
-
-  // Derive edges from nodes: terminal nodes with spawned_from_node_id emit an edge
-  const edges = useMemo(() => {
-    return nodes
-      .filter((n) => (n.data as { spawned_from_node_id?: string })?.spawned_from_node_id)
-      .map((n) => ({
-        id: `e-${(n.data as { spawned_from_node_id: string }).spawned_from_node_id}-${n.id}`,
-        source: (n.data as { spawned_from_node_id: string }).spawned_from_node_id,
-        target: n.id,
-        style: {
-          stroke: (n.data as { accent?: string }).accent ?? "#6a8cff",
-          strokeWidth: 1.5,
-        },
-        animated: false,
-      }));
   }, [nodes]);
 
   // Load project + canvas on mount; set store context
@@ -94,6 +92,7 @@ export function CanvasView() {
         const canvas = await api.canvas.get(proj.canvas_id);
         if (cancelled) return;
         setNodes(canvas.nodes.map((n) => apiNodeToRf(n, canvas.task_lists)));
+        setEdges(canvas.edges.map(apiEdgeToRf));
         viewportRef.current = canvas.viewport;
       } catch (e) {
         console.error("failed to load canvas", e);
@@ -103,7 +102,7 @@ export function CanvasView() {
       cancelled = true;
       useCanvasStore.getState().reset();
     };
-  }, [projectId, setNodes, setContext]);
+  }, [projectId, setNodes, setEdges, setContext]);
 
   // Register the removeNode helper so child nodes can trigger deletion
   useEffect(() => {
@@ -128,7 +127,7 @@ export function CanvasView() {
       const source = nodesRef.current.find((n) => n.id === sourceNodeId);
       const basePos = source?.position ?? { x: 120, y: 120 };
       const sourceWidth = typeof source?.style?.width === "number" ? source.style.width : 260;
-      await api.canvas.createNode(canvasIdRef.current, {
+      const newNode = await api.canvas.createNode(canvasIdRef.current, {
         kind: "terminal",
         position_x: basePos.x + sourceWidth + 40,
         position_y: basePos.y,
@@ -141,10 +140,16 @@ export function CanvasView() {
           spawned_from_node_id: sourceNodeId,
         },
       });
+      await api.canvas.createEdge(canvasIdRef.current, {
+        source_node_id: sourceNodeId,
+        target_node_id: newNode.id,
+        kind: "task_spawn",
+      });
       const canvas = await api.canvas.get(canvasIdRef.current);
       setNodes(canvas.nodes.map((n) => apiNodeToRf(n, canvas.task_lists)));
+      setEdges(canvas.edges.map(apiEdgeToRf));
     });
-  }, [setSpawn, setNodes]);
+  }, [setSpawn, setNodes, setEdges]);
 
   const onMove = (_: MouseEvent | TouchEvent, v: Viewport) => {
     viewportRef.current = v;
@@ -214,8 +219,14 @@ export function CanvasView() {
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onMove={onMove}
+        onEdgeClick={async (_, edge) => {
+          if (!confirm("Delete this connection?")) return;
+          try { await api.canvas.deleteEdge(edge.id); } catch { /* ignore */ }
+          setEdges((cur) => cur.filter((e) => e.id !== edge.id));
+        }}
         onNodeDragStop={(_, node) => {
           api.canvas.updateNode(node.id, {
             position_x: node.position.x,

@@ -1,6 +1,6 @@
 import type {
   Project, CanvasFull, CanvasNode, Task, Viewport, AgentRef, ApiError, NodeKind,
-  AgentPreset, AgentPresetsResponse,
+  AgentPreset, AgentPresetsResponse, Edge,
 } from "../types";
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -60,6 +60,15 @@ export const api = {
     >>) =>
       req<CanvasNode>("PATCH", `/api/nodes/${encodeURIComponent(id)}`, body),
     deleteNode: (id: string) => req<void>("DELETE", `/api/nodes/${encodeURIComponent(id)}`),
+    createEdge: (canvasId: string, body: {
+      source_node_id: string;
+      target_node_id: string;
+      kind?: string;
+      label?: string;
+      data?: unknown;
+    }) =>
+      req<Edge>("POST", `/api/canvases/${encodeURIComponent(canvasId)}/edges`, body),
+    deleteEdge: (id: string) => req<void>("DELETE", `/api/edges/${encodeURIComponent(id)}`),
   },
   tasks: {
     create: (taskListId: string, description: string, position?: number) =>
