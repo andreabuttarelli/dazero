@@ -14,7 +14,8 @@ import type { CanvasNode, TaskList } from "../types";
 import { TerminalNodePlaceholder } from "./nodes/TerminalNode";
 import { TaskListNodePlaceholder } from "./nodes/TaskListNode";
 import { Toolbar } from "./Toolbar";
-import { type AgentPreset, AGENT_PRESETS } from "./agentPresets";
+import type { AgentPreset } from "../types";
+import { usePresetsStore } from "../store/presetsStore";
 import { useCanvasStore } from "../store/canvasStore";
 
 const nodeTypes = {
@@ -122,7 +123,8 @@ export function CanvasView() {
   useEffect(() => {
     setSpawn(async ({ sourceNodeId, taskDescription, agentType }) => {
       if (!canvasIdRef.current) return;
-      const preset = AGENT_PRESETS.find((p) => p.key === agentType) ?? AGENT_PRESETS[0]!;
+      const presetsList = usePresetsStore.getState().presets;
+      const preset = presetsList.find((p) => p.key === agentType) ?? presetsList[0]!
       const source = nodesRef.current.find((n) => n.id === sourceNodeId);
       const basePos = source?.position ?? { x: 120, y: 120 };
       const sourceWidth = typeof source?.style?.width === "number" ? source.style.width : 260;

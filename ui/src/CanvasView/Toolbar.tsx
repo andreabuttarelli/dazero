@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
-import { AGENT_PRESETS, type AgentPreset } from "./agentPresets";
+import type { AgentPreset } from "../types";
+import { usePresetsStore } from "../store/presetsStore";
 
 export function Toolbar({
   onAddAgent,
@@ -9,6 +10,8 @@ export function Toolbar({
   onAddAgent: (preset: AgentPreset) => void;
   onAddTaskList: () => void;
 }) {
+  const presets = usePresetsStore((s) => s.presets);
+
   return (
     <div
       style={{
@@ -33,7 +36,7 @@ export function Toolbar({
         &larr; Dashboard
       </Link>
       <span style={{ width: 1, height: 16, background: "#333" }} />
-      {AGENT_PRESETS.map((p) => (
+      {presets.map((p) => (
         <button
           key={p.key}
           onClick={() => onAddAgent(p)}

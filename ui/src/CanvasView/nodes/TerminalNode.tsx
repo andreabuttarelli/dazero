@@ -7,7 +7,7 @@ import "@xterm/xterm/css/xterm.css";
 import { api } from "../../lib/api";
 import { wsUrl } from "../../lib/ws";
 import { useCanvasStore } from "../../store/canvasStore";
-import { AGENT_PRESETS } from "../agentPresets";
+import { usePresetsStore } from "../../store/presetsStore";
 
 export function TerminalNode({ id, data, selected }: NodeProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -21,10 +21,11 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
   const projectPath = useCanvasStore((s) => s.projectPath);
   const removeNode = useCanvasStore((s) => s.removeNodeFromCanvas);
 
+  const presets = usePresetsStore((s) => s.presets);
   const agentType = (data as { agent_type?: string })?.agent_type ?? "shell";
-  const preset = AGENT_PRESETS.find((p) => p.key === agentType) ?? AGENT_PRESETS[0]!;
-  const accent = (data as { accent?: string })?.accent ?? preset.accent;
-  const title = (data as { title?: string })?.title ?? preset.label;
+  const preset = presets.find((p) => p.key === agentType) ?? presets[0];
+  const accent = (data as { accent?: string })?.accent ?? preset?.accent ?? "#6a8cff";
+  const title = (data as { title?: string })?.title ?? preset?.label ?? agentType;
   const agentIdInData = (data as { agent_id?: string })?.agent_id;
 
   useEffect(() => {
@@ -43,7 +44,7 @@ export function TerminalNode({ id, data, selected }: NodeProps) {
             projectId,
             id,
             projectPath ?? undefined,
-            preset.initial_command ?? undefined,
+            preset?.initial_command ?? undefined,
           );
           agentId = a.agent_id;
           await api.canvas.updateNode(id, {

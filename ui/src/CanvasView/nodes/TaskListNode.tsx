@@ -4,7 +4,7 @@ import { NodeResizer } from "reactflow";
 import { api, ApiHttpError } from "../../lib/api";
 import type { Task } from "../../types";
 import { useCanvasStore } from "../../store/canvasStore";
-import { AGENT_PRESETS } from "../agentPresets";
+import { usePresetsStore } from "../../store/presetsStore";
 
 type TaskListData = {
   title?: string;
@@ -22,6 +22,7 @@ export function TaskListNode({ id, data, selected }: NodeProps) {
   const [runAs, setRunAs] = useState<string>("shell");
   const newDescRef = useRef<HTMLInputElement | null>(null);
   const removeNode = useCanvasStore((s) => s.removeNodeFromCanvas);
+  const presets = usePresetsStore((s) => s.presets);
 
   const tlId = d.task_list_id;
 
@@ -166,7 +167,7 @@ export function TaskListNode({ id, data, selected }: NodeProps) {
           onChange={(e) => setRunAs(e.target.value)}
           style={presetSelectStyle}
         >
-          {AGENT_PRESETS.map((p) => (
+          {presets.map((p) => (
             <option key={p.key} value={p.key}>
               {p.label}
             </option>

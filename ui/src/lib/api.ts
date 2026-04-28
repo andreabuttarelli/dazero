@@ -1,5 +1,6 @@
 import type {
   Project, CanvasFull, CanvasNode, Task, Viewport, AgentRef, ApiError, NodeKind,
+  AgentPreset, AgentPresetsResponse,
 } from "../types";
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -76,6 +77,11 @@ export const api = {
         ...(initial_command ? { initial_command } : {}),
       }),
     delete: (id: string) => req<void>("DELETE", `/api/agents/${encodeURIComponent(id)}`),
+  },
+  presets: {
+    list: () => req<AgentPresetsResponse>("GET", "/api/agent-presets"),
+    save: (p: AgentPreset) => req<AgentPreset>("POST", "/api/agent-presets", p),
+    delete: (key: string) => req<void>("DELETE", `/api/agent-presets/${encodeURIComponent(key)}`),
   },
   system: {
     pickDirectory: async (): Promise<{ path: string } | null> => {

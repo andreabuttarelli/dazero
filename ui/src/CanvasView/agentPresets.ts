@@ -1,14 +1,10 @@
-export type AgentPreset = {
-  key: "shell" | "claude-code" | "codex" | "gemini" | "opencode";
-  label: string;
-  initial_command: string | null; // null = plain shell
-  accent: string; // hex color used in node border/header
-};
+// Re-export AgentPreset type from types.ts for convenience
+export type { AgentPreset } from "../types";
 
-export const AGENT_PRESETS: AgentPreset[] = [
-  { key: "shell",       label: "Terminal",    initial_command: null,        accent: "#2a6475" },
-  { key: "claude-code", label: "Claude Code", initial_command: "claude",    accent: "#e08a4a" },
-  { key: "codex",       label: "Codex",       initial_command: "codex",     accent: "#45c089" },
-  { key: "gemini",      label: "Gemini CLI",  initial_command: "gemini",    accent: "#6a8cff" },
-  { key: "opencode",    label: "opencode",    initial_command: "opencode",  accent: "#b28cff" },
-];
+// Keys that are considered built-in (ship with the binary defaults).
+// Used in Settings to badge presets as built-in vs custom.
+export const BUILTIN_KEYS = ["shell", "claude-code", "codex", "gemini", "opencode"] as const;
+
+export function isBuiltin(key: string): boolean {
+  return (BUILTIN_KEYS as readonly string[]).includes(key);
+}

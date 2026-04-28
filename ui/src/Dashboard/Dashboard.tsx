@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { api, ApiHttpError } from "../lib/api";
 import type { Project } from "../types";
 import { ProjectCard } from "./ProjectCard";
@@ -40,7 +40,16 @@ export function Dashboard() {
       fontFamily: "ui-monospace, SFMono-Regular, monospace",
     }}>
       <aside style={{ borderRight: "1px solid #222", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-        <h1 style={{ fontSize: 18, margin: 0, letterSpacing: 0.5 }}>dazero</h1>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h1 style={{ fontSize: 18, margin: 0, letterSpacing: 0.5 }}>dazero</h1>
+          <Link
+            to="/settings"
+            title="Settings"
+            style={{ color: "#8af", textDecoration: "none", fontSize: 18, lineHeight: 1 }}
+          >
+            ⚙
+          </Link>
+        </div>
         <button
           onClick={() => setShowWizard(true)}
           style={{
