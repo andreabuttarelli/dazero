@@ -3,6 +3,8 @@
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
   import { Badge } from '$lib/components/ui/badge/index.js';
   import { cn } from '$lib/utils.js';
+  import BrandMark from '$lib/components/BrandMark.svelte';
+  import ConnectAgentDialog from '$lib/components/ConnectAgentDialog.svelte';
   // Il menu utente è PORTALATO da bits-ui e si smonta alla selezione: per le voci che portano
   // ai settings si chiama l'API del modal invece di affidarsi al click dell'<a>.
   import { locale, _ } from 'svelte-i18n';
@@ -21,7 +23,6 @@
     Sun,
     Moon,
     LogOut,
-    UserPlus,
     LayoutGrid,
     Key,
     ArrowUpRight,
@@ -29,6 +30,7 @@
     Sparkles,
     Plus,
     Bell,
+    Plug2,
   } from '@lucide/svelte';
   import { paletteOpen } from '$lib/shortcuts';
   import {
@@ -175,16 +177,22 @@
     'font-semibold data-[active=true]:bg-[color:var(--nav-on)] data-[active=true]:hover:bg-[color:var(--nav-on-hover)] active:bg-[var(--paper)]';
   /** Vertical spacing between sidebar nav rows. */
   const navMenuGapClass = $derived(mobile ? 'gap-1.5' : 'gap-2');
-  const overviewHref = $derived(brandSlug ? `/app/${brandSlug}` : '');
   const activateHref = $derived(brandSlug ? `/app/${brandSlug}/activate` : '');
+  /**
+   * Le istruzioni per collegare il proprio agente. Stanno in fondo alla barra e non nella home
+   * perché servono DUE volte: il giorno che si comincia, e il giorno che si cambia macchina o si
+   * aggiunge un secondo agente. Sulla home la guida si legge una volta e poi occupa il primo
+   * terzo della pagina per sempre; qui è una riga, sempre allo stesso posto, e non si vede finché
+   * non la si cerca.
+   *
+   * È lo STESSO dialogo della landing: chi arriva dal sito e chi arriva da dentro leggono le
+   * stesse istruzioni, e quando cambiano cambiano per entrambi.
+   */
+  let installOpen = $state(false);
   const showUpgrade = $derived(!!brandSlug && !isPaidPlan(brandPlan));
-  const overviewActive = $derived(
-    !!overviewHref &&
-      ($page.url.pathname === overviewHref || $page.url.pathname === `${overviewHref}/`)
-  );
   /** Path of in-flight navigation — highlights the destination row immediately. */
   const pendingPath = $derived(navigating.to?.url.pathname ?? null);
-  /** Exact for brand-root Overview (`/app/{slug}`); prefix for nested hub routes. */
+  /** Esatto per la home del brand (`/app/{slug}`); a prefisso per le rotte annidate. */
   function isNavPending(href: string, exact = false) {
     if (!pendingPath || !href) return false;
     if (exact) return pendingPath === href || pendingPath === `${href}/`;
@@ -384,40 +392,26 @@
          bordi sono una riga sola che attraversa la finestra invece di due tratti sfalsati.
          Nessun padding orizzontale sul guscio — il filo va da lato a lato; il rientro se lo
          tiene la riga dentro, dove serve a incolonnare l'etichetta con la nav. -->
-    <Sidebar.Header class="shell-top-header shell-top-divider justify-center gap-0 p-0">
-      <Sidebar.Group class="w-full p-0 px-2.5 group-data-[collapsible=icon]:px-2">
-        <Sidebar.Menu class={navMenuGapClass}>
-          <Sidebar.MenuItem>
-            {@const overviewPending = isNavPending(overviewHref, true)}
-            {@const overviewOn = overviewPending || (overviewActive && !pendingPath)}
-            <Sidebar.MenuButton
-              isActive={overviewOn}
-              tooltipContent={$_('app.nav.homeOverview')}
-              size={mobile ? 'default' : 'sm'}
-              class={cn(
-                overviewOn ? navOnClass : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:bg-[var(--paper)]',
-                menuBtnMobileClass
-              )}
-              style={overviewOn ? 'color: var(--accent-ink)' : undefined}
-            >
-              {#snippet child({ props })}
-                <a
-                  href={overviewHref}
-                  {...props}
-                  onclick={() => {
-                    if (sidebar.isMobile && sidebar.openMobile) {
-                      sidebar.setOpenMobile(false);
-                    }
-                  }}
-                >
-                  <UserPlus class={iconClass} strokeWidth={1.7} />
-                  <span class={cn(labelClass, 'group-data-[collapsible=icon]:hidden')}>{$_('app.nav.homeOverview')}</span>
-                </a>
-              {/snippet}
-            </Sidebar.MenuButton>
-          </Sidebar.MenuItem>
-        </Sidebar.Menu>
-      </Sidebar.Group>
+    <!-- Al posto di «Panoramica» c'e' il marchio. Quella voce portava a `/app/<slug>`, che e' dove
+         porta «Home» due righe sotto — la stessa destinazione elencata due volte — e lasciava un
+         header vuoto. Il marchio lo riempie e porta ai brand, che e' l'unico posto che da qui non
+         si raggiungeva piu': stessa riga, stesso simbolo e stessa destinazione della barra di
+         `/app` accanto, perche' due barre della stessa applicazione non devono avere due teste
+         diverse.
+
+         L'header resta un header e non la prima voce della lista: tiene l'altezza della top bar
+         delle pagine (`--shell-top-h`) e lo stesso filo, cosi' i due bordi sono una riga sola che
+         attraversa la finestra invece di due tratti sfalsati. -->
+    <Sidebar.Header class="shell-top-header shell-top-divider justify-center p-0">
+      <a
+        href="/app"
+        class="flex w-full items-center px-5 no-underline group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        style="color: inherit"
+        aria-label={$_('landing.nav.brandAria')}
+        title={$_('landing.nav.brandAria')}
+      >
+        <BrandMark size={mobile ? 32 : 30} />
+      </a>
     </Sidebar.Header>
   {/if}
 
@@ -426,6 +420,26 @@
   </Sidebar.Content>
 
   <Sidebar.Footer class="gap-2 border-t border-sidebar-border px-2.5 py-3 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2.5">
+    <button
+      type="button"
+      onclick={() => (installOpen = true)}
+      class={cn(
+        'flex items-center border-0 bg-transparent text-sidebar-foreground/70 transition-colors cursor-pointer touch-manipulation',
+        'hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-sidebar-foreground',
+        mobile ? 'gap-2 rounded-lg px-2.5 py-2.5' : 'gap-2 rounded-lg px-2.5 py-2',
+        'group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0'
+      )}
+      aria-label={$_('app.nav.install')}
+      title={$_('app.nav.install')}
+    >
+      <Plug2 class={cn('shrink-0', mobile ? 'size-4' : 'size-3.5')} strokeWidth={1.7} />
+      <span
+        class={cn(
+          'font-medium leading-tight group-data-[collapsible=icon]:hidden',
+          mobile ? 'text-[14px]' : 'text-[12.5px]'
+        )}>{$_('app.nav.install')}</span
+      >
+    </button>
     {#if showUpgrade}
       <a
         href={activateHref}
@@ -717,6 +731,8 @@
   </Sidebar.Root>
 {/if}
 
+<ConnectAgentDialog bind:open={installOpen} />
+
 <style>
   .dashboard-mobile-map {
     display: flex;
@@ -761,6 +777,31 @@
     --nav-on-hover: color-mix(in srgb, var(--accent) 24%, transparent);
   }
 
+
+  /* Un cerchio, non un numero grande su una striscia colorata: qui non c'era nessuna regola base
+     — solo i tre fondi per severita' — quindi la cifra usciva a 16px senza raggio ne' padding.
+     `min-width` pari all'altezza tiene il cerchio a una cifra e lo allunga in pillola a due; il
+     bordo della barra laterale lo stacca dal campanello che gli sta sotto. */
+  .um-bell-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    box-shadow: 0 0 0 2px var(--sidebar-bg, var(--paper));
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .um-bell-count.mobile {
+    min-width: 18px;
+    height: 18px;
+    font-size: 11px;
+  }
 
   .um-bell-count.sev-error {
     background: #ef4444;
