@@ -1,14 +1,12 @@
-import { KIE_GROK_MAX_OUTPUT_TOKENS } from '$lib/server/ai-output-limits';
+import { HARNESS_MAX_OUTPUT_TOKENS } from '$lib/server/ai-output-limits';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, tool, stepCountIs, hasToolCall, type LanguageModel } from 'ai';
 import { createHarnessSession } from '$lib/server/harness/session';
 import { persistHarnessSession } from '$lib/server/harness/persist';
 import { wrapTools } from '$lib/server/harness/pipeline';
 import { applyStewardPrepareStep, createSessionSteward } from '$lib/server/harness/steward';
 import { z } from 'zod';
-import { env } from '$env/dynamic/private';
-import { llmConfigured, llmDefaultModel, llmLanguageModel } from '$lib/server/llm';
+import { llmDefaultModel, llmLanguageModel } from '$lib/server/llm';
 import { groundedText } from './research';
 import {
   renderPreviewImages,
@@ -17,7 +15,6 @@ import {
   type PreviewPost
 } from './content-preview';
 import { extractSdkUsage, logAiCall, withBrandContext } from './ai-log';
-import { KIE_GROK_NO_STORE, KIE_MODEL, kieFetch } from './kie';
 
 // ── The Director: an autonomous agent-in-the-loop over a finished batch ─────────────────────────
 //
@@ -29,11 +26,9 @@ import { KIE_GROK_NO_STORE, KIE_MODEL, kieFetch } from './kie';
 // a replacement for the deterministic guards. It can NEVER publish. Best-effort by design: any
 // failure returns a partial log and the batch ships exactly as the pipeline produced it.
 //
-// Model: Grok 4.5 via kie — vision verified live 2026-07-31 (reads colours, shapes and on-image
-// text), ~3× cheaper input and 5× cheaper output than Gemini Flash. Gemini only when kie has
-// no key: DeepSeek is NOT an option here, its API rejects image input entirely.
-// The agent loop is the AI SDK's (same machinery the Pro chat tier already runs on Grok), which
-// is why this file no longer hand-rolls tool turns.
+// The model must SEE: the Director reads colours, shapes and on-image text, so a text-only model
+// cannot do this job at all. The agent loop is the AI SDK's, which is why this file no longer
+// hand-rolls tool turns.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRec = Record<string, any>;
@@ -48,19 +43,7 @@ const BUDGETS: Record<string, number> = { search_web: 2, rewrite_caption: 3, rer
 
 const SYSTEM = `You are Anomalia's Director — the senior account director doing the FINAL review of a batch of social posts before they reach the client's approval queue. You see everything together: captions, rendered images, the brief. Judge the batch as a whole: factual claims, coherence between caption and image, batch-level monotony, tone risks, timeliness. Act ONLY where a change clearly improves the deliverable — a good batch needs zero interventions and an immediate finish. Never nitpick style the brand's voice already covers. You cannot publish; flag_for_user is how you escalate. Always end with finish().`;
 
-/** Grok 4.5 via kie when configured, else the LLM gateway. Both see images; DeepSeek cannot. */
-function kieModel(): { model: LanguageModel; provider: 'kie'; modelId: string } | null {
-  if (!env.KIE_API_KEY) return null;
-  const kie = createOpenAI({
-    baseURL: 'https://api.kie.ai/grok/v1',
-    apiKey: env.KIE_API_KEY,
-    name: 'kie',
-    fetch: kieFetch()
-  });
-  return { model: kie.responses(KIE_MODEL), provider: 'kie', modelId: KIE_MODEL };
-}
-
-function geminiModel(): { model: LanguageModel; provider: 'llm'; modelId: string } {
+function gatewayModel(): { model: LanguageModel; provider: 'llm'; modelId: string } {
   const modelId = llmDefaultModel();
   return { model: llmLanguageModel(modelId), provider: 'llm', modelId };
 }
@@ -75,7 +58,6 @@ async function rewriteCaption(post: PreviewPost, instruction: string, language: 
       undefined,
       { label: 'directorRewrite' }
     );
-    // Text-only → aiStructured lo manda su Gemini Flash (vedi xiaomi.ts).
     return typeof parsed?.caption === 'string' && parsed.caption.trim() ? parsed.caption.trim() : null;
   } catch {
     return null;
@@ -93,7 +75,7 @@ export async function runDirector(opts: {
   return withBrandContext(opts.brandId, async () => {
     const log: DirectorLog = { steps: [], summary: '' };
     const t0 = Date.now();
-    let { model, provider, modelId } = kieModel() ?? geminiModel();
+    const { model, provider, modelId } = gatewayModel();
     try {
       if (!opts.posts.length) return { steps: [], summary: '(empty batch)' };
       const language = String(opts.profile?.language ?? '');
@@ -230,17 +212,11 @@ Generated images follow (cover + carousel slides when present). Labels mark POST
         try {
           const result = await generateText({
             model: m,
-            // Runs on either kie Grok or the Gemini fallback — 64k on both.
-            maxOutputTokens: KIE_GROK_MAX_OUTPUT_TOKENS,
+            maxOutputTokens: HARNESS_MAX_OUTPUT_TOKENS,
             system: SYSTEM,
             messages,
             allowSystemInMessages: true,
             tools: watchedTools,
-            // kie has no server-side item store — without this every step after the first replays
-            // `item_reference` and dies. `forceReasoning` è l'altra metà: senza, l'SDK butta le
-            // reasoning part fra uno step e l'altro perché non riconosce `grok-*` dal nome, e su 8
-            // step il Director rivaluta il batch da capo ogni volta. Ignorato dal ripiego Gemini.
-            providerOptions: { openai: { ...KIE_GROK_NO_STORE } },
             // finish() is the intended exit; the step cap is the backstop when the model rambles.
             stopWhen: [stepCountIs(MAX_STEPS), hasToolCall('finish')],
             prepareStep: () => {
@@ -264,20 +240,7 @@ Generated images follow (cover + carousel slides when present). Labels mark POST
         }
       };
 
-      // The Director is the LAST gate before the approval queue. Losing it because kie is out of
-      // credits (or rate-limited) is worse than running the review on Gemini, so a kie failure
-      // retries once on Gemini instead of shipping the batch unreviewed.
-      let res;
-      try {
-        res = await run(model, provider, modelId);
-      } catch (kieErr) {
-        if (provider !== 'kie' || !llmConfigured()) throw kieErr;
-        console.warn('[director] kie failed, retrying on llm:', kieErr);
-        log.steps = [];
-        log.summary = '';
-        ({ model, provider, modelId } = geminiModel());
-        res = await run(model, provider, modelId);
-      }
+      const res = await run(model, provider, modelId);
 
       // No finish() call: fall back to whatever prose the model ended on, exactly as before.
       if (!log.summary) log.summary = res.text.trim() || 'Review ended at step budget.';

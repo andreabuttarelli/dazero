@@ -10,8 +10,7 @@ import {
   videoModelForRole,
   VIDEO_MODEL_CHOICES,
   GROK_IMAGINE_VIDEO_MODEL,
-  KLING_3_VIDEO_MODEL,
-  KLING_3_MOTION_MODEL
+  KLING_3_VIDEO_MODEL
 } from '$lib/video-models';
 
 describe('video model reference capabilities', () => {
@@ -45,13 +44,6 @@ describe('the role registry', () => {
     expect(motion).not.toContain(GROK_IMAGINE_VIDEO_MODEL);
   });
 
-  it('sends the kie id of the ROLE, not of the model', () => {
-    // The same Kling row serves generation and motion control under two different kie ids;
-    // sending the generation id to a motion-control job is a 400 after a full round trip.
-    const kling = videoModelSpec(KLING_3_MOTION_MODEL);
-    expect(kling?.kieId?.motion).toBe('kling-3.0/motion-control');
-  });
-
   it('falls back to the clip model when no image-to-video model was chosen', () => {
     // Every brand that existed before this picker had one videoModel covering both jobs.
     // Reading videoImageModel must not silently strip that choice.
@@ -70,14 +62,13 @@ describe('the role registry', () => {
 /**
  * OGNI MODELLO VIVE SU OPENROUTER, O NON VIVE.
  *
- * Un modello senza `openrouterId` non ha un trasporto: `videoEndpoint` lo rifiuterebbe, e il
- * brand che l'ha scelto scoprirebbe il buco al primo render. Erano due — Runway Aleph e Kling
- * Turbo — e vivevano solo su kie.
+ * Un modello senza `openrouterId` non ha un trasporto: il render lo rifiuterebbe, e il brand che
+ * l'ha scelto scoprirebbe il buco al primo giro.
  */
 describe('nessun modello video resta senza trasporto', () => {
   // Si guarda il REGISTRO, non l'elenco stretto del selettore: un modello raggiungibile per
   // ruolo — cioè da `videoModelsForRole`, che legge SPECS — deve avere un trasporto anche se il
-  // selettore non lo mostra. È da lì che arrivavano i due orfani.
+  // selettore non lo mostra. È da lì che arrivavano gli orfani.
   it('ogni modello raggiungibile per ruolo dichiara un id OpenRouter', () => {
     const orfani = VIDEO_ROLES
       .flatMap((role) => videoModelsForRole(role))

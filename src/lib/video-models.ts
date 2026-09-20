@@ -10,7 +10,6 @@
  * Le assenze sono la parte che conta: `4:3` non esiste su Grok, e l'upscale prende il task_id di
  * Grok e di nessun altro.
  *
- * Fonti: docs.kie.ai, una pagina per modello.
  */
 
 export const GROK_IMAGINE_VIDEO_MODEL = 'grok-imagine-video-1-5-preview';
@@ -18,7 +17,7 @@ export const GROK_IMAGINE_VIDEO_MODEL = 'grok-imagine-video-1-5-preview';
 export const SEEDANCE_25_MODEL = 'bytedance/seedance-2-5';
 
 /**
- * Kie Grok Imagine text ceiling. Prompts longer than this are rejected at createTask
+ * Grok Imagine text ceiling. Prompts longer than this are rejected by the provider
  * ("text length cannot exceed the maximum limit") — declared here so the tools can tell the
  * AI how long a brief may be, and the renderer can clamp before the provider ever sees it.
  */
@@ -39,7 +38,6 @@ const GROK_RATIOS = ['2:3', '3:2', '1:1', '16:9', '9:16'] as const;
 const SEEDANCE_RATIOS = ['1:1', '4:3', '3:4', '16:9', '9:16', '21:9', 'adaptive'] as const;
 
 export const KLING_3_VIDEO_MODEL = 'kling-3.0/video';
-export const KLING_3_MOTION_MODEL = 'kling-3.0/motion-control';
 
 /** Chi ingrandisce una clip su OpenRouter, partendo dal file invece che dal lavoro originale. */
 export const OPENROUTER_UPSCALE_MODEL = 'black-forest-labs/flux-video-upscale';
@@ -89,10 +87,9 @@ export type VideoModelCaps = {
   /** L'UNICO posto in cui la lunghezza di una clip è limitata. */
   maxDuration: number;
   /**
-   * Provider prompt ceiling, in characters. Grok rejects anything longer at createTask
+   * Provider prompt ceiling, in characters. Grok rejects anything longer
    * ("text length cannot exceed the maximum limit") and the failure surfaces as a bare
-   * "Video render returned nothing". Unlike images (clamped in buildKieImageInput), video had
-   * no clamp: an over-long AI-authored brief silently killed the clip.
+   * "Video render returned nothing", so the renderer clamps before the provider sees it.
    */
   maxPromptChars: number;
   ratios: readonly string[];
@@ -112,16 +109,8 @@ export type VideoModelSpec = VideoModelCaps & {
    */
   roles: readonly VideoRole[];
   /**
-   * L'id kie PER RUOLO, quando il modello ne cambia a seconda del lavoro. Kling serve la
-   * generazione e il motion control con due id diversi sotto lo stesso nome commerciale, e Grok
-   * separa il testo dall'immagine: mandare l'id della generazione a un job di motion control è un
-   * 400 dopo un giro di rete intero. Un ruolo assente qui usa `id`.
-   */
-  kieId?: Partial<Record<VideoRole, string>>;
-  /**
    * Lo stesso modello nel catalogo video di OpenRouter, che lo chiama in un altro modo: i punti al
-   * posto dei trattini, il fornitore davanti. Uno solo per riga — `frame_images` decide il verso, e
-   * i due id kie di Grok collassano in uno.
+   * posto dei trattini, il fornitore davanti. Uno solo per riga: `frame_images` decide il verso.
    *
    * Assente vuol dire che su OpenRouter quel modello NON C'È, e il trasporto non lo può servire. È
    * il motivo per cui questa è una riga della tabella e non una regex: un id ricostruito a naso
@@ -129,8 +118,8 @@ export type VideoModelSpec = VideoModelCaps & {
    */
   openrouterId?: string;
   /**
-   * Come si chiama, nel payload kie, il campo che porta il video sorgente. Solo per `refine` e
-   * `motion` — gli altri due ruoli non hanno un video in ingresso.
+   * Come si chiama il campo che porta il video sorgente. Solo per `refine` e `motion`: gli altri
+   * due ruoli non hanno un video in ingresso.
    */
   videoField?: 'video_urls' | 'videoUrl';
   /** Come si chiama il campo dei riferimenti immagine. */
@@ -216,7 +205,6 @@ const SPECS: VideoModelSpec[] = [
     match: /^grok-imagine-video-1-5/,
     roles: ['text', 'image'],
     imageField: 'image_urls',
-    kieId: { text: 'grok-imagine-video-1-5-preview/text-to-video' },
     family: 'grok-1.5',
     minDuration: 1,
     maxDuration: 15,
@@ -232,7 +220,6 @@ const SPECS: VideoModelSpec[] = [
     match: /^grok-imagine\//,
     roles: ['text', 'image'],
     imageField: 'image_urls',
-    kieId: { text: 'grok-imagine/text-to-video', image: 'grok-imagine/image-to-video' },
     family: 'grok-v1',
     minDuration: 1,
     maxDuration: 15,
@@ -242,9 +229,8 @@ const SPECS: VideoModelSpec[] = [
     generateAudio: false
   },
   {
-    // L'unica riga che serve tre mestieri, e con due id kie diversi. `kling-3.0/video` genera da
-    // testo e anima una immagine con lo STESSO id (`image_urls` opzionale decide il verso);
-    // `kling-3.0/motion-control` e' un altro modello, che vuole ANCHE il video guida.
+    // L'unica riga che serve tre mestieri: genera da testo e anima una immagine con lo STESSO
+    // id — `image_urls` decide il verso — e per il motion vuole ANCHE il video guida.
     id: KLING_3_VIDEO_MODEL,
     label: 'Kling 3.0',
     openrouterId: 'kwaivgi/kling-v3.0-pro',
@@ -252,7 +238,6 @@ const SPECS: VideoModelSpec[] = [
     roles: ['text', 'image', 'motion'],
     imageField: 'image_urls',
     videoField: 'video_urls',
-    kieId: { motion: KLING_3_MOTION_MODEL },
     family: 'kling-3',
     minDuration: 3,
     maxDuration: 15,
@@ -265,11 +250,9 @@ const SPECS: VideoModelSpec[] = [
     /**
      * L'INGRANDIMENTO È UN MESTIERE, non una proprietà di chi ha girato la clip.
      *
-     * Su kie l'upscale riparte dal LAVORO originale — `task_id`, e solo uno di Grok — quindi era
-     * una capacità di quei due modelli (`supportsUpscale`). Qui riparte dal FILE: un video entra,
-     * un video esce, e da chi l'abbia girato non dipende niente. Provato contro il gateway — una
-     * richiesta senza video risponde «requires video input: include an input_references entry of
-     * type video_url».
+     * Riparte dal FILE: un video entra, un video esce, e da chi l'abbia girato non dipende
+     * niente. Provato contro il gateway — una richiesta senza video risponde «requires video
+     * input: include an input_references entry of type video_url».
      *
      * Non ha durate né rapporti: non li sceglie, li eredita dalla clip che ingrandisce.
      */
@@ -337,11 +320,6 @@ export function videoModelsForRole(role: VideoRole): { id: string; label: string
   return SPECS.filter((s) => s.roles.includes(role)).map((s) => ({ id: s.id, label: s.label }));
 }
 
-/** L'id kie da mandare per QUESTO mestiere: quello del ruolo se il modello ne cambia, o il suo. */
-export function kieVideoModel(model: string, role: VideoRole): string {
-  const spec = videoModelSpec(model);
-  return spec?.kieId?.[role] ?? spec?.id ?? model;
-}
 
 /**
  * Il modello scelto dal brand per un mestiere, o undefined se non ne ha scelto uno valido.
@@ -366,7 +344,7 @@ export function videoModelForRole(
   return undefined;
 }
 
-/** Capabilities of a kie video model id. Unknown ids fall back to the conservative Grok window. */
+/** Capabilities of a video model id. Unknown ids fall back to the conservative Grok window. */
 export function videoModelCaps(model: string): VideoModelCaps {
   return videoModelSpec(model) ?? UNKNOWN_CAPS;
 }
@@ -375,7 +353,7 @@ export function videoModelCaps(model: string): VideoModelCaps {
  * QUANTI RIFERIMENTI REGGE UN MODELLO, in un posto solo.
  *
  * I numeri sono quelli che `video.ts` applica davvero quando compone il job: 30 immagini, 10 video
- * e 10 audio sulla famiglia Seedance, che è l'unica con i riferimenti multimodali di kie. Gli altri
+ * e 10 audio sulla famiglia Seedance, che è l'unica con i riferimenti multimodali. Gli altri
  * modelli non ne prendono nessuno — un fotogramma di partenza sì, ma quello è `imageUrl`, che è
  * un'altra cosa: è IL primo frame, non un riferimento fra tanti.
  *
@@ -395,13 +373,13 @@ export function isSeedance25Model(model: string | null | undefined): boolean {
   return String(model ?? '').trim() === SEEDANCE_25_MODEL;
 }
 
-/** Seedance 2 / 2.5 / fast / mini — Kie multimodal refs (incl. reference_video_urls). */
+/** Seedance 2 / 2.5 / fast / mini — the family that reads multimodal references. */
 export function isSeedanceFamily(model: string | null | undefined): boolean {
   return /^bytedance\/seedance-2/.test(String(model ?? '').trim());
 }
 
 /**
- * Kie Grok Imagine takes image_urls only — not reference videos.
+ * Grok Imagine takes images only — not reference videos.
  * Remaking a selected grid video requires Seedance (reference_video_urls).
  */
 export function modelSupportsReferenceVideo(model: string | null | undefined): boolean {

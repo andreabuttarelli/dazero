@@ -30,7 +30,7 @@ const {
   agentSessionWrites: [] as Array<Record<string, unknown>>
 }));
 
-vi.mock('$env/dynamic/private', () => ({ env: { KIE_API_KEY: 'test-kie' } }));
+vi.mock('$env/dynamic/private', () => ({ env: { LLM_API_KEY: 'test-key' } }));
 
 vi.mock('ai', async () => {
   const actual = await vi.importActual<typeof import('ai')>('ai');
@@ -58,12 +58,6 @@ vi.mock('./content-preview', () => ({
   renderPreviewImages,
   collectBatchReviewImages,
   platformPlaybook: () => 'PLAYBOOK'
-}));
-
-vi.mock('./kie', () => ({
-  KIE_MODEL: 'grok-4-6',
-  KIE_GROK_NO_STORE: { store: false },
-  kieFetch: () => globalThis.fetch
 }));
 
 vi.mock('$lib/server/supabase-admin', () => ({
@@ -242,14 +236,6 @@ describe('quello che il modello riceve', () => {
     ]);
   });
 
-  it('dice a kie di non conservare gli item fra uno step e l altro', async () => {
-    const rec = newRecord();
-    generateText.mockImplementation(drive([{ tool: 'finish', input: { summary: 'ok' } }], rec));
-
-    await runDirector(baseOpts() as never);
-
-    expect(rec.providerOptions).toMatchObject({ openai: { store: false } });
-  });
 });
 
 describe('gli strumenti che cambiano il batch', () => {
@@ -442,42 +428,22 @@ describe('come si chiude', () => {
   });
 });
 
-describe('il ripiego di provider, che è il punto del Director', () => {
-  it('se kie muore rifà la review su Gemini e azzera il log parziale', async () => {
-    const rec = newRecord();
-    generateText
-      .mockImplementationOnce(async (options: AnyRec) => {
-        await options.tools.flag_for_user.execute({ index: 0, reason: 'parziale' }, {});
-        throw new Error('kie out of credits');
-      })
-      .mockImplementationOnce(drive([{ tool: 'finish', input: { summary: 'rifatta su Gemini' } }], rec));
-
-    const log = await runDirector(baseOpts() as never);
-
-    expect(generateText).toHaveBeenCalledTimes(2);
-    expect(log.summary).toBe('rifatta su Gemini');
-    expect(log.steps.map((s) => s.tool)).toEqual(['finish']);
-    expect(logAiCall).toHaveBeenCalledWith(
-      expect.objectContaining({ label: 'director', ok: true, provider: 'llm', model: 'gemini-3.7-flash' })
-    );
-  });
-
-  it('ogni tentativo lascia la sua riga di sessione', async () => {
-    const rec = newRecord();
-    generateText
-      .mockImplementationOnce(async () => {
-        throw new Error('kie down');
-      })
-      .mockImplementationOnce(drive([{ tool: 'finish', input: { summary: 'ok' } }], rec));
+describe('quando il Director cade', () => {
+  it('lascia la riga di sessione fallita, e non ritenta', async () => {
+    generateText.mockImplementation(async () => {
+      throw new Error('gateway down');
+    });
 
     await runDirector(baseOpts() as never);
 
+    expect(generateText).toHaveBeenCalledTimes(1);
     const rows = agentSessionWrites.filter((r) => r.agent === 'director');
-    expect(rows.some((r) => r.status === 'failed' && r.provider === 'kie')).toBe(true);
-    expect(rows.some((r) => r.status === 'finished' && r.provider === 'llm')).toBe(true);
+    expect(rows.some((r) => r.status === 'failed')).toBe(true);
   });
 
-  it('se anche Gemini muore il batch esce comunque, con la nota del fallimento', async () => {
+  // La regola che conta: il Director è un giudizio IN PIÙ, mai un cancello. Se cade, il
+  // batch esce lo stesso con la nota del fallimento — perderlo sarebbe peggio che non averlo.
+  it('il batch esce comunque, con la nota del fallimento', async () => {
     generateText.mockImplementation(async () => {
       throw new Error('tutto giù');
     });
@@ -515,14 +481,14 @@ describe('il guardiano di sessione, che il framework applicava in silenzio', () 
     });
   });
 
-  it('un tool che solleva davvero fa cadere il tentativo, e il Director ripiega sull altro provider', async () => {
+  it('un tool che solleva davvero fa cadere il tentativo, e il motivo si legge', async () => {
     const rec = newRecord();
     groundedText.mockRejectedValue(new Error('rete giù'));
     generateText.mockImplementation(drive([{ tool: 'search_web', input: { query: 'a' } }], rec));
 
     const log = await runDirector(baseOpts() as never);
 
-    expect(generateText).toHaveBeenCalledTimes(2);
+    expect(generateText).toHaveBeenCalledTimes(1);
     expect(log.summary).toContain('(director failed: rete giù');
   });
 });
