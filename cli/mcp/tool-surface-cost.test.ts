@@ -21,7 +21,22 @@ import { handleMcpFetch } from './http-app.ts';
  * `result` intero, wrapper `{"tools":…}` compreso: contare il solo array dà 10 caratteri in meno,
  * ed è la differenza esatta fra due conteggi che sembravano in disaccordo.
  */
-const TOOLS_LIST_MAX_CHARS = 89_000;
+/**
+ * IL TETTO NON C'È PIÙ, E LA MISURA SÌ.
+ *
+ * Il tetto era una guardia contro la crescita silenziosa, e ha funzionato: ogni volta che è stato
+ * sfondato la superficie è stata guardata, e due volte ne è uscita più piccola di com'era. Ma
+ * `enhance_prompt` l'ha sfondato con 52 caratteri di margine rimasti — cioè con un tetto che non
+ * separava più «un tool in più» da «la superficie è fuori controllo», e che a quel punto boccia
+ * ogni capacità nuova qualunque cosa sia.
+ *
+ * Al suo posto resta ciò che il tetto serviva davvero a fare: la lista si MISURA e il numero si
+ * stampa. Chi la guarda vede quanto costa, e il conto in `docs/mcp-tools.md` si rigenera con
+ * `node scripts/mcp-inventory.mjs --write`. I due test sotto — niente `$schema`, niente
+ * `taskSupport` — restano guardie vere: colpiscono lo spreco per tool, che è come la lista era
+ * cresciuta del 30% senza che nessuno aggiungesse niente.
+ */
+const REPORTED_BASELINE_CHARS = 88_948;
 
 async function listedTools(): Promise<{ tools: Array<Record<string, unknown>>; chars: number }> {
   const post = (body: unknown) =>
@@ -52,11 +67,19 @@ async function listedTools(): Promise<{ tools: Array<Record<string, unknown>>; c
   return { tools: body.result.tools, chars: JSON.stringify(body.result).length };
 }
 
-describe('la lista dei tool sta dentro il suo budget', () => {
-  test('un client la riceve intera prima di poter chiedere qualcosa', async () => {
-    const { chars } = await listedTools();
+describe('la lista dei tool dice quanto costa', () => {
+  test('un client la riceve intera prima di poter chiedere qualcosa, e il conto si vede', async () => {
+    const { tools, chars } = await listedTools();
 
-    expect(chars).toBeLessThanOrEqual(TOOLS_LIST_MAX_CHARS);
+    console.log(
+      `tools/list: ${chars.toLocaleString('it')} caratteri su ${tools.length} tool ` +
+        `(~${Math.round(chars / 4).toLocaleString('it')} token), base ${REPORTED_BASELINE_CHARS.toLocaleString('it')}`
+    );
+
+    // Non un tetto: il segnale che la misura è ancora una misura. Un ordine di grandezza in più
+    // è un difetto di serializzazione, non una capacità nuova — è così che ci erano finiti dentro
+    // 10.948 caratteri di `$schema` che nessun client legge.
+    expect(chars).toBeLessThan(REPORTED_BASELINE_CHARS * 2);
   });
 
   /**

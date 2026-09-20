@@ -144,6 +144,7 @@ date and the brand timezone. Reach for these two when nothing else covers the ta
 | `check_content` | (MCP only) |
 | `generate_captions` | (MCP only) |
 | `import_media_url` | (MCP only) |
+| `enhance_prompt` | (MCP only) |
 | `generate_image` | (MCP only) |
 | `refine_media` | (MCP only) |
 | `generate_video` | (MCP only) |
@@ -223,6 +224,13 @@ library — no post, nothing in the calendar. **They spend credits**, unlike `im
 every image is a paid render and every clip a paid render. `count` draws up to 4 alternatives in
 one call and bills each one, so generate a few, look at them with a `query` on `brand_media`, and
 pass only the id you keep to `create_post` as `media_ids` — the calendar stays clean either way.
+
+`enhance_prompt` is what you call BEFORE either of them when the brief matters: it rewrites the
+prompt into the shape the model you named actually wants — labelled sections for one model, a
+single paragraph for another, a command instead of a description when a third one edits. It draws
+nothing and costs one short text call. It never invents: a rewrite that adds a subject the brief
+did not name, asks for readable text or states an aspect ratio is thrown away, and the original
+comes back with `changed: false` and the reason in `notes`, as does a model there is no guide for.
 
 An image comes back finished: `media` carries the rows, each with a `signed_url` you can open. A
 video cannot: it takes minutes, longer than any single call may last, so it comes back with

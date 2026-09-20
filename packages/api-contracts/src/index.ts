@@ -66,6 +66,7 @@ import {
 import { GEO_ACTION, REFRESH_KEYWORDS, SEO_ACTION } from './search';
 import { SOCIAL_CONNECT_LINK } from './social';
 import { GET_GSC } from './web-metrics';
+import { ENHANCE_PROMPT } from './prompts';
 import { GET_WRITING_SKILLS } from './writing-skills';
 import {
   CREATE_SHARE,
@@ -178,6 +179,7 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   DIAGNOSE_RADAR,
   DISCARD_PLAN,
   EDIT_POST,
+  ENHANCE_PROMPT,
   GENERATE_ARTICLE,
   GENERATE_CAPTIONS,
   GENERATE_CAROUSEL,
@@ -395,6 +397,7 @@ export {
 } from './memory';
 export type { AgentMemoryCategory } from './memory';
 export { GEO_ACTION, REFRESH_KEYWORDS, SEO_ACTION } from './search';
+export { ENHANCE_PROMPT } from './prompts';
 export { GET_GSC } from './web-metrics';
 export {
   GET_WRITING_SKILLS,

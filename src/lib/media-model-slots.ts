@@ -10,8 +10,20 @@
  * selettore puo' offrire, ed e' la stessa cosa che il renderer legge per scegliere il modello — cosi'
  * il selettore non puo' offrire un modello che il renderer poi rifiuta.
  */
-import { IMAGE_MODEL_CHOICES, isKnownImageModelId } from '$lib/image-models';
+import { IMAGE_MODEL_CHOICES, imageModelSpec, isKnownImageModelId } from '$lib/image-models';
 import { videoModelsForRole, videoModelSpec, type VideoRole } from '$lib/video-models';
+
+/** Una scelta offerta per un mestiere, coi limiti del modello. I campi video mancano sulle foto. */
+export type MediaModelChoice = {
+  id: string;
+  label: string;
+  aspectRatios: string[];
+  maxRefs?: number;
+  minDuration?: number;
+  maxDuration?: number;
+  maxPromptChars?: number;
+  generateAudio?: boolean;
+};
 
 export type MediaModelSlot = {
   /** Il nome nel form e nell'azione. */
@@ -39,9 +51,42 @@ export function mediaModelSlot(id: unknown): MediaModelSlot | undefined {
 }
 
 /** I modelli che questo mestiere puo' davvero usare. */
-export function slotChoices(slot: MediaModelSlot): { id: string; label: string }[] {
-  if (!slot.role) return IMAGE_MODEL_CHOICES.map((c) => ({ id: c.id, label: c.label }));
-  return videoModelsForRole(slot.role);
+/**
+ * Le scelte di un mestiere, ognuna con i limiti con cui va chiamata.
+ *
+ * `{id, label}` diceva QUALI modelli sono ammessi, non cosa ciascuno sa fare: chi deve girare
+ * venti secondi in 9:16 non poteva sceglierlo, e lo scopriva dal rifiuto dopo aver pagato il giro.
+ * I limiti stanno gia' nei due registri — qui si smette di tenerli per noi.
+ *
+ * Immagini e video non portano gli stessi campi perche' non hanno gli stessi limiti: una foto non
+ * dura, una clip non ha un tetto di riferimenti. Dichiararne uno vuoto per simmetria direbbe che
+ * esiste e vale zero.
+ */
+export function slotChoices(slot: MediaModelSlot): MediaModelChoice[] {
+  if (!slot.role) {
+    return IMAGE_MODEL_CHOICES.map((c) => {
+      const spec = imageModelSpec(c.id);
+      return {
+        id: c.id,
+        label: c.label,
+        aspectRatios: spec?.aspectRatios ?? [],
+        maxRefs: spec?.maxRefs ?? 0
+      };
+    });
+  }
+
+  return videoModelsForRole(slot.role).map((c) => {
+    const spec = videoModelSpec(c.id);
+    return {
+      id: c.id,
+      label: c.label,
+      aspectRatios: [...(spec?.ratios ?? [])],
+      minDuration: spec?.minDuration ?? 0,
+      maxDuration: spec?.maxDuration ?? 0,
+      maxPromptChars: spec?.maxPromptChars ?? 0,
+      generateAudio: spec?.generateAudio ?? false
+    };
+  });
 }
 
 /**

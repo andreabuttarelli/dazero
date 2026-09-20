@@ -37,10 +37,17 @@ describe('generare senza un brand', () => {
    * I quattro motori, e soltanto loro. Un `slug` opzionale sparso altrove toglierebbe il confine
    * invece di aprire una porta: `pathWithoutBrand` è ciò che rende opzionale lo slug su MCP.
    */
-  it('sono i quattro motori a saperne fare a meno, e nessun altro', () => {
+  /**
+   * I quattro motori più chi PREPARA un loro brief. `enhance_prompt` riscrive un prompt per il
+   * modello che lo renderà: ancorarlo a un brand vorrebbe dire che per riscrivere il brief di un
+   * gatto bisogna scegliere l'azienda a cui addebitarlo, mentre il disegno vero non lo chiede. È
+   * la stessa incoerenza da cui nasce questo file, un passo più indietro nella catena.
+   */
+  it('sono i motori e chi prepara un loro brief, e nessun altro', () => {
     const brandFree = BRAND_ENDPOINTS.filter((e) => e.pathWithoutBrand);
 
     expect(brandFree.map((e) => e.tool).sort()).toEqual([
+      'enhance_prompt',
       'generate_carousel',
       'generate_image',
       'generate_video',

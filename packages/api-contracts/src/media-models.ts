@@ -31,7 +31,19 @@ export const MEDIA_MODEL_JOBS: Record<MediaModelSlotId, string> = {
 
 const slot = z.enum(MEDIA_MODEL_SLOT_IDS).describe('Which job the model is chosen for');
 
-const Choice = z.object({ id: z.string(), label: z.string() });
+// I limiti con cui il modello va chiamato, non solo il suo nome: senza, chi sceglie scopre che
+// venti secondi in 9:16 non si possono chiedere dal rifiuto, dopo aver pagato il giro. I campi
+// video mancano sulle scelte immagine, e viceversa: non hanno gli stessi limiti.
+const Choice = z.object({
+  id: z.string(),
+  label: z.string(),
+  aspectRatios: z.array(z.string()).describe('The aspect ratios this model actually serves'),
+  maxRefs: z.number().optional().describe('Images only: how many reference images it forwards'),
+  minDuration: z.number().optional().describe('Video only: shortest clip, in seconds'),
+  maxDuration: z.number().optional().describe('Video only: longest clip, in seconds'),
+  maxPromptChars: z.number().optional().describe('Video only: prompt ceiling; over it the provider refuses'),
+  generateAudio: z.boolean().optional().describe('Video only: whether the model produces sound')
+});
 
 export const GET_MEDIA_MODELS = {
   tool: 'get_media_models',
@@ -39,8 +51,10 @@ export const GET_MEDIA_MODELS = {
   description:
     'Which model draws and which model films for this brand, one job at a time, with the ' +
     'models each job actually accepts. Read it before set_media_model: a model that cannot do ' +
-    'a job is refused, and this is where the accepted ids come from. A null model means the ' +
-    'brand made no choice and the platform default renders.',
+    'a job is refused, and this is where the accepted ids come from. Every choice carries the ' +
+    'limits it must be called within — durations, aspect ratios, prompt ceiling, how many ' +
+    'reference images it forwards — so a request can be built without guessing. A null model ' +
+    'means the brand made no choice and the platform default renders.',
   method: 'GET',
   pathUnderBrand: '/settings/models',
   input: z.object({}).strict(),

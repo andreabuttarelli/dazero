@@ -475,7 +475,17 @@ export const EDIT_POST = {
         .nullable()
         .optional()
         .describe('Set null to clear image (text-only)'),
-      platform_captions: z.record(z.string(), z.string()).nullable().optional()
+      platform_captions: z.record(z.string(), z.string()).nullable().optional(),
+      expected_updated_at: z
+        .string()
+        .optional()
+        .describe(
+          "The post's `updated_at` as you read it. Send it when your edit depends on what you " +
+            'read — a caption you are rewriting, a slot you are moving — and the write is refused ' +
+            'with `stale_post` if anyone (a person, another agent, the autopilot) changed the post ' +
+            'in between, instead of silently overwriting them. Omit it for a field that does not ' +
+            'depend on what was there.'
+        )
     })
     .strict(),
   // `patch` è quello che la rotta ha scritto davvero, filtrato sui campi che sa applicare: una
@@ -483,7 +493,10 @@ export const EDIT_POST = {
   output: z.object({ ok: z.literal(true), patch: z.record(z.string(), z.unknown()) }),
   failures: [
     { error: 'No fields to update', status: 400 },
-    { error: 'Post not found', status: 404 }
+    { error: 'Post not found', status: 404 },
+    // 409, non 500: il post c'è ed è tuo, ma è cambiato. Chi chiama rilegge e ridecide — ritentare
+    // lo stesso identico patch riprodurrebbe la sovrascrittura che questo codice esiste per evitare.
+    { error: 'stale_post', status: 409 }
   ],
   destructive: false
 } satisfies BrandEndpoint;

@@ -78,6 +78,37 @@ describe('GET /api/v1/brands/:slug/settings/models', () => {
     expect(refine.choices.length).toBeGreaterThan(1);
   });
 
+  /**
+   * CHI SCEGLIE DEVE SAPERE COSA ACCETTA.
+   *
+   * `{id, label}` dice QUALI modelli sono ammessi, non cosa ciascuno sa fare: un agente che deve
+   * girare una clip di 20 secondi in 9:16 con tre riferimenti non ha modo di scegliere, e lo
+   * scopre dal 400 dopo aver pagato il giro. I limiti esistono già nel registro — durate,
+   * rapporti, tetto dei riferimenti, audio — e si fermavano al nostro confine.
+   */
+  it('ogni scelta porta i limiti con cui il modello va chiamato', async () => {
+    const body = await (await read()).json();
+
+    const clip = body.slots.find((s: Row) => s.slot === 'videoModel');
+    const seedance = clip.choices.find((c: Row) => c.id === SEEDANCE_25_MODEL);
+
+    expect(seedance.maxDuration).toBeGreaterThan(0);
+    expect(seedance.minDuration).toBeGreaterThan(0);
+    expect(seedance.aspectRatios.length).toBeGreaterThan(0);
+    expect(seedance.maxPromptChars).toBeGreaterThan(0);
+    expect(typeof seedance.generateAudio).toBe('boolean');
+  });
+
+  it('e le immagini portano i loro, che sono altri', async () => {
+    const body = await (await read()).json();
+
+    const image = body.slots.find((s: Row) => s.slot === 'imageModel');
+    const gpt = image.choices.find((c: Row) => c.id === GPT_IMAGE_2_MODEL);
+
+    expect(gpt.aspectRatios).toContain('4:5');
+    expect(gpt.maxRefs).toBeGreaterThan(0);
+  });
+
   it('senza una scelta del brand risponde null, non un modello che nessuno ha scelto', async () => {
     const body = await (await read()).json();
 
