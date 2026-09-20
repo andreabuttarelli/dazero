@@ -203,6 +203,25 @@ Una funzione `returns public.<tabella>` che non prende righe NON torna `null`: l
 ### Un id di modello non dichiarato non fallisce: scivola su un altro provider
 `harness-pi` considera il gateway Vercel configurato appena vede `AI_GATEWAY_API_KEY` **o** `VERCEL_OIDC_TOKEN` (che su Vercel c'è sempre), e da lì risolve il modello cercando prima un match sul provider `vercel-ai-gateway`. Se l'id che chiediamo non sta nel `models.json` del nostro provider, non arriva un errore che dice «modello sconosciuto»: arriva un 403 di un provider che non abbiamo scelto, su un modello che nessuno ha chiesto, mentre i nostri log stampano l'id che avevamo selezionato. Segnale: `originalModelId` nel `providerMetadata` diverso dal `Model:` del nostro log. Mossa: dichiarare le credenziali a pi come `customEnv` (con un customEnv configurato l'ambiente non viene più guardato) e mettere l'id del turno fra i modelli dichiarati, sempre — non basta la lista dell'env, perché il default esce dal database e il listino del gateway è freddo al primo turno del processo.
 
+### Lo script fuori dalla suite marcisce in silenzio, e il `null as never` è la data di scadenza
+`scripts/eval/creative.ts` moriva al primo passo con `TypeError: Cannot read properties of undefined`: `proposeRubrics`, `planStrategy` ed `executePlan` avevano perso il parametro `ai` in `80666f7e` («Drop the dead ai parameter from every signature»), e la sonda passava ancora `(null as never, BRAND, …)`. Nessun test la copre — è uno script, non un test — e nessuno la lanciava perché costa soldi veri, quindi il difetto è rimasto lì per settimane senza che niente diventasse rosso. Segnale: un `null as never` (o un `as any`) in testa a una chiamata, che è esattamente il cast che impedisce al compilatore di dire «quella firma è cambiata». Mossa: quando togli un parametro da una firma, cerca i chiamanti **fuori** da `src/` (`scripts/`, `cli/`) — e togli il cast, perché un argomento che ha bisogno di `as never` per passare il typecheck è un argomento che non dovrebbe essere lì.
+
+### Un controllo sull'output di un modello, tarato col runner finto, è verde e non funziona
+Quindici test col runner finto verdi, e sul modello vero `enhance_prompt` rifiutava **ogni** riscrittura. I controlli misuravano quanto era COMPARSO (crescita e vocabolario nuovo), e la misura vera dice che un brief di 46 caratteri torna in 1.010 — ventidue volte — perché nominare luce, materiale e ottica è esattamente il mestiere che gli avevamo chiesto: il controllo misurava il craft e lo chiamava invenzione. Segnale: soglie scelte senza un numero misurato dietro, e una fixture di test scritta a mano che «sembra» quello che il modello produrrebbe. Mossa: prima di tarare un controllo su output di modello, fai chiamate vere e misura; e gira la domanda verso ciò che è SPARITO invece che verso ciò che è comparso — è l'unica metà che non dipende né dal craft né dalla lingua.
+
+**E UNA CHIAMATA NON BASTA: il modello scrive diverso ogni volta.** Corretto il primo difetto, un giro solo dava verde e il secondo rifiutava — su cinque giri il tasso vero era 3/5, e i due rifiuti erano riscritture GIUSTE che avevano scritto «Low morning sun rakes in at 3800K» invece della parola «light». Un controllo che pretende ogni parola non sopravvive ai sinonimi, e l'elenco dei sinonimi non finisce mai (sun/light, dawn/morning, in ogni lingua): la soglia è tollerarne UNA persa, che lascia passare il sinonimo e boccia lo stesso la scena sostituita, che di parole ne perde molte insieme. Misura il TASSO su almeno cinque giri, prima e dopo: 3/5 → 5/5 è un verdetto, «ha funzionato» su un campione non lo è.
+
+### Cercare il nome del VECCHIO trasporto è il modo più naturale di non trovare quello nuovo
+Concluso due volte che OpenRouter non reggesse i riferimenti video, e sbagliato due volte. Primo: interrogato `/api/v1/models`, zero modelli video — ma quello è il catalogo TESTUALE, i video stanno su `/api/v1/videos/models` e sono 29. Secondo: cercato `referenceImages` nei tipi dell'SDK, assente — il nome di kie, mentre quello vero è `inputReferences`. Segnale: una migrazione fra due provider in cui il campo "non esiste" ma la capacità è documentata altrove. Mossa: cerca per CAPACITÀ (audio, video, reference) e non per nome, e leggi i tipi dell'SDK invece della pagina di panoramica — `npm pack @openrouter/sdk && grep -r inputReferences package/` dice in dieci secondi ciò che due pagine di documentazione non dicono.
+
+**I nomi giusti, per non ricercarli:** su OpenRouter il catalogo testuale è `/api/v1/models`, quello video `/api/v1/videos/models` (29 modelli, con durate, rapporti, risoluzioni, `generate_audio`, `supported_frame_images`). I riferimenti multimodali di un video sono `input_references` — `image_url` | `audio_url` | `video_url` in un elenco solo — mentre `frame_images` è un'altra cosa: il primo e l'ultimo fotogramma. Su kie gli stessi concetti si chiamavano `referenceImageUrls`, `referenceAudioUrls`, `referenceVideoUrls`, tre liste separate.
+
+### Su un'API che ignora i campi sconosciuti, una prova che «passa» non prova niente
+Mandato a OpenRouter un `reference_images` con un URL invalido: accettato, quindi sembrava supportato-ma-rotto. Poi mandato un campo chiamato `pippo_inesistente`: accettato uguale. L'API **scarta in silenzio ciò che non conosce**, quindi il primo test misurava solo il mio errore di nome. Mossa: prima di concludere qualcosa da una richiesta accettata, manda un campo inventato di sana pianta — se passa anche quello, l'accettazione non dice nulla sul campo che ti interessa.
+
+### Il giudice che non sbaglia mai non sta guardando
+Un giudizio LLM su un artefatto reso va provato su DUE input, o non è provato: uno pulito e uno costruito apposta per rompere ogni controllo. Il giudice del mestiere fotografico (`photo-craft-review.ts`) dà `6/6 passati` su un barattolo reso bene e `5 su 6 caduti` su un brief che ordina esplicitamente il tappo tolto, il softbox in scena e il testo inventato — e nomina proprio quelli. Un solo giro verde non distingue «l'immagine è a posto» da «il modello risponde true a tutto», che è il modo normale in cui un controllo estetico muore. Mossa: prima di fidarti di un giudice, rendigli un input che DEVE bocciare; se non lo boccia, il difetto è nella domanda — troppo vaga, o non decidibile guardando.
+
 ### Il test della PR può aspettare il vecchio contratto
 `toHaveBeenCalledWith` con 6 argomenti contro un executor passato a 7 (dev ha aggiunto la riga `job`): fallisce nel merge senza che nessuno abbia toccato il file. Mossa: nel riesame di un merge, fai girare PRIMA i test dei file in conflitto — sono gli unici che fanno da spec su entrambi i lati.
 
@@ -1681,3 +1700,35 @@ cosa, quindi il vincolo lì è verde per costruzione. Che i `CHECK` mordano davv
 ed è il difetto vero, è l'**ordine**: con la scrittura che fallisce, il catalogo di prima deve
 essere ancora in tabella e la risposta non deve dire `synced`. Un test del solo percorso felice non
 vede niente di tutto questo — è per quello che il difetto è arrivato fin qui con la suite verde.
+
+---
+
+## Un mock che finge il trasporto sbagliato è una suite verde su codice mai eseguito
+
+**Il segnale.** Un test che mocka un fornitore e passa, ma impiega **secondi** invece di
+millisecondi. Il tempo è la spia: se il mock intercettasse davvero, non ci sarebbe niente da
+aspettare. Quei secondi sono la rete vera, chiamata da un ramo che nessuno stava guardando.
+
+Successo due volte nella stessa sessione, sullo stesso file. Prima il commento in cima a
+`craft-floor.test.ts` lo raccontava già: *«prima si fingeva `{ endpoint: 'google' }` — un endpoint
+che il registro non sa produrre — e si leggevano i prompt dal ramo Google, che nessuna richiesta
+poteva raggiungere»*. Poi di nuovo, spostando gli stessi test da kie a OpenRouter: la rotta finta
+diceva `openrouter`, ma il bivio vero si sceglie **sul modello**, e nano-banana passa dall'API
+immagini, cioè da un secondo trasporto che il mock non copriva.
+
+**Cosa ha nascosto.** Il ramo non misurato tornava il render **senza passare da `review()`**,
+mentre gli altri due lo chiamavano. Il cancello che blocca il logo del brand stampato su un capo
+d'abbigliamento era scavalcato su ogni modello servito da quell'API. Il test che lo prende era
+già scritto e già rosso — asseriva contro un mock che il codice non raggiungeva più, e nessuno
+poteva vederlo finché il mock non è stato rimesso sul percorso giusto.
+
+**La mossa.**
+
+1. **Quando un bivio si sceglie su un dato e non sulla rotta, il test finge TUTTI i rami.** Un
+   `route: () => 'openrouter'` non basta se poi è `imageModelSpec(model)?.openrouterImages` a
+   decidere la porta. Fingerne uno solo misura il prompt del ramo che non è stato preso.
+2. **Il tempo del test è un'asserzione implicita: leggilo.** Millisecondi = intercettato. Secondi
+   = stai pagando una chiamata vera, e quello che credi di misurare non è quello che misuri.
+3. **Quando due rami fanno la stessa cosa e uno ha un passaggio in più, è il ramo corto il
+   difetto** — non la simmetria da ripristinare per eleganza. Qui `review()` mancava, e mancava
+   sul ramo che stava prendendo tutto il traffico.
