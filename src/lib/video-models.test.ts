@@ -8,6 +8,7 @@ import {
   videoModelsForRole,
   videoModelSpec,
   videoModelForRole,
+  VIDEO_MODEL_CHOICES,
   GROK_IMAGINE_VIDEO_MODEL,
   KLING_3_VIDEO_MODEL,
   KLING_3_MOTION_MODEL
@@ -63,5 +64,63 @@ describe('the role registry', () => {
     // A brand can keep a pref across a catalogue change. A model that lost the role must not
     // reach the provider: an unknown role id is a paid round trip that returns nothing.
     expect(videoModelForRole({ videoRefineModel: GROK_IMAGINE_VIDEO_MODEL }, 'refine')).toBeUndefined();
+  });
+});
+
+/**
+ * OGNI MODELLO VIVE SU OPENROUTER, O NON VIVE.
+ *
+ * Un modello senza `openrouterId` non ha un trasporto: `videoEndpoint` lo rifiuterebbe, e il
+ * brand che l'ha scelto scoprirebbe il buco al primo render. Erano due — Runway Aleph e Kling
+ * Turbo — e vivevano solo su kie.
+ */
+describe('nessun modello video resta senza trasporto', () => {
+  // Si guarda il REGISTRO, non l'elenco stretto del selettore: un modello raggiungibile per
+  // ruolo — cioè da `videoModelsForRole`, che legge SPECS — deve avere un trasporto anche se il
+  // selettore non lo mostra. È da lì che arrivavano i due orfani.
+  it('ogni modello raggiungibile per ruolo dichiara un id OpenRouter', () => {
+    const orfani = VIDEO_ROLES
+      .flatMap((role) => videoModelsForRole(role))
+      .map((c) => videoModelSpec(c.id))
+      .filter((s) => s && !s.openrouterId)
+      .map((s) => s!.id);
+
+    expect([...new Set(orfani)], 'senza questo id il modello non è raggiungibile').toEqual([]);
+  });
+
+  it('nessuna traccia di Aleph: il ruolo refine ce l’ha chi legge un video in ingresso', () => {
+    expect(videoModelSpec('runway/aleph')).toBeUndefined();
+    expect(VIDEO_MODEL_CHOICES.map((c) => c.id)).not.toContain('runway/aleph');
+  });
+
+  it('i ruoli sopravvivono a entrambe le rimozioni', () => {
+    for (const role of VIDEO_ROLES) {
+      expect(videoModelsForRole(role).length, role).toBeGreaterThan(0);
+    }
+  });
+});
+
+/**
+ * IL REFINE NON È PIÙ SOLO DI ALEPH.
+ *
+ * Aleph era l'unico modello con `roles: ['refine']`, e vive solo su kie: togliere kie avrebbe
+ * tolto «rifinisci questa clip». Provato contro il gateway vero — Seedance 2.5 legge un
+ * `input_references` di tipo `video_url`: un url irraggiungibile torna
+ * «content[1].video_url.url ... resource download failed», cioè il provider lo SCARICA, e con un
+ * video raggiungibile il job parte. Il refine ha una seconda casa, su OpenRouter.
+ */
+describe('il refine ha un modello che non vive su kie', () => {
+  it('Seedance 2.5 dichiara il ruolo refine', () => {
+    expect(videoModelSpec(SEEDANCE_25_MODEL)?.roles).toContain('refine');
+  });
+
+  it('e ha un id OpenRouter, o quel ruolo resterebbe irraggiungibile', () => {
+    expect(videoModelSpec(SEEDANCE_25_MODEL)?.openrouterId).toBeTruthy();
+  });
+
+  it('almeno un modello refine è servibile da OpenRouter', () => {
+    const refiners = videoModelsForRole('refine').map((m) => videoModelSpec(m.id));
+
+    expect(refiners.some((s) => s?.openrouterId), 'nessun refine fuori da kie').toBe(true);
   });
 });

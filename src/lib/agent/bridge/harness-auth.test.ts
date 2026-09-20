@@ -9,7 +9,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const { harnessCredentials, ensureKieAgentDir, resolveHarnessModelRef } = await import('./adapters');
+const { harnessCredentials, ensureAgentModelsDir, resolveHarnessModelRef } = await import('./adapters');
 const { env } = await import('$env/dynamic/private');
 
 const GATEWAY_KEYS = ['AI_GATEWAY_API_KEY', 'AI_GATEWAY_BASE_URL', 'VERCEL_OIDC_TOKEN'];
@@ -49,7 +49,7 @@ describe('harnessCredentials — quello che consegniamo a pi', () => {
 	});
 });
 
-describe('ensureKieAgentDir — l harness conosce il modello che stiamo per chiedere', () => {
+describe('ensureAgentModelsDir — l harness conosce il modello che stiamo per chiedere', () => {
 	beforeEach(() => {
 		for (const key of Object.keys(env)) {
 			if (/MODEL|MODELS|API_KEY|BASE_URL|OIDC/.test(key)) delete env[key];
@@ -70,7 +70,7 @@ describe('ensureKieAgentDir — l harness conosce il modello che stiamo per chie
 		env.LLM_API_KEY = 'k';
 		env.LLM_MODELS = 'deepseek/deepseek-v4-flash-vision-exp,openai/gpt-5.6-sol';
 
-		const dir = ensureKieAgentDir('google/gemini-3.8-flash');
+		const dir = ensureAgentModelsDir('google/gemini-3.8-flash');
 
 		expect(dir).toBeTruthy();
 		expect(declaredIn(dir as string)).toContain('google/gemini-3.8-flash');
@@ -81,7 +81,7 @@ describe('ensureKieAgentDir — l harness conosce il modello che stiamo per chie
 		env.LLM_MODELS = 'openai/gpt-5.6-sol';
 
 		const ref = resolveHarnessModelRef({ tier: 'openai/gpt-5.6-sol' });
-		const dir = ensureKieAgentDir(ref?.id);
+		const dir = ensureAgentModelsDir(ref?.id);
 
 		expect(ref?.id).toBe('llm/openai/gpt-5.6-sol');
 		expect(declaredIn(dir as string)).toContain('openai/gpt-5.6-sol');
@@ -92,7 +92,7 @@ describe('ensureKieAgentDir — l harness conosce il modello che stiamo per chie
 		env.LLM_API_KEY = 'k';
 		env.LLM_MODELS = 'openai/gpt-5.6-sol';
 
-		const declared = declaredIn(ensureKieAgentDir('openai/gpt-5.6-sol') as string);
+		const declared = declaredIn(ensureAgentModelsDir('openai/gpt-5.6-sol') as string);
 
 		expect(declared.filter((id) => id === 'openai/gpt-5.6-sol')).toHaveLength(1);
 	});
@@ -102,7 +102,7 @@ describe('startHarnessTurn — le due metà arrivano davvero a pi', () => {
 	const source = readFileSync(new URL('./adapters.ts', import.meta.url), 'utf8');
 
 	it('dichiara il modello del turno, non solo la lista dell env', () => {
-		expect(source).toMatch(/ensureKieAgentDir\(\s*opts\.model\.id/);
+		expect(source).toMatch(/ensureAgentModelsDir\(\s*opts\.model\.id/);
 	});
 
 	it('passa le credenziali come customEnv, che è ciò che spegne il ramo gateway di pi', () => {

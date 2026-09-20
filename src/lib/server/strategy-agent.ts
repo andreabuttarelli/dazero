@@ -25,7 +25,6 @@ import {
   type ProposePlanOpts
 } from '$lib/server/editorial-plan';
 import { aiStructured, parallelVariants, VARIANT_LENSES, CREATIVE_TEMPERATURE } from '$lib/server/ai-text';
-import type { KieReasoningEffort } from '$lib/server/kie';
 import {
   readBrandStudioForAgent,
   readEditorialPlanForAgent,
@@ -65,8 +64,7 @@ export function agentFallbackModel(): AgentModel | null {
  * the model dying before it changed anything (bad key, quota, 5xx on the first call). Once a tool
  * has run the error propagates, exactly as it does today.
  *
- * Each attempt is its own harness session, so the Usage transcript shows both — same as the
- * director's kie→Gemini retry.
+ * Each attempt is its own harness session, so the Usage transcript shows both.
  */
 export async function withAgentFallback<T>(
   label: string,
@@ -129,7 +127,6 @@ export type StrategyAgentOpts = {
   seedBrief: string;
   weekIndex?: number;
   outputLanguage?: string;
-  reasoningEffort?: KieReasoningEffort;
   planOpts?: ProposePlanOpts;
   deadlineMs?: number;
   budget?: { searches?: number; drafts?: number; repairs?: number };

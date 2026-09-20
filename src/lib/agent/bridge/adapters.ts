@@ -26,7 +26,6 @@ import {
 	type SandboxHandle
 } from '$lib/server/sandbox';
 import { createFileTools, isOverridable, OVERRIDABLE_PREFIXES, AGENT_DOCS_BUCKET } from '$lib/server/chat/agent-files';
-import { KIE_CODEX_BASE } from '$lib/server/kie';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -192,9 +191,7 @@ const HARNESS_PROVIDER_KEYS = [
 	'ANTHROPIC_API_KEY',
 	'ANTHROPIC_BASE_URL',
 	'ANTHROPIC_AUTH_TOKEN',
-	'XAI_API_KEY',
-	'KIE_API_KEY',
-	'KIE_BASE_URL'
+	'XAI_API_KEY'
 ] as const;
 
 /**
@@ -208,18 +205,12 @@ export function harnessCredentials(): Record<string, string> {
 		const value = env[key]?.trim();
 		if (value) credentials[key] = value;
 	}
-	if (credentials.KIE_API_KEY && !credentials.KIE_BASE_URL) {
-		credentials.KIE_BASE_URL = KIE_CODEX_BASE;
-	}
 	return credentials;
 }
 
 function hydrateHarnessEnv() {
 	for (const key of HARNESS_PROVIDER_KEYS) {
 		if (!process.env[key] && env[key]) process.env[key] = env[key];
-	}
-	if (process.env.KIE_API_KEY && !process.env.KIE_BASE_URL) {
-		process.env.KIE_BASE_URL = KIE_CODEX_BASE;
 	}
 }
 
@@ -295,8 +286,8 @@ export interface HarnessTurnStream {
 	destroy(): Promise<void>;
 }
 
-let kieAgentDirCache: string | null = null;
-let kieAgentDirModels = '';
+let agentModelsDirCache: string | null = null;
+let agentModelsDirSignature = '';
 
 export function harnessSessionSettings(sessionKey?: string): { extensionFactories: unknown[] } | undefined {
 	if (!sessionKey) return undefined;
@@ -327,14 +318,14 @@ function bareModelId(id?: string | null): string | null {
 	return trimmed.startsWith(`${HARNESS_PROVIDER_SCOPE}/`) ? trimmed.slice(HARNESS_PROVIDER_SCOPE.length + 1) : trimmed;
 }
 
-export function ensureKieAgentDir(turnModelId?: string | null): string | undefined {
+export function ensureAgentModelsDir(turnModelId?: string | null): string | undefined {
 	const key = llmApiKey();
 	if (!key) return undefined;
 	const declared = harnessDeclaredModels(turnModelId);
 	const signature = declared.join(',');
 	// Il listino arriva dopo il primo turno del processo: quando cambia, il file va riscritto o
 	// l'harness resta con l'elenco corto di prima.
-	if (kieAgentDirCache && kieAgentDirModels === signature) return kieAgentDirCache;
+	if (agentModelsDirCache && agentModelsDirSignature === signature) return agentModelsDirCache;
 	const dir = join(tmpdir(), 'anomalia-pi-agent');
 	mkdirSync(dir, { recursive: true });
 	writeFileSync(
@@ -350,8 +341,8 @@ export function ensureKieAgentDir(turnModelId?: string | null): string | undefin
 			}
 		})
 	);
-	kieAgentDirModels = signature;
-	kieAgentDirCache = dir;
+	agentModelsDirSignature = signature;
+	agentModelsDirCache = dir;
 	return dir;
 }
 
@@ -415,7 +406,7 @@ export async function startHarnessTurn(opts: {
 }): Promise<HarnessTurnStream> {
 	hydrateHarnessEnv();
 	const knownSetup = HARNESS_SETUPS[opts.model.provider];
-	const agentDir = opts.agentDir ?? ensureKieAgentDir(opts.model.id);
+	const agentDir = opts.agentDir ?? ensureAgentModelsDir(opts.model.id);
 	const setup = knownSetup ?? (agentDir ? HARNESS_SETUPS.custom : HARNESS_SETUPS.pi);
 	const skillSelection = parseHarnessSkillSelection(env.HARNESS_SKILLS);
 	const skills = [...(await skillsForAgent(opts.agentId)), ...(await loadHarnessSkills(skillSelection))];

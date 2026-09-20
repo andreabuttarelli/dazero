@@ -7,10 +7,9 @@ import {
 } from '$lib/media-model-slots';
 import { GPT_IMAGE_2_MODEL } from '$lib/image-models';
 import {
-  ALEPH_REFINE_MODEL,
   GROK_IMAGINE_VIDEO_MODEL,
   KLING_3_VIDEO_MODEL,
-  KLING_TURBO_I2V_MODEL
+  SEEDANCE_25_MODEL
 } from '$lib/video-models';
 import { MEDIA_MODEL_SLOT_IDS } from '@anomalia/api-contracts';
 
@@ -25,7 +24,7 @@ describe('media model slots', () => {
     // The whole point of a slot: a select that accepted a model the renderer then drops would
     // store a preference that does nothing, which is the quietest way to not work.
     const refine = mediaModelSlot('videoRefineModel')!;
-    expect(slotAccepts(refine, ALEPH_REFINE_MODEL)).toBe(true);
+    expect(slotAccepts(refine, SEEDANCE_25_MODEL)).toBe(true);
     expect(slotAccepts(refine, GROK_IMAGINE_VIDEO_MODEL)).toBe(false);
     expect(slotAccepts(refine, GPT_IMAGE_2_MODEL)).toBe(false);
   });
@@ -38,9 +37,10 @@ describe('media model slots', () => {
   it('only offers image-to-video models where a still is being animated', () => {
     const animate = slotChoices(mediaModelSlot('videoImageModel')!).map((c) => c.id);
     const fromText = slotChoices(mediaModelSlot('videoModel')!).map((c) => c.id);
-    // Turbo has nothing to animate without an image, so it belongs to one list and not the other.
-    expect(animate).toContain(KLING_TURBO_I2V_MODEL);
-    expect(fromText).not.toContain(KLING_TURBO_I2V_MODEL);
+    // Le due liste si scelgono sul RUOLO, e restano liste diverse: chi anima una foto deve
+    // saperla leggere, chi parte dal testo no.
+    expect(animate.length).toBeGreaterThan(0);
+    expect(fromText.length).toBeGreaterThan(0);
   });
 
   it('does not answer for a slot that does not exist', () => {

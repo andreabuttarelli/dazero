@@ -36,7 +36,6 @@ import {
 } from '$lib/server/strategy-agent-reads';
 import { ensureMarketReferences, formatMarketBrief } from '$lib/server/market-references';
 import { upcomingTimelyHooks } from '$lib/server/thematic-calendar';
-import { KIE_GROK_NO_STORE, KIE_MODEL, kieFetch } from '$lib/server/kie';
 import { ensureShortNetworkCuts } from '$lib/platform-limits';
 import {
   seedToPost,
@@ -57,7 +56,7 @@ import {
 } from '$lib/server/platform-hygiene';
 
 /**
- * Produce agent + multimodal reviewer loop (Grok 4.5 via kie).
+ * Produce agent + multimodal reviewer loop.
  *
  * Replaces the fixed executePlan → reviewCaptions pipeline unless PRODUCE_AGENT_ENABLED=false.
  * The produce agent researches (web, market trends, history, brand studio…) then submits a
@@ -125,23 +124,12 @@ export type ProduceAgentOpts = {
   deadlineMs?: number;
 };
 
-function grokModel(): { model: LanguageModel; provider: 'kie'; modelId: string } | null {
-  if (!env.KIE_API_KEY) return null;
-  const kie = createOpenAI({
-    baseURL: 'https://api.kie.ai/grok/v1',
-    apiKey: env.KIE_API_KEY,
-    name: 'kie',
-    fetch: kieFetch()
-  });
-  return { model: kie.responses(KIE_MODEL), provider: 'kie', modelId: KIE_MODEL };
-}
-
 function llmFallback(): { model: LanguageModel; provider: 'llm'; modelId: string } {
   return { model: llmLanguageModel(), provider: 'llm', modelId: llmDefaultModel() };
 }
 
 function resolveModel() {
-  return grokModel() ?? llmFallback();
+  return llmFallback();
 }
 
 function seedBrief(strategy: WeeklyStrategy): string {
@@ -298,7 +286,7 @@ type Submitted = { crafts: PostCraft[]; batchJustification: string };
 
 async function runProduceRound(opts: {
   model: LanguageModel;
-  provider: 'kie' | 'llm';
+  provider: 'llm';
   modelId: string;
   messages: ModelMessage[];
   supabase: SupabaseClient;
@@ -685,12 +673,10 @@ ${seedBrief(opts.strategy)}`;
       allowSystemInMessages: true,
       tools: watchedTools,
       stopWhen: [hasToolCall('finish'), stepCountIs(PRODUCE_AGENT_MAX_STEPS)],
-      // Su kie/Grok la temperatura non arriva comunque: `forceReasoning` (dentro KIE_GROK_NO_STORE)
-      // la toglie dalla richiesta, ed è un bene misurato — il campionamento di default di kie/Grok
+      // Il campionamento di default
       // è PIÙ vario di 0.6, non meno (4 risposte distinte su 4 contro 2 a temperature 0). Metterla
       // a undefined qui evita solo il warning a ogni chiamata. Sul ripiego Gemini resta 0.6.
-      temperature: opts.provider === 'kie' ? undefined : 0.6,
-      providerOptions: opts.provider === 'kie' ? { openai: { ...KIE_GROK_NO_STORE } } : undefined,
+      temperature: 0.6,
       prepareStep: () => {
         const remaining = Math.max(0, Math.round((opts.deadlineMs - (Date.now() - t0)) / 1000));
         const step = {
@@ -754,7 +740,7 @@ type ReviewVerdict =
 
 async function runProduceReviewer(opts: {
   model: LanguageModel;
-  provider: 'kie' | 'llm';
+  provider: 'llm';
   modelId: string;
   supabase: SupabaseClient;
   brandId: string;
@@ -901,13 +887,12 @@ Approve only if these assets would help the brand grow organically AND pass hash
         hasToolCall('request_changes'),
         stepCountIs(PRODUCE_REVIEWER_MAX_STEPS)
       ],
-      // Come sopra: su kie la temperatura la toglie `forceReasoning`, che qui serve perché il
+      // Come sopra: il
       // reviewer gira fino a 12 step e senza si rivede il batch da capo a ogni step. Il 0.3 era
-      // per un giudice ripetibile: su kie il giudizio ora campiona come il modello vuole. È il solo
+      // per un giudice ripetibile. È il solo
       // punto di questa correzione dove si perde qualcosa (un filo di ripetibilità), ed è un
       // giudizio: il verdetto è ancorato alle immagini e alle regole, non alla temperatura.
-      temperature: opts.provider === 'kie' ? undefined : 0.3,
-      providerOptions: opts.provider === 'kie' ? { openai: { ...KIE_GROK_NO_STORE } } : undefined,
+      temperature: 0.3,
       onStepFinish: (event) => {
         reviewerSession.recordStep(event);
         const { toolCalls, toolResults, text } = event;
@@ -1054,15 +1039,7 @@ Think like a growth creative: use the WINNING PATTERNS above (and read_market / 
         visualInsights
       } as const;
 
-      let produce;
-      try {
-        produce = await runProduceRound(roundOpts);
-      } catch (kieErr) {
-        if (provider !== 'kie' || !llmConfigured()) throw kieErr;
-        console.warn('[produce-agent] kie failed, retrying round on llm:', kieErr);
-        ({ model, provider, modelId } = llmFallback());
-        produce = await runProduceRound({ ...roundOpts, model, provider, modelId });
-      }
+      const produce = await runProduceRound(roundOpts);
 
       messages = produce.messages;
       produceSteps = [...produceSteps, ...produce.steps.map((s) => ({ ...s, step: produceSteps.length + s.step }))];
@@ -1090,37 +1067,18 @@ Think like a growth creative: use the WINNING PATTERNS above (and read_market / 
       });
 
       opts.onProgress?.('writing', `Reviewer checking captions + images (round ${round})…`);
-      let review: ReviewVerdict;
-      try {
-        review = await runProduceReviewer({
-          model,
-          provider,
-          modelId,
-          supabase: opts.supabase,
-          brandId: opts.brandId,
-          userId: opts.userId,
-          profile: opts.profile,
-          posts,
-          batchJustification,
-          prefs
-        });
-      } catch (kieErr) {
-        if (provider !== 'kie' || !llmConfigured()) throw kieErr;
-        console.warn('[produce-reviewer] kie failed, retrying on llm:', kieErr);
-        ({ model, provider, modelId } = llmFallback());
-        review = await runProduceReviewer({
-          model,
-          provider,
-          modelId,
-          supabase: opts.supabase,
-          brandId: opts.brandId,
-          userId: opts.userId,
-          profile: opts.profile,
-          posts,
-          batchJustification,
-          prefs
-        });
-      }
+      const review: ReviewVerdict = await runProduceReviewer({
+        model,
+        provider,
+        modelId,
+        supabase: opts.supabase,
+        brandId: opts.brandId,
+        userId: opts.userId,
+        profile: opts.profile,
+        posts,
+        batchJustification,
+        prefs
+      });
 
       reviewSteps = [...reviewSteps, ...review.steps.map((s) => ({ ...s, step: reviewSteps.length + s.step }))];
       reviewSummary = review.summary;

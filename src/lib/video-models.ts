@@ -40,11 +40,11 @@ const SEEDANCE_RATIOS = ['1:1', '4:3', '3:4', '16:9', '9:16', '21:9', 'adaptive'
 
 export const KLING_3_VIDEO_MODEL = 'kling-3.0/video';
 export const KLING_3_MOTION_MODEL = 'kling-3.0/motion-control';
-export const KLING_TURBO_I2V_MODEL = 'kling/v3-turbo-image-to-video';
-export const ALEPH_REFINE_MODEL = 'runway/aleph';
+
+/** Chi ingrandisce una clip su OpenRouter, partendo dal file invece che dal lavoro originale. */
+export const OPENROUTER_UPSCALE_MODEL = 'black-forest-labs/flux-video-upscale';
 
 const KLING_RATIOS = ['16:9', '9:16', '1:1'] as const;
-const ALEPH_RATIOS = ['16:9', '9:16', '4:3', '3:4', '1:1', '21:9'] as const;
 const KLING_PROMPT_LIMIT = 2500;
 
 /**
@@ -80,7 +80,6 @@ export type VideoModelFamily =
   | 'seedance-2'
   | 'seedance-2-5'
   | 'kling-3'
-  | 'aleph'
   | 'unknown';
 
 export type VideoModelCaps = {
@@ -137,12 +136,6 @@ export type VideoModelSpec = VideoModelCaps & {
   /** Come si chiama il campo dei riferimenti immagine. */
   imageField?: 'image_urls' | 'input_urls' | 'referenceImage';
   /**
-   * L'endpoint kie. Quasi tutto vive sull'API a job (`/jobs/createTask`); Runway ha un percorso
-   * suo, con i campi in camelCase invece che in snake_case, ed è l'unica ragione per cui questo
-   * campo esiste.
-   */
-  endpoint: 'jobs' | 'aleph';
-  /**
    * Ogni altra forma con cui lo stesso modello si presenta. `grok-imagine/text-to-video` è lo
    * stesso modello di `grok-imagine/image-to-video` nell'altro verso: riconoscerli entrambi qui
    * è ciò che impedisce a uno dei due di ripresentarsi come sconosciuto e prendersi la finestra
@@ -158,8 +151,10 @@ const SPECS: VideoModelSpec[] = [
     label: 'Seedance 2.5',
     openrouterId: 'bytedance/seedance-2.5',
     match: /^bytedance\/seedance-2-5\b/,
-    roles: ['text', 'image'],
-    endpoint: 'jobs',
+    // `refine` c'è perché il provider legge davvero un video in ingresso: un `input_references`
+    // di tipo `video_url` con un url irraggiungibile torna «resource download failed» su quel
+    // campo — cioè lo scarica — e con un video vero il job parte.
+    roles: ['text', 'image', 'refine'],
     imageField: 'image_urls',
     family: 'seedance-2-5',
     minDuration: 4,
@@ -175,7 +170,6 @@ const SPECS: VideoModelSpec[] = [
     openrouterId: 'bytedance/seedance-2.0',
     match: /^bytedance\/seedance-2\b/,
     roles: ['text', 'image'],
-    endpoint: 'jobs',
     imageField: 'image_urls',
     family: 'seedance-2',
     minDuration: 4,
@@ -191,7 +185,6 @@ const SPECS: VideoModelSpec[] = [
     openrouterId: 'bytedance/seedance-2.0-fast',
     match: /^bytedance\/seedance-2-fast\b/,
     roles: ['text', 'image'],
-    endpoint: 'jobs',
     imageField: 'image_urls',
     family: 'seedance-2',
     minDuration: 4,
@@ -207,7 +200,6 @@ const SPECS: VideoModelSpec[] = [
     openrouterId: 'bytedance/seedance-2.0-mini',
     match: /^bytedance\/seedance-2-mini\b/,
     roles: ['text', 'image'],
-    endpoint: 'jobs',
     imageField: 'image_urls',
     family: 'seedance-2',
     minDuration: 4,
@@ -223,7 +215,6 @@ const SPECS: VideoModelSpec[] = [
     openrouterId: 'x-ai/grok-imagine-video-1.5',
     match: /^grok-imagine-video-1-5/,
     roles: ['text', 'image'],
-    endpoint: 'jobs',
     imageField: 'image_urls',
     kieId: { text: 'grok-imagine-video-1-5-preview/text-to-video' },
     family: 'grok-1.5',
@@ -240,7 +231,6 @@ const SPECS: VideoModelSpec[] = [
     openrouterId: 'x-ai/grok-imagine-video',
     match: /^grok-imagine\//,
     roles: ['text', 'image'],
-    endpoint: 'jobs',
     imageField: 'image_urls',
     kieId: { text: 'grok-imagine/text-to-video', image: 'grok-imagine/image-to-video' },
     family: 'grok-v1',
@@ -260,7 +250,6 @@ const SPECS: VideoModelSpec[] = [
     openrouterId: 'kwaivgi/kling-v3.0-pro',
     match: /^kling-3\.0\//,
     roles: ['text', 'image', 'motion'],
-    endpoint: 'jobs',
     imageField: 'image_urls',
     videoField: 'video_urls',
     kieId: { motion: KLING_3_MOTION_MODEL },
@@ -273,38 +262,27 @@ const SPECS: VideoModelSpec[] = [
     generateAudio: true
   },
   {
-    id: KLING_TURBO_I2V_MODEL,
-    label: 'Kling V3 Turbo',
-    match: /^kling\/v3-turbo/,
-    // Turbo parte SEMPRE da una immagine: senza `image_urls` non ha nulla da animare, quindi il
-    // ruolo `text` non gli appartiene e il selettore della generazione da testo non lo offre.
-    roles: ['image'],
-    endpoint: 'jobs',
-    imageField: 'image_urls',
-    family: 'kling-3',
-    minDuration: 3,
-    maxDuration: 15,
-    maxPromptChars: KLING_PROMPT_LIMIT,
-    ratios: KLING_RATIOS,
-    supportsUpscale: false,
-    generateAudio: false
-  },
-  {
-    // Il solo modello che riscrive una clip esistente. Vive fuori dall'API a job, su un endpoint
-    // suo e con i campi in camelCase: e' l'intera ragione per cui `endpoint` esiste in questa
-    // tabella invece di essere dato per scontato ovunque.
-    id: ALEPH_REFINE_MODEL,
-    label: 'Runway Aleph',
-    match: /^runway\/aleph/,
+    /**
+     * L'INGRANDIMENTO È UN MESTIERE, non una proprietà di chi ha girato la clip.
+     *
+     * Su kie l'upscale riparte dal LAVORO originale — `task_id`, e solo uno di Grok — quindi era
+     * una capacità di quei due modelli (`supportsUpscale`). Qui riparte dal FILE: un video entra,
+     * un video esce, e da chi l'abbia girato non dipende niente. Provato contro il gateway — una
+     * richiesta senza video risponde «requires video input: include an input_references entry of
+     * type video_url».
+     *
+     * Non ha durate né rapporti: non li sceglie, li eredita dalla clip che ingrandisce.
+     */
+    id: OPENROUTER_UPSCALE_MODEL,
+    label: 'FLUX Video Upscale',
+    openrouterId: 'black-forest-labs/flux-video-upscale',
+    match: /^black-forest-labs\/flux-video-upscale/,
     roles: ['refine'],
-    endpoint: 'aleph',
-    videoField: 'videoUrl',
-    imageField: 'referenceImage',
-    family: 'aleph',
+    family: 'unknown',
     minDuration: 1,
-    maxDuration: 15,
+    maxDuration: 30,
     maxPromptChars: KLING_PROMPT_LIMIT,
-    ratios: ALEPH_RATIOS,
+    ratios: SEEDANCE_RATIOS,
     supportsUpscale: false,
     generateAudio: false
   }
@@ -391,6 +369,26 @@ export function videoModelForRole(
 /** Capabilities of a kie video model id. Unknown ids fall back to the conservative Grok window. */
 export function videoModelCaps(model: string): VideoModelCaps {
   return videoModelSpec(model) ?? UNKNOWN_CAPS;
+}
+
+/**
+ * QUANTI RIFERIMENTI REGGE UN MODELLO, in un posto solo.
+ *
+ * I numeri sono quelli che `video.ts` applica davvero quando compone il job: 30 immagini, 10 video
+ * e 10 audio sulla famiglia Seedance, che è l'unica con i riferimenti multimodali di kie. Gli altri
+ * modelli non ne prendono nessuno — un fotogramma di partenza sì, ma quello è `imageUrl`, che è
+ * un'altra cosa: è IL primo frame, non un riferimento fra tanti.
+ *
+ * Sta qui e non nel chiamante perché è un fatto del modello, come `maxPromptChars` e le durate. Chi
+ * costruisce una tela, un form o un agente legge questi numeri invece di indovinarli — e quando
+ * arriva un modello nuovo, è una riga sola a cambiare.
+ */
+export type VideoRefCapacity = { images: number; videos: number; audios: number };
+
+export function videoRefCapacity(model: string | null | undefined): VideoRefCapacity {
+  return isSeedanceFamily(model)
+    ? { images: 30, videos: 10, audios: 10 }
+    : { images: 0, videos: 0, audios: 0 };
 }
 
 export function isSeedance25Model(model: string | null | undefined): boolean {

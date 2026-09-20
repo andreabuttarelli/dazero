@@ -29,7 +29,7 @@ const {
   agentSessionWrites: [] as Array<Record<string, unknown>>
 }));
 
-vi.mock('$env/dynamic/private', () => ({ env: { KIE_API_KEY: 'test-kie' } }));
+vi.mock('$env/dynamic/private', () => ({ env: { LLM_API_KEY: 'test-key' } }));
 
 vi.mock('ai', async () => {
   const actual = await vi.importActual<typeof import('ai')>('ai');
@@ -55,12 +55,6 @@ vi.mock('$lib/server/agent-runs', async () => {
   const actual = await vi.importActual<typeof import('$lib/server/agent-runs')>('$lib/server/agent-runs');
   return { ...actual, persistAgentRun };
 });
-
-vi.mock('$lib/server/kie', () => ({
-  KIE_MODEL: 'grok-4-6',
-  KIE_GROK_NO_STORE: { store: false },
-  kieFetch: () => globalThis.fetch
-}));
 
 vi.mock('$lib/server/research', async () => {
   const actual = await vi.importActual<typeof import('$lib/server/research')>('$lib/server/research');
@@ -390,22 +384,22 @@ describe('il rimpallo fra scrittore e giudice', () => {
   });
 });
 
-describe('il ripiego di provider', () => {
-  it('se kie muore lo scrittore rifà il round su Gemini', async () => {
-    generateText
-      .mockImplementationOnce(async () => {
-        throw new Error('kie out of credits');
-      })
-      .mockImplementationOnce(writerSubmits())
-      .mockImplementationOnce(reviewerApproves());
+// C'erano due trasporti e il round si rifaceva sull'altro. Con uno solo non c'e' un secondo
+// tentativo: il giro si ferma SUBITO, torna `null` — che e' come questo agente dice «passa alla
+// pipeline di prima» — e lascia la riga fallita. Il guaio da evitare non e' l'errore: e' un
+// secondo round pagato che chiede la stessa cosa allo stesso modello che ha appena detto di no.
+describe('quando il modello muore', () => {
+  it('si ferma al primo colpo e lascia la riga che lo dice', async () => {
+    generateText.mockImplementationOnce(async () => {
+      throw new Error('gateway out of credits');
+    });
 
     const out = await runProduceAgentLoop(baseOpts() as never);
 
-    expect(generateText).toHaveBeenCalledTimes(3);
-    expect(out?.approved).toBe(true);
+    expect(out).toBeNull();
+    expect(generateText).toHaveBeenCalledTimes(1);
     const rows = agentSessionWrites.filter((r) => r.agent === 'produce');
-    expect(rows.some((r) => r.status === 'failed' && r.provider === 'kie')).toBe(true);
-    expect(rows.some((r) => r.status === 'finished' && r.provider === 'llm')).toBe(true);
+    expect(rows.some((r) => r.status === 'failed')).toBe(true);
   });
 });
 
