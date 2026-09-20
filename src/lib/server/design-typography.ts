@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ALL_SHORTLIST_FONTS, DEFAULT_FONT, FONT_SHORTLIST, GraphicStyleSchema, type GraphicStyle } from '$lib/design/typography';
 import { loadGraphicFont } from '$lib/server/design-render';
-import { structuredKie, KIE_MODEL } from '$lib/server/kie';
+import { aiStructured } from '$lib/server/ai-text';
 
 /**
  * Choosing and validating the typography a brand's graphics are set in.
@@ -106,15 +106,12 @@ export async function proposeGraphicStyle(
 
   let proposed: { display_font?: string; body_font?: string; instructions?: string } = {};
   try {
-    proposed = await structuredKie(
+    proposed = await aiStructured(
       prompt,
       PROPOSAL_SCHEMA,
       proposalSystem(),
       'propose_graphic_style',
-      { brandId, context: 'design/typography' },
-      undefined,
-      undefined,
-      KIE_MODEL
+      { brandId, context: 'design/typography' }
     );
   } catch (e) {
     console.error('[design-typography] proposal failed:', e);

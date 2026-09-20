@@ -10,7 +10,7 @@ import {
 } from '$lib/design/graphic-source';
 import { GRAPHIC_CRAFT_SPECS } from '$lib/design/graphic-craft';
 import { logoIssue, type GraphicIssue } from '$lib/design/graphic-check';
-import { structuredKie, KIE_MODEL } from '$lib/server/kie';
+import { aiStructured } from '$lib/server/ai-text';
 import { firstLogoUrl } from '$lib/brand-fields';
 import { isUrlSafe } from '$lib/server/brand-analysis';
 
@@ -274,15 +274,12 @@ export async function composeGraphic(brief: string, opts: ComposeGraphicOpts = {
     .filter(Boolean)
     .join('\n\n');
 
-  const raw = await structuredKie<unknown>(
+  const raw = await aiStructured<unknown>(
     prompt,
     GRAPHIC_JSON,
     systemFor(opts),
     'compose_graphic',
-    { brandId: opts.brandId, userId: opts.userId, context: 'design/compose' },
-    undefined,
-    undefined,
-    KIE_MODEL
+    { brandId: opts.brandId, userId: opts.userId, context: 'design/compose' }
   );
   return finish(raw, opts);
 }
@@ -385,15 +382,12 @@ export async function composeGraphicSource(
     .join('\n\n');
 
   try {
-    const raw = await structuredKie<unknown>(
+    const raw = await aiStructured<unknown>(
       prompt,
       SOURCE_JSON,
       sourceSystemFor(opts),
       'compose_graphic_source',
-      { brandId: opts.brandId, userId: opts.userId, context: 'design/compose-source' },
-      undefined,
-      undefined,
-      KIE_MODEL
+      { brandId: opts.brandId, userId: opts.userId, context: 'design/compose-source' }
     );
     const { aspect, source } = readSourcePayload(raw);
     const kind = assertRenderableSource(source);
@@ -435,15 +429,12 @@ export async function reviseGraphicSource(
     .join('\n');
 
   try {
-    const raw = await structuredKie<unknown>(
+    const raw = await aiStructured<unknown>(
       prompt,
       SOURCE_JSON,
       sourceSystemFor(opts),
       'revise_graphic_source',
-      { brandId: opts.brandId, userId: opts.userId, context: 'design/revise-source' },
-      undefined,
-      undefined,
-      KIE_MODEL
+      { brandId: opts.brandId, userId: opts.userId, context: 'design/revise-source' }
     );
     const { aspect, source } = readSourcePayload(raw);
     const kind = assertRenderableSource(source);
