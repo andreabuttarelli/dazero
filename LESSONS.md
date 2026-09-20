@@ -1732,3 +1732,35 @@ poteva vederlo finché il mock non è stato rimesso sul percorso giusto.
 3. **Quando due rami fanno la stessa cosa e uno ha un passaggio in più, è il ramo corto il
    difetto** — non la simmetria da ripristinare per eleganza. Qui `review()` mancava, e mancava
    sul ramo che stava prendendo tutto il traffico.
+
+---
+
+## `res.ok` non dice che una action ha salvato
+
+**Il segnale.** Il client dichiara successo a ogni operazione, e la tabella resta vuota. Nessun
+errore da nessuna parte: né in console, né nei log del server, né in Postgres. Scoperto solo
+guardando il conteggio delle righe — 1 tela, 0 tile, dopo giorni di trascinamenti.
+
+**La causa, in due strati che si coprono a vicenda.**
+
+1. `fetch('?/move', { method: 'POST', body: fd })` **non è una chiamata a una action.** Senza
+   l'intestazione `x-sveltekit-action`, SvelteKit lo tratta come l'invio di un form non
+   potenziato e risponde **303 verso la pagina**. `fetch` segue i redirect da solo, quindi torna
+   l'HTML della pagina con `res.ok === true`. La action non è mai stata invocata.
+2. Anche invocandola, **una action risponde 200 anche quando rifiuta.** L'esito sta nel corpo
+   (`type: 'success' | 'failure' | 'error'`), da leggere con `deserialize` di `$app/forms`. E
+   rifiutare con `json({...}, { status: 400 })` non basta: è una `Response`, non un esito di
+   action, e `deserialize` la legge come successo. Il rifiuto si dichiara con `fail()`.
+
+**La mossa.**
+
+- Una action chiamata a mano vuole **l'intestazione** e la **lettura del corpo**. Due cose, non
+  una: con la sola intestazione si leggono i fallimenti come successi, con la sola
+  deserializzazione si legge l'HTML di una pagina.
+- **`res.ok` su una action non è un'asserzione.** Vale 200 quando salva, 200 quando rifiuta e 200
+  quando non è stata nemmeno chiamata: i tre casi che serve distinguere sono esattamente quelli
+  che confonde.
+- **Il test che lo prende non è sul server.** `saveCanvasPositions` aveva dieci test verdi e
+  funzionava: il difetto stava nel fatto che nessuno la chiamava. Quando una scrittura "non
+  arriva", **conta le righe** prima di leggere il codice che le scrive — è la misura che dice se
+  stai cercando nel posto giusto.
