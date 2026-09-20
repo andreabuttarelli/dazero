@@ -5,7 +5,6 @@
   import { _, locale } from 'svelte-i18n';
   import { isPlanKey, planByKey } from '$lib/plans';
   import { detectInAppBrowser, androidIntentUrl, type InAppBrowser } from '$lib/in-app-browser';
-  import BrandMark from '$lib/components/BrandMark.svelte';
   import { sanitizeWebsiteParam } from '$lib/website-param';
   let { form, data } = $props();
   const waitlistActive = $derived(data.waitlistActive);
@@ -248,41 +247,6 @@
       {/if}
     </div>
   </section>
-
-  <aside class="pane auth-showcase">
-    <div class="auth-showcase-inner">
-      <a class="sc-mark" href="/"><BrandMark size={20} /> Anomalia</a>
-      <div class="chat-mock" aria-hidden="true">
-        <div class="chat-row user">
-          <div class="chat-bubble">{$_('login.showcase.userMessage')}</div>
-        </div>
-        <div class="chat-row ai">
-          <div class="chat-avatar" aria-hidden="true"><BrandMark size={14} /></div>
-          <div class="chat-bubble">
-            <p class="chat-intro">{$_('login.showcase.aiIntro')}</p>
-            <ul class="chat-services">
-              <li>
-                <strong>{$_('login.showcase.service1Title')}</strong>
-                <span>{$_('login.showcase.service1Body')}</span>
-              </li>
-              <li>
-                <strong>{$_('login.showcase.service2Title')}</strong>
-                <span>{$_('login.showcase.service2Body')}</span>
-              </li>
-              <li>
-                <strong>{$_('login.showcase.service3Title')}</strong>
-                <span>{$_('login.showcase.service3Body')}</span>
-              </li>
-              <li>
-                <strong>{$_('login.showcase.service4Title')}</strong>
-                <span>{$_('login.showcase.service4Body')}</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-  </aside>
 </div>
 
 {#if showOpenInBrowser && inApp}
@@ -315,8 +279,7 @@
 <style>
   .split {
     min-height: 100dvh;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
   }
   .pane {
     display: flex;
@@ -325,8 +288,8 @@
     padding: 48px 40px;
   }
 
-  /* ---- left: the form ---- */
   .form-pane {
+    flex: 1;
     background: var(--paper, #fff);
   }
   .form-inner {
@@ -500,172 +463,6 @@
     color: var(--ink-soft, #6e6e73);
   }
 
-  /* ---- right: the value panel ----
-     Class is `auth-showcase` (not `showcase`) so landing.css rules — especially
-     `:root[data-theme="dark"] .showcase { background: var(--paper) }` which is #111 —
-     cannot override the gradient after SPA navigation from a marketing page.
-     Solid hex fallback first, then the themed gradient. */
-  .auth-showcase {
-    background: #ff0066;
-    background: linear-gradient(
-      155deg,
-      var(--accent, #ff0066) 0%,
-      var(--accent, #ff0066) 45%,
-      var(--accent-2, #ff5500) 100%
-    );
-    color: #fff;
-    position: relative;
-    overflow: hidden;
-  }
-  /* soft glow accents */
-  .auth-showcase::before,
-  .auth-showcase::after {
-    content: '';
-    position: absolute;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    filter: blur(2px);
-  }
-  .auth-showcase::before {
-    width: 420px;
-    height: 420px;
-    top: -120px;
-    right: -120px;
-  }
-  .auth-showcase::after {
-    width: 300px;
-    height: 300px;
-    bottom: -100px;
-    left: -80px;
-    background: rgba(255, 255, 255, 0.06);
-  }
-  .auth-showcase-inner {
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    max-width: 440px;
-  }
-  .sc-mark {
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    opacity: 0.9;
-    margin-bottom: 32px;
-    text-decoration: none;
-    color: inherit;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .sc-mark :global(.brandmark) {
-    fill: #fff !important;
-  }
-  .sc-mark :global(.brandmark path) {
-    fill: #fff !important;
-  }
-  .sc-mark span {
-    opacity: 0.65;
-  }
-
-  /* ---- chat mockup inside the colored panel ---- */
-  .chat-mock {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    animation: chat-in 0.55s ease-out both;
-  }
-  @keyframes chat-in {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-  .chat-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
-  }
-  .chat-row.user {
-    justify-content: flex-end;
-    animation: chat-in 0.45s ease-out 0.15s both;
-  }
-  .chat-row.ai {
-    justify-content: flex-start;
-    animation: chat-in 0.5s ease-out 0.45s both;
-  }
-  .chat-avatar {
-    flex: 0 0 auto;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.22);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .chat-avatar :global(.brandmark),
-  .chat-avatar :global(.brandmark path) {
-    fill: #fff !important;
-  }
-  .chat-bubble {
-    max-width: 92%;
-    padding: 12px 16px;
-    border-radius: 18px;
-    font-size: 14px;
-    line-height: 1.45;
-  }
-  .chat-row.user .chat-bubble {
-    background: var(--accent, #ff0066);
-    color: #fff;
-    font-weight: 600;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    border-bottom-right-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  }
-  .chat-row.ai .chat-bubble {
-    background: rgba(255, 255, 255, 0.16);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    border-bottom-left-radius: 6px;
-    backdrop-filter: blur(8px);
-  }
-  .chat-intro {
-    margin: 0 0 12px;
-    font-size: 14px;
-    line-height: 1.45;
-    color: rgba(255, 255, 255, 0.95);
-  }
-  .chat-services {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .chat-services li {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.1);
-  }
-  .chat-services strong {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-  }
-  .chat-services span {
-    font-size: 12.5px;
-    line-height: 1.4;
-    color: rgba(255, 255, 255, 0.82);
-  }
-
   /* ---- CLI login notice ---- */
   .cli-notice {
     display: flex;
@@ -685,23 +482,7 @@
     flex: 0 0 auto;
   }
 
-  /* ---- responsive: form only on mobile ---- */
   @media (max-width: 880px) {
-    .split {
-      display: flex;
-      flex-direction: column;
-      min-height: 100dvh;
-    }
-    /* Drop the colored panel entirely — form pane is the only surface. */
-    .auth-showcase {
-      display: none;
-    }
-    .form-pane {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
     .form-inner {
       text-align: center;
       margin: 0 auto;

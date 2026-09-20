@@ -29,9 +29,17 @@ export function llmBaseUrl(): string {
 	return (env.LLM_BASE_URL?.trim() || DEFAULT_LLM_BASE_URL).replace(/\/$/, '');
 }
 
+/**
+ * Un segnaposto lasciato nella configurazione non è una chiave: `<la STRINGA della chiave>` non è
+ * vuoto, quindi passava ogni guardia e partiva sul filo, dove OpenRouter risponde
+ * `401 Missing Authentication header`. Un errore di un terzo per una cosa che sapevamo già noi.
+ */
+const PLACEHOLDER_KEY = /^<.*>$/;
+
 export function llmApiKey(): string | undefined {
 	const key = env.LLM_API_KEY?.trim();
-	return key || undefined;
+	if (!key || PLACEHOLDER_KEY.test(key)) return undefined;
+	return key;
 }
 
 export function llmConfigured(): boolean {
