@@ -16,7 +16,6 @@ import { blogStyleBlock } from './blog-style';
 import { wallClockToUtc } from './schedule';
 import { blogArticlesPerWeek, blogArticlesPerWeekMax, blogArticlesPerMonth } from './plans';
 import { ensureKeywordStrategy, keywordStrategyBlock } from './seo-keyword-strategy';
-import { PIN_GATEWAY } from './ai-text';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRec = Record<string, any>;
@@ -26,8 +25,6 @@ type AnyRec = Record<string, any>;
 // fell through to Gemini anyway, after paying for the failed call). Poi ci ha provato DeepSeek, con
 // lo stesso esito silenzioso: un tentativo condannato prima di ogni articolo. Il prezzo di questo
 // lavoro è quello di Gemini Flash, e blog-cost.ts lo calcola da lì.
-const BLOG_AI = PIN_GATEWAY;
-
 const REVIEWER =
   'You are a senior content editor. Reward articles that are specific, genuinely useful and factually careful. Penalize fluff, hype, invented statistics and any claim not supported by the brand context. NEVER fabricate facts, sources or URLs.';
 
@@ -213,8 +210,7 @@ ${existingTitles}
 Alignment rule: same strategic direction as social, complementary NOT duplicative — a blog piece is the deep/evergreen anchor, not a rewrite of a social post. Where a strategy keyword fits, each topic should attack one (set targetKeyword to it; empty string otherwise). Return exactly ${count} DISTINCT topics (title + angle + targetKeyword).`;
 
   const out = await bestVariant<{ topics?: Array<{ title: string; angle: string; targetKeyword?: string }> }>(() => prompt, TOPICS_SCHEMA, REVIEWER, 'blog_plan_topics',
-    (v) => (v?.topics ?? []).map((t) => t.title).slice(0, 4).join(' | '),
-    BLOG_AI
+    (v) => (v?.topics ?? []).map((t) => t.title).slice(0, 4).join(' | ')
   ).catch((error) => { swallow('join failed', error); return null; });
   return (out?.topics ?? []).slice(0, count);
 }
@@ -431,8 +427,7 @@ ARTICLE ANGLE: ${init.title}
 ${init.rationale ? `Why it matters: ${init.rationale}` : ''}`;
 
   const article = await bestVariant<AnyRec>(makePrompt, ARTICLE_SCHEMA, REVIEWER, 'blog_article',
-    (v) => `${v?.title ?? ''} (${String(v?.bodyMarkdown ?? '').split(/\s+/).length} words)`,
-    BLOG_AI
+    (v) => `${v?.title ?? ''} (${String(v?.bodyMarkdown ?? '').split(/\s+/).length} words)`
   ).catch((error) => { swallow('split failed', error); return null; });
   if (!article?.bodyMarkdown || !article?.title) return null;
 
@@ -590,8 +585,7 @@ Requirements:
 - Write in ${language}. Return JSON: title (H1, not repeated in body), slug, metaTitle, metaDescription, bodyMarkdown.`;
 
   const improved = await structured<AnyRec>(prompt, ARTICLE_SCHEMA, REVIEWER, {
-    label: 'blog_optimize',
-    ...BLOG_AI
+    label: 'blog_optimize'
   }).catch((error) => { swallow('blog optimize failed', error); return null; });
   let title = a.title;
   let metaTitle = a.meta_title as string | null;

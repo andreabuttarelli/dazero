@@ -177,3 +177,68 @@ describe('il trasporto video su OpenRouter', () => {
     expect(openrouterVideoHeaders()).toMatchObject({ authorization: 'Bearer o' });
   });
 });
+
+/**
+ * I RIFERIMENTI MULTIMODALI, che erano l'unica ragione per tenere kie.
+ *
+ * Il campo si chiama `input_references` e accetta immagini, audio e video insieme. L'SDK lo
+ * documenta: «Audio and video references are only honored by providers that support them
+ * (including BytePlus Seedance generation 2 and newer); other providers use image references and
+ * ignore the rest» — cioè la degradazione per provider la fa il gateway, non noi.
+ */
+describe('buildOpenrouterVideoInput — i riferimenti', () => {
+  const build = async (model: string, render: Record<string, unknown>) => {
+    const { buildOpenrouterVideoInput } = await import('./openrouter-video');
+    return buildOpenrouterVideoInput(model, render as never);
+  };
+
+  const base = {
+    model: 'bytedance/seedance-2.5',
+    prompt: 'un barista al banco',
+    durationSeconds: 10,
+    resolution: '720p',
+    aspectRatio: '9:16'
+  };
+
+  it('manda immagini, audio e video come un solo elenco tipizzato', async () => {
+    const out = await build('bytedance/seedance-2.5', {
+      ...base,
+      referenceImageUrls: ['https://x/a.png', 'https://x/b.png'],
+      referenceAudioUrls: ['https://x/v.mp3'],
+      referenceVideoUrls: ['https://x/c.mp4']
+    });
+
+    expect(out.input_references).toEqual([
+      { type: 'image_url', image_url: { url: 'https://x/a.png' } },
+      { type: 'image_url', image_url: { url: 'https://x/b.png' } },
+      { type: 'audio_url', audio_url: { url: 'https://x/v.mp3' } },
+      { type: 'video_url', video_url: { url: 'https://x/c.mp4' } }
+    ]);
+  });
+
+  it('senza riferimenti il campo non compare: un elenco vuoto è rumore nel payload', async () => {
+    expect((await build('bytedance/seedance-2.5', base)).input_references).toBeUndefined();
+  });
+
+  it('una url vuota non diventa un riferimento a niente', async () => {
+    const out = await build('bytedance/seedance-2.5', {
+      ...base,
+      referenceImageUrls: ['  ', 'https://x/a.png']
+    });
+
+    expect(out.input_references).toHaveLength(1);
+  });
+
+  // I riferimenti convivono col fotogramma di partenza: sono due cose diverse — il primo frame È
+  // la clip che parte, un riferimento la guida soltanto.
+  it('convivono con i fotogrammi', async () => {
+    const out = await build('bytedance/seedance-2.5', {
+      ...base,
+      imageUrl: 'https://x/first.png',
+      referenceImageUrls: ['https://x/ref.png']
+    });
+
+    expect(out.frame_images).toHaveLength(1);
+    expect(out.input_references).toHaveLength(1);
+  });
+});

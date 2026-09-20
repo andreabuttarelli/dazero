@@ -16,7 +16,7 @@
  */
 import { env } from '$env/dynamic/private';
 import { logAiCall } from '$lib/server/ai-log';
-import type { GeminiImageRequest } from '$lib/server/kie-jobs';
+import type { GeminiImageRequest } from '$lib/server/image-request';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 const IMAGE_MODALITIES = ['image', 'text'];

@@ -712,7 +712,11 @@ export async function runOneUgcClip(ctx: UgcClipRunContext, plan: UgcClipPlan): 
           hookVisual: plan.hookVisual ?? undefined,
           setting: plan.setting,
           person: hasPerson ? plan.model?.name || 'reference person' : undefined,
-          format: plan.format ?? null
+          format: plan.format ?? null,
+          // `lockedModel` è deciso più sotto e può ancora cambiare (remake e audio di riferimento
+          // lo forzano su Seedance): la closure lo legge quando `briefFor` viene davvero chiamata,
+          // che è dopo. Passarlo per valore qui darebbe le note del modello sbagliato.
+          model: lockedModel
         });
       };
 

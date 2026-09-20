@@ -141,7 +141,6 @@ export async function structured<T>(
     temperature?: number;
     model?: string;
     provider?: 'gateway' | 'kie';
-    noFallback?: boolean;
     reasoningEffort?: ReasoningEffort;
     brandId?: string;
     userId?: string;

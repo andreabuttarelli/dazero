@@ -181,7 +181,20 @@ export async function applyPostEdits(
   id: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   patch: Record<string, any>,
-  opts?: { origin?: string; by?: string }
+  opts?: {
+    origin?: string;
+    by?: string;
+    /**
+     * L'`updated_at` che il chiamante ha letto PRIMA di decidere la modifica. Con questo la
+     * scrittura tocca la riga solo se nessuno l'ha cambiata nel frattempo; senza, vince l'ultimo
+     * che arriva — che è il difetto descritto dalla migrazione 0224 e mai impedito.
+     *
+     * Resta opzionale di proposito: chi scrive un campo che non dipende da ciò che ha letto (uno
+     * stato, un id di media appena reso) non ha una versione da difendere, e obbligarlo
+     * aggiungerebbe una lettura a ogni scrittura per un conflitto che non può avere.
+     */
+    expectedUpdatedAt?: string;
+  }
 ) {
   const wantsCaptionLearn = typeof patch.caption === 'string' && patch.caption.trim();
   let before: {
@@ -211,7 +224,24 @@ export async function applyPostEdits(
     // captionEditPairs conserva l'ESEMPIO concreto prima→dopo che i writer citano nel prompt.
     void captureCaptionEditPair(before.brand_id, String(before.caption), String(patch.caption)).catch(swallow('String failed'));
   }
-  const result = await supabase.from('posts').update(patch).eq('id', id);
+  // Senza precondizione: come è sempre stato. Con: la riga si tocca solo se è ancora quella letta,
+  // e zero righe aggiornate È il conflitto — l'unico modo di vederlo, perché Postgres non lo
+  // segnala come errore.
+  const result = opts?.expectedUpdatedAt
+    ? await (async () => {
+        const { data, error } = await supabase
+          .from('posts')
+          .update(patch)
+          .eq('id', id)
+          .eq('updated_at', opts.expectedUpdatedAt)
+          .select('id');
+        if (error) return { error };
+        if (!data?.length) {
+          return { error: { message: 'Post modificato da qualcun altro dopo la tua lettura' } };
+        }
+        return { error: null };
+      })()
+    : await supabase.from('posts').update(patch).eq('id', id);
 
   if (opts?.by && before && String(before.caption ?? '') !== String(patch.caption ?? '')) {
     await recordPostVerdict(supabase, {

@@ -134,10 +134,12 @@ describe('la fatturazione di una chiamata passata da kie', () => {
 });
 
 describe('la rete di sicurezza sullo structured output', () => {
+  // Il ripiego non c'e' piu' da sorvegliare: con un trasporto solo, quello che fallisce non ha
+  // un secondo posto dove andare. Resta la cosa che il test difendeva davvero — che questa
+  // strada passi dal centralino e non dallo SDK Google, che e' il guasto gia' visto.
   it('aiStructured passa da llmStructured sul centralino, non dallo SDK Google', () => {
     const src = readFileSync(join(HERE, 'ai-text.ts'), 'utf8');
     expect(src).toContain('llmStructured');
     expect(src).not.toContain('createGoogleGenerativeAI');
-    expect(src).toContain('falling back to the LLM gateway');
   });
 });

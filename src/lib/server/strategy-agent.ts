@@ -24,7 +24,7 @@ import {
   type EditorialPlan,
   type ProposePlanOpts
 } from '$lib/server/editorial-plan';
-import { aiStructured, parallelVariants, VARIANT_LENSES, CREATIVE_TEMPERATURE, PIN_GATEWAY } from '$lib/server/ai-text';
+import { aiStructured, parallelVariants, VARIANT_LENSES, CREATIVE_TEMPERATURE } from '$lib/server/ai-text';
 import type { KieReasoningEffort } from '$lib/server/kie';
 import {
   readBrandStudioForAgent,
@@ -345,8 +345,7 @@ Return JSON.`;
       aiStructured<AnyRec>(makePrompt(lenses[i % lenses.length]), schema, PLAN_SYSTEM, 'return_editorial_plan', {
         temperature: CREATIVE_TEMPERATURE,
         model: opts.model,
-        brandId: opts.brandId,
-        ...PIN_GATEWAY
+        brandId: opts.brandId
       }),
     async (picked) => {
       if (picked.length === 1) return picked[0];
@@ -355,8 +354,7 @@ Return JSON.`;
       const selSchema = { type: 'object' as const, properties: { winner: { type: 'number' as const } }, required: ['winner'] };
       try {
         const result = await aiStructured<{ winner?: number }>(prompt, selSchema, PLAN_SYSTEM, 'pick_best', {
-          brandId: opts.brandId,
-          ...PIN_GATEWAY
+          brandId: opts.brandId
         });
         const idx = Math.max(0, Math.min(picked.length - 1, (result?.winner ?? 1) - 1));
         return picked[idx];

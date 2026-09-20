@@ -33,7 +33,7 @@ import {
   openrouterImagesAspectRatio,
   openrouterImagesSize
 } from '$lib/image-models';
-import type { GeminiImageRequest } from '$lib/server/kie-jobs';
+import type { GeminiImageRequest } from '$lib/server/image-request';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 

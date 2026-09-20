@@ -173,6 +173,18 @@ function endpointConfigured(endpoint: Endpoint): boolean {
   }
 }
 
+/**
+ * «Il video si può fare?» — una domanda sul TRASPORTO, non su un fornitore.
+ *
+ * Tre rotte la ponevano come `Boolean(env.KIE_API_KEY)`, e spegnevano il video quando quella chiave
+ * mancava anche se OpenRouter era lì a servirlo: una clip non generata perché manca la chiave di
+ * qualcun altro. Qui si chiede se ESISTE un trasporto, e `route('video')` sceglie già da sola
+ * quale — con il suo ripiego quando il preferito non è configurato.
+ */
+export function videoTransportReady(): boolean {
+  return endpointConfigured('openrouter') || endpointConfigured('kie');
+}
+
 export type Route = { family: ModelFamily; endpoint: Endpoint; provider: LogProvider };
 
 /**

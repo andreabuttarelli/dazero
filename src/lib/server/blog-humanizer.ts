@@ -2,7 +2,7 @@
 // add human touches (rhythm variation, reader engagement, specificity), and polish flow.
 import { swallow } from '$lib/server/swallow';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { aiStructured, PIN_GATEWAY } from './ai-text';
+import { aiStructured } from './ai-text';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRec = Record<string, any>;
@@ -72,9 +72,7 @@ Return JSON with the full humanized bodyMarkdown and a brief changes summary.`;
 
   const out = await aiStructured<{ bodyMarkdown?: string; changes?: string }>(prompt, HUMANIZE_SCHEMA,
     'You are a precise editor. Preserve all factual content, links, and structure. Only change writing style to sound more human.',
-    'humanize_article',
-    PIN_GATEWAY
-  ).catch((error) => { swallow('humanize article failed', error); return null; });
+    'humanize_article').catch((error) => { swallow('humanize article failed', error); return null; });
 
   if (!out?.bodyMarkdown) return null;
   return { bodyMd: out.bodyMarkdown, changes: out.changes ?? 'Stile reso più naturale.' };

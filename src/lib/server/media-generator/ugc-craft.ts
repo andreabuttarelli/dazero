@@ -15,6 +15,8 @@
 import { generateText } from 'ai';
 import { env } from '$env/dynamic/private';
 import { craftAgentModel } from '$lib/server/craft-model';
+import { UGC_CRAFT_SPECS } from '$lib/design/ugc-craft';
+import { videoCraftFor } from '$lib/design/video-craft';
 
 export type UgcCraftModel = ReturnType<typeof ugcAgentModel>;
 
@@ -35,6 +37,8 @@ export type UgcCraftInput = {
 	setting?: string;
 	person?: string;
 	format?: string | null;
+	/** Il modello che renderà la clip, per le sue note di mestiere. Ignoto = nessuna nota. */
+	model?: string | null;
 };
 
 /** Il runner del modello, iniettabile per i test: default è `generateText` sul tier pro. */
@@ -50,7 +54,13 @@ export function buildCraftPrompt(input: UgcCraftInput): string {
 	const refs = input.references?.length
 		? `REFERENCES (already attached to the render — mention them with their tags, never invent new ones):\n${input.references.join('\n')}`
 		: '';
+	// Il mestiere PRIMA del brief: sono le regole con cui va riscritto, e un modello che le legge
+	// dopo il testo da riscrivere le applica alla metà che ha ancora in mente.
+	const modelNotes = videoCraftFor(input.model);
 	return `You are the CRAFT agent for a UGC video render. A planner already decided the beats; the block below is the mechanical shot brief built from them. Your job is the RESA: rewrite it as a real director would — camera moves, framing, timing per beat, what the person does with hands and eyes — so the video generator has something worth executing.
+
+${UGC_CRAFT_SPECS}
+${modelNotes ? `\n${modelNotes}\n` : ''}
 
 STRICT RULES:
 - Keep every RULE line of the brief VERBATIM, in place. They are generator guardrails (hands, on-screen text, speech completeness): you may not reword, reorder or drop one.

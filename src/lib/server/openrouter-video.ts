@@ -36,6 +36,14 @@ export type OpenrouterVideoRender = {
   aspectRatio: string;
   imageUrl?: string;
   lastFrameUrl?: string;
+  /**
+   * I riferimenti che GUIDANO la clip, diversi dai fotogrammi che la iniziano. Immagini, audio e
+   * video insieme: il gateway li passa a chi li regge (Seedance 2 e successivi) e ignora il resto
+   * per gli altri provider, quindi la degradazione non la decidiamo noi.
+   */
+  referenceImageUrls?: string[];
+  referenceAudioUrls?: string[];
+  referenceVideoUrls?: string[];
 };
 
 function apiKey(): string | undefined {
@@ -75,6 +83,14 @@ export function untagOpenrouterJob(taskId: string): string | undefined {
 
 type Frame = { type: 'image_url'; image_url: { url: string }; frame_type: 'first_frame' | 'last_frame' };
 
+/** I tre tipi che `input_references` accetta, con i nomi che l'SDK dichiara. */
+type InputReference =
+  | { type: 'image_url'; image_url: { url: string } }
+  | { type: 'audio_url'; audio_url: { url: string } }
+  | { type: 'video_url'; video_url: { url: string } };
+
+const clean = (urls?: string[]): string[] => (urls ?? []).map((u) => u.trim()).filter(Boolean);
+
 export function buildOpenrouterVideoInput(
   model: string,
   render: OpenrouterVideoRender
@@ -86,12 +102,22 @@ export function buildOpenrouterVideoInput(
   if (render.imageUrl && render.lastFrameUrl) {
     frames.push({ type: 'image_url', image_url: { url: render.lastFrameUrl }, frame_type: 'last_frame' });
   }
+  // L'ordine è immagini, audio, video: è quello in cui i provider li leggono, e tenerlo stabile
+  // rende confrontabili due render che cambiano solo un riferimento.
+  const references: InputReference[] = [
+    ...clean(render.referenceImageUrls).map((url): InputReference => ({ type: 'image_url', image_url: { url } })),
+    ...clean(render.referenceAudioUrls).map((url): InputReference => ({ type: 'audio_url', audio_url: { url } })),
+    ...clean(render.referenceVideoUrls).map((url): InputReference => ({ type: 'video_url', video_url: { url } }))
+  ];
+
   return {
     model,
     prompt: clampVideoPrompt(render.prompt, render.model),
     duration: render.durationSeconds,
     resolution: render.resolution,
-    ...(frames.length ? { frame_images: frames } : { aspect_ratio: render.aspectRatio })
+    ...(frames.length ? { frame_images: frames } : { aspect_ratio: render.aspectRatio }),
+    // Un elenco vuoto non si manda: è rumore nel payload, e un campo assente dice la stessa cosa.
+    ...(references.length ? { input_references: references } : {})
   };
 }
 

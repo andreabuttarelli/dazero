@@ -39,7 +39,7 @@ export async function bestVariant<T>(
   systemInstruction: string,
   label: string,
   summarize: (v: T) => string,
-  opts?: { provider?: 'gateway' | 'kie'; model?: string; noFallback?: boolean }
+  opts?: { model?: string }
 ): Promise<T> {
   return parallelVariants<T>(
     () => aiStructured<T>(makePrompt(), schema, systemInstruction, `return_${label}`, opts),

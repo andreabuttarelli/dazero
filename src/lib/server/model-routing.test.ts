@@ -451,3 +451,37 @@ describe('una famiglia con un endpoint solo', () => {
     warn.mockRestore();
   });
 });
+
+/**
+ * «Il video si può fare?» è una domanda sul TRASPORTO, non su un fornitore.
+ *
+ * Tre rotte la ponevano come `Boolean(env.KIE_API_KEY)`, e con kie spento spegnevano il video
+ * anche quando OpenRouter era lì pronto a servirlo: una clip non generata perché manca la chiave
+ * di qualcun altro.
+ */
+describe('videoTransportReady', () => {
+  const ready = async () => (await import('./model-routing')).videoTransportReady();
+
+  it('con la chiave di OpenRouter il video si può fare, anche senza kie', async () => {
+    M.env.OPENROUTER_API_KEY = 'o';
+    M.env.KIE_API_KEY = '';
+
+    expect(await ready()).toBe(true);
+  });
+
+  it('con la sola kie resta possibile: è ancora un trasporto', async () => {
+    M.env.OPENROUTER_API_KEY = '';
+    M.env.LLM_API_KEY = '';
+    M.env.KIE_API_KEY = 'k';
+
+    expect(await ready()).toBe(true);
+  });
+
+  it('senza nessuna chiave il video non si può fare, e la risposta è no', async () => {
+    M.env.OPENROUTER_API_KEY = '';
+    M.env.LLM_API_KEY = '';
+    M.env.KIE_API_KEY = '';
+
+    expect(await ready()).toBe(false);
+  });
+});

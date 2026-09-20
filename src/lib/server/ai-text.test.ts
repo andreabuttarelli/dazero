@@ -59,10 +59,9 @@ describe('satisfiesSchema (guardia di conformità sul secondario)', () => {
  * IL LAVORO STRUTTURATO DI SFONDO VA SUL GATEWAY LLM (OpenAI-compatibile).
  *
  * Qui c'era la suite che difendeva la deviazione su DeepSeek, poi quella su Gemini Flash, poi
- * quella su MiMo: tutte difendevano un TRASPORTO che non esiste più. Restano DUE strade, e sono i
- * due endpoint del registro: il gateway (`llmStructured`) e kie (`structuredKie`), con il gateway
- * come rete di conformità allo schema. Il pseudo provider 'gemini' si chiamava così mentendo — ora
- * si chiama 'gateway', che è l'endpoint che sceglie davvero.
+ * quella su MiMo, infine quella su kie: tutte difendevano un TRASPORTO che non esiste più. Ne
+ * resta UNO, il gateway (`llmStructured`), e questi test sorvegliano che il lavoro ci finisca
+ * senza sfiorare nient'altro — anche quando l'ambiente nomina un endpoint sepolto.
  *
  * Come prima, questi test guardano dove finisce davvero la chiamata — sulla doppia `llmStructured`
  * mockata, oppure sulla fetch — e non l'ortografia del sorgente.
@@ -73,9 +72,7 @@ const M = vi.hoisted(() => ({
   env: {} as Record<string, string | undefined>,
   llmStructured: vi.fn(async (_opts: { label?: string }) => ({ plan: 'ok' })),
   llmText: vi.fn(),
-  llmImagesFromInline: vi.fn(() => undefined),
-  structuredKie: vi.fn(),
-  textKie: vi.fn()
+  llmImagesFromInline: vi.fn(() => undefined)
 }));
 const env = M.env;
 vi.mock('$env/dynamic/private', () => ({ env: M.env }));
@@ -85,7 +82,6 @@ vi.mock('$lib/server/llm', async () => ({
   llmText: M.llmText,
   llmImagesFromInline: M.llmImagesFromInline
 }));
-vi.mock('$lib/server/kie', () => ({ structuredKie: M.structuredKie, textKie: M.textKie }));
 vi.mock('$lib/server/ai-log', () => ({
   logAiCall: vi.fn(),
   requireBrandContext: () => 'brand-1'
@@ -104,16 +100,15 @@ describe('routing del lavoro strutturato', () => {
 
   async function callBackgroundWork(overrides: Record<string, string | undefined> = {}) {
     Object.assign(env, overrides);
-    const { aiStructured, PIN_GATEWAY } = await import('./ai-text');
+    const { aiStructured } = await import('./ai-text');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return aiStructured<any>('prompt', SCHEMA, undefined, 'return_plan', { brandId: 'b', ...PIN_GATEWAY });
+    return aiStructured<any>('prompt', SCHEMA, undefined, 'return_plan', { brandId: 'b' });
   }
 
   it('manda il lavoro strutturato al gateway LLM, e a nessun altro endpoint', async () => {
     expect(await callBackgroundWork()).toEqual({ plan: 'ok' });
     expect(M.llmStructured).toHaveBeenCalledTimes(1);
     expect(M.llmStructured.mock.calls[0][0]).toMatchObject({ label: 'return_plan' });
-    expect(M.structuredKie).not.toHaveBeenCalled();
     // Zero fetch = nessun endpoint a pagamento è stato sfiorato, sotto QUALUNQUE nome.
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -124,24 +119,22 @@ describe('routing del lavoro strutturato', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('forzare provider:"kie" usa il secondario, e se fallisce ripiega sul gateway', async () => {
-    M.structuredKie.mockRejectedValueOnce(new Error('boom'));
-    const { aiStructured } = await import('./ai-text');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const res = await aiStructured<any>('prompt', SCHEMA, undefined, 'return_plan', {
-      brandId: 'b',
-      provider: 'kie'
-    });
-    expect(M.structuredKie).toHaveBeenCalledTimes(1);
+  // `AI_ROUTE_TEXT=grok@kie` era una rotta valida, e oggi nomina un endpoint sepolto. Deve
+  // finire sul gateway come tutto il resto: un valore rimasto in un `.env` di mesi fa non può
+  // dirottare il testo verso un trasporto che non risponde più.
+  it('una rotta che nomina kie non dirotta niente: il testo resta sul gateway', async () => {
+    expect(await callBackgroundWork({ AI_ROUTE_TEXT: 'grok@kie' })).toEqual({ plan: 'ok' });
     expect(M.llmStructured).toHaveBeenCalledTimes(1);
-    expect(res).toEqual({ plan: 'ok' });
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('MiMo non è più un secondario: nessun fornitore fuori da gateway e kie', async () => {
+  it('nessun fornitore oltre il gateway è rimasto nel sorgente', async () => {
     const src = readFileSync(join(HERE, 'ai-text.ts'), 'utf8');
     expect(src).not.toContain('api.xiaomimimo.com');
     expect(src).not.toContain('structuredXiaomi');
     expect(src).not.toContain('textXiaomi');
+    expect(src).not.toContain('structuredKie');
+    expect(src).not.toContain('textKie');
   });
 });
 
@@ -161,20 +154,19 @@ describe('lo sforzo di ragionamento chiesto da un giudice', () => {
   });
 
   it('arriva al gateway invece di fermarsi negli opts', async () => {
-    const { aiStructured, PIN_GATEWAY } = await import('./ai-text');
+    const { aiStructured } = await import('./ai-text');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await aiStructured<any>('prompt', SCHEMA, undefined, 'return_plan', {
       brandId: 'b',
-      ...PIN_GATEWAY,
       reasoningEffort: 'low'
     });
     expect(M.llmStructured.mock.calls[0][0]).toMatchObject({ reasoningEffort: 'low' });
   });
 
   it('senza richiesta il gateway decide da sé: nessuno sforzo inventato qui', async () => {
-    const { aiStructured, PIN_GATEWAY } = await import('./ai-text');
+    const { aiStructured } = await import('./ai-text');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await aiStructured<any>('prompt', SCHEMA, undefined, 'return_plan', { brandId: 'b', ...PIN_GATEWAY });
+    await aiStructured<any>('prompt', SCHEMA, undefined, 'return_plan', { brandId: 'b' });
     expect(M.llmStructured.mock.calls[0][0].reasoningEffort).toBeUndefined();
   });
 
@@ -260,10 +252,18 @@ describe('textRouteLabel — chi serve il testo, per il log di boot', () => {
     expect(textRouteLabel()).toBe('openrouter.ai (z-ai/glm-5.3-flash)');
   });
 
-  it('una rotta deviata su kie lo dice, col modello che kie riceverà', async () => {
-    Object.assign(env, { LLM_API_KEY: 'k', AI_ROUTE_TEXT: 'grok@kie', KIE_API_KEY: 'k' });
+  // La riga di avvio deve dire dove il testo finisce DAVVERO. Con un trasporto solo, una rotta
+  // che nomina quello sepolto non cambia la destinazione, quindi non deve nemmeno cambiare
+  // l'annuncio: leggere «kie» all'avvio manderebbe la prossima diagnosi dalla parte sbagliata.
+  it('una rotta rimasta su kie non cambia l’annuncio: si nomina il gateway', async () => {
+    Object.assign(env, {
+      LLM_API_KEY: 'k',
+      LLM_DEFAULT_MODEL: 'z-ai/glm-5.3-flash',
+      AI_ROUTE_TEXT: 'grok@kie',
+      KIE_API_KEY: 'k'
+    });
     const { textRouteLabel } = await import('./ai-text');
-    expect(textRouteLabel()).toBe('kie (grok-4-5)');
+    expect(textRouteLabel()).toBe('openrouter.ai (z-ai/glm-5.3-flash)');
   });
 
   it('senza la chiave del centralino annuncia il guasto, non un modello', async () => {

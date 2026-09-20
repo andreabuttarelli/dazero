@@ -65,6 +65,35 @@ describe('craftUgcShotBrief — il secondo agente scrive la resa, il determinist
 	});
 	const baseBrief = formatUgcShotBrief(base, { script: 'you close books in minutes', product: 'FlowDeck' });
 
+	// Il cavo: senza, l'agente di resa riceve «riscrivilo come farebbe un vero regista» e restituisce
+	// la media di quello che ha visto in addestramento.
+	it('il prompt porta il mestiere della resa, non solo la richiesta di farla', async () => {
+		const { UGC_CRAFT_SPECS } = await import('$lib/design/ugc-craft');
+		const p = buildCraftPrompt({ baseBrief, seconds: 12, platform: 'tiktok' });
+
+		expect(p).toContain(UGC_CRAFT_SPECS);
+	});
+
+	it('il brief da riscrivere resta in fondo, dopo il mestiere', async () => {
+		const { UGC_CRAFT_SPECS } = await import('$lib/design/ugc-craft');
+		const p = buildCraftPrompt({ baseBrief, seconds: 12, platform: 'tiktok' });
+
+		expect(p.indexOf(UGC_CRAFT_SPECS)).toBeLessThan(p.indexOf(baseBrief));
+	});
+
+	it('le note del modello video arrivano quando il modello è noto', () => {
+		const p = buildCraftPrompt({ baseBrief, seconds: 12, model: 'bytedance/seedance-2-5' });
+
+		expect(p).toMatch(/MODEL NOTES/);
+		expect(p).toMatch(/reflection|mirror/i);
+	});
+
+	it('un modello ignoto non aggiunge note inventate', () => {
+		const p = buildCraftPrompt({ baseBrief, seconds: 12, model: 'mai-visto/x' });
+
+		expect(p).not.toMatch(/MODEL NOTES/);
+	});
+
 	it('il prompt porta hook, setting, prodotto, battuto, riferimenti e il divieto di toccare le RULE', () => {
 		const p = buildCraftPrompt({
 			baseBrief,

@@ -146,19 +146,113 @@ describe('il cablaggio del video verso OpenRouter', () => {
     warn.mockRestore();
   });
 
-  it('i riferimenti non passano da OpenRouter: quel render resta su kie, rumorosamente', async () => {
+  /**
+   * I RIFERIMENTI PASSANO, e prima no.
+   *
+   * La versione precedente di questo test fissava l'opposto: un render con riferimenti veniva
+   * dirottato su kie, perché sulla superficie video di OpenRouter quei campi «non esistevano».
+   * Esistono: si chiamano `input_references` e accettano immagini, audio e video insieme. Il nome
+   * cercato prima era quello di kie (`reference_*`), ed è per questo che sembravano assenti.
+   */
+  it('i riferimenti passano da OpenRouter, come input_references', async () => {
     M.env.AI_ROUTE_VIDEO = 'seedance@openrouter';
     stubFetch();
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { submitVideoRender } = await import('./video');
     await submitVideoRender('p', {
       model: 'bytedance/seedance-2-5',
-      referenceImageUrls: ['https://cdn.test/ref.png']
+      referenceImageUrls: ['https://cdn.test/ref.png'],
+      referenceAudioUrls: ['https://cdn.test/voce.mp3']
     });
 
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/riferimenti non passano/));
-    expect(hits.some((h) => h.includes('api.kie.ai'))).toBe(true);
-    warn.mockRestore();
+    expect(hits.some((h) => h.includes('api.kie.ai')), 'non deve passare da kie').toBe(false);
+    expect(hits.some((h) => h.includes('openrouter.ai'))).toBe(true);
+  });
+
+  /**
+   * IL CANCELLO PIÙ AFFILATO: `prepareVideoRender` rifiutava OGNI render senza `KIE_API_KEY`,
+   * compresi quelli che sarebbero andati su OpenRouter. Con kie spento, il video non parte più —
+   * e la chiave di un fornitore che non serve questo render non può deciderne la sorte.
+   */
+  it('senza la chiave di kie un render OpenRouter parte lo stesso', async () => {
+    M.env.AI_ROUTE_VIDEO = 'seedance@openrouter';
+    M.env.KIE_API_KEY = '';
+    stubFetch();
+    const { submitVideoRender } = await import('./video');
+
+    const out = await submitVideoRender('p', { model: 'bytedance/seedance-2-5' });
+
+    expect(out, 'il render non deve essere rifiutato').toBeTruthy();
+    expect(hits.some((h) => h.includes('openrouter.ai'))).toBe(true);
+  });
+
+  /**
+   * IL REFINE PASSA DA OPENROUTER quando il modello ci vive.
+   *
+   * `transformVideo` non chiedeva mai `videoEndpoint`: andava su kie e basta, perché l'unico
+   * modello con ruolo `refine` era Aleph, che su OpenRouter non esiste. Ora Seedance 2.5 dichiara
+   * quel ruolo — provato contro il gateway: legge un `video_url` in `input_references` — quindi la
+   * scelta del trasporto torna a essere una domanda invece di una costante.
+   */
+  it('un refine su un modello OpenRouter non passa da kie', async () => {
+    M.env.AI_ROUTE_VIDEO = 'seedance@openrouter';
+    stubFetch({
+      poll: {
+        status: 'completed',
+        unsigned_urls: ['https://openrouter.ai/api/v1/videos/or-job-1/content?index=0'],
+        usage: { cost: 0.3 }
+      }
+    });
+    const { transformVideo } = await import('./video');
+
+    await transformVideo({
+      supabase,
+      userId: 'user-1',
+      role: 'refine',
+      videoUrl: 'https://cdn.test/clip.mp4',
+      prompt: 'luce più calda',
+      model: 'bytedance/seedance-2-5'
+    });
+
+    expect(hits.some((h) => h.includes('api.kie.ai')), 'non deve passare da kie').toBe(false);
+    expect(hits.some((h) => h.includes('openrouter.ai'))).toBe(true);
+  });
+
+  /**
+   * L'UPSCALE ESISTE ANCHE SU OPENROUTER, e prende un VIDEO invece di un task_id.
+   *
+   * `black-forest-labs/flux-video-upscale`, `upscale_factor` 1.5–3×. Provato contro il gateway: una
+   * richiesta senza video torna «requires video input: include an input_references entry of type
+   * video_url» — quindi il video non è opzionale, ed è la forma dell'ingresso.
+   *
+   * È la differenza che conta: kie riparte dal LAVORO originale (`task_id`), OpenRouter dal FILE.
+   * Chi chiama ha già il secondo — `post.media_url` — quindi non serve conservare nulla.
+   */
+  it('una clip di OpenRouter si ingrandisce su OpenRouter, dal suo file', async () => {
+    M.env.AI_ROUTE_VIDEO = 'seedance@openrouter';
+    stubFetch({
+      poll: {
+        status: 'completed',
+        unsigned_urls: ['https://openrouter.ai/api/v1/videos/or-job-1/content?index=0'],
+        usage: { cost: 0.2 }
+      }
+    });
+    const { upscaleVideo } = await import('./video');
+
+    const out = await upscaleVideo(supabase, 'user-1', 'openrouter:or-job-1', '720p', {
+      videoUrl: 'https://cdn.test/clip.mp4'
+    });
+
+    expect(out, 'non deve più rifiutare un id OpenRouter').toBeTruthy();
+    expect(hits.some((h) => h.includes('api.kie.ai')), 'non passa da kie').toBe(false);
+  });
+
+  it('senza il file, una clip di OpenRouter non si ingrandisce: non c è da dove ripartire', async () => {
+    M.env.AI_ROUTE_VIDEO = 'seedance@openrouter';
+    stubFetch();
+    const { upscaleVideo } = await import('./video');
+
+    expect(await upscaleVideo(supabase, 'user-1', 'openrouter:or-job-1', '720p')).toBeUndefined();
+    expect(hits, 'nemmeno un giro di rete').toEqual([]);
   });
 
   it('l’upscale di kie non accetta un id di OpenRouter', async () => {

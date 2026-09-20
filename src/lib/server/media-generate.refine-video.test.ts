@@ -50,7 +50,7 @@ vi.mock('$lib/server/ai-log', () => ({
 }));
 
 import { refineBrandMedia } from './media-generate';
-import { ALEPH_REFINE_MODEL } from '$lib/video-models';
+import { ALEPH_REFINE_MODEL, GROK_IMAGINE_VIDEO_MODEL } from '$lib/video-models';
 
 /**
  * Lo stub risponde per COLONNA richiesta, non per tabella: `brand_media` viene letta tre volte con
@@ -135,13 +135,16 @@ describe('rifinire una clip della libreria', () => {
     expect(renderPostImage).not.toHaveBeenCalled();
   });
 
+  // L'esempio era Seedance, che nel frattempo ha imparato a rifinire: legge un video da
+  // `input_references`. Serve un modello che quel mestiere non lo faccia davvero, o il test
+  // verificherebbe un rifiuto che non deve più esserci.
   it('un modello che non sa riscrivere una clip e` rifiutato con l elenco di quelli ammessi', async () => {
     const out = await refineBrandMedia(supabaseWith({}, [{ id: VIDEO_ID, kind: 'video' }]), {
       brandId: 'brand-1',
       userId: 'user-1',
       baseMediaId: VIDEO_ID,
       instruction: 'fallo notturno',
-      model: 'bytedance/seedance-2-5'
+      model: GROK_IMAGINE_VIDEO_MODEL
     });
 
     expect(out.ok).toBe(false);
