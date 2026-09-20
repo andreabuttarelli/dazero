@@ -7,14 +7,13 @@ import { openBrandMcp } from '$lib/server/brand-agent/mcp-client';
 import { openBrandThread } from '$lib/server/brand-agent/thread';
 import { brandAgentSystemPrompt } from '$lib/server/brand-agent/system-prompt';
 import { loadTurns, saveTurn } from '$lib/server/brand-agent/turns';
+import { AGENT_MAX_DURATION_S, agentStopWhen } from '$lib/server/brand-agent/limits';
 import type { RequestHandler } from './$types';
 
 // Un turno che usa i tool del brand legge, scrive e rilegge: sta nei minuti, non nei secondi.
 // Gli scaglioni di maxDuration su Vercel sono tre (300, 800, 1800) e ognuno in più emette una
 // funzione serverless intera: si resta su 300, che è quello che le altre rotte di chat già usano.
-export const config = { maxDuration: 300 };
-
-const MAX_STEPS = 12;
+export const config = { maxDuration: AGENT_MAX_DURATION_S };
 
 export const POST: RequestHandler = async ({ request, params, locals }) => {
 	const { session, user } = await locals.safeGetSession();
@@ -53,7 +52,7 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
 		allowSystemInMessages: true,
 		messages: [...history, { role: 'user', content: text }] as ModelMessage[],
 		tools: mcp.tools,
-		stopWhen: [({ steps }) => steps.length >= MAX_STEPS],
+		stopWhen: [agentStopWhen(t0)],
 		onFinish: async ({ text: answer, totalUsage }) => {
 			// La chiusura e il salvataggio stanno QUI perché `streamText` torna subito: chiuderli
 			// dopo il return taglierebbe i tool a metà turno.
