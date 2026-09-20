@@ -5,6 +5,10 @@
   import { cn } from '$lib/utils.js';
   import BrandMark from '$lib/components/BrandMark.svelte';
   import ConnectAgentDialog from '$lib/components/ConnectAgentDialog.svelte';
+  import SegmentedControl from '$lib/components/brand-agent/SegmentedControl.svelte';
+  import ChatPanel from '$lib/components/brand-agent/ChatPanel.svelte';
+  import AssetsPanel from '$lib/components/brand-agent/AssetsPanel.svelte';
+  import { readSidebarPane, writeSidebarPane, type SidebarPane } from '$lib/shell-prefs';
   // Il menu utente è PORTALATO da bits-ui e si smonta alla selezione: per le voci che portano
   // ai settings si chiama l'API del modal invece di affidarsi al click dell'<a>.
   import { locale, _ } from 'svelte-i18n';
@@ -190,6 +194,18 @@
    */
   let installOpen = $state(false);
   const showUpgrade = $derived(!!brandSlug && !isPaidPlan(brandPlan));
+
+  // Quale pannello era aperto sopravvive alla navigazione: la barra sta nel layout, quindi
+  // cambiare pagina non deve riportare l'utente su un pannello che non aveva scelto.
+  let pane = $state<SidebarPane>('pages');
+
+  $effect(() => {
+    pane = readSidebarPane();
+  });
+
+  $effect(() => {
+    writeSidebarPane(pane);
+  });
   /** Path of in-flight navigation — highlights the destination row immediately. */
   const pendingPath = $derived(navigating.to?.url.pathname ?? null);
   /** Esatto per la home del brand (`/app/{slug}`); a prefisso per le rotte annidate. */
@@ -403,20 +419,53 @@
          delle pagine (`--shell-top-h`) e lo stesso filo, cosi' i due bordi sono una riga sola che
          attraversa la finestra invece di due tratti sfalsati. -->
     <Sidebar.Header class="shell-top-header shell-top-divider justify-center p-0">
-      <a
-        href="/app"
-        class="flex w-full items-center px-5 no-underline group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-        style="color: inherit"
-        aria-label={$_('landing.nav.brandAria')}
-        title={$_('landing.nav.brandAria')}
-      >
-        <BrandMark size={mobile ? 32 : 30} />
-      </a>
+      <div class="flex w-full items-center gap-2 px-5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+        <a
+          href="/app"
+          class="flex shrink-0 items-center no-underline"
+          style="color: inherit"
+          aria-label={$_('landing.nav.brandAria')}
+          title={$_('landing.nav.brandAria')}
+        >
+          <BrandMark size={mobile ? 32 : 30} />
+        </a>
+
+        <!-- A destra nell'header, non sopra la lista: il controllo sta sulla riga che già esiste
+             invece di rubare una fascia di altezza al contenuto. Sul rail collassato sparisce —
+             tre segmenti in 3.25rem non ci stanno. -->
+        {#if brandSlug}
+          <div class="ml-auto min-w-0 group-data-[collapsible=icon]:hidden">
+            <SegmentedControl
+              bind:value={pane}
+              ariaLabel={$_('landing.nav.brandAria')}
+              segments={[
+                { value: 'chat', label: 'Chat' },
+                { value: 'pages', label: 'Pagine' },
+                { value: 'assets', label: 'Media' }
+              ]}
+            />
+          </div>
+        {/if}
+      </div>
     </Sidebar.Header>
   {/if}
 
   <Sidebar.Content class="flex-1 gap-0 overflow-y-auto px-2.5 py-3 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2.5 group-data-[collapsible=icon]:overflow-visible">
-    {@render navGroupsSection()}
+    <!-- I tre pannelli restano MONTATI e si nascondono con CSS: il pannello della chat tiene uno
+         stream aperto e la cronologia caricata, e smontarlo a ogni cambio di segmento
+         chiuderebbe la connessione a metà risposta. -->
+    <div class="flex min-h-0 flex-1 flex-col" class:hidden={brandSlug && pane !== 'pages'}>
+      {@render navGroupsSection()}
+    </div>
+
+    {#if brandSlug}
+      <div class="flex min-h-0 flex-1 flex-col group-data-[collapsible=icon]:hidden" class:hidden={pane !== 'chat'}>
+        <ChatPanel {brandSlug} />
+      </div>
+      <div class="flex min-h-0 flex-1 flex-col group-data-[collapsible=icon]:hidden" class:hidden={pane !== 'assets'}>
+        <AssetsPanel {brandSlug} />
+      </div>
+    {/if}
   </Sidebar.Content>
 
   <Sidebar.Footer class="gap-2 border-t border-sidebar-border px-2.5 py-3 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2.5">

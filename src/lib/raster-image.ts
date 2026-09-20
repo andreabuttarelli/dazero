@@ -10,11 +10,15 @@ export const IMAGE_PART_MAX_BYTES = 6_000_000;
 /** Longest edge a source is shrunk to before a model sees it. */
 export const IMAGE_PART_MAX_EDGE = 2048;
 
+export const SVG_MIME = 'image/svg+xml';
+
 /** File pickers that take photos (includes HEIC so desktop dialogs show iPhone files). */
 export const RASTER_IMAGE_ACCEPT = 'image/*,image/heic,image/heif,.heic,.heif';
 
-/** File pickers that take photos or video. */
-export const RASTER_OR_VIDEO_ACCEPT = 'image/*,video/*,image/heic,image/heif,.heic,.heif';
+/** File pickers that take photos or video. SVG is listed by name: `image/*` covers it on paper,
+ *  but some desktop dialogs filter on the extension and would hide a .svg. */
+export const RASTER_OR_VIDEO_ACCEPT =
+	`image/*,video/*,image/heic,image/heif,.heic,.heif,${SVG_MIME},.svg`;
 
 export type RasterKind = 'jpeg' | 'png' | 'gif' | 'webp' | 'heic' | 'avif' | 'unknown';
 
@@ -90,6 +94,27 @@ export function isRasterOrVideoFile(file: { type?: string; name?: string }): boo
 	const mime = (file.type ?? '').toLowerCase();
 	if (mime.startsWith('video/')) return true;
 	return isRasterImageSource({ mime: file.type, filename: file.name });
+}
+
+/**
+ * Un SVG non è un raster: nessuna conversione JPEG lo tocca, `sniffRasterKind` lo lascia
+ * `unknown`, e va bene così. Ma un logo è quasi sempre un SVG, e il cancello dell'upload lo
+ * scartava in silenzio — nessun errore, nessun file, e in pagina un segnaposto che sembrava un
+ * guasto del rendering.
+ */
+export function isVectorImageSource(opts: { mime?: string; filename?: string }): boolean {
+	const mime = (opts.mime ?? '').toLowerCase().split(';')[0].trim();
+	if (mime === SVG_MIME) return true;
+
+	const name = (opts.filename ?? '').split('?')[0].split('#')[0].toLowerCase();
+	return name.endsWith('.svg');
+}
+
+/** Il cancello dell'upload della libreria: raster, video o vettoriale. */
+export function isUploadableMediaFile(file: { type?: string; name?: string }): boolean {
+	return (
+		isRasterOrVideoFile(file) || isVectorImageSource({ mime: file.type, filename: file.name })
+	);
 }
 
 export function jpegFilename(name: string): string {
