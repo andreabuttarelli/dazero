@@ -14,7 +14,7 @@ import {
 } from '$lib/video-models';
 
 describe('video model reference capabilities', () => {
-  it('Seedance family accepts reference videos on Kie', () => {
+  it('Seedance family accepts reference videos', () => {
     expect(modelSupportsReferenceVideo(SEEDANCE_25_MODEL)).toBe(true);
     expect(modelSupportsReferenceVideo('bytedance/seedance-2')).toBe(true);
     expect(modelSupportsReferenceVideo('bytedance/seedance-2-fast')).toBe(true);
@@ -94,13 +94,13 @@ describe('nessun modello video resta senza trasporto', () => {
 /**
  * IL REFINE NON È PIÙ SOLO DI ALEPH.
  *
- * Aleph era l'unico modello con `roles: ['refine']`, e vive solo su kie: togliere kie avrebbe
- * tolto «rifinisci questa clip». Provato contro il gateway vero — Seedance 2.5 legge un
+ * Aleph era l'unico modello con `roles: ['refine']`, e viveva su un fornitore che non c'è più:
+ * toglierlo avrebbe tolto «rifinisci questa clip». Provato contro il gateway vero — Seedance 2.5 legge un
  * `input_references` di tipo `video_url`: un url irraggiungibile torna
  * «content[1].video_url.url ... resource download failed», cioè il provider lo SCARICA, e con un
  * video raggiungibile il job parte. Il refine ha una seconda casa, su OpenRouter.
  */
-describe('il refine ha un modello che non vive su kie', () => {
+describe('il refine ha un modello raggiungibile', () => {
   it('Seedance 2.5 dichiara il ruolo refine', () => {
     expect(videoModelSpec(SEEDANCE_25_MODEL)?.roles).toContain('refine');
   });
@@ -112,6 +112,6 @@ describe('il refine ha un modello che non vive su kie', () => {
   it('almeno un modello refine è servibile da OpenRouter', () => {
     const refiners = videoModelsForRole('refine').map((m) => videoModelSpec(m.id));
 
-    expect(refiners.some((s) => s?.openrouterId), 'nessun refine fuori da kie').toBe(true);
+    expect(refiners.some((s) => s?.openrouterId), 'nessun refine raggiungibile').toBe(true);
   });
 });

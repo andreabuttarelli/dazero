@@ -32,19 +32,8 @@ export const XIAOMI_MAX_OUTPUT_TOKENS = 131_072;
  */
 export const DEEPSEEK_MAX_OUTPUT_TOKENS = 384_000;
 
-/** Claude Haiku 4.5 via the kie Messages API (citation audits) — 64k output. (checked 2026-08-20) */
+/** Claude Haiku 4.5 (citation audits) — 64k output. (checked 2026-08-20) */
 export const CLAUDE_MAX_OUTPUT_TOKENS = 64_000;
-
-/**
- * Grok 4.6 sulla Responses API di kie. xAI non pubblica un tetto di output separato: il limite e`
- * il contesto condiviso da 500k, e 32–64k e` il massimo realistico per una chiamata sola una volta
- * che il modello si e` riservato lo spazio per ragionare. 64k e` quindi un bound scelto, non
- * documentato. (verificato 2026-08-20)
- */
-export const KIE_GROK_MAX_OUTPUT_TOKENS = 65_536;
-
-/** GPT 5.6 Terra / Sol / Luna su kie Codex — 128k di output, 1,05M di contesto. (2026-08-20) */
-export const KIE_GPT_MAX_OUTPUT_TOKENS = 128_000;
 
 /**
  * I provider dell'harness (openrouter, opencode, llm) sono uno sportello davanti a decine di
@@ -55,16 +44,14 @@ export const KIE_GPT_MAX_OUTPUT_TOKENS = 128_000;
  *
  * 64k e` un bound SCELTO, non pubblicato: xAI non dichiara un tetto di output separato, e il
  * limite vero e` il contesto condiviso una volta che il modello si e` riservato lo spazio per
- * ragionare. Il numero stava su una costante di kie e ne e` uscito intatto quando kie e` uscito:
- * il trasporto se n'e` andato, il tetto dei modelli no.
+ * ragionare.
  */
 export const HARNESS_MAX_OUTPUT_TOKENS = 65_536;
 
-export type AiProviderId = 'gemini' | 'kie' | 'xiaomi' | 'deepseek' | 'claude' | 'openrouter' | 'opencode' | 'llm';
+export type AiProviderId = 'gemini' | 'xiaomi' | 'deepseek' | 'claude' | 'openrouter' | 'opencode' | 'llm';
 
 const BY_PROVIDER: Record<AiProviderId, number> = {
   gemini: GEMINI_MAX_OUTPUT_TOKENS,
-  kie: KIE_GROK_MAX_OUTPUT_TOKENS,
   xiaomi: XIAOMI_MAX_OUTPUT_TOKENS,
   deepseek: DEEPSEEK_MAX_OUTPUT_TOKENS,
   claude: CLAUDE_MAX_OUTPUT_TOKENS,
@@ -73,15 +60,7 @@ const BY_PROVIDER: Record<AiProviderId, number> = {
   llm: HARNESS_MAX_OUTPUT_TOKENS
 };
 
-/**
- * The ceiling for a resolved model. `kie` is one provider in front of three different families
- * (Grok, GPT 5.6, Claude) whose limits differ by 2×, so pass `modelId` wherever it is known —
- * without it a kie call gets the Grok bound, which is the safe one.
- */
-export function maxOutputTokensFor(provider: AiProviderId, modelId?: string): number {
-  if (provider === 'kie' && modelId) {
-    if (/gpt-5/i.test(modelId)) return KIE_GPT_MAX_OUTPUT_TOKENS;
-    if (/claude/i.test(modelId)) return CLAUDE_MAX_OUTPUT_TOKENS;
-  }
+/** Il tetto di output di un provider. */
+export function maxOutputTokensFor(provider: AiProviderId): number {
   return BY_PROVIDER[provider];
 }

@@ -19,7 +19,7 @@ import {
 /**
  * NESSUN DIALETTO DI UN FORNITORE CHE NON C'È PIÙ.
  *
- * Lo spec portava sei campi che descrivevano come si scriveva il payload di kie — i nomi dei campi
+ * Lo spec portava sei campi che descrivevano il payload di un fornitore che non c'è più — i nomi
  * dei riferimenti, del rapporto, della dimensione. Nessun trasporto vivo li legge: l'unico campo
  * che i due trasporti OpenRouter consultano davvero è `maxRefs`. Un campo che nessuno legge non è
  * documentazione: è una riga che il prossimo lettore crede governi qualcosa.
@@ -121,7 +121,7 @@ describe('the refine model', () => {
  * I modelli che vivono SOLO sull'API immagini di OpenRouter.
  *
  * Misurato il 2026-09-12 su `GET /api/v1/images/models` e con render veri: `openai/gpt-image-2.5-*`
- * non esiste su kie né su Google, e il suo endpoint non è `chat/completions` — è `POST /images`,
+ * non esiste sulla via Gemini, e il suo endpoint non è `chat/completions` — è `POST /images`,
  * con `input_references` per le modifiche e `aspect_ratio` da un elenco chiuso che NON contiene
  * 4:5, cioè il formato di un post Instagram. Quel buco si copre con `size`, che l'endpoint onora
  * al pixel (1024x1280 chiesto, 1024x1280 tornato) pur non essendo documentato.
@@ -181,7 +181,7 @@ describe('openrouterImagesSize', () => {
  * OGNI MODELLO IMMAGINE HA UNA STRADA SU OPENROUTER.
  *
  * Erano sei righe con `openrouterImages: null`, e tre di quelle — seedream-5-pro, gpt-image-2,
- * qwen3-pro — non avevano nemmeno un id Google: togliendo kie sarebbero degradate in silenzio su
+ * qwen3-pro — non avevano nemmeno un id Google: sarebbero degradate in silenzio su
  * Nano Banana, con un `console.warn` e un'immagine che il brand non aveva chiesto.
  *
  * Ci sono tutte: su `/api/v1/images/models` (52 modelli), un catalogo separato da `/models`.
@@ -194,7 +194,7 @@ describe('nessun modello immagine resta senza trasporto', () => {
       .filter((s) => s && !s.openrouterImages)
       .map((s) => s!.id);
 
-    expect(orphans, 'senza questi id il modello non è raggiungibile fuori da kie').toEqual([]);
+    expect(orphans, 'senza questi id il modello non è raggiungibile').toEqual([]);
   });
 
   it('i tre che non hanno una casa su Gemini hanno il loro id', () => {

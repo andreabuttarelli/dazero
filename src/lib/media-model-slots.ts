@@ -7,7 +7,7 @@
  * al primo cambio, in silenzio. Qui e' una riga per mestiere e una validazione sola.
  *
  * `pref` e' la chiave su `content_prefs`. `role` esiste solo per i video: dice quali modelli il
- * selettore puo' offrire, ed e' la stessa cosa che il renderer legge per scegliere l'id kie — cosi'
+ * selettore puo' offrire, ed e' la stessa cosa che il renderer legge per scegliere il modello — cosi'
  * il selettore non puo' offrire un modello che il renderer poi rifiuta.
  */
 import { IMAGE_MODEL_CHOICES, isKnownImageModelId } from '$lib/image-models';

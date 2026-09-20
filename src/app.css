@@ -106,13 +106,13 @@
   /* Con Fraunces 300 e' troppo esile: a 24px le aste si assottigliano e il caratterino anni 70
      si spegne proprio dove dovrebbe vedersi. Era 300 per Inter — togliendo l'esperimento questa
      riga torna a 300 insieme a quella sopra. */
-  --heading-weight: 400;   /* single knob for all h1/h2 serif weight */
+  --heading-weight: 500;   /* single knob for all h1/h2 serif weight */
   /* Stretto: un bastone a corpo grande ha bisogno di meno aria fra le lettere di un grazie, o
      il titolo si sfilaccia invece di leggersi come un blocco. */
-  --heading-tracking: -0.07em;  /* single knob for all h1/h2 heading tracking */
+  --heading-tracking: -0.08em;  /* single knob for all h1/h2 heading tracking */
   /* Unified page / subpage title — compact in the global sticky top bar */
   --page-title-size: 0.95rem;
-  --page-title-weight: 600;
+  --page-title-weight: 700;
   --page-title-tracking: var(--heading-tracking);
   --page-title-line: 1.25;
   --page-sub-size: 0.8rem;

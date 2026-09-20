@@ -143,7 +143,7 @@ beforeEach(() => {
     continuityTokens: ['ocra', 'luce radente']
   });
   submitAndTrackVideoRender.mockResolvedValue({
-    taskId: 'kie-1',
+    taskId: 'job-1',
     model: 'bytedance/seedance-2-5',
     durationSeconds: 8
   });

@@ -30,7 +30,7 @@ export type ChatModelResolved = {
  * viene prima, così un call site che sceglie il suo valore vince.
  */
 function withOutputCeiling(m: ChatModelResolved): ChatModelResolved {
-  return { ...m, callOptions: { maxOutputTokens: maxOutputTokensFor(m.provider, m.modelId), ...m.callOptions } };
+  return { ...m, callOptions: { maxOutputTokens: maxOutputTokensFor(m.provider), ...m.callOptions } };
 }
 
 /**

@@ -15,14 +15,14 @@ import { firstLogoUrl } from '$lib/brand-fields';
 import { isUrlSafe } from '$lib/server/brand-analysis';
 
 /**
- * Compose the graphic — pick the blocks and write the words — on Grok 4.5 via kie.
+ * Compose the graphic — pick the blocks and write the words.
  *
  * Deliberately NOT the chat turn's own model: the brand chat runs on a fast tier (DeepSeek / Gemini
  * flash) chosen for conversational latency, and composition is the one step where the model quality
  * shows up directly in the artwork. So the chat tool passes a brief and this makes a second call.
  * Rendering stays deterministic either way — the model only chooses blocks and copy, never pixels.
  *
- * The schema below is hand-written rather than derived from GraphicSchema because kie's structured
+ * The schema below is hand-written rather than derived from GraphicSchema because structured
  * output runs OpenAI-style `strict` json_schema: every property must be listed in `required`, and a
  * zod union would emit `anyOf` branches that strictObjectSchema doesn't recurse into. So blocks are
  * FLAT here — one object with a `type` and every field nullable — and the zod union in blocks.ts

@@ -79,10 +79,10 @@ describe('check_media_job', () => {
 
   it('non tocca l errore di un lavoro fallito davvero', async () => {
     const jobs = await listMediaJobs(
-      db([settledJob({ status: 'failed', error: 'kie refused the job' })], []),
+      db([settledJob({ status: 'failed', error: 'the provider refused the job' })], []),
       BRAND
     );
 
-    expect(jobs[0]).toMatchObject({ status: 'failed', error: 'kie refused the job' });
+    expect(jobs[0]).toMatchObject({ status: 'failed', error: 'the provider refused the job' });
   });
 });

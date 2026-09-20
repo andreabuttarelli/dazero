@@ -38,7 +38,7 @@ export type ApprovablePost = {
   link_url?: string | null;
   subreddit?: string | null;
   content_type?: string | null;
-  // Video clips only: kie's original job id + the resolution the stored mp4 is at. Together they
+  // Video clips only: the original job id + the resolution the stored mp4 is at. Together they
   // let the publish path upscale an approved clip in place (see upscaleApprovedClip). Optional so
   // legacy selects that don't ask for the columns keep compiling — an absent id just skips it.
   video_task_id?: string | null;
@@ -118,8 +118,8 @@ async function isRevokedExternalId(supabase: SupabaseClient, externalId: string)
 // Upscale an approved clip to full resolution, in place, once.
 //
 // Drafts render cheap (see RESOLUTION in video.ts) because most are never published. Approval is
-// the point where the extra spend is justified — and kie can raise the resolution of the EXISTING
-// job from its task id, so this costs an upscale, not a whole regeneration.
+// the point where the extra spend is justified, and the upscale restarts from the stored file, so
+// this costs an upscale rather than a whole regeneration.
 //
 // Every guard here exists to avoid spending twice or spending wrongly:
 //  • not a generated clip / no task id  → nothing to upscale (images, uploads, legacy rows)
@@ -150,7 +150,7 @@ async function upscaleApprovedClip(supabase: SupabaseClient, post: ApprovablePos
   const { data: b } = await supabase.from('brands').select('content_prefs').eq('id', post.brand_id).maybeSingle();
   const { UPSCALE_RESOLUTION, clampVideoResolution, upscaleVideo } = await import('./video');
   const target = clampVideoResolution((b?.content_prefs as { videoResolution?: string } | null)?.videoResolution);
-  // kie only upscales UP (720p | 1080p) — a 480p brand has nothing to buy here, ever.
+  // Upscaling only goes UP (720p | 1080p) — a 480p brand has nothing to buy here, ever.
   if (target !== UPSCALE_RESOLUTION || (resolution ?? '') === target) return;
 
   // The clip lives under the OWNER's storage prefix; reuse the path already in media_url rather
@@ -158,7 +158,8 @@ async function upscaleApprovedClip(supabase: SupabaseClient, post: ApprovablePos
   const ownerId = ownerIdFromMediaUrl(post.media_url);
   if (!ownerId) return;
 
-  const up = await upscaleVideo(supabase, ownerId, taskId, target);
+  // Il file, non il lavoro di prima: l'upscale riparte dal video e senza non fa niente.
+  const up = await upscaleVideo(supabase, ownerId, taskId, target, { videoUrl: post.media_url });
   if (!up) return; // keep the draft-resolution clip — a publish must never fail over pixels
 
   post.media_url = up.url;

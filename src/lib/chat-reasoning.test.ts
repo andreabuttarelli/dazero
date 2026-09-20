@@ -9,7 +9,6 @@ import {
   grokReasoningEffort,
   gptReasoningEffort,
   isValidForTier,
-  kieGptReasoningEffort,
   penultimateLevel,
   reasoningLevelsFor
 } from './chat-reasoning';
@@ -156,21 +155,13 @@ describe('grokReasoningEffort', () => {
 });
 
 describe('gptReasoningEffort', () => {
-  it('keeps none as-is, and writes the common max as xhigh on the kie wire', () => {
+  it('keeps none as-is, and writes the common max as xhigh on the wire', () => {
     expect(gptReasoningEffort('none')).toBe('none');
     expect(gptReasoningEffort('max')).toBe('xhigh');
     expect(gptReasoningEffort('xhigh')).toBe('xhigh');
   });
 });
 
-describe('kieGptReasoningEffort', () => {
-  it('maps none/max onto the kie Codex enum', () => {
-    expect(kieGptReasoningEffort('none')).toBe('low');
-    expect(kieGptReasoningEffort('max')).toBe('xhigh');
-    expect(kieGptReasoningEffort('high')).toBe('high');
-    expect(kieGptReasoningEffort('xhigh')).toBe('xhigh');
-  });
-});
 
 /** Il posto che era di Auto adesso e` "nessuna scelta": stessa scala, stesso default. */
 describe('nessuna scelta', () => {

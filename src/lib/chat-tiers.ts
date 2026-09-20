@@ -43,13 +43,13 @@ export const CHAT_TIERS: ChatTier[] = [...CHAT_CUSTOM_MODELS];
  *
  * Diceva 6× per Pro e 3× per DeepSeek Pro. Erano numeri di un mondo che non esiste più: il 3×
  * era calcolato contro DeepSeek V4 *Flash* ($0.14/$0.28), che non è il modello Fast da un pezzo.
- * Oggi Fast è GPT 5.6 Luna a $0.056/$0.336 per 1M token (misurato sui crediti kie, non dedotto),
+ * Oggi Fast è GPT 5.6 Luna a $0.056/$0.336 per 1M token (misurato, non dedotto),
  * mentre Grok 4.6 ("Pro") sta a $0.80/$2.40 e DeepSeek V4 Pro a $0.435/$0.87 (RATES in
  * server/ai-log.ts). Ora il rapporto è ribaltato di nuovo: i modelli "cari" costano davvero di
  * più del default, ma di 7×–25× a seconda del mix, non del 6× fisso che diceva l'etichetta.
  * Un numero che cambia ogni volta che cambia un modello non è un'etichetta, è una promessa.
  *
- * Non l'ho ricalcolato in "0.4×" perché non sarebbe comunque vero a lungo: Grok e i GPT via kie
+ * Non l'ho ricalcolato in "0.4×" perché non sarebbe comunque vero a lungo: Grok e i GPT
  * spesso vengono fatturati con flatCostUsd (credits_consumed della risposta), non con le RATES,
  * quindi il rapporto non è nemmeno conoscibile da qui. Un numero che non si può affermare
  * onestamente si toglie. Gli hint ora parlano solo di qualità e latenza.

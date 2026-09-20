@@ -76,7 +76,7 @@ export function grokReasoningEffort(level: ChatReasoning): 'low' | 'medium' | 'h
   return nativeThinking(level, modelFamily('grok')) as 'low' | 'medium' | 'high' | 'xhigh';
 }
 
-/** Terra/Sol: effort nativo sul filo kie. */
+/** Terra/Sol: effort nativo. */
 export function gptReasoningEffort(
   level: ChatReasoning
 ): 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' {
@@ -89,16 +89,6 @@ export function gptReasoningEffort(
     | 'max';
 }
 
-/**
- * kie Codex OpenAPI: low|medium|high|xhigh. none/max già mappati dal catalogo Terra.
- * Luna usa solo low|medium|high — per Luna si chiama nativeThinking sulla famiglia luna.
- */
-export function kieGptReasoningEffort(level: ChatReasoning): 'low' | 'medium' | 'high' | 'xhigh' {
-  const v = gptReasoningEffort(level);
-  if (v === 'none') return 'low';
-  if (v === 'max') return 'xhigh';
-  return v;
-}
 
 /** Effort nativo per Luna (low|medium|high). */
 export function lunaReasoningEffort(level: ChatReasoning): 'low' | 'medium' | 'high' {
