@@ -8,6 +8,7 @@ import { remaining, addUsage, monthKey } from '$lib/server/usage';
 import { loadActivePlan, currentWeekIndex } from '$lib/server/editorial-plan';
 import { env } from '$env/dynamic/private';
 import { fileToInlineImagePart } from '$lib/server/raster-image';
+import { videoTransportReady } from '$lib/server/model-routing';
 
 // "Crea contenuto": un post su brief dell'utente, generato a richiesta. Le immagini di
 // riferimento caricate ancorano il SOGGETTO del render, stesso contratto delle foto prodotto nella
@@ -111,7 +112,7 @@ export const POST: RequestHandler = async ({ params, request, locals: { supabase
       const { createAdminClient } = await import('$lib/server/supabase-admin');
       const admin = createAdminClient();
       const inFlight = await countOutstandingVideoRenders(admin, brand.id);
-      if (env.KIE_API_KEY && budget.videos - inFlight > 0) {
+      if (videoTransportReady() && budget.videos - inFlight > 0) {
         // Inviato, non atteso: il muro qui è 300s e un poll kie arriva a 600s, quindi aspettarlo
         // significherebbe morire sempre a metà. È il reconciler a rendere possibile il video qui.
         submittedRender = await submitAndTrackVideoRender({

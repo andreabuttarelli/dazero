@@ -1,14 +1,12 @@
-import { ALEPH_REFINE_MODEL, KLING_3_VIDEO_MODEL, GROK_IMAGINE_VIDEO_MODEL } from '$lib/video-models';
+import { GROK_IMAGINE_VIDEO_MODEL } from '$lib/video-models';
 import { describe, it, expect } from 'vitest';
 import {
   buildVideoPrompt,
   fitScriptToDuration,
-  buildJobInput,
   clampVideoDuration,
   clampVideoResolution,
   clampVideoAspectRatio,
   videoModelCaps,
-  buildTransformInput,
   videoDurationOptions,
   ugcDurationCap,
   suggestVideoDuration,
@@ -16,6 +14,7 @@ import {
   resolveVideoModel,
   pairedTextToVideoModel,
   isKnownVideoModel,
+  transformVideo,
   spokenWordCount,
   MIN_DURATION,
   DEFAULT_VIDEO_DURATION
@@ -387,8 +386,8 @@ describe('suggestVideoDuration / resolveVideoDuration', () => {
 
 describe('resolveVideoModel reads the job, not one setting', () => {
   it('animates a cover with the animate model and writes from text with the clip model', () => {
-    const prefs = { videoModel: 'bytedance/seedance-2', videoImageModel: 'kling/v3-turbo-image-to-video' };
-    expect(resolveVideoModel({ prefs, hasCover: true })).toBe('kling/v3-turbo-image-to-video');
+    const prefs = { videoModel: 'bytedance/seedance-2', videoImageModel: 'grok-imagine/image-to-video' };
+    expect(resolveVideoModel({ prefs, hasCover: true })).toBe('grok-imagine/image-to-video');
     expect(resolveVideoModel({ prefs, hasCover: false })).toBe('bytedance/seedance-2');
   });
 
@@ -469,235 +468,24 @@ describe('fitScriptToDuration', () => {
   });
 });
 
-describe('buildJobInput (per-model adapter)', () => {
-  const base = { prompt: 'p', durationSeconds: 6, resolution: '480p', aspectRatio: '9:16' };
+/**
+ * IL MESTIERE SI DICHIARA, e il registro è l'unico a saperlo.
+ *
+ * Un modello salvato che non sa rifinire non deve raggiungere il fornitore: sarebbe un giro di
+ * rete pagato che non torna nulla, e il rifiuto deve nominare il mestiere che manca.
+ */
+describe('transformVideo rifiuta un modello che quel mestiere non lo fa', () => {
+  const supabase = {} as never;
 
-  it('grok clamps an over-limit prompt to the model cap — an over-long brief must not reach createTask', () => {
-    const long = `${base.prompt.repeat(1)} ${'scene direction and product detail '.repeat(200)}`.trim();
-    expect(long.length).toBeGreaterThan(videoModelCaps('grok-imagine-video-1-5-preview').maxPromptChars);
-    const out = buildJobInput('grok-imagine-video-1-5-preview', { ...base, prompt: long });
-    expect((out.prompt as string).length).toBeLessThanOrEqual(
-      videoModelCaps('grok-imagine-video-1-5-preview').maxPromptChars
-    );
-  });
-
-  it('grok i2v: image_urls array + STRING duration, no aspect_ratio (cover fixes it)', () => {
-    const out = buildJobInput('grok-imagine/image-to-video', { ...base, imageUrl: 'https://x/c.jpg' });
-    expect(out.image_urls).toEqual(['https://x/c.jpg']);
-    expect(out.duration).toBe('6');
-    expect(out.aspect_ratio).toBeUndefined();
-    expect(out.first_frame_url).toBeUndefined();
-  });
-
-  it('grok t2v: no cover → aspect_ratio is sent instead', () => {
-    const out = buildJobInput('grok-imagine/text-to-video', base);
-    expect(out.aspect_ratio).toBe('9:16');
-    expect(out.image_urls).toBeUndefined();
-  });
-
-  it('seedance 2: first_frame_url + INTEGER duration + explicit aspect_ratio even with a cover', () => {
-    const out = buildJobInput('bytedance/seedance-2', { ...base, imageUrl: 'https://x/c.jpg' });
-    expect(out.first_frame_url).toBe('https://x/c.jpg');
-    expect(out.image_urls).toBeUndefined();
-    expect(out.duration).toBe(6); // number, not '6'
-    expect(out.aspect_ratio).toBe('9:16');
-  });
-
-  it('seedance 2 variants (fast/mini) take the same shape', () => {
-    for (const m of ['bytedance/seedance-2-fast', 'bytedance/seedance-2-mini']) {
-      const out = buildJobInput(m, { ...base, imageUrl: 'https://x/c.jpg' });
-      expect(out.first_frame_url).toBe('https://x/c.jpg');
-      expect(typeof out.duration).toBe('number');
-    }
-  });
-
-  it('seedance 2.5 I2V forces aspect_ratio adaptive (kie 422 otherwise)', () => {
-    const out = buildJobInput('bytedance/seedance-2-5', {
-      ...base,
-      durationSeconds: 30,
-      imageUrl: 'https://x/c.jpg',
-      aspectRatio: '21:9',
-      hasScript: true
-    });
-    expect(out).toEqual({
-      prompt: 'p',
-      duration: 30,
-      resolution: '480p',
-      aspect_ratio: 'adaptive',
-      generate_audio: true,
-      first_frame_url: 'https://x/c.jpg'
-    });
-  });
-
-  it('seedance 2.5 text-to-video: no first_frame_url when there is no cover', () => {
-    const out = buildJobInput('bytedance/seedance-2-5', { ...base, durationSeconds: 20 });
-    expect(out.first_frame_url).toBeUndefined();
-    expect(out.image_urls).toBeUndefined();
-    expect(out.duration).toBe(20);
-    expect(out.aspect_ratio).toBe('9:16');
-    expect(out.generate_audio).toBe(false);
-  });
-
-  it('seedance 2.5: first + last frame when no refs', () => {
-    const out = buildJobInput('bytedance/seedance-2-5', {
-      ...base,
-      imageUrl: 'https://x/first.jpg',
-      lastFrameUrl: 'https://x/last.jpg'
-    });
-    expect(out.first_frame_url).toBe('https://x/first.jpg');
-    expect(out.last_frame_url).toBe('https://x/last.jpg');
-    expect(out.aspect_ratio).toBe('adaptive');
-    expect(out.reference_video_urls).toBeUndefined();
-  });
-
-  it('seedance 2.5: reference video/audio replace first/last frames (mutually exclusive)', () => {
-    const out = buildJobInput('bytedance/seedance-2-5', {
-      ...base,
-      imageUrl: 'https://x/first.jpg',
-      lastFrameUrl: 'https://x/last.jpg',
-      referenceVideoUrls: ['https://x/ref.mp4'],
-      referenceAudioUrls: ['https://x/ref.mp3']
-    });
-    expect(out.first_frame_url).toBeUndefined();
-    expect(out.last_frame_url).toBeUndefined();
-    expect(out.reference_video_urls).toEqual(['https://x/ref.mp4']);
-    expect(out.reference_audio_urls).toEqual(['https://x/ref.mp3']);
-  });
-
-  it('seedance last_frame_url is omitted without a first frame', () => {
-    const out = buildJobInput('bytedance/seedance-2-5', {
-      ...base,
-      lastFrameUrl: 'https://x/last.jpg'
-    });
-    expect(out.first_frame_url).toBeUndefined();
-    expect(out.last_frame_url).toBeUndefined();
-  });
-
-  it('seedance audio is generated ONLY for a talking clip', () => {
-    expect(buildJobInput('bytedance/seedance-2', base).generate_audio).toBe(false);
-    expect(buildJobInput('bytedance/seedance-2', { ...base, hasScript: true }).generate_audio).toBe(true);
-    expect(buildJobInput('bytedance/seedance-2-5', base).generate_audio).toBe(false);
-    expect(buildJobInput('bytedance/seedance-2-5', { ...base, hasScript: true }).generate_audio).toBe(true);
-  });
-
-  it('grok 1.5-preview: image_urls + INTEGER duration — the string the v1 shape sends is rejected', () => {
-    const out = buildJobInput('grok-imagine-video-1-5-preview', { ...base, imageUrl: 'https://x/c.jpg' });
-    expect(out.image_urls).toEqual(['https://x/c.jpg']);
-    expect(out.duration).toBe(6); // number, NOT '6' — the one field that differs from v1
-    expect(out.aspect_ratio).toBeUndefined();
-    expect(out.first_frame_url).toBeUndefined();
-  });
-
-  it('grok 1.5-preview without a cover still sends aspect_ratio', () => {
-    const out = buildJobInput('grok-imagine-video-1-5-preview', base);
-    expect(out.aspect_ratio).toBe('9:16');
-    expect(out.image_urls).toBeUndefined();
-  });
-
-  // kie NON valida i campi sconosciuti: un `reference_video_url` al singolare, o un
-  // `referenceVideoUrls` in camelCase, verrebbe ignorato in silenzio e la clip sbagliata pagata
-  // lo stesso (~$1.80 a clip). Questi tre test bloccano il NOME dei campi, non solo il valore:
-  // un typo futuro fallisce in CI invece che in produzione, a pagamento.
-  it('seedance 2.5 multimodal: exactly the reference_* field names kie accepts', () => {
-    const out = buildJobInput('bytedance/seedance-2-5', {
-      ...base,
-      referenceImageUrls: ['https://x/i.jpg'],
-      referenceVideoUrls: ['https://x/v.mp4'],
-      referenceAudioUrls: ['https://x/a.mp3'],
-      hasScript: true
-    });
-    expect(Object.keys(out).sort()).toEqual([
-      'aspect_ratio',
-      'duration',
-      'generate_audio',
-      'prompt',
-      'reference_audio_urls',
-      'reference_image_urls',
-      'reference_video_urls',
-      'resolution'
-    ]);
-  });
-
-  it('seedance 2.5 frames: exactly first_frame_url / last_frame_url', () => {
-    const out = buildJobInput('bytedance/seedance-2-5', {
-      ...base,
-      imageUrl: 'https://x/f.jpg',
-      lastFrameUrl: 'https://x/l.jpg'
-    });
-    expect(Object.keys(out).sort()).toEqual([
-      'aspect_ratio',
-      'duration',
-      'first_frame_url',
-      'generate_audio',
-      'last_frame_url',
-      'prompt',
-      'resolution'
-    ]);
-  });
-
-  it('seedance 2.5 text-to-video: no stray media field slips into the payload', () => {
-    const out = buildJobInput('bytedance/seedance-2-5', base);
-    expect(Object.keys(out).sort()).toEqual([
-      'aspect_ratio',
-      'duration',
-      'generate_audio',
-      'prompt',
-      'resolution'
-    ]);
-  });
-
-  it('an unknown model falls back to the grok shape rather than sending nothing', () => {
-    const out = buildJobInput('some/new-model', { ...base, imageUrl: 'https://x/c.jpg' });
-    expect(out.image_urls).toEqual(['https://x/c.jpg']);
-  });
-});
-
-describe('clampVideoResolution', () => {
-  it('accepts only what kie takes, and defaults to the cheap rung', () => {
-    expect(clampVideoResolution('720p')).toBe('720p');
-    expect(clampVideoResolution('480P')).toBe('480p');
-    // 720p is double the price per second: anything unrecognised must fall to 480p, never up.
-    for (const bad of ['1080p', '4k', '', null, undefined, 720]) expect(clampVideoResolution(bad)).toBe('480p');
-  });
-});
-
-describe('buildTransformInput — i due mestieri con un video in ingresso', () => {
-  it('parla il dialetto di Aleph per il refine, non quello dei job', () => {
-    // Aleph vive fuori dall'API a job e ha i campi in camelCase. Mandargli `video_urls` sarebbe
-    // un 200 con un corpo di rifiuto, cioè un giro di rete pagato che non torna nulla.
-    const input = buildTransformInput(ALEPH_REFINE_MODEL, 'refine', {
-      prompt: 'make it night',
-      videoUrl: 'https://x/clip.mp4',
-      aspectRatio: '9:16'
-    });
-    expect(input).toMatchObject({ prompt: 'make it night', videoUrl: 'https://x/clip.mp4', aspectRatio: '9:16' });
-    expect(input.video_urls).toBeUndefined();
-  });
-
-  it('separa il soggetto dal video che detta il movimento', () => {
-    // I due media NON sono intercambiabili: input_urls è l'immagine del soggetto, video_urls è la
-    // clip da cui si prende il movimento. Scambiarli produce una clip plausibile e sbagliata.
-    const input = buildTransformInput(KLING_3_VIDEO_MODEL, 'motion', {
-      videoUrl: 'https://x/drive.mp4',
-      imageUrl: 'https://x/subject.png',
-      mode: 'pro'
-    });
-    expect(input).toMatchObject({
-      input_urls: ['https://x/subject.png'],
-      video_urls: ['https://x/drive.mp4'],
-      mode: 'pro'
-    });
-  });
-
-  it('riporta un rapporto che il modello non serve al più vicino che serve', () => {
-    // 9:16 è il formato di un reel e Aleph ce l'ha; 4:5 no, e ripiegare su 1:1 riquadrerebbe in
-    // silenzio ogni verticale. Vince il rapporto con la proporzione più vicina.
-    expect(buildTransformInput(ALEPH_REFINE_MODEL, 'refine', { videoUrl: 'https://x/c.mp4', aspectRatio: '4:5' }).aspectRatio)
-      .toBe('3:4');
-  });
-
-  it('rifiuta un modello che quel mestiere non lo fa', () => {
-    expect(() => buildTransformInput(GROK_IMAGINE_VIDEO_MODEL, 'refine', { videoUrl: 'https://x/c.mp4' }))
-      .toThrow(/refine/);
+  it('lo dice invece di spendere', async () => {
+    await expect(
+      transformVideo({
+        supabase,
+        userId: 'user-1',
+        role: 'refine',
+        videoUrl: 'https://x/c.mp4',
+        model: GROK_IMAGINE_VIDEO_MODEL
+      })
+    ).rejects.toThrow(/refine/);
   });
 });

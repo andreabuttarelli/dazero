@@ -30,6 +30,7 @@ import { loadApprovedRubrics } from '$lib/server/rubrics';
 import { env } from '$env/dynamic/private';
 import { loadGrowthReadiness, growthReadinessMessage } from '$lib/server/growth-readiness';
 import { CreditsExhaustedError } from '$lib/server/credits';
+import { videoTransportReady } from '$lib/server/model-routing';
 
 // Autopilot manuale: ricostruisce una settimana dal profilo GIÀ SALVATO (nessuna rianalisi del
 // sito). Stesso planner dell'onboarding, ma qui il risultato si persiste.
@@ -214,8 +215,10 @@ export const POST: RequestHandler = async ({ params, request, locals: { supabase
   // Questo predicato è il cancello del render Seedance, che si paga.
   const isVideoFormat = (format: string | null | undefined) => normalizeContentFormat(format) === 'video';
 
-  // Senza KIE_API_KEY renderVideo non viene mai chiamato e tutto ricade sulla copertina.
-  const videoEnabled = Boolean(env.KIE_API_KEY);
+  // Senza un trasporto video renderVideo non viene mai chiamato e tutto ricade sulla copertina.
+  // La domanda è sul trasporto, non su un fornitore: chiedere `KIE_API_KEY` spegneva il video
+  // anche quando OpenRouter — che è il default — era lì pronto a servirlo.
+  const videoEnabled = videoTransportReady();
 
   // I render video si serializzano su questa catena: persist() gira in concorrenza, e lanciare
   // più job pesanti insieme rischia il rate limit di kie.ai e corre contro il contatore

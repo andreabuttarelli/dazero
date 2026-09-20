@@ -554,13 +554,13 @@ describe('buildImageRequest (image model tier)', () => {
     expect(buildImageRequest('p', { model: 'x', personImages: [img] }).model).toBe('x');
   });
 
-  // Il tetto dei riferimenti non è una scelta di prodotto libera: kie è la rotta di default e ne
-  // inoltra 8 IN TUTTO, contando anche quelli che nessuno ha chiesto (logo, base, mood). Chiunque
-  // alzi un limite negli strumenti (`generate_image` e i suoi quattro gemelli) deve passare da qui:
-  // se la somma supera KIE_IMAGE_INPUT_MAX il taglio non sparisce, si sposta soltanto dentro kie,
-  // dove non ha nemmeno il nome delle immagini che butta via.
-  it('la somma delle parti allegate può già superare quello che kie inoltra', async () => {
-    const { KIE_IMAGE_INPUT_MAX } = await import('./kie-jobs');
+  // Il tetto dei riferimenti non è una scelta di prodotto libera: ne passano 8 IN TUTTO, contando
+  // anche quelli che nessuno ha chiesto (logo, base, mood). Chiunque alzi un limite negli strumenti
+  // (`generate_image` e i suoi quattro gemelli) deve passare da qui: se la somma supera il budget
+  // il taglio non sparisce, si sposta dentro il provider, dove non ha nemmeno il nome delle
+  // immagini che butta via.
+  it('la somma delle parti allegate può già superare il budget dei riferimenti', async () => {
+    const { IMAGE_REFS_BUDGET } = await import('$lib/image-models');
     const inlineParts = (opts: Parameters<typeof buildImageRequest>[1]) =>
       buildImageRequest('p', opts).contents[0].parts.filter((x: { inlineData?: unknown }) => x.inlineData).length;
 
@@ -573,13 +573,13 @@ describe('buildImageRequest (image model tier)', () => {
       moodImages: [img, img, img]
     });
     expect(worst).toBe(13);
-    expect(worst).toBeGreaterThan(KIE_IMAGE_INPUT_MAX);
+    expect(worst).toBeGreaterThan(IMAGE_REFS_BUDGET);
 
     // E il costo fisso che l'utente non controlla: logo sempre, base in modifica, mood fino a 3.
     // Quello che resta a chi passa reference_image_urls / people_ids / media_ids è questo, non 12.
     const fixed = inlineParts({ baseImage: img, logoImage: img, moodImages: [img, img, img] });
     expect(fixed).toBe(5);
-    expect(KIE_IMAGE_INPUT_MAX - fixed).toBe(3);
+    expect(IMAGE_REFS_BUDGET - fixed).toBe(3);
   });
 });
 

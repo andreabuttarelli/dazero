@@ -10,7 +10,7 @@ vi.mock('$lib/server/cli-auth', () => ({
 import { GET, PUT } from './+server';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
 import { GPT_IMAGE_2_MODEL } from '$lib/image-models';
-import { ALEPH_REFINE_MODEL, GROK_IMAGINE_VIDEO_MODEL, SEEDANCE_25_MODEL } from '$lib/video-models';
+import { GROK_IMAGINE_VIDEO_MODEL, SEEDANCE_25_MODEL } from '$lib/video-models';
 
 type Row = Record<string, unknown>;
 
@@ -72,7 +72,10 @@ describe('GET /api/v1/brands/:slug/settings/models', () => {
     ]);
 
     const refine = body.slots.find((s: Row) => s.slot === 'videoRefineModel');
-    expect(refine.choices.map((c: Row) => c.id)).toEqual([ALEPH_REFINE_MODEL]);
+    // Il refine non è di un modello soltanto: Seedance legge un video da `input_references` e
+    // l'upscale è un refine anche lui. L'elenco chiuso diceva «uno», e oggi sarebbe una bugia.
+    expect(refine.choices.map((c: Row) => c.id)).toContain(SEEDANCE_25_MODEL);
+    expect(refine.choices.length).toBeGreaterThan(1);
   });
 
   it('senza una scelta del brand risponde null, non un modello che nessuno ha scelto', async () => {
@@ -120,7 +123,7 @@ describe('PUT /api/v1/brands/:slug/settings/models', () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe('model_not_for_slot');
-    expect(body.allowed).toEqual([ALEPH_REFINE_MODEL]);
+    expect(body.allowed).toContain(SEEDANCE_25_MODEL);
     expect(supabase.updates).toEqual([]);
   });
 

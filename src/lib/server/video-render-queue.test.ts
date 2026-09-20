@@ -2,7 +2,7 @@
  * The reconciler is the whole reason a clip render can now outlive a request, so the properties
  * worth pinning are the ones that cost money or lose work when they break: a render is finished
  * exactly once, an unfinished one is handed straight back, a dead claim is recovered, and a task
- * kie never resolves is eventually given up on rather than retried forever.
+ * the provider never resolves is eventually given up on rather than retried forever.
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
@@ -10,11 +10,9 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 type Row = Record<string, any>;
 
 const finishVideoRender = vi.fn();
-const videoTaskProvider = vi.fn((_taskId: string): string => 'kie');
 
 vi.mock('$lib/server/video', () => ({
-	finishVideoRender: (...args: unknown[]) => finishVideoRender(...args),
-	videoTaskProvider: (taskId: string) => videoTaskProvider(taskId)
+	finishVideoRender: (...args: unknown[]) => finishVideoRender(...args)
 }));
 vi.mock('$lib/server/ai-log', () => ({
 	withBrandContext: <T>(_brandId: string, fn: () => T) => fn()
@@ -93,7 +91,7 @@ function renderRow(over: Row = {}): Row {
 		user_id: 'user-1',
 		post_id: 'post-1',
 		thread_id: null,
-		task_id: 'kie-task-1',
+		task_id: 'openrouter:task-1',
 		model: 'bytedance/seedance-2-5',
 		status: 'rendering',
 		duration_seconds: 12,
@@ -115,8 +113,6 @@ async function reconcile(client: unknown) {
 
 beforeEach(() => {
 	finishVideoRender.mockReset();
-	videoTaskProvider.mockReset();
-	videoTaskProvider.mockReturnValue('kie');
 	saveRenderedVideoToLibrary.mockReset();
 	saveRenderedVideoToLibrary.mockResolvedValue({ mediaId: 'media-1' });
 	addUsage.mockReset();
@@ -146,7 +142,7 @@ describe('reconcileVideoRenders', () => {
 			media_url: 'https://cdn/clip.mp4',
 			content_type: 'generated_video',
 			video_render_status: 'done',
-			video_task_id: 'kie-task-1'
+			video_task_id: 'openrouter:task-1'
 		});
 	});
 
@@ -199,12 +195,12 @@ describe('reconcileVideoRenders', () => {
 
 		await Promise.all([reconcile(client), reconcile(client)]);
 
-		// Downloading the mp4 and billing kie's exact charge both happen in there.
+		// Downloading the mp4 and billing the provider's exact charge both happen in there.
 		expect(finishVideoRender).toHaveBeenCalledTimes(1);
 		expect(overlapped).toBe(false);
 	});
 
-	it('marks the post failed when kie reports a failed render', async () => {
+	it('marks the post failed when the provider reports a failed render', async () => {
 		finishVideoRender.mockResolvedValue({ status: 'failed', error: 'moderation rejected' });
 		const { tables, client } = makeDb({
 			video_renders: [renderRow()],
@@ -218,7 +214,7 @@ describe('reconcileVideoRenders', () => {
 		expect(tables.posts[0].video_render_status).toBe('failed');
 	});
 
-	it('gives up on a task kie never resolves, without calling out again', async () => {
+	it('gives up on a task the provider never resolves, without calling out again', async () => {
 		const { VIDEO_RENDER_MAX_AGE_MS } = await import('./video-render-queue');
 		const { tables, client } = makeDb({
 			video_renders: [
@@ -236,11 +232,10 @@ describe('reconcileVideoRenders', () => {
 		expect(tables.posts[0].video_render_status).toBe('failed');
 	});
 
-	// `error` is what check_media_job hands verbatim to whoever asks why the clip never came. A
-	// fixed 'kie' on an openrouter job sends them to read a dashboard that never had the task.
-	it('blames the provider that actually held the task, not a fixed one', async () => {
+	// `error` is what check_media_job hands verbatim to whoever asks why the clip never came: it
+	// must name the transport that actually held the task, so they know which dashboard to open.
+	it('names the transport that held the task', async () => {
 		const { VIDEO_RENDER_MAX_AGE_MS } = await import('./video-render-queue');
-		videoTaskProvider.mockReturnValue('openrouter');
 		const { tables, client } = makeDb({
 			video_renders: [
 				renderRow({
@@ -253,9 +248,7 @@ describe('reconcileVideoRenders', () => {
 
 		expect(await reconcile(client)).toMatchObject({ expired: 1 });
 
-		expect(videoTaskProvider).toHaveBeenCalledWith('openrouter:job-9');
 		expect(String(tables.video_renders[0].error)).toContain('openrouter');
-		expect(String(tables.video_renders[0].error)).not.toContain('kie');
 	});
 
 	it('recovers a claim whose holder died mid-finish', async () => {
@@ -276,7 +269,7 @@ describe('reconcileVideoRenders', () => {
 			posts: [{ id: 'post-1' }]
 		});
 
-		// Without the sweep this row is stranded forever: the clip exists on kie and nobody collects it.
+		// Without the sweep this row is stranded forever: the clip exists at the provider and nobody collects it.
 		expect(await reconcile(client)).toMatchObject({ done: 1 });
 		expect(tables.video_renders[0].status).toBe('done');
 	});
@@ -480,7 +473,7 @@ describe('reconcileVideoRenders', () => {
 });
 
 describe('enqueueVideoRender', () => {
-	it('writes the kie handle down with everything finishing it will need', async () => {
+	it('writes the provider handle down with everything finishing it will need', async () => {
 		const { enqueueVideoRender } = await import('./video-render-queue');
 		const { tables, client } = makeDb({ video_renders: [] });
 
@@ -490,7 +483,7 @@ describe('enqueueVideoRender', () => {
 			postId: 'post-1',
 			threadId: 'thread-1',
 			submitted: {
-				taskId: 'kie-task-9',
+				taskId: 'openrouter:task-9',
 				model: 'bytedance/seedance-2-5',
 				prompt: 'a clip',
 				durationSeconds: 22,
@@ -504,7 +497,7 @@ describe('enqueueVideoRender', () => {
 		expect(id).toBeTruthy();
 		// persist_opts cannot be re-derived later — the request that computed it is long gone.
 		expect(tables.video_renders[0]).toMatchObject({
-			task_id: 'kie-task-9',
+			task_id: 'openrouter:task-9',
 			thread_id: 'thread-1',
 			persist_opts: { captions: true, fontName: 'Inter', tighten: true }
 		});

@@ -13,9 +13,33 @@ import {
   imageRefineModelFor,
   isKnownImageModelId,
   imageModelFor,
-  kieAspectRatio,
   googleImageModel
 } from './image-models';
+
+/**
+ * NESSUN DIALETTO DI UN FORNITORE CHE NON C'È PIÙ.
+ *
+ * Lo spec portava sei campi che descrivevano come si scriveva il payload di kie — i nomi dei campi
+ * dei riferimenti, del rapporto, della dimensione. Nessun trasporto vivo li legge: l'unico campo
+ * che i due trasporti OpenRouter consultano davvero è `maxRefs`. Un campo che nessuno legge non è
+ * documentazione: è una riga che il prossimo lettore crede governi qualcosa.
+ */
+describe('il registro non descrive più il payload di nessun fornitore', () => {
+  it('nessuno spec porta i campi del dialetto', () => {
+    for (const choice of IMAGE_MODEL_CHOICES) {
+      const spec = imageModelSpec(choice.id) as Record<string, unknown>;
+      for (const dead of ['kie', 'refField', 'aspectField', 'sizeField', 'ratios1KOnly', 'outputFormat']) {
+        expect(dead in spec, `${choice.id} porta ancora ${dead}`).toBe(false);
+      }
+    }
+  });
+
+  it('ma il tetto dei riferimenti resta: lo legge il trasporto', () => {
+    for (const choice of IMAGE_MODEL_CHOICES) {
+      expect(imageModelSpec(choice.id)!.maxRefs, choice.id).toBeGreaterThan(0);
+    }
+  });
+});
 
 describe('image models', () => {
   it('ogni scelta offerta è riconosciuta', () => {
@@ -44,42 +68,16 @@ describe('image models', () => {
     expect(imageModelSpec('gemini-3-pro-image-preview')?.id).toBe(NANO_BANANA_PRO_MODEL);
   });
 
-  it('solo i nano-banana esistono anche su Google', () => {
+  it('solo i nano-banana esistono anche sulla via Gemini', () => {
     expect(imageModelSpec(NANO_BANANA_PRO_MODEL)?.google).toBe('gemini-3-pro-image-preview');
     expect(imageModelSpec(SEEDREAM_5_PRO_MODEL)?.google).toBeNull();
     expect(imageModelSpec(GPT_IMAGE_2_MODEL)?.google).toBeNull();
     expect(imageModelSpec(QWEN3_PRO_MODEL)?.google).toBeNull();
   });
 
-  it('con riferimenti kie vuole un id diverso, dove la famiglia li separa', () => {
-    const seedream = imageModelSpec(SEEDREAM_5_PRO_MODEL)!;
-    expect(seedream.kie.text).toBe('seedream/5-pro-text-to-image');
-    expect(seedream.kie.refs).toBe('seedream/5-pro-image-to-image');
-    const nano = imageModelSpec(NANO_BANANA_PRO_MODEL)!;
-    expect(nano.kie.text).toBe('nano-banana-pro');
-    expect(nano.kie.refs).toBe('nano-banana-pro');
-  });
-
-  // 4:5 è il formato di un post Instagram. Seedream e Qwen non lo servono: ripiegare su 1:1
-  // cambierebbe di nascosto l'inquadratura di ogni post verticale del brand.
-  it('un rapporto che il modello non serve diventa il verticale più vicino, non un quadrato', () => {
-    expect(kieAspectRatio(imageModelSpec(SEEDREAM_5_PRO_MODEL)!, '4:5')).toBe('3:4');
-    expect(kieAspectRatio(imageModelSpec(QWEN3_PRO_MODEL)!, '4:5')).toBe('3:4');
-    expect(kieAspectRatio(imageModelSpec(GPT_IMAGE_2_MODEL)!, '4:5')).toBe('4:5');
-    expect(kieAspectRatio(imageModelSpec(NANO_BANANA_PRO_MODEL)!, '4:5')).toBe('4:5');
-  });
-
-  it('9:16 e 1:1 li serve chiunque', () => {
-    for (const choice of IMAGE_MODEL_CHOICES) {
-      const spec = imageModelSpec(choice.id)!;
-      expect(kieAspectRatio(spec, '9:16')).toBe('9:16');
-      expect(kieAspectRatio(spec, '1:1')).toBe('1:1');
-    }
-  });
-
-  // Senza chiave kie il render va su Google, dove "seedream/5-pro-…" non è un modello: sarebbe un
-  // 400 su OGNI immagine del brand, e proprio nel momento in cui kie non risponde.
-  it('un modello che vive solo su kie non arriva mai a Google', () => {
+  // Sulla via Gemini "seedream/5-pro-…" non è un modello: sarebbe un 400 su OGNI immagine del
+  // brand. Si ripiega sul modello di casa, rumorosamente.
+  it('un modello che quella via non serve non ci arriva mai', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(googleImageModel(SEEDREAM_5_PRO_MODEL, 'gemini-3.1-flash-image')).toBe('gemini-3.1-flash-image');
     expect(googleImageModel(QWEN3_PRO_MODEL, 'gemini-3.1-flash-image')).toBe('gemini-3.1-flash-image');
@@ -87,7 +85,7 @@ describe('image models', () => {
     warn.mockRestore();
   });
 
-  it('su Google i nano-banana passano con il loro id Gemini', () => {
+  it('i nano-banana passano con il loro id Gemini', () => {
     expect(googleImageModel(NANO_BANANA_PRO_MODEL, 'x')).toBe('gemini-3-pro-image-preview');
     expect(googleImageModel('gemini-3.1-flash-image', 'x')).toBe('gemini-3.1-flash-image');
     // Un id che il catalogo non conosce resta quello che il call site ha chiesto.
@@ -137,21 +135,24 @@ describe('i modelli dell’API immagini di OpenRouter', () => {
     expect(ids).toContain(GPT_IMAGE_25_FLARE_MODEL);
   });
 
-  it('portano l’id con cui OpenRouter li chiama, e gli altri no', () => {
+  // «E gli altri no» era vero finché solo i GPT Image 2.5 stavano sull'API immagini. Ora ogni
+  // riga del registro porta il suo id: i sei che mancavano sono su `/api/v1/images/models`, un
+  // catalogo separato da `/models` — cercarli nel primo è il motivo per cui sembravano assenti.
+  it('ognuno porta l’id con cui OpenRouter lo chiama', () => {
     expect(imageModelSpec(GPT_IMAGE_25_SUNBURST_MODEL)?.openrouterImages).toBe(
       'openai/gpt-image-2.5-sunburst'
     );
-    expect(imageModelSpec(NANO_BANANA_2_MODEL)?.openrouterImages).toBeNull();
+    expect(imageModelSpec(NANO_BANANA_2_MODEL)?.openrouterImages).toBe(
+      'google/gemini-3.1-flash-image'
+    );
   });
 
   it('si riconoscono anche dall’id di OpenRouter, non solo dal nostro', () => {
     expect(imageModelSpec('openai/gpt-image-2.5-flare')?.id).toBe(GPT_IMAGE_25_FLARE_MODEL);
   });
 
-  it('non esistono su kie né su Google: chi ci finisce lo scopre, non lo indovina', () => {
-    const spec = imageModelSpec(GPT_IMAGE_25_SUNBURST_MODEL)!;
-    expect(spec.google).toBeNull();
-    expect(spec.kie).toBeNull();
+  it('non esistono sulla via Gemini: chi ci finisce lo scopre, non lo indovina', () => {
+    expect(imageModelSpec(GPT_IMAGE_25_SUNBURST_MODEL)!.google).toBeNull();
   });
 
   it('4:5 lo servono, perché è il formato di un post', () => {
@@ -173,5 +174,32 @@ describe('openrouterImagesSize', () => {
   it('un rapporto che non si capisce non inventa una dimensione', () => {
     expect(openrouterImagesSize(undefined)).toBeUndefined();
     expect(openrouterImagesSize('banana')).toBeUndefined();
+  });
+});
+
+/**
+ * OGNI MODELLO IMMAGINE HA UNA STRADA SU OPENROUTER.
+ *
+ * Erano sei righe con `openrouterImages: null`, e tre di quelle — seedream-5-pro, gpt-image-2,
+ * qwen3-pro — non avevano nemmeno un id Google: togliendo kie sarebbero degradate in silenzio su
+ * Nano Banana, con un `console.warn` e un'immagine che il brand non aveva chiesto.
+ *
+ * Ci sono tutte: su `/api/v1/images/models` (52 modelli), un catalogo separato da `/models`.
+ * Cercarle nel posto sbagliato è il motivo per cui sembravano assenti.
+ */
+describe('nessun modello immagine resta senza trasporto', () => {
+  it('ogni modello del registro dichiara un id OpenRouter', () => {
+    const orphans = IMAGE_MODEL_CHOICES
+      .map((c) => imageModelSpec(c.id))
+      .filter((s) => s && !s.openrouterImages)
+      .map((s) => s!.id);
+
+    expect(orphans, 'senza questi id il modello non è raggiungibile fuori da kie').toEqual([]);
+  });
+
+  it('i tre che non hanno una casa su Gemini hanno il loro id', () => {
+    expect(imageModelSpec(SEEDREAM_5_PRO_MODEL)?.openrouterImages).toBe('bytedance-seed/seedream-5-0-pro');
+    expect(imageModelSpec(GPT_IMAGE_2_MODEL)?.openrouterImages).toBe('openai/gpt-image-2');
+    expect(imageModelSpec(QWEN3_PRO_MODEL)?.openrouterImages).toBe('qwen/qwen-image-3-pro');
   });
 });

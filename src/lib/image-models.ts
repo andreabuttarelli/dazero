@@ -1,7 +1,7 @@
 /**
  * I modelli che possono disegnare per un brand, e COME ciascuno vuole essere chiamato.
  *
- * Su kie ogni modello è un dialetto diverso dello stesso `POST /jobs/createTask`: i riferimenti si
+ * Ogni modello ha i suoi rapporti e il suo tetto di riferimenti: i riferimenti si
  * chiamano `image_input` su Nano Banana, `image_urls` su Seedream e Qwen, `input_urls` su GPT
  * Image; il rapporto d'aspetto è `aspect_ratio` per tutti tranne Qwen, che lo chiama `image_size`;
  * la dimensione è `resolution` per alcuni e `quality` (basic|high) per Seedream. Metà di queste
@@ -9,10 +9,9 @@
  *
  * Le differenze stanno TUTTE qui, in una riga per modello, perché una famiglia nuova sia una riga
  * e non una caccia a cinque `if` sparsi. Le assenze sono la parte che conta: `4:5` — il formato di
- * un post Instagram — non esiste su Seedream né su Qwen, e `google` è null per tutto ciò che kie
+ * un post Instagram — non esiste su Seedream né su Qwen, e `google` è null per tutto ciò che
  * serve in esclusiva.
  *
- * Fonti: docs.kie.ai, una pagina per modello, lette il 2026-09-02.
  */
 
 import { nearestAspectRatio } from '$lib/aspect-ratio';
@@ -36,33 +35,16 @@ export type ImageModelSpec = {
   label: string;
   /** L'id su Google, quando lo stesso modello esiste anche lì. null = non esiste su Google. */
   google: string | null;
-  /** Gli id kie: `text` senza riferimenti, `refs` con. Uguali dove la famiglia non li separa.
-   *  null = kie non lo serve, e mandarcelo sarebbe un 400 su ogni immagine del brand. */
-  kie: { text: string; refs: string } | null;
   /**
    * L'id sull'API immagini di OpenRouter (`POST /api/v1/images`), che NON è `chat/completions`:
    * corpo diverso (`prompt`, `input_references`, `aspect_ratio`) e risposta diversa (`b64_json`).
    * null = quel trasporto non lo serve, e la famiglia passa dalla via Gemini come ha sempre fatto.
    */
   openrouterImages: string | null;
-  /** Come si chiama il campo dei riferimenti nel payload kie. */
-  refField: 'image_input' | 'image_urls' | 'input_urls';
   /** Quanti riferimenti il modello inoltra davvero. */
   maxRefs: number;
-  /** Come si chiama il rapporto d'aspetto. Qwen è l'unico a chiamarlo `image_size`. */
-  aspectField: 'aspect_ratio' | 'image_size';
   /** I rapporti che il modello accetta. Fuori da qui il provider risponde 500 dopo un giro di rete. */
   aspectRatios: string[];
-  /** Come si chiede la dimensione: `resolution` (1K|2K|4K), `quality` (basic|high), o niente. */
-  sizeField: 'resolution' | 'quality' | null;
-  /**
-   * Rapporti che il modello serve SOLO a 1K. Misurato su kie: `gpt-image-2` a 4:5 e 2K risponde
-   * 500 "aspect_ratio is not within the range of allowed options", lo stesso 4:5 a 1K passa. Con
-   * KIE_IMAGE_RESOLUTION=2K in produzione sarebbe ogni post Instagram del brand.
-   */
-  ratios1KOnly?: string[];
-  /** `output_format` accettato. Lite non lo prende. */
-  outputFormat: 'png' | 'jpeg' | null;
 };
 
 const NANO_ASPECTS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'];
@@ -72,71 +54,45 @@ const SPECS: ImageModelSpec[] = [
     id: NANO_BANANA_2_LITE_MODEL,
     label: 'Nano Banana 2 Lite',
     google: GEMINI_NANO_BANANA_2_LITE,
-    openrouterImages: null,
-    kie: { text: 'nano-banana-2-lite', refs: 'nano-banana-2-lite' },
-    refField: 'image_urls',
+    openrouterImages: 'google/gemini-3.1-flash-lite-image',
     maxRefs: 10,
-    aspectField: 'aspect_ratio',
     aspectRatios: NANO_ASPECTS,
-    sizeField: null,
-    outputFormat: null
   },
   {
     id: NANO_BANANA_2_MODEL,
     label: 'Nano Banana 2',
     google: GEMINI_NANO_BANANA_2,
-    openrouterImages: null,
-    kie: { text: 'nano-banana-2', refs: 'nano-banana-2' },
-    refField: 'image_input',
-    // kie ne documenta 14; 8 è il tetto che il prodotto ha sempre imposto e che i prompt assumono.
+    openrouterImages: 'google/gemini-3.1-flash-image',
+    // Il fornitore ne documenta 14; 8 è il tetto che il prodotto impone e che i prompt assumono.
     maxRefs: 8,
-    aspectField: 'aspect_ratio',
     aspectRatios: NANO_ASPECTS,
-    sizeField: 'resolution',
-    outputFormat: 'png'
   },
   {
     id: NANO_BANANA_PRO_MODEL,
     label: 'Nano Banana Pro',
     google: GEMINI_NANO_BANANA_PRO,
-    openrouterImages: null,
-    kie: { text: 'nano-banana-pro', refs: 'nano-banana-pro' },
-    refField: 'image_input',
+    openrouterImages: 'google/gemini-3-pro-image',
     maxRefs: 8,
-    aspectField: 'aspect_ratio',
     aspectRatios: NANO_ASPECTS,
-    sizeField: 'resolution',
-    outputFormat: 'png'
   },
   {
     id: SEEDREAM_5_PRO_MODEL,
     label: 'Seedream 5 Pro',
     google: null,
-    openrouterImages: null,
-    kie: { text: 'seedream/5-pro-text-to-image', refs: 'seedream/5-pro-image-to-image' },
-    refField: 'image_urls',
+    openrouterImages: 'bytedance-seed/seedream-5-0-pro',
     maxRefs: 10,
-    aspectField: 'aspect_ratio',
     aspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16', '2:3', '3:2', '21:9'],
-    sizeField: 'quality',
-    outputFormat: 'png'
   },
   {
     id: GPT_IMAGE_2_MODEL,
     label: 'GPT Image 2',
     google: null,
-    openrouterImages: null,
-    kie: { text: 'gpt-image-2-text-to-image', refs: 'gpt-image-2-image-to-image' },
-    refField: 'input_urls',
+    openrouterImages: 'openai/gpt-image-2',
     maxRefs: 16,
-    aspectField: 'aspect_ratio',
     aspectRatios: ['1:1', '3:2', '2:3', '4:3', '3:4', '5:4', '4:5', '16:9', '9:16', '21:9'],
-    sizeField: 'resolution',
-    ratios1KOnly: ['4:5', '5:4'],
-    outputFormat: null
   },
   /**
-   * I due GPT Image 2.5. Esistono SOLO sull'API immagini di OpenRouter — non su kie, non su Google
+   * I due GPT Image 2.5. Esistono SOLO sull'API immagini di OpenRouter — non sulla via Gemini
    * — e sono gli unici del catalogo così. Misurato il 2026-09-12, render veri:
    *
    *   generazione   $0,0053   10-15s     contro $0,0748 e 13,3s del Gemini su OpenRouter
@@ -156,39 +112,24 @@ const SPECS: ImageModelSpec[] = [
     label: 'GPT Image 2.5 Sunburst',
     google: null,
     openrouterImages: 'openai/gpt-image-2.5-sunburst',
-    kie: null,
-    refField: 'input_urls',
     maxRefs: 16,
-    aspectField: 'aspect_ratio',
     aspectRatios: ['1:1', '3:2', '2:3', '4:3', '3:4', '4:5', '5:4', '16:9', '9:16', '21:9'],
-    sizeField: null,
-    outputFormat: 'png'
   },
   {
     id: GPT_IMAGE_25_FLARE_MODEL,
     label: 'GPT Image 2.5 Flare',
     google: null,
     openrouterImages: 'openai/gpt-image-2.5-flare',
-    kie: null,
-    refField: 'input_urls',
     maxRefs: 16,
-    aspectField: 'aspect_ratio',
     aspectRatios: ['1:1', '3:2', '2:3', '4:3', '3:4', '4:5', '5:4', '16:9', '9:16', '21:9'],
-    sizeField: null,
-    outputFormat: 'png'
   },
   {
     id: QWEN3_PRO_MODEL,
     label: 'Qwen3 Pro',
     google: null,
-    openrouterImages: null,
-    kie: { text: 'qwen3/pro-text-to-image', refs: 'qwen3/pro-image-to-image' },
-    refField: 'image_urls',
+    openrouterImages: 'qwen/qwen-image-3-pro',
     maxRefs: 3,
-    aspectField: 'image_size',
     aspectRatios: ['1:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16', '21:9'],
-    sizeField: 'resolution',
-    outputFormat: 'png'
   }
 ];
 
@@ -200,15 +141,26 @@ export function isKnownImageModelId(value: unknown): value is string {
 
 /**
  * Lo spec di un modello, da qualunque nome quel modello abbia: il nostro id, l'id Gemini scritto in
- * un vecchio call site, o uno dei due id kie. Riconoscerli tutti è ciò che impedisce a un
+ * un vecchio call site. Riconoscerli tutti è ciò che impedisce a un
  * `seedream/5-pro-image-to-image` di ripresentarsi come modello sconosciuto e finire nel dialetto
  * sbagliato.
  */
+/**
+ * Il tetto che un prompt deve ASSUMERE, non quello del modello di turno: `maxRefs` varia da 3 a 16
+ * fra i modelli del registro, e chi scrive uno strumento non sa quale modello renderizzerà. Sotto
+ * questa soglia nessuna immagine viene buttata via da nessuno.
+ *
+ * Conta TUTTO quello che finisce allegato, anche ciò che l'utente non ha chiesto — logo, base,
+ * mood. Chiunque alzi un limite negli strumenti deve passare da qui: superarlo non fa sparire il
+ * taglio, lo sposta dentro il provider, dove non ha nemmeno il nome delle immagini che scarta.
+ */
+export const IMAGE_REFS_BUDGET = 8;
+
 export function imageModelSpec(value: unknown): ImageModelSpec | undefined {
   const v = String(value ?? '').trim();
   if (!v) return undefined;
   return SPECS.find(
-    (s) => s.id === v || s.google === v || s.openrouterImages === v || s.kie?.text === v || s.kie?.refs === v
+    (s) => s.id === v || s.google === v || s.openrouterImages === v
   );
 }
 
@@ -238,32 +190,20 @@ export function imageRefineModelFor(
 }
 
 /**
- * L'id da mandare a Google. Un modello che kie serve in esclusiva NON esiste lì: mandarcelo è un
- * 400 su ogni immagine del brand, e succederebbe proprio nel momento peggiore — quando la chiave
- * kie manca o il suo endpoint è giù. Meglio un render col modello di casa e un avviso rumoroso.
+ * L'id con cui il gateway serve lo stesso modello sulla via Gemini. Un modello che lì non esiste
+ * darebbe un 400 su ogni immagine del brand: meglio un render col modello di casa e un avviso
+ * rumoroso, che la preferenza applicata a vuoto.
  */
 export function googleImageModel(model: string | undefined, fallback: string): string {
   const spec = imageModelSpec(model);
   if (!spec) return model ?? fallback;
   if (spec.google) return spec.google;
   console.warn(
-    `[AI] ${spec.id} esiste solo su kie e questo render sta andando su Google: uso ${fallback}. ` +
+    `[AI] ${spec.id} non esiste sulla via Gemini e questo render sta passando di lì: uso ${fallback}. ` +
       `La preferenza del brand non è stata applicata.`
   );
   return fallback;
 }
-
-/**
- * Il rapporto d'aspetto più vicino fra quelli che il modello serve davvero.
- *
- * Un post Instagram è 4:5, e Seedream e Qwen non lo hanno: ripiegare sul default 1:1 cambierebbe
- * in silenzio l'inquadratura di ogni post verticale del brand, quindi si sceglie il rapporto con
- * la proporzione più vicina — 4:5 → 3:4, non un quadrato.
- */
-export function kieAspectRatio(spec: ImageModelSpec, aspectRatio: string | undefined): string {
-  return nearestAspectRatio(spec.aspectRatios, String(aspectRatio ?? '').trim() || '1:1', '1:1');
-}
-
 
 /**
  * I rapporti che l'API immagini di OpenRouter accetta per nome. È un elenco CHIUSO — un valore

@@ -44,9 +44,23 @@ export const PUT: RequestHandler = async ({ request, params }) => {
   // Shared with the web editor: learns the brand's voice from a caption diff before overwriting.
   const { error: updateError } = await applyPostEdits(supabase, params.id, updates, {
     origin: new URL(request.url).origin,
-    by: user.id
+    by: user.id,
+    // NON è un campo da scrivere: è la versione che il chiamante ha letto, e serve a rifiutare la
+    // scrittura se qualcun altro ha toccato il post nel frattempo. `FIELDS` non lo contiene, quindi
+    // non finisce mai nel patch.
+    ...(typeof body.expected_updated_at === 'string'
+      ? { expectedUpdatedAt: body.expected_updated_at }
+      : {})
   });
-  if (updateError) return json({ error: updateError.message }, { status: 500 });
+  // Il post c'è ed è di questo brand — l'abbiamo appena verificato — quindi un update a zero righe
+  // significa una cosa sola: è cambiato dopo la lettura. 409, e chi chiama rilegge e ridecide.
+  if (updateError) {
+    const stale = /modificato da qualcun altro/i.test(updateError.message);
+    return json(
+      { error: stale ? 'stale_post' : updateError.message },
+      { status: stale ? 409 : 500 }
+    );
+  }
 
   // An edit on an already-scheduled post must reach Zernio, or the copy that goes out is stale.
   await reschedIfNeeded(supabase, brand.id, params.id, (brand.timezone as string) ?? 'Europe/Rome');

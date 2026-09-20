@@ -3,8 +3,8 @@
  * 28 modelli video in `GET /models` dà zero risultati e fa concludere che non esistano.
  *
  * A differenza delle immagini qui NON c'è il regalo del sincrono: si invia, si riceve un `jobId`, e
- * si interroga finché non finisce. Cioè lo stesso rischio che su kie è costato clip pagate due
- * volte, e quindi la stessa forma della soluzione già in produzione (#325):
+ * si interroga finché non finisce. È il rischio che è già costato clip pagate due volte, e quindi
+ * la stessa forma della soluzione già in produzione (#325):
  *
  *   · l'esito è esplicito — `done` / `failed` / `timeout`, mai un `undefined` che li confonde;
  *   · una SCADENZA porta con sé il `jobId`, perché il lavoro è ancora del fornitore e lo fattura
@@ -69,9 +69,9 @@ const JOB_TAG = 'openrouter:';
 /**
  * L'id che finisce su `video_renders.task_id` porta scritto CHI lo può interrogare.
  *
- * Una riga in coda sopravvive al deploy che cambia `AI_ROUTE_VIDEO`: senza il marchio, il
- * riconciliatore chiederebbe a kie un job di OpenRouter, non lo troverebbe mai, e la clip pagata
- * resterebbe lì. Il trasporto si legge dalla RIGA, mai dalla variabile d'ambiente di adesso.
+ * Una riga in coda sopravvive al deploy che cambia il trasporto: senza il marchio, il
+ * riconciliatore non ritroverebbe mai il job, e la clip pagata resterebbe lì. Il trasporto si
+ * legge dalla RIGA, mai dalla variabile d'ambiente di adesso.
  */
 export function tagOpenrouterJob(jobId: string): string {
   return `${JOB_TAG}${jobId}`;
@@ -126,7 +126,7 @@ export function buildOpenrouterVideoInput(
  * il `jobId` e' un appiglio durevole che qualunque processo puo' riprendere.
  *
  * Non scrive nessuna riga in `ai_calls`: il costo lo dira' il job finito, e un invio che non
- * diventa mai una clip non si fattura — lo stesso contratto del percorso kie.
+ * diventa mai una clip non si fattura.
  */
 export async function submitOpenrouterVideo(
   render: OpenrouterVideoRender,

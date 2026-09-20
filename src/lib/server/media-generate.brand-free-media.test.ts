@@ -343,9 +343,9 @@ describe('rifinire senza brand', () => {
    * c'è, e un mp4 mandato al motore delle immagini è il difetto che questo percorso toglie.
    */
   it('un clip lo rifinisce il motore dei video, letto dal percorso', async () => {
-    transformVideo.mockResolvedValue({ url: 'https://cdn/refined.mp4', taskId: 't-1', model: 'runway/aleph' });
+    transformVideo.mockResolvedValue({ url: 'https://cdn/refined.mp4', taskId: 't-1', model: 'bytedance/seedance-2-5' });
 
-    const out = await refineMediaWithoutBrand(noBrands(), { ...job, baseMediaId: OWN_CLIP, model: 'runway/aleph' });
+    const out = await refineMediaWithoutBrand(noBrands(), { ...job, baseMediaId: OWN_CLIP, model: 'bytedance/seedance-2-5' });
 
     expect(out.ok && out.kind).toBe('video');
     expect(renderPostImage).not.toHaveBeenCalled();

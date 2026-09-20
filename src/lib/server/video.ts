@@ -1,21 +1,10 @@
 import { UGC_AD_SECONDS, UGC_ORGANIC_SECONDS } from '$lib/ugc-formats';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { env } from '$env/dynamic/private';
 import { videoModel } from '$lib/server/model-routing';
 import { OPENROUTER_UPSCALE_MODEL } from '$lib/video-models';
 import { videoCraftFor } from '$lib/design/video-craft';
 import { getBrandContext, getOrgContext, logAiCall } from '$lib/server/ai-log';
 import { isVideoUrl } from '$lib/content-formats';
-import { KIE_CREDIT_USD } from '$lib/server/kie';
-// Il polling dei job di kie, l'estrazione dei crediti e la lettura dell'errore stanno in un file
-// solo: immagini e voce girano sulla STESSA API a job, e due copie del ciclo si correggono a metà.
-import {
-  KIE_JOBS_BASE as KIE_BASE,
-  kieJobHeaders as authHeaders,
-  createKieTask,
-  pollKieTask,
-  type KieJobResult as VideoJobResult
-} from '$lib/server/kie-jobs';
 import {
   VIDEO_MODEL_CHOICES as SHARED_VIDEO_MODEL_CHOICES,
   isKnownVideoModelId,
@@ -24,11 +13,8 @@ import {
   videoModelCaps,
   videoModelForRole,
   videoModelSpec,
-  kieVideoModel,
   type VideoRole
 } from '$lib/video-models';
-import { nearestAspectRatio } from '$lib/aspect-ratio';
-import { route } from '$lib/server/model-routing';
 import {
   checkOpenrouterVideo,
   openrouterVideoHeaders,
@@ -39,8 +25,11 @@ import {
   untagOpenrouterJob
 } from '$lib/server/openrouter-video';
 
-// Generazione video vera, via kie. È il percorso a PAGAMENTO: la preview gratuita di onboarding
-// non passa mai di qui, quindi un utente free non incorre nel costo video.
+/** Quel che un render finito lascia a chi lo persiste: dove sta il file, e sotto quale id. */
+type VideoJobResult = { url: string; taskId: string };
+
+// È il percorso a PAGAMENTO: la preview gratuita di onboarding non passa mai di qui, quindi un
+// utente free non incorre nel costo video.
 //
 // IMAGE-TO-VIDEO per primo: con la cover già renderizzata il modello anima QUELLA, quindi tutto il
 // grounding fatto dalla pipeline immagini (prodotto vero, identità della persona, palette, QC)
@@ -59,22 +48,19 @@ function envModelI2V(): string {
 function envModelT2V(): string {
   return videoModel('t2v');
 }
-// Prende il task_id del job ORIGINALE, mai un URL: per questo l'id resta salvato sul post.
-const MODEL_UPSCALE = videoModel('upscale');
-
-// 480p è il default perché kie fattura al secondo e il 720p costa ESATTAMENTE il doppio (misurato:
-// 2.4 crediti/s contro 4.5). Ogni bozza si paga, comprese quelle che nessuno approva, quindi il
-// default sta sul gradino economico: su un telefono la differenza si vede poco, sul conto no.
+// 480p è il default perché il video si fattura al secondo e il 720p costa ESATTAMENTE il doppio
+// (misurato). Ogni bozza si paga, comprese quelle che nessuno approva, quindi il default sta sul
+// gradino economico: su un telefono la differenza si vede poco, sul conto no.
 export const VIDEO_RESOLUTIONS = ['480p', '720p'] as const;
-const DEFAULT_RESOLUTION = env.KIE_VIDEO_RESOLUTION || '480p';
+const DEFAULT_RESOLUTION = '480p';
 
 /** Un valore stantio o scritto a mano non deve raggiungere il provider. */
 export function clampVideoResolution(value: unknown): string {
   const v = String(value ?? '').trim().toLowerCase();
   return (VIDEO_RESOLUTIONS as readonly string[]).includes(v) ? v : DEFAULT_RESOLUTION;
 }
-// What an approved clip gets upscaled to. kie's upscale accepts 720p | 1080p.
-export const UPSCALE_RESOLUTION = env.KIE_VIDEO_UPSCALE_RESOLUTION || '720p';
+/** What an approved clip gets upscaled to. */
+export const UPSCALE_RESOLUTION = '720p';
 
 export { clampVideoPrompt } from '$lib/video-models';
 
@@ -261,58 +247,6 @@ export function clampVideoAspectRatio(ratio: unknown, model?: string | null): st
   return (caps.ratios as readonly string[]).includes(requested) ? requested : '9:16';
 }
 
-/**
- * Il payload dei due mestieri che hanno un VIDEO in ingresso: rifinire una clip che esiste, e
- * prendere il movimento da una clip per applicarlo al soggetto di una immagine.
- *
- * I due media non sono intercambiabili e nessuno dei due provider lo dice con un errore: su
- * motion control `input_urls` e' il SOGGETTO e `video_urls` e' il movimento, e scambiarli produce
- * una clip plausibile e sbagliata. Aleph poi vive fuori dall'API a job e vuole i campi in
- * camelCase: mandargli `video_urls` e' un 200 con dentro un rifiuto — un giro pagato che non
- * torna nulla. Le due differenze stanno nella tabella, non qui.
- */
-export function buildTransformInput(
-  model: string,
-  role: 'refine' | 'motion',
-  args: {
-    prompt?: string;
-    videoUrl: string;
-    imageUrl?: string;
-    aspectRatio?: string;
-    mode?: 'std' | 'pro';
-  }
-): Record<string, unknown> {
-  const spec = videoModelSpec(model);
-  if (!spec?.roles.includes(role)) {
-    throw new Error(`${model} does not do ${role}: pick a model that serves that job`);
-  }
-
-  const prompt = args.prompt?.trim().slice(0, spec.maxPromptChars) || undefined;
-
-  if (spec.endpoint === 'aleph') {
-    return {
-      ...(prompt ? { prompt } : {}),
-      videoUrl: args.videoUrl,
-      aspectRatio: nearestAspectRatio(spec.ratios, String(args.aspectRatio ?? '9:16').trim(), '9:16'),
-      ...(args.imageUrl ? { referenceImage: args.imageUrl } : {})
-    };
-  }
-
-  return {
-    ...(prompt ? { prompt } : {}),
-    // Il soggetto, non il movimento.
-    ...(args.imageUrl ? { input_urls: [args.imageUrl] } : {}),
-    // Il movimento, non il soggetto.
-    video_urls: [args.videoUrl],
-    mode: args.mode ?? 'std'
-  };
-}
-
-const POLL_INTERVAL_MS = 5000;
-// Le clip parlate di Seedance 2.5 stanno regolarmente in coda + render oltre i 3–6 minuti: 180s e
-// perfino 360s hanno abortito job vivi come "no video returned" mentre kie stava ancora generando.
-// Meglio un'attesa lunga di un falso fallimento.
-const POLL_TIMEOUT_MS = 600000;
 // L'upscale gira DENTRO il percorso di pubblicazione, con un utente che aspetta: budget molto più
 // stretto della generazione, e sforarlo costa solo la risoluzione di bozza, mai il post.
 // ponytail: bounded by wall-clock inside the request; if bulk approves with many clips start
@@ -376,15 +310,12 @@ export type RenderVideoOpts = {
    * renderVideo builds a default brief.
    */
   shotBrief?: string | null;
-  // kie model id override (brand Settings → Video, or an AI tool choice). Unset → env default.
+  // Model id override (brand Settings → Video, or an AI tool choice). Unset → env default.
   // Duration is clamped against THIS model's caps, not a global ceiling.
   /** Le preferenze del brand: `resolveVideoModel` ne legge quella del mestiere che questo job e'. */
   prefs?: Record<string, unknown> | null;
   model?: string | null;
-  /**
-   * Seedance first-frame URL (alias of imageUrl when both set — firstFrameUrl wins).
-   * Mutually exclusive with reference_* on kie: if any reference_* is set, frames are omitted.
-   */
+  /** Seedance first-frame URL (alias of imageUrl when both set — firstFrameUrl wins). */
   firstFrameUrl?: string | null;
   /** Seedance last-frame URL — requires a first frame. Ignored in reference-to-video mode. */
   lastFrameUrl?: string | null;
@@ -397,7 +328,7 @@ export type RenderVideoOpts = {
   /**
    * Caller's cancellation. A clip render is the longest thing this codebase waits on — pass the
    * turn's signal so a stopped chat (or one out of budget) stops polling instead of holding the
-   * invocation open for the full {@link POLL_TIMEOUT_MS}.
+   * invocation open for the whole wait.
    */
   abortSignal?: AbortSignal;
   /**
@@ -670,110 +601,7 @@ export type RenderedVideo = {
   thumbnailUrl?: string;
 };
 
-// Le famiglie supportate non concordano quasi su nessun nome di campo: questo è l'unico posto che
-// conosce la differenza.
-//
-//   grok-imagine-video-1-5*  image_urls: [url]   duration INTEGER   aspect_ratio only without cover
-//   grok-imagine/*           image_urls: [url]   duration STRING    aspect_ratio only without cover
-//   bytedance/seedance-2*    first/last frame OR reference_* (mutually exclusive on kie)
-//
-// Seedance generate_audio is on only for a talking clip — audio on silent b-roll is wasted spend.
-export function buildJobInput(
-  model: string,
-  opts: {
-    prompt: string;
-    durationSeconds: number;
-    resolution: string;
-    aspectRatio: string;
-    imageUrl?: string;
-    hasScript?: boolean;
-    lastFrameUrl?: string;
-    referenceVideoUrls?: string[];
-    referenceAudioUrls?: string[];
-    referenceImageUrls?: string[];
-  }
-): Record<string, unknown> {
-  const { prompt, durationSeconds, resolution, aspectRatio, imageUrl } = opts;
-  // Un breve troppo lungo viene rifiutato da kie alla submit: qui si taglia a monte, per ogni
-  // famiglia, perché è l'unico posto dove modello e prompt si incontrano prima di partire.
-  const clampedPrompt = clampVideoPrompt(prompt, model);
-  // La 1-5 rompe con la famiglia v1 proprio sul campo che fallirebbe in SILENZIO: qui `duration` è
-  // un intero, lì una stringa. `aspect_ratio` è rifiutato con una singola immagine allegata.
-  if (/^grok-imagine-video-1-5/.test(model)) {
-    return {
-      prompt: clampedPrompt,
-      duration: durationSeconds, // integer, [1, 15]
-      resolution,
-      ...(imageUrl ? { image_urls: [imageUrl] } : { aspect_ratio: aspectRatio })
-    };
-  }
-  // kie tratta i2v con first/last frame e reference-to-video come MUTUAMENTE ESCLUSIVI: con dei
-  // reference presenti vincono loro. Seedance 2.5 con first/last frame accetta solo
-  // aspect_ratio "adaptive" (altrimenti 422).
-  if (/^bytedance\/seedance-2/.test(model)) {
-    const refImages = (opts.referenceImageUrls ?? []).map((u) => u.trim()).filter(Boolean).slice(0, 30);
-    const refVideos = (opts.referenceVideoUrls ?? []).map((u) => u.trim()).filter(Boolean).slice(0, 10);
-    const refAudios = (opts.referenceAudioUrls ?? []).map((u) => u.trim()).filter(Boolean).slice(0, 10);
-    const useRefs = refImages.length > 0 || refVideos.length > 0 || refAudios.length > 0;
-    const is25 = /^bytedance\/seedance-2-5\b/.test(model);
-    const hasFrames = !!imageUrl || !!opts.lastFrameUrl?.trim();
-    const ratio =
-      is25 && hasFrames && !useRefs
-        ? 'adaptive'
-        : aspectRatio;
-    const input: Record<string, unknown> = {
-      prompt: clampedPrompt,
-      duration: durationSeconds, // integer, not a string
-      resolution,
-      aspect_ratio: ratio,
-      generate_audio: !!opts.hasScript
-    };
-    if (useRefs) {
-      if (refImages.length) input.reference_image_urls = refImages;
-      if (refVideos.length) input.reference_video_urls = refVideos;
-      if (refAudios.length) input.reference_audio_urls = refAudios;
-    } else {
-      if (imageUrl) input.first_frame_url = imageUrl;
-      // `last_frame_url` da solo non si può: kie pretende anche `first_frame_url`.
-      const last = opts.lastFrameUrl?.trim();
-      if (imageUrl && last) input.last_frame_url = last;
-    }
-    return input;
-  }
-  return {
-    prompt: clampedPrompt,
-    duration: String(durationSeconds),
-    resolution,
-    // Con una cover la clip eredita le dimensioni dell'immagine: un ratio contraddittorio confonde.
-    ...(imageUrl ? { image_urls: [imageUrl] } : { aspect_ratio: aspectRatio })
-  };
-}
-
-/**
- * CHI serve questo render. L'unico posto che lo decide, e l'unico che può dire di no a OpenRouter.
- *
- * Il registro sceglie l'endpoint; qui si aggiungono i due motivi per cui quella scelta non si può
- * onorare per QUESTO render. Entrambi sono rumorosi di proposito: un ripiego silenzioso su kie
- * mentre la variabile dice openrouter è esattamente il guasto che `SERVED_BY` esiste per impedire,
- * e non lascerebbe traccia da nessuna parte.
- */
-function videoEndpoint(model: string): 'kie' | 'openrouter' {
-  if (route('video').endpoint !== 'openrouter') return 'kie';
-
-  if (!openrouterVideoModel(model)) {
-    console.warn(`[video] AI_ROUTE_VIDEO chiede openrouter ma ${model} non è nel suo catalogo video: ripiego su kie.`);
-    return 'kie';
-  }
-  // I riferimenti PASSANO da OpenRouter, e questa guardia diceva il contrario. Il campo si chiama
-  // `input_references` e prende immagini, audio e video in un elenco solo (`openrouter-video.ts`);
-  // il nome cercato prima era quello di kie — `reference_*` — ed è per questo che sembrava assente.
-  // La degradazione per provider la fa il gateway: audio e video li onora chi li regge (Seedance 2
-  // e successivi) e gli altri usano le sole immagini.
-  return 'openrouter';
-}
-
 async function runVideoJob(
-  endpoint: 'kie' | 'openrouter',
   model: string,
   prompt: string,
   durationSeconds: number,
@@ -781,7 +609,6 @@ async function runVideoJob(
   resolution: string,
   opts: {
     imageUrl?: string;
-    hasScript?: boolean;
     lastFrameUrl?: string;
     referenceVideoUrls?: string[];
     referenceAudioUrls?: string[];
@@ -789,54 +616,29 @@ async function runVideoJob(
     abortSignal?: AbortSignal;
   } = {}
 ): Promise<(VideoJobResult & { costUsd?: number }) | undefined> {
-  if (endpoint === 'openrouter') {
-    const out = await renderOpenrouterVideo(
-      {
-        model,
-        prompt,
-        durationSeconds,
-        resolution,
-        aspectRatio,
-        imageUrl: opts.imageUrl,
-        lastFrameUrl: opts.lastFrameUrl,
-        // I riferimenti arrivavano solo a kie, e su questa strada sparivano in silenzio: la clip
-        // usciva senza l'ancoraggio a persona, prodotto e voce, e il render riusciva lo stesso.
-        referenceImageUrls: opts.referenceImageUrls,
-        referenceAudioUrls: opts.referenceAudioUrls,
-        referenceVideoUrls: opts.referenceVideoUrls
-      },
-      { signal: opts.abortSignal, context: 'inline' }
-    );
-    // Come su kie: una scadenza non riapre niente. Il job resta del fornitore col suo id.
-    return out.status === 'done' ? { url: out.url, taskId: tagOpenrouterJob(out.jobId), costUsd: out.costUsd } : undefined;
-  }
-  const taskId = await createKieTask(
-    model,
-    buildJobInput(model, {
+  const out = await renderOpenrouterVideo(
+    {
+      model,
       prompt,
       durationSeconds,
       resolution,
       aspectRatio,
       imageUrl: opts.imageUrl,
-      hasScript: opts.hasScript,
       lastFrameUrl: opts.lastFrameUrl,
-      referenceVideoUrls: opts.referenceVideoUrls,
+      referenceImageUrls: opts.referenceImageUrls,
       referenceAudioUrls: opts.referenceAudioUrls,
-      referenceImageUrls: opts.referenceImageUrls
-    }),
-    opts.abortSignal,
-    'video'
+      referenceVideoUrls: opts.referenceVideoUrls
+    },
+    { signal: opts.abortSignal, context: 'inline' }
   );
-  if (!taskId) return undefined;
-  const job = await pollKieTask(taskId, POLL_TIMEOUT_MS, opts.abortSignal, 'video', POLL_INTERVAL_MS);
+  // Una scadenza non riapre niente: il job resta del fornitore col suo id.
+  if (out.status !== 'done') return undefined;
 
-  // Una scadenza non riapre niente: il task resta di kie, e chi passa dalla coda lo ripesca dal
-  // `task_id` che ha gia' scritto. Aprire un secondo task qui pagherebbe due volte lo stesso clip.
-  return job.status === 'done' ? job : undefined;
+  return { url: out.url, taskId: tagOpenrouterJob(out.jobId), costUsd: out.costUsd };
 }
 
-// Gli URL di kie non sono permanenti. La RLS dello Storage pretende che il primo segmento del path
-// sia `auth.uid()`, quindi ogni oggetto vive sotto `{userId}/…`.
+// Gli URL del fornitore non sono permanenti. La RLS dello Storage pretende che il primo segmento
+// del path sia `auth.uid()`, quindi ogni oggetto vive sotto `{userId}/…`.
 async function persistMp4(
   supabase: SupabaseClient,
   userId: string,
@@ -874,7 +676,7 @@ async function persistMp4(
 }
 
 /**
- * Tutto ciò che va deciso prima di parlare a kie: modello, durata, prompt, e le opzioni che
+ * Tutto ciò che va deciso prima di parlare al fornitore: modello, durata, prompt, e le opzioni che
  * serviranno a finire il lavoro molto dopo che questa richiesta sarà finita.
  *
  * Separato perché un render si può attendere inline o consegnare a un riconciliatore: le decisioni
@@ -921,12 +723,7 @@ export async function prepareVideoRender(
   imagePrompt: string,
   opts: RenderVideoOpts = {}
 ): Promise<PreparedRender> {
-  // NESSUN CANCELLO DI FORNITORE QUI. C'era `if (!env.KIE_API_KEY) throw`, e rifiutava ogni render
-  // — compresi quelli diretti a OpenRouter, che di quella chiave non sanno niente. Con kie spento
-  // il video non partiva affatto, e il messaggio nominava un fornitore che non c'entrava.
-  //
-  // La chiave si controlla dove si usa: `runVideoJob` e `finishVideoRender` la chiedono sul ramo
-  // kie, e `route('video')` ripiega da solo quando un endpoint non è configurato.
+  // NESSUN CANCELLO DI FORNITORE QUI: la chiave si controlla dove si usa, nel trasporto.
 
   // Una clip è la cosa più cara che il motore possa comprare: chi ha i crediti esauriti non deve
   // poterci spendere da NESSUN percorso. `CreditsExhaustedError` si propaga — l'utente deve sapere
@@ -1010,52 +807,31 @@ export async function prepareVideoRender(
   };
 }
 
-/** Il percorso inline: invia, aspetta kie, fattura, persiste. */
+/** Il percorso inline: invia, aspetta, persiste. */
 async function runPreparedRender(
   supabase: SupabaseClient,
   userId: string,
   p: PreparedRender,
   abortSignal?: AbortSignal
 ): Promise<RenderedVideo | undefined> {
-  const { model, prompt, durationSeconds, aspectRatio, resolution, cover, script, lastFrame } = p;
+  const { model, prompt, durationSeconds, aspectRatio, resolution, cover, lastFrame } = p;
   const { referenceVideoUrls, referenceAudioUrls, referenceImageUrls } = p;
-  const t0 = Date.now();
-  const endpoint = videoEndpoint(model);
   try {
-    const job = await runVideoJob(endpoint, model, prompt, durationSeconds, aspectRatio, resolution, {
+    // La riga in `ai_calls` la scrive il trasporto, che e' l'unico a conoscere il `jobId` e il
+    // costo fatturato — anche quando il job e' SCADUTO e qui non arriva.
+    const job = await runVideoJob(model, prompt, durationSeconds, aspectRatio, resolution, {
       imageUrl: cover,
-      hasScript: !!script,
       lastFrameUrl: lastFrame,
       referenceVideoUrls,
       referenceAudioUrls,
       referenceImageUrls,
       abortSignal
     });
-    // L'addebito ESATTO di kie: un job fallito o scaduto kie non lo fattura, quindi non lo
-    // fatturiamo al brand. Il brandId arriva dallo scope, quindi il costo cade in ai_calls e da lì
-    // nella quota.
-    // Su openrouter la riga in `ai_calls` l'ha gia' scritta il trasporto, che e' l'unico a
-    // conoscere il `jobId` e il costo fatturato — anche quando il job e' SCADUTO e qui non arriva.
-    if (endpoint === 'kie') {
-      logAiCall({
-        label: 'video.render',
-        provider: 'kie',
-        model,
-        prompt,
-        ms: Date.now() - t0,
-        ok: !!job,
-        error: job ? undefined : 'no video returned',
-        ...(job?.credits != null
-          ? { providerCredits: job.credits, flatCostUsd: Math.round(job.credits * KIE_CREDIT_USD * 1e6) / 1e6 }
-          : {}),
-        context: `${durationSeconds}s ${resolution}`
-      });
-    }
     if (!job) return undefined;
 
     const url = await persistMp4(supabase, userId, job.url, {
       ...p.persistOpts,
-      ...(endpoint === 'openrouter' ? { headers: openrouterVideoHeaders() } : {})
+      headers: openrouterVideoHeaders()
     });
     if (!url) return undefined;
     // taskId e risoluzione tornano indietro perché sono ciò che rende possibile l'upscale
@@ -1070,63 +846,13 @@ async function runPreparedRender(
 }
 
 /**
- * Runway vive su un percorso suo: `/aleph/generate` per inviare e `/runway/record-detail` per
- * chiedere, con lo stato in `data.state` e l'URL in `data.videoInfo.videoUrl`. Nessuno dei due
- * combacia con l'API a job, e questa e' l'unica ragione per cui la tabella dichiara `endpoint`.
- */
-async function runAlephJob(
-  input: Record<string, unknown>,
-  signal?: AbortSignal
-): Promise<VideoJobResult | undefined> {
-  const res = await fetch(`${KIE_BASE}/aleph/generate`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify(input),
-    signal
-  });
-  if (!res.ok) {
-    console.error(`[video.transform] aleph generate ${res.status}: ${(await res.text().catch(() => '')).slice(0, 400)}`);
-    return undefined;
-  }
-  const created = await res.json();
-  const taskId = created?.data?.taskId ?? created?.data?.task_id;
-  if (!taskId) {
-    console.error(`[video.transform] aleph rifiutata: ${String(created?.msg ?? JSON.stringify(created)).slice(0, 400)}`);
-    return undefined;
-  }
-
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-  let first = true;
-  while (Date.now() < deadline) {
-    if (signal?.aborted) return undefined;
-    if (!first) await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-    first = false;
-    const infoRes = await fetch(`${KIE_BASE}/runway/record-detail?taskId=${encodeURIComponent(taskId)}`, {
-      headers: authHeaders(),
-      signal
-    });
-    if (!infoRes.ok) continue;
-    const info = await infoRes.json();
-    const state = info?.data?.state;
-    if (state === 'fail') {
-      console.error(`[video.transform] aleph fallita: ${String(info?.data?.failMsg ?? '').slice(0, 400)}`);
-      return undefined;
-    }
-    const url = info?.data?.videoInfo?.videoUrl;
-    if (state === 'success' && url) return { url: String(url), taskId };
-  }
-  return undefined;
-}
-
-/**
  * I due mestieri che partono da un video che esiste gia\'.
  *
  * Tornano `undefined` e non lanciano, come ogni altro render qui: una clip che non riesce non deve
  * portarsi via il post da cui e\' partita.
  *
- * La clip finita si RIOSPITA (`persistMp4`): gli URL dei provider scadono — quello di Runway in 14
- * giorni — e un post che punta a un URL scaduto e\' un post senza video, mesi dopo, senza un errore
- * da nessuna parte.
+ * La clip finita si RIOSPITA (`persistMp4`): gli URL dei provider scadono, e un post che punta a un
+ * URL scaduto e\' un post senza video, mesi dopo, senza un errore da nessuna parte.
  */
 export async function transformVideo(opts: {
   supabase: SupabaseClient;
@@ -1144,85 +870,48 @@ export async function transformVideo(opts: {
   const model = opts.model?.trim() || videoModelForRole(opts.prefs, opts.role);
   if (!model) return undefined;
 
+  // Un modello che non dichiara questo mestiere non deve raggiungere il fornitore: sarebbe un
+  // giro pagato che non torna nulla.
+  if (!videoModelSpec(model)?.roles.includes(opts.role)) {
+    throw new Error(`${model} does not do ${opts.role}: pick a model that serves that job`);
+  }
+
   await gateScopedCredits();
 
-  const spec = videoModelSpec(model);
-  const input = buildTransformInput(model, opts.role, {
-    prompt: opts.prompt,
-    videoUrl: opts.videoUrl,
-    imageUrl: opts.imageUrl,
-    aspectRatio: opts.aspectRatio,
-    mode: opts.mode
-  });
-
-  const t0 = Date.now();
   let job: VideoJobResult | undefined;
-  // Il trasporto si CHIEDE, non si dà per scontato. Questa funzione andava sempre su kie, perché
-  // l'unico modello che sapeva rifinire era Aleph, che lì vive. Ora Seedance dichiara quel ruolo e
-  // legge un video da `input_references`: la domanda torna ad avere due risposte.
-  const endpoint = videoEndpoint(model);
   try {
-    job =
-      endpoint === 'openrouter'
-        ? await (async () => {
-            const out = await renderOpenrouterVideo(
-              {
-                model,
-                prompt: opts.prompt ?? '',
-                durationSeconds: 0,
-                resolution: '',
-                aspectRatio: opts.aspectRatio ?? '',
-                // Il video sorgente è un RIFERIMENTO, non un fotogramma: `frame_images` direbbe
-                // «parti da questa immagine», che è un altro mestiere.
-                referenceVideoUrls: [opts.videoUrl],
-                ...(opts.imageUrl ? { referenceImageUrls: [opts.imageUrl] } : {})
-              },
-              { signal: opts.abortSignal, context: `transform:${opts.role}`, label: 'video.transform' }
-            );
-            return out.status === 'done' ? { url: out.url, taskId: tagOpenrouterJob(out.jobId) } : undefined;
-          })()
-        : spec?.endpoint === 'aleph'
-        ? await runAlephJob(input, opts.abortSignal)
-        : await (async () => {
-            const taskId = await createKieTask(
-              kieVideoModel(model, opts.role),
-              input,
-              opts.abortSignal,
-              'video.transform'
-            );
-            return taskId
-              ? pollKieTask(taskId, POLL_TIMEOUT_MS, opts.abortSignal, 'video.transform', POLL_INTERVAL_MS).then(
-                  (r) => (r.status === 'done' ? r : undefined)
-                )
-              : undefined;
-          })();
+    const out = await renderOpenrouterVideo(
+      {
+        model,
+        prompt: opts.prompt ?? '',
+        durationSeconds: 0,
+        resolution: '',
+        aspectRatio: opts.aspectRatio ?? '',
+        // Il video sorgente è un RIFERIMENTO, non un fotogramma: `frame_images` direbbe
+        // «parti da questa immagine», che è un altro mestiere.
+        referenceVideoUrls: [opts.videoUrl],
+        ...(opts.imageUrl ? { referenceImageUrls: [opts.imageUrl] } : {})
+      },
+      { signal: opts.abortSignal, context: `transform:${opts.role}`, label: 'video.transform' }
+    );
+    if (out.status === 'done') job = { url: out.url, taskId: tagOpenrouterJob(out.jobId) };
   } catch (e) {
     console.error('[video.transform] job failed', e);
   }
-
-  logAiCall({
-    label: `video.${opts.role}`,
-    provider: 'kie',
-    model,
-    prompt: String(input.prompt ?? ''),
-    ms: Date.now() - t0,
-    ok: !!job,
-    error: job ? undefined : 'no video returned',
-    ...(job?.credits != null
-      ? { providerCredits: job.credits, flatCostUsd: Math.round(job.credits * KIE_CREDIT_USD * 1e6) / 1e6 }
-      : {}),
-    context: opts.role
-  });
   if (!job) return undefined;
 
   // Niente sottotitoli e niente taglio: la clip di partenza e\' gia\' montata, e rimontarla qui
   // sposterebbe il timing di quello che l\'utente ha approvato.
-  const url = await persistMp4(opts.supabase, opts.userId, job.url, { captions: false, tighten: false });
+  const url = await persistMp4(opts.supabase, opts.userId, job.url, {
+    captions: false,
+    tighten: false,
+    headers: openrouterVideoHeaders()
+  });
   if (!url) return undefined;
   return { url, taskId: job.taskId, model };
 }
 
-/** A render kie has accepted but not finished. Everything here must survive the request. */
+/** A render the provider has accepted but not finished. Everything here must survive the request. */
 export type SubmittedVideoRender = {
   taskId: string;
   model: string;
@@ -1236,13 +925,13 @@ export type SubmittedVideoRender = {
 };
 
 /**
- * Consegna il job a kie e si ferma. L'attesa che fa `renderVideo` non compra niente: il task id è
- * un appiglio durevole e il risultato resta recuperabile da qualunque processo — tenere aperta
+ * Consegna il job e si ferma. L'attesa che fa `renderVideo` non compra niente: il task id è un
+ * appiglio durevole e il risultato resta recuperabile da qualunque processo — tenere aperta
  * un'invocazione a guardare la coda di qualcun altro è ciò che rendeva la generazione la cosa più
- * lunga del repo, e ciò che la limitava a POLL_TIMEOUT_MS comunque.
+ * lunga del repo, e ciò che la limitava al tetto dell'attesa comunque.
  *
- * I crediti si GATANO qui ma non si fatturano: `creditsConsumed` esatto arriva solo col job finito,
- * quindi l'addebito cade in `finishVideoRender` e un job che non riesce non si paga.
+ * I crediti si GATANO qui ma non si fatturano: il costo esatto arriva solo col job finito, quindi
+ * l'addebito cade in `finishVideoRender` e un job che non riesce non si paga.
  */
 export async function submitVideoRender(
   imagePrompt: string,
@@ -1250,67 +939,38 @@ export async function submitVideoRender(
 ): Promise<SubmittedVideoRender | undefined> {
   const p = await prepareVideoRender(imagePrompt, opts);
 
-  // Same contract as the inline path: a kie or network failure is non-fatal and returns undefined
-  // so the caller ships the cover. Without this a blip unwinds into the caller's outer catch and
-  // takes the whole post with it — including the cover image already generated and paid for.
-  // CreditsExhaustedError is re-thrown: that is a message for the user, not a render failure.
-  const endpoint = videoEndpoint(p.model);
-
-  let taskId: string | undefined;
+  // Same contract as the inline path: a provider or network failure is non-fatal and returns
+  // undefined so the caller ships the cover. Without this a blip unwinds into the caller's outer
+  // catch and takes the whole post with it — including the cover image already generated and paid
+  // for. CreditsExhaustedError is re-thrown: that is a message for the user, not a render failure.
+  let jobId: string | undefined;
   try {
-    if (endpoint === 'openrouter') {
-      // Si INVIA e basta: il poll lo fara' il riconciliatore, sullo stesso id, quante volte serve.
-      const out = await submitOpenrouterVideo(
-        {
-          model: p.model,
-          prompt: p.prompt,
-          durationSeconds: p.durationSeconds,
-          resolution: p.resolution,
-          aspectRatio: p.aspectRatio,
-          imageUrl: p.cover,
-          lastFrameUrl: p.lastFrame,
-          // Come sul percorso inline: senza, una clip UGC inviata in asincrono perde l'ancoraggio
-          // e nessuno se ne accorge finché non la guarda.
-          referenceImageUrls: p.referenceImageUrls,
-          referenceAudioUrls: p.referenceAudioUrls,
-          referenceVideoUrls: p.referenceVideoUrls
-        },
-        opts.abortSignal
-      );
-      if (!out.jobId) {
-        // Il motivo esisteva gia' qui e moriva nel log: chi ha chiamato il tool riceveva
-        // `render_failed` nudo e non poteva sapere se riprovare o cambiare parametro.
-        console.error(`[video] submit openrouter rifiutato: ${out.error}`);
-        if (out.error) opts.onSubmitError?.(String(out.error));
-        return undefined;
-      }
-      return {
-        taskId: tagOpenrouterJob(out.jobId),
+    // Si INVIA e basta: il poll lo fara' il riconciliatore, sullo stesso id, quante volte serve.
+    const out = await submitOpenrouterVideo(
+      {
         model: p.model,
-        prompt: p.prompt,
-        durationSeconds: p.durationSeconds,
-        resolution: p.resolution,
-        coverUrl: p.cover,
-        persistOpts: p.persistOpts,
-        submittedAt: Date.now()
-      };
-    }
-    taskId = await createKieTask(
-      p.model,
-      buildJobInput(p.model, {
         prompt: p.prompt,
         durationSeconds: p.durationSeconds,
         resolution: p.resolution,
         aspectRatio: p.aspectRatio,
         imageUrl: p.cover,
-        hasScript: !!p.script,
         lastFrameUrl: p.lastFrame,
-        referenceVideoUrls: p.referenceVideoUrls,
+        // Come sul percorso inline: senza, una clip UGC inviata in asincrono perde l'ancoraggio
+        // e nessuno se ne accorge finché non la guarda.
+        referenceImageUrls: p.referenceImageUrls,
         referenceAudioUrls: p.referenceAudioUrls,
-        referenceImageUrls: p.referenceImageUrls
-      }),
+        referenceVideoUrls: p.referenceVideoUrls
+      },
       opts.abortSignal
     );
+    if (!out.jobId) {
+      // Il motivo esisteva gia' qui e moriva nel log: chi ha chiamato il tool riceveva
+      // `render_failed` nudo e non poteva sapere se riprovare o cambiare parametro.
+      console.error(`[video] submit openrouter rifiutato: ${out.error}`);
+      if (out.error) opts.onSubmitError?.(String(out.error));
+      return undefined;
+    }
+    jobId = out.jobId;
   } catch (e) {
     if (e instanceof Error && e.name === 'CreditsExhaustedError') throw e;
     const why = e instanceof Error ? e.message : String(e);
@@ -1318,13 +978,9 @@ export async function submitVideoRender(
     opts.onSubmitError?.(why);
     return undefined;
   }
-  if (!taskId) {
-    opts.onSubmitError?.('the provider accepted no task for this request');
-    return undefined;
-  }
 
   return {
-    taskId,
+    taskId: tagOpenrouterJob(jobId),
     model: p.model,
     prompt: p.prompt,
     durationSeconds: p.durationSeconds,
@@ -1336,89 +992,32 @@ export async function submitVideoRender(
 }
 
 export type VideoRenderOutcome =
-  /** kie is still working. Ask again later; nothing is held open in the meantime. */
+  /** Il fornitore sta ancora lavorando. Ask again later; nothing is held open in the meantime. */
   | { status: 'pending' }
   | { status: 'done'; url: string; durationSeconds: number; resolution: string; thumbnailUrl?: string }
   | { status: 'failed'; error: string };
 
-export function videoTaskProvider(taskId: string): 'openrouter' | 'kie' {
-  return untagOpenrouterJob(taskId) ? 'openrouter' : 'kie';
-}
-
 /**
- * Check a submitted render once, and finish it if kie is done.
+ * Check a submitted render once, and finish it if the provider is done.
  *
- * One `recordInfo` call — no loop, no sleep, no budget. That is the whole point: the caller can be
- * a cron tick costing milliseconds instead of a process sitting on a ten-minute timer.
+ * One call — no loop, no sleep, no budget. That is the whole point: the caller can be a cron tick
+ * costing milliseconds instead of a process sitting on a ten-minute timer.
  */
 export async function finishVideoRender(
   supabase: SupabaseClient,
   userId: string,
   submitted: SubmittedVideoRender
 ): Promise<VideoRenderOutcome> {
-  // CHI interrogare lo dice la RIGA, non `AI_ROUTE_VIDEO` di adesso: una clip consegnata prima di
-  // un deploy che sposta la variabile deve restare recuperabile da chi l'ha presa in carico.
+  // CHI interrogare lo dice la RIGA, mai la configurazione di adesso: una clip consegnata prima di
+  // un deploy deve restare recuperabile da chi l'ha presa in carico.
   const openrouterJobId = untagOpenrouterJob(submitted.taskId);
-  if (openrouterJobId) return finishOpenrouterRender(supabase, userId, submitted, openrouterJobId);
-
-  if (!env.KIE_API_KEY) throw new Error('KIE_API_KEY not configured');
-
-  const res = await fetch(
-    `${KIE_BASE}/jobs/recordInfo?taskId=${encodeURIComponent(submitted.taskId)}`,
-    { headers: authHeaders(), signal: AbortSignal.timeout(30_000) }
-  );
-  // A transient 5xx is not a failed render — the task is still kie's, so stay pending and retry.
-  if (!res.ok) return { status: 'pending' };
-
-  const info = await res.json();
-  const state = info?.data?.state;
-  if (state === 'fail' || state === 'failed' || state === 'error') {
-    return { status: 'failed', error: String(info?.data?.failMsg ?? 'kie reported a failed render') };
+  if (!openrouterJobId) {
+    // Una riga storica di un trasporto che non esiste piu'. Dirlo subito la chiude; restare
+    // `pending` la lascerebbe girare nel riconciliatore fino alla finestra di resa.
+    return { status: 'failed', error: 'no transport can resolve this task id' };
   }
-  if (state !== 'success' && state !== 'completed') return { status: 'pending' };
 
-  const raw = info?.data?.resultJson;
-  let parsed: { resultUrls?: string[] } | undefined;
-  try {
-    parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-  } catch {
-    return { status: 'failed', error: 'kie returned an unreadable result payload' };
-  }
-  const sourceUrl = parsed?.resultUrls?.[0];
-  if (!sourceUrl) return { status: 'failed', error: 'kie reported success with no clip url' };
-
-  // Store FIRST, bill second. persistMp4 downloads from kie and can throw, and the caller hands a
-  // thrown row back to a per-minute cron — so billing above this line would charge the same clip
-  // again on every retry until the give-up window closed.
-  const url = await persistMp4(supabase, userId, sourceUrl, submitted.persistOpts);
-  if (!url) return { status: 'failed', error: 'clip rendered but could not be stored' };
-
-  // Bill here, not at submit: this is the first point kie states its exact charge, and a render
-  // that never succeeds is never billed — the same contract the inline path has always had.
-  const rawCredits = info?.data?.creditsConsumed ?? info?.data?.credits_consumed;
-  const credits = Number.isFinite(Number(rawCredits)) ? Number(rawCredits) : undefined;
-  logAiCall({
-    label: 'video.render',
-    provider: 'kie',
-    model: submitted.model,
-    prompt: submitted.prompt,
-    // Wall time from submit to landing — what the clip actually took, queue included. The inline
-    // path could only ever measure its own blocked wait, which is the same number by accident.
-    ms: Math.max(0, Date.now() - submitted.submittedAt),
-    ok: true,
-    ...(credits != null
-      ? { providerCredits: credits, flatCostUsd: Math.round(credits * KIE_CREDIT_USD * 1e6) / 1e6 }
-      : {}),
-    context: `${submitted.durationSeconds}s ${submitted.resolution} (async)`
-  });
-
-  return {
-    status: 'done',
-    url,
-    durationSeconds: submitted.durationSeconds,
-    resolution: submitted.resolution,
-    thumbnailUrl: submitted.coverUrl
-  };
+  return finishOpenrouterRender(supabase, userId, submitted, openrouterJobId);
 }
 
 /**
@@ -1467,18 +1066,13 @@ async function finishOpenrouterRender(
 }
 
 // Re-render an ALREADY GENERATED clip at a higher resolution, without paying to generate it again.
-// kie's upscale takes the original job's task_id (never a URL), which is exactly why renderVideo
-// hands the id back and the post row keeps it.
 //
 // This is the second half of the cost strategy: drafts render at RESOLUTION (cheap), and only the
 // clips a user actually approves are upscaled. Most drafts are never published, so the expensive
 // resolution is paid on a fraction of them.
 //
-// Returns undefined on ANY failure — no task id, provider refusal, timeout, storage error — and
+// Returns undefined on ANY failure — no clip file, provider refusal, timeout, storage error — and
 // the caller keeps publishing the draft-resolution clip. A worse pixel count must never cost a post.
-// Note kie documents the id as needing to come from "a Kie AI video generation model": whether an
-// id minted by a NON-Grok model (e.g. Seedance) is accepted here is not stated, so a rejection is
-// treated as an ordinary miss rather than something to assert about up front.
 export async function upscaleVideo(
   supabase: SupabaseClient,
   userId: string,
@@ -1488,59 +1082,12 @@ export async function upscaleVideo(
 ): Promise<{ url: string; resolution: string } | undefined> {
   if (!taskId) return undefined;
 
-  // DUE UPSCALE, DUE INGRESSI DIVERSI. kie riparte dal LAVORO originale (`task_id`, e solo uno
-  // suo); `black-forest-labs/flux-video-upscale` riparte dal FILE — «requires video input:
-  // include an input_references entry of type video_url», risponde se manca.
-  //
-  // Chi chiama il file ce l'ha già (`post.media_url`), quindi non c'è niente da conservare: senza
-  // quello non si ingrandisce una clip di OpenRouter, e tacere sarebbe peggio che dirlo.
-  if (untagOpenrouterJob(taskId)) {
-    return opts.videoUrl
-      ? await upscaleOnOpenrouter(supabase, userId, opts.videoUrl, resolution)
-      : undefined;
-  }
+  // `black-forest-labs/flux-video-upscale` riparte dal FILE — «requires video input: include an
+  // input_references entry of type video_url», risponde se manca. Chi chiama il file ce l'ha già
+  // (`post.media_url`), quindi non c'è niente da conservare: senza quello non si ingrandisce.
+  if (!opts.videoUrl) return undefined;
 
-  if (!env.KIE_API_KEY) return undefined;
-
-  // Upscale is a Grok-Imagine endpoint that takes a Grok task_id. Seedance (and unknown) drafts
-  // have no matching upscale path — skip rather than burn a round-trip that will fail.
-  if (!videoModelCaps(envModelI2V()).supportsUpscale) return undefined;
-
-  // Same runaway-spend gate as generation: an exhausted payer must not buy pixels either.
-  try {
-    await gateScopedCredits();
-  } catch {
-    // Unlike generation, an exhausted quota here is NOT worth failing the publish over — the
-    // draft-resolution clip is already a complete, publishable post. Degrade silently.
-    return undefined;
-  }
-
-  const t0 = Date.now();
-  try {
-    const newTaskId = await createKieTask(MODEL_UPSCALE, { task_id: taskId, resolution }, undefined, 'video');
-    const polled = newTaskId
-      ? await pollKieTask(newTaskId, UPSCALE_TIMEOUT_MS, undefined, 'video', POLL_INTERVAL_MS)
-      : undefined;
-    const job = polled?.status === 'done' ? polled : undefined;
-    logAiCall({
-      label: 'video.upscale',
-      provider: 'kie',
-      model: MODEL_UPSCALE,
-      ms: Date.now() - t0,
-      ok: !!job,
-      error: job ? undefined : 'no upscaled video returned',
-      ...(job?.credits != null
-        ? { providerCredits: job.credits, flatCostUsd: Math.round(job.credits * KIE_CREDIT_USD * 1e6) / 1e6 }
-        : {}),
-      context: `${resolution} from ${taskId.slice(0, 24)}`
-    });
-    if (!job) return undefined;
-
-    const url = await persistMp4(supabase, userId, job.url);
-    return url ? { url, resolution } : undefined;
-  } catch {
-    return undefined;
-  }
+  return upscaleOnOpenrouter(supabase, userId, opts.videoUrl, resolution);
 }
 
 /**

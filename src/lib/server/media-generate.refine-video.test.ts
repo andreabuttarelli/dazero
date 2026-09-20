@@ -50,7 +50,7 @@ vi.mock('$lib/server/ai-log', () => ({
 }));
 
 import { refineBrandMedia } from './media-generate';
-import { ALEPH_REFINE_MODEL, GROK_IMAGINE_VIDEO_MODEL } from '$lib/video-models';
+import { SEEDANCE_25_MODEL, GROK_IMAGINE_VIDEO_MODEL } from '$lib/video-models';
 
 /**
  * Lo stub risponde per COLONNA richiesta, non per tabella: `brand_media` viene letta tre volte con
@@ -82,13 +82,13 @@ function supabaseWith(prefs: Record<string, unknown>, rows: Array<{ id: string; 
 
 beforeEach(() => {
   vi.clearAllMocks();
-  transformVideo.mockResolvedValue({ url: 'https://cdn/refined.mp4', taskId: 'task-9', model: ALEPH_REFINE_MODEL });
+  transformVideo.mockResolvedValue({ url: 'https://cdn/refined.mp4', taskId: 'task-9', model: SEEDANCE_25_MODEL });
   saveRenderedVideoToLibrary.mockResolvedValue({ mediaId: 'media-refined' });
 });
 
 describe('rifinire una clip della libreria', () => {
   it('manda un video a transformVideo, non al motore delle immagini', async () => {
-    const out = await refineBrandMedia(supabaseWith({ videoRefineModel: ALEPH_REFINE_MODEL }, [{ id: VIDEO_ID, kind: 'video' }]), {
+    const out = await refineBrandMedia(supabaseWith({ videoRefineModel: SEEDANCE_25_MODEL }, [{ id: VIDEO_ID, kind: 'video' }]), {
       brandId: 'brand-1',
       userId: 'user-1',
       baseMediaId: VIDEO_ID,
@@ -106,7 +106,7 @@ describe('rifinire una clip della libreria', () => {
   });
 
   it('deposita la clip rifinita come asset NUOVO e ne restituisce l id', async () => {
-    const out = await refineBrandMedia(supabaseWith({ videoRefineModel: ALEPH_REFINE_MODEL }, [{ id: VIDEO_ID, kind: 'video' }]), {
+    const out = await refineBrandMedia(supabaseWith({ videoRefineModel: SEEDANCE_25_MODEL }, [{ id: VIDEO_ID, kind: 'video' }]), {
       brandId: 'brand-1',
       userId: 'user-1',
       baseMediaId: VIDEO_ID,
@@ -149,7 +149,7 @@ describe('rifinire una clip della libreria', () => {
 
     expect(out.ok).toBe(false);
     expect(!out.ok && out.error).toBe('model_not_for_slot');
-    expect(!out.ok && 'allowed' in out && out.allowed).toContain(ALEPH_REFINE_MODEL);
+    expect(!out.ok && 'allowed' in out && out.allowed).toContain(SEEDANCE_25_MODEL);
     expect(transformVideo).not.toHaveBeenCalled();
   });
 

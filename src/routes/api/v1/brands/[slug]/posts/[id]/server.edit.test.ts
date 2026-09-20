@@ -52,3 +52,36 @@ describe('PUT /api/v1/brands/:slug/posts/:id', () => {
     expect((await put({ inventato: 'x' })).status).toBe(400);
   });
 });
+
+describe('PUT /posts/:id — la versione che il chiamante ha letto', () => {
+  it('passa `expected_updated_at` al guard invece di trattarlo come un campo da scrivere', async () => {
+    await put({ caption: 'nuova', expected_updated_at: '2026-09-19T10:00:00Z' });
+
+    const [, , patch, opts] = applyPostEdits.mock.calls[0] as unknown as [
+      unknown,
+      unknown,
+      Record<string, unknown>,
+      Record<string, unknown>
+    ];
+    expect(patch).not.toHaveProperty('expected_updated_at');
+    expect(opts.expectedUpdatedAt).toBe('2026-09-19T10:00:00Z');
+  });
+
+  it('da solo non è una modifica: senza altri campi il post non si tocca', async () => {
+    const res = await put({ expected_updated_at: '2026-09-19T10:00:00Z' });
+
+    expect(res.status).toBe(400);
+    expect(applyPostEdits).not.toHaveBeenCalled();
+  });
+
+  it('un conflitto è 409 e si chiama `stale_post`, non un 500 anonimo', async () => {
+    applyPostEdits.mockResolvedValueOnce({
+      error: { message: 'Post modificato da qualcun altro dopo la tua lettura' }
+    } as never);
+
+    const res = await put({ caption: 'nuova', expected_updated_at: '2026-09-19T10:00:00Z' });
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe('stale_post');
+  });
+});

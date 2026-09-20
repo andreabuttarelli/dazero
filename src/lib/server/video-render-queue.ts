@@ -1,7 +1,7 @@
 /**
  * Out-of-band clip renders.
  *
- * Submitting to kie returns a task id and nothing else is needed: the job lives on kie's side and
+ * Submitting returns a task id and nothing else is needed: the job lives on the provider's side and
  * its result stays fetchable from any process, forever. So instead of holding an invocation open
  * to watch it — which is what made clip generation the longest thing in this codebase, and what
  * capped every clip at POLL_TIMEOUT_MS regardless of what it actually needed — the task id is
@@ -13,31 +13,33 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 	finishVideoRender,
-	videoTaskProvider,
 	type RenderVideoOpts,
 	type SubmittedVideoRender,
 	type VideoPersistOpts
 } from '$lib/server/video';
 import { withBrandContext, withOrgContext } from '$lib/server/ai-log';
 
-/** Give up on a task kie never resolves. Generous: each check costs one cheap HTTP call. */
+/** Il nome del trasporto nei messaggi di resa: chi apre il registro deve sapere dove guardare. */
+const VIDEO_TRANSPORT = 'openrouter';
+
+/** Give up on a task the provider never resolves. Generous: each check costs one cheap HTTP call. */
 export const VIDEO_RENDER_MAX_AGE_MS = 60 * 60_000;
 /**
  * A claim older than this belonged to a process that died mid-finish.
  *
  * Must exceed the reconciler route's own maxDuration (300s), or a tick still legitimately working
  * gets its claim swept by the next tick and the non-idempotent half — downloading the mp4 and
- * billing kie's charge — runs twice.
+ * billing the provider's charge — runs twice.
  */
 export const VIDEO_RENDER_CLAIM_STALE_MS = 15 * 60_000;
 /**
  * Stop retrying a render that keeps throwing. Age alone is not enough: a row that fails in
  * persistMp4 comes straight back to a per-minute cron, so without a count it burns sixty attempts
- * inside the age window — and every one of them is a download from kie.
+ * inside the age window — and every one of them is a download from the provider.
  *
- * Counts FAILURES only, never the "kie is still working" checks. Counting those would make this a
+ * Counts FAILURES only, never the "the provider is still working" checks. Counting those would make this a
  * second, far tighter deadline than VIDEO_RENDER_MAX_AGE_MS: at one tick a minute, eight checks is
- * eight minutes, so every clip needing longer would be declared dead while kie rendered and billed
+ * eight minutes, so every clip needing longer would be declared dead while the provider rendered and billed
  * it — defeating the entire point of moving the render out-of-band.
  */
 export const VIDEO_RENDER_MAX_ATTEMPTS = 8;
@@ -108,11 +110,11 @@ export async function enqueueVideoRender(
 /**
  * Submit a clip and record the handle in one step — the pair every caller needs, kept together so
  * nobody can do the first without the second. A submitted render whose id was never written down
- * is the exact failure this whole table exists to prevent: kie renders it, charges for it, and no
+ * is the exact failure this whole table exists to prevent: the provider renders it, charges for it, and no
  * process on our side knows it happened.
  *
  * Returns the submission so the caller can write duration/resolution onto its own row, or null if
- * kie refused the job — in which case the caller falls back to shipping the cover, as before.
+ * the provider refused the job — in which case the caller falls back to shipping the cover, as before.
  */
 export async function submitAndTrackVideoRender(opts: {
 	admin: SupabaseClient;
@@ -148,7 +150,7 @@ export async function submitAndTrackVideoRender(opts: {
 		submitted
 	});
 	if (!id) {
-		// kie is rendering something nobody will collect. Say so loudly: it is billable work lost.
+		// The provider is rendering something nobody will collect. Say so loudly: it is billable work lost.
 		console.error(`[video-render] submitted task ${submitted.taskId} but could not record it`);
 		return null;
 	}
@@ -206,7 +208,7 @@ function rowToSubmitted(row: VideoRenderRow): SubmittedVideoRender {
 
 /**
  * Release claims whose holder died. Without this a process killed between claiming and finishing
- * strands the render at `finishing` forever — the clip exists on kie and nobody ever collects it.
+ * strands the render at `finishing` forever — the clip exists at the provider and nobody ever collects it.
  */
 async function releaseStaleClaims(admin: SupabaseClient): Promise<void> {
 	await admin
@@ -389,7 +391,7 @@ async function notifyThread(
 }
 
 /**
- * One pass: check every outstanding render once and finish whichever kie has completed.
+ * One pass: check every outstanding render once and finish whichever the provider has completed.
  *
  * No loop, no sleep, no per-render budget — a tick is a handful of HTTP calls, which is exactly
  * why the give-up window can be an hour instead of ten minutes.
@@ -423,7 +425,7 @@ export async function reconcileVideoRenders(
 		if (age > VIDEO_RENDER_MAX_AGE_MS || exhausted) {
 			const why = exhausted
 				? `gave up after ${raw.attempts} attempts (${raw.error ?? 'repeated failures'})`
-				: `${videoTaskProvider(raw.task_id)} never resolved this task`;
+				: `${VIDEO_TRANSPORT} never resolved this task`;
 			await settle(admin, raw, { status: 'expired', error: why });
 			if (raw.post_id) {
 				await admin

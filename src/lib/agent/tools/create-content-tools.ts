@@ -14,6 +14,7 @@ import { loadActivePlan, currentWeekIndex } from '$lib/server/editorial-plan';
 import { compactGraphicPersist } from '$lib/server/chat/graphic-source-edit';
 import type { ChatToolCtx } from './shared';
 import { startLongToolJob, type AnyRec } from './shared';
+import { videoTransportReady } from '$lib/server/model-routing';
 
 // ── CONTENT CREATION tools ────────────────────────────────────────────────
 
@@ -535,7 +536,7 @@ export function createContentTools(ctx: ChatToolCtx) {
               const { countOutstandingVideoRenders } = await import('$lib/server/video-render-queue');
               const { createAdminClient: adminForCount } = await import('$lib/server/supabase-admin');
               const inFlightVideos = await countOutstandingVideoRenders(adminForCount(), brandId);
-              if (env.KIE_API_KEY && budget.videos - inFlightVideos > 0) {
+              if (videoTransportReady() && budget.videos - inFlightVideos > 0) {
                 const { UGC_AD_DURATION, submitVideoRender } = await import('$lib/server/video');
                 // Submit and stop. kie holds the job; a cron collects the clip and attaches it to
                 // this post. Waiting here was the longest block in the whole tool — up to ten
@@ -833,7 +834,7 @@ export function createContentTools(ctx: ChatToolCtx) {
         // Fare un controllo serio su un dato e poi buttarlo via in silenzio È il difetto: chi
         // reintroduce uno `slice` qui riapre quello, non "mette un limite".
         //
-        // Il tetto vero NON è nemmeno questo 4, e non è 12: è `KIE_IMAGE_INPUT_MAX` (8) in
+        // Il tetto vero NON è nemmeno questo 4, e non è 12: è `IMAGE_REFS_BUDGET` (8) in
         // `kie-jobs.ts`, perché kie è la rotta di default e conta TUTTE le parti inline — il logo
         // del brand (sempre allegato), la base in modalità modifica, e fino a 3 mood. Quello che
         // resta davvero all'utente è 3–6, non 4 e non 12. Alzare il numero qui senza alzare quello

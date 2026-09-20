@@ -7,7 +7,7 @@ vi.mock('$env/dynamic/private', () => ({ env: {} }));
 import { chooseMediaModel } from './media-model-prefs';
 import { mediaModelSlot } from '$lib/media-model-slots';
 import { GPT_IMAGE_2_MODEL } from '$lib/image-models';
-import { ALEPH_REFINE_MODEL, GROK_IMAGINE_VIDEO_MODEL, SEEDANCE_25_MODEL } from '$lib/video-models';
+import { GROK_IMAGINE_VIDEO_MODEL, SEEDANCE_25_MODEL } from '$lib/video-models';
 
 const slot = (id: string) => mediaModelSlot(id)!;
 
@@ -20,7 +20,7 @@ describe('la scelta di un modello per un mestiere', () => {
   it('rifiuta un modello che quel mestiere non sa fare, e dice quali erano ammessi', () => {
     const refused = chooseMediaModel({}, slot('videoRefineModel'), GROK_IMAGINE_VIDEO_MODEL);
     expect(refused.prefs).toBeUndefined();
-    expect(refused.allowed).toContain(ALEPH_REFINE_MODEL);
+    expect(refused.allowed).toContain(SEEDANCE_25_MODEL);
     expect(refused.allowed).not.toContain(GROK_IMAGINE_VIDEO_MODEL);
   });
 

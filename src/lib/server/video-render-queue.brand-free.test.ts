@@ -23,8 +23,7 @@ const saveRenderedVideoToLibrary = vi.fn();
 const addUsage = vi.fn();
 
 vi.mock('$lib/server/video', () => ({
-  finishVideoRender: (...args: unknown[]) => finishVideoRender(...args),
-  videoTaskProvider: () => 'kie'
+  finishVideoRender: (...args: unknown[]) => finishVideoRender(...args)
 }));
 vi.mock('$lib/server/ai-log', () => ({
   withBrandContext: <T>(brandId: string, fn: () => T) => {
