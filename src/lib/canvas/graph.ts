@@ -1,0 +1,204 @@
+/**
+ * COSA UNA COSA È, COSA UNA COSA FA, E QUALI ARCHI HANNO SENSO.
+ *
+ * Due assi, e confonderli è il difetto che questo file esiste per evitare.
+ *
+ *   IL MEDIUM è cosa una cosa È: testo, immagine, video. È la domanda che decide se un arco può
+ *   esistere — un prompt alimenta un'immagine, un fotogramma alimenta un video.
+ *
+ *   IL RUOLO è cosa una cosa FA nel prodotto: un post, un documento, una memoria, un materiale di
+ *   libreria. Il prodotto lo tiene già separato: `brand_media.kind` è il medium, mentre
+ *   `posts.content_type` è il ruolo con dentro il medium (`generated_video`, `text`, `link`).
+ *
+ * Un post non HA un medium: lo prende dal suo contenuto. Un post-video e un post-testo sono lo
+ * stesso ruolo e due medium diversi, e tenerli su un asse solo darebbe un elenco di tipi che
+ * cresce moltiplicando invece che sommando.
+ *
+ * UNA TABELLA SOLA, e non è estetica: il CLAUDE.md lo chiede per le eccezioni — si dichiarano in
+ * un posto solo, accanto al modello che le governa, dove il caso nuovo è una riga e tutti si
+ * vedono insieme. Un `if` per «il video non produce immagini», un altro per «la libreria non si
+ * genera», un terzo per «il post accetta tutto» sarebbero tre regole che al quarto tipo nessuno sa
+ * più elencare.
+ *
+ * QUI NON SI GENERA NIENTE. Questo file dice cosa SAREBBE lecito e cosa manca; chi esegue è altro
+ * codice, che chiama i generatori che il prodotto ha già (`generate_image`, `generate_video`,
+ * `create_post`). La validazione separata dall'esecuzione è ciò che permette di dire «questo arco
+ * non si può fare» mentre il puntatore è ancora in aria, invece di scoprirlo spendendo.
+ */
+
+/** Cosa una cosa È. I tre primitivi, e nient'altro. */
+import { videoRefCapacity } from '$lib/video-models';
+
+export const MEDIUMS = ['text', 'image', 'video'] as const;
+export type Medium = (typeof MEDIUMS)[number];
+
+/**
+ * Cosa una cosa FA. I primi tre sono i primitivi che si generano sulla tela; gli altri sono i
+ * ruoli che il prodotto già conosce — le righe di `brand_media`, `brand_documents`,
+ * `brand_memory`, `posts`.
+ */
+export const NODE_KINDS = ['text', 'image', 'video', 'post', 'media', 'document', 'memory'] as const;
+export type NodeKind = (typeof NODE_KINDS)[number];
+
+export type CanvasNode = {
+  id: string;
+  kind: NodeKind;
+  /** Per un nodo `media`: il `kind` della sua riga, che ne è il medium. */
+  mediaKind?: 'image' | 'video';
+  /** Per un nodo `post`: il suo `content_type`, da cui si ricava il medium. */
+  contentType?: string | null;
+  /** Per un nodo che si genera: con quale modello. Decide quanti riferimenti entrano. */
+  model?: string | null;
+};
+
+type NodeSpec = {
+  /** Il medium fisso del tipo, o null quando lo porta il contenuto (i post). */
+  medium: Medium | null;
+  /** Si produce sulla tela? Una riga di libreria no: esiste già, e un arco verso di lei non farebbe niente. */
+  generated: boolean;
+  /** I medium che questo tipo può ricevere in ingresso. */
+  accepts: readonly Medium[];
+  /** Quelli senza cui non si può eseguire. Il resto è facoltativo. */
+  requires: readonly Medium[];
+};
+
+export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
+  // Un testo si scrive, non si genera da altro: è il punto di partenza di ogni catena.
+  text: { medium: 'text', generated: false, accepts: [], requires: [] },
+  // Un'immagine nasce da un prompt. Un'altra immagine come riferimento è un'altra funzione
+  // (`refine_media`), che entrerà quando il nodo saprà distinguerla da un prompt.
+  image: { medium: 'image', generated: true, accepts: ['text'], requires: ['text'] },
+  // Un video nasce dal prompt, e un'immagine è il fotogramma di partenza: facoltativa, perché il
+  // prodotto sa girare una clip dal solo testo e chiederla bloccherebbe quel percorso.
+  video: { medium: 'video', generated: true, accepts: ['text', 'image'], requires: ['text'] },
+  // Un post è un contenitore: prende ciò che gli si dà, e il suo medium lo porta il contenuto.
+  post: { medium: null, generated: true, accepts: ['text', 'image', 'video'], requires: ['text'] },
+  // Le tre righe che esistono già nel database. Niente le genera: sono sorgenti.
+  media: { medium: null, generated: false, accepts: [], requires: [] },
+  document: { medium: 'text', generated: false, accepts: [], requires: [] },
+  memory: { medium: 'text', generated: false, accepts: [], requires: [] }
+};
+
+/** Da `posts.content_type` al medium: è il ruolo che porta dentro il medium, e qui si separano. */
+function mediumFromContentType(contentType: string | null | undefined): Medium {
+  const t = String(contentType ?? '');
+  if (t.includes('video')) return 'video';
+  if (t.includes('image') || t.includes('graphic')) return 'image';
+  return 'text';
+}
+
+/** Cosa questo nodo È. */
+export function mediumOf(node: CanvasNode): Medium {
+  const spec = CANVAS_NODE_SPECS[node.kind];
+  if (spec?.medium) return spec.medium;
+  if (node.kind === 'media') return node.mediaKind === 'video' ? 'video' : 'image';
+  if (node.kind === 'post') return mediumFromContentType(node.contentType);
+  return 'text';
+}
+
+export type Verdict = { ok: true } | { ok: false; why: string };
+
+/**
+ * Questo arco può esistere? Si risponde PRIMA di eseguire, mentre il puntatore è ancora in aria:
+ * scoprire che una connessione non produce niente dopo aver speso è il modo peggiore di dirlo.
+ */
+export function canConnect(from: CanvasNode, to: CanvasNode): Verdict {
+  if (from.id === to.id) {
+    return { ok: false, why: 'un nodo non si collega a se stesso' };
+  }
+  const target = CANVAS_NODE_SPECS[to.kind];
+  if (!target) {
+    return { ok: false, why: `tipo sconosciuto: ${to.kind}` };
+  }
+  if (!target.generated) {
+    return { ok: false, why: `${to.kind} esiste già: non si genera da altri nodi` };
+  }
+  const medium = mediumOf(from);
+  if (!target.accepts.includes(medium)) {
+    return { ok: false, why: `un ${ITALIAN[medium]} non alimenta un nodo ${ITALIAN[mediumOf(to)] ?? to.kind}` };
+  }
+  return { ok: true };
+}
+
+const ITALIAN: Record<Medium, string> = { text: 'testo', image: 'immagine', video: 'video' };
+
+/** I medium che mancano perché il nodo possa produrre. Vuoto = pronto. */
+export function missingInputs(node: CanvasNode, incoming: CanvasNode[]): Medium[] {
+  const spec = CANVAS_NODE_SPECS[node.kind];
+  if (!spec?.generated) return [];
+  const have = new Set(incoming.map(mediumOf));
+  return spec.requires.filter((m) => !have.has(m));
+}
+
+export function readyToRun(node: CanvasNode, incoming: CanvasNode[]): boolean {
+  return missingInputs(node, incoming).length === 0;
+}
+
+/**
+ * QUANTI INGRESSI ENTRANO DAVVERO, e non è uno per tipo.
+ *
+ * Un video Seedance prende trenta immagini di riferimento, dieci clip e dieci tracce audio; Grok
+ * nessuno. I numeri stanno in `videoRefCapacity`, accanto al modello che li governa, perché sono
+ * un fatto di quel modello come le durate e il tetto del prompt — non una regola della tela.
+ *
+ * IL SOVRAPPIÙ SI RIFIUTA, NON SPARISCE. Tagliare in silenzio la trentunesima immagine è il modo
+ * per cui qualcuno collega un riferimento, non lo vede nel risultato e non capisce perché: qui
+ * torna in `rejected` con il motivo, e chi disegna la tela può dirlo.
+ */
+export type InputVerdict = {
+  accepted: CanvasNode[];
+  rejected: CanvasNode[];
+  why: string | null;
+};
+
+export function acceptedInputs(node: CanvasNode, incoming: CanvasNode[]): InputVerdict {
+  const spec = CANVAS_NODE_SPECS[node.kind];
+  if (!spec?.generated) {
+    return { accepted: [], rejected: incoming, why: `${node.kind} non si genera da altri nodi` };
+  }
+
+  const caps = capacityOf(node);
+  const accepted: CanvasNode[] = [];
+  const rejected: CanvasNode[] = [];
+  const used: Record<Medium, number> = { text: 0, image: 0, video: 0 };
+  let why: string | null = null;
+
+  for (const source of incoming) {
+    const medium = mediumOf(source);
+    const room = caps[medium] ?? 0;
+    if (!spec.accepts.includes(medium)) {
+      rejected.push(source);
+      why ??= `un ${ITALIAN[medium]} non alimenta questo nodo`;
+      continue;
+    }
+    if (used[medium] >= room) {
+      rejected.push(source);
+      why ??=
+        room === 0
+          ? `questo modello non prende ${ITALIAN[medium]} di riferimento`
+          : `al massimo ${room} ${ITALIAN[medium]} in ingresso`;
+      continue;
+    }
+    used[medium] += 1;
+    accepted.push(source);
+  }
+  return { accepted, rejected, why };
+}
+
+/** Quanti ingressi per medium: dal modello quando c'è, altrimenti uno per tipo. */
+function capacityOf(node: CanvasNode): Record<Medium, number> {
+  if (node.kind === 'video') {
+    const caps = videoRefCapacity(node.model);
+    // Il prompt è sempre uno: due prompt sono due video, non un video con due prompt.
+    //
+    // Sulle immagini vale il tetto del modello e basta. Il primo fotogramma NON si somma qui: il
+    // renderer lo passa per conto suo (`imageUrl`) ed è la prima delle immagini collegate, non una
+    // in più — sommarlo darebbe un limite che il provider poi rifiuta, cioè la peggiore delle
+    // bugie, quella scoperta dopo aver speso. Un modello senza riferimenti tiene comunque quel
+    // fotogramma: è il caso `Math.max(caps.images, 1)`.
+    return { text: 1, image: Math.max(caps.images, 1), video: caps.videos };
+  }
+  // Un post raccoglie ciò che gli si dà: è un contenitore, non un modello con i suoi limiti.
+  if (node.kind === 'post') return { text: 1, image: 20, video: 5 };
+  return { text: 1, image: 1, video: 0 };
+}
