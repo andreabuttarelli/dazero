@@ -48,7 +48,7 @@ describe('computeCostUsd', () => {
   it('una fallita resta null: `ok` la disambigua già, e forzarla a zero la farebbe contare', () => {
     // Portare i fallimenti a 0 li renderebbe visibili al tetto orario della chat, che oggi
     // scarta le righe nulle. `ok=false` dice già "non fatturata" senza aiuto.
-    expect(computeCostUsd({ label: 'chat', provider: 'kie', ms: 5, ok: false, flatCostUsd: 0.02 })).toBeNull();
+    expect(computeCostUsd({ label: 'chat', provider: 'llm', ms: 5, ok: false, flatCostUsd: 0.02 })).toBeNull();
   });
 
   /**
@@ -84,7 +84,7 @@ describe('computeCostUsd', () => {
    */
   it('prezza un modello sotto il prefisso di QUALUNQUE trasporto', () => {
     const usage = { label: 'chat', ms: 0, ok: true, inputTokens: 1_000_000, outputTokens: 0 };
-    expect(computeCostUsd({ ...usage, provider: 'kie', model: 'kie/gpt-5-6-luna' })).toBeCloseTo(0.056, 4);
+    expect(computeCostUsd({ ...usage, provider: 'llm', model: 'kie/gpt-5-6-luna' })).toBeCloseTo(0.056, 4);
     expect(computeCostUsd({ ...usage, provider: 'llm', model: 'google/gemini-embedding-001' })).toBeCloseTo(0.15, 4);
   });
 
@@ -106,7 +106,7 @@ describe('computeCostUsd', () => {
 
   it('prices a Nano Banana Pro render (text-only prompt) at the Go share', () => {
     const cost = computeCostUsd({
-      label: 'renderImage', provider: 'gemini', model: NANO_BANANA_PRO, ms: 0, ok: true,
+      label: 'renderImage', provider: 'llm', model: NANO_BANANA_PRO, ms: 0, ok: true,
       inputTokens: 35, outputTokens: 1229, thinkingTokens: 156, imageOutputTokens: 1120
     }, GO);
     // List: 35×2 + 156×12 + 109×12 + 1120×120 (per 1M) = $0.13765, billed in full
@@ -115,7 +115,7 @@ describe('computeCostUsd', () => {
 
   it('prices a render with 2 reference images attached (refs land in inputTokens)', () => {
     const cost = computeCostUsd({
-      label: 'renderImage', provider: 'gemini', model: NANO_BANANA_PRO, ms: 0, ok: true,
+      label: 'renderImage', provider: 'llm', model: NANO_BANANA_PRO, ms: 0, ok: true,
       inputTokens: 539, outputTokens: 1252, thinkingTokens: 128, imageOutputTokens: 1120
     }, GO);
     // List: 539×2 + 128×12 + 132×12 + 1120×120 (per 1M) = $0.138598, billed in full
@@ -124,7 +124,7 @@ describe('computeCostUsd', () => {
 
   it('leaves Nano Banana 2 at full list regardless of plan', () => {
     const entry = {
-      label: 'renderImage', provider: 'gemini' as const, model: 'gemini-3.1-flash-image', ms: 0, ok: true,
+      label: 'renderImage', provider: 'llm' as const, model: 'gemini-3.1-flash-image', ms: 0, ok: true,
       inputTokens: 1000, outputTokens: 1120, imageOutputTokens: 1120
     };
     // (1000×0.5 + 1120×60)/1M = $0.0677
@@ -135,7 +135,7 @@ describe('computeCostUsd', () => {
 
   it('prices a Flash call with cache discount, defaulting a missing model to Flash', () => {
     const cost = computeCostUsd({
-      label: 'director', provider: 'gemini', ms: 0, ok: true,
+      label: 'director', provider: 'llm', ms: 0, ok: true,
       inputTokens: 17516, outputTokens: 219, cachedTokens: 5174, thinkingTokens: 2010
     });
     // List (17516−5174)×1.5 + 5174×0.15 + (219+2010)×7.5 (per 1M) = $0.036007
@@ -144,7 +144,7 @@ describe('computeCostUsd', () => {
   });
 
   it('adds the grounding fee ($14/1k queries) on top of token cost', () => {
-    const base = { label: 'grounded', provider: 'gemini' as const, model: GEMINI_FLASH, ms: 0, ok: true, inputTokens: 1000, outputTokens: 1000 };
+    const base = { label: 'grounded', provider: 'llm' as const, model: GEMINI_FLASH, ms: 0, ok: true, inputTokens: 1000, outputTokens: 1000 };
     const without = computeCostUsd(base)!;
     const withFee = computeCostUsd({ ...base, groundingQueries: 3 })!;
     expect(withFee - without).toBeCloseTo(0.042, 6); // 3 × $0.014 list, billed in full
@@ -152,11 +152,11 @@ describe('computeCostUsd', () => {
 
   it('still prices historical gemini-3.6-flash rows at the Flash rate', () => {
     const legacy = computeCostUsd({
-      label: 'grounded', provider: 'gemini', model: 'gemini-3.6-flash', ms: 0, ok: true,
+      label: 'grounded', provider: 'llm', model: 'gemini-3.6-flash', ms: 0, ok: true,
       inputTokens: 1000, outputTokens: 1000
     });
     const current = computeCostUsd({
-      label: 'grounded', provider: 'gemini', model: GEMINI_FLASH, ms: 0, ok: true,
+      label: 'grounded', provider: 'llm', model: GEMINI_FLASH, ms: 0, ok: true,
       inputTokens: 1000, outputTokens: 1000
     });
     expect(legacy).not.toBeNull();
@@ -165,11 +165,11 @@ describe('computeCostUsd', () => {
 
   it('prices an unknown Flash id at the current Flash rate so a live GEMINI_FLASH bump still bills', () => {
     const unknown = computeCostUsd({
-      label: 'grounded', provider: 'gemini', model: 'gemini-3.8-flash', ms: 0, ok: true,
+      label: 'grounded', provider: 'llm', model: 'gemini-3.8-flash', ms: 0, ok: true,
       inputTokens: 1000, outputTokens: 1000
     });
     const current = computeCostUsd({
-      label: 'grounded', provider: 'gemini', model: GEMINI_FLASH, ms: 0, ok: true,
+      label: 'grounded', provider: 'llm', model: GEMINI_FLASH, ms: 0, ok: true,
       inputTokens: 1000, outputTokens: 1000
     });
     expect(unknown).not.toBeNull();
@@ -178,11 +178,11 @@ describe('computeCostUsd', () => {
 
   it('keeps gemini-3.1-flash-image on its own image rate, not text Flash', () => {
     const image = computeCostUsd({
-      label: 'renderImage', provider: 'gemini', model: 'gemini-3.1-flash-image', ms: 0, ok: true,
+      label: 'renderImage', provider: 'llm', model: 'gemini-3.1-flash-image', ms: 0, ok: true,
       inputTokens: 1000, outputTokens: 1120, imageOutputTokens: 1120
     });
     const flash = computeCostUsd({
-      label: 'grounded', provider: 'gemini', model: GEMINI_FLASH, ms: 0, ok: true,
+      label: 'grounded', provider: 'llm', model: GEMINI_FLASH, ms: 0, ok: true,
       inputTokens: 1000, outputTokens: 1120
     });
     expect(image).not.toBeNull();
@@ -195,11 +195,11 @@ describe('computeCostUsd', () => {
   // asserted on purpose — a fraction reappearing on any one of them is lost revenue.
   it('bills Flash and Nano Banana Pro at 100% of list on every plan', () => {
     const flashEntry = {
-      label: 'grounded', provider: 'gemini' as const, model: GEMINI_FLASH, ms: 0, ok: true,
+      label: 'grounded', provider: 'llm' as const, model: GEMINI_FLASH, ms: 0, ok: true,
       inputTokens: 1000, outputTokens: 1000
     };
     const stillEntry = {
-      label: 'renderImage', provider: 'gemini' as const, model: NANO_BANANA_PRO, ms: 0, ok: true,
+      label: 'renderImage', provider: 'llm' as const, model: NANO_BANANA_PRO, ms: 0, ok: true,
       inputTokens: 539, outputTokens: 1252, thinkingTokens: 128, imageOutputTokens: 1120
     };
     // List Flash: (1000×1.5 + 1000×7.5)/1M = $0.009
@@ -216,7 +216,7 @@ describe('computeCostUsd', () => {
       () =>
         computeCostUsd({
           label: 'grounded',
-          provider: 'gemini',
+          provider: 'llm',
           model: GEMINI_FLASH,
           ms: 0,
           ok: true,
@@ -229,8 +229,8 @@ describe('computeCostUsd', () => {
   });
 
   it('returns null when usage is missing or the model has no price list', () => {
-    expect(computeCostUsd({ label: 'x', provider: 'gemini', ms: 0, ok: false })).toBeNull();
-    expect(computeCostUsd({ label: 'x', provider: 'gemini', model: 'lyria-3-clip-preview', ms: 0, ok: true, inputTokens: 10, outputTokens: 10 })).toBeNull();
+    expect(computeCostUsd({ label: 'x', provider: 'llm', ms: 0, ok: false })).toBeNull();
+    expect(computeCostUsd({ label: 'x', provider: 'llm', model: 'lyria-3-clip-preview', ms: 0, ok: true, inputTokens: 10, outputTokens: 10 })).toBeNull();
   });
 });
 

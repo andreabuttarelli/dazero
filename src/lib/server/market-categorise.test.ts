@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   BATCH_SIZE,
   CATEGORIES,
@@ -121,5 +123,26 @@ describe('the two fixed lists', () => {
   it('covers static formats too, not just video', () => {
     expect(CONTENT_FORMS).toContain('photo_carousel');
     expect(CONTENT_FORMS).toContain('text_post');
+  });
+});
+
+/**
+ * L'ETICHETTA DICE CHI HA GIUDICATO, NON CHI LO SERVIVA.
+ *
+ * `category_source` distingue due cose: la categoria che la query ha indovinato e quella che un
+ * modello ha giudicato. Si chiamava `'gemini'`, cioè il nome di un fornitore che non chiamiamo
+ * più direttamente — e il modello che giudica oggi si sceglie dal catalogo del gateway, quindi
+ * quel nome sarebbe falso al primo cambio di modello.
+ *
+ * Il guasto se si rinomina il codice e non i dati: `.neq(…,'model')` non esclude più le 3.797
+ * righe marchiate `'gemini'`, che tornano nella coda e vengono rigiudicate — una spesa vera, su
+ * righe già a posto.
+ */
+describe('l’etichetta della categoria non nomina un fornitore', () => {
+  it('il sorgente non contiene più il nome di un trasporto', () => {
+    const src = readFileSync(join(import.meta.dirname, 'market-categorise.ts'), 'utf8');
+
+    expect(src).not.toContain("'gemini'");
+    expect(src).toContain("CATEGORY_SOURCE_MODEL");
   });
 });

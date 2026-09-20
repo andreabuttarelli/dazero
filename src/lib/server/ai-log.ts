@@ -21,8 +21,6 @@ type BrandLogContext = {
   orgId?: string;
   /** Set when the caller already knows the plan. `undefined` = not resolved yet (look up). */
   plan?: string | null;
-  /** Crediti kie letti dalle risposte HTTP di questo scope, in attesa della riga che li scrive. */
-  kieCredits?: number;
   /** Costo fatturato dal gateway in questo scope, sommato: la fattura vera del turno. */
   llmCostUsd?: number;
   /** Le fatture gia` ritirate e scritte in `ai_calls`, per chi deve DIRE quanto e` costato. */
@@ -82,27 +80,6 @@ export function withOrgContext<T>(orgId: string, fn: () => T): T {
   return brandStorage.run({ brandId: null, orgId }, fn);
 }
 
-/**
- * Crediti kie visti passare in questo scope, sommati. Il turno di chat passa dall'AI SDK, che
- * espone solo i token, quindi senza questa cassetta `provider_credits` è NULL per ogni turno:
- * `kieFetch` li deposita, `logAiCall` li ritira azzerando sulla prima riga kie che non ne ha.
- *
- * ponytail: i turni SSE non passano di qui — `kieFetch` non tocca il corpo di un event-stream,
- * per non bufferizzare la risposta davanti all'utente.
- */
-export function noteKieCredits(credits: number): void {
-  const ctx = brandStorage.getStore();
-  if (!ctx || !Number.isFinite(credits) || credits <= 0) return;
-  ctx.kieCredits = (ctx.kieCredits ?? 0) + credits;
-}
-
-function takeKieCredits(): number | undefined {
-  const ctx = brandStorage.getStore();
-  const credits = ctx?.kieCredits;
-  if (!ctx || !credits) return undefined;
-  ctx.kieCredits = 0;
-  return credits;
-}
 
 /**
  * Il costo che il gateway ci ha fatturato in questo scope. Un turno di chat è N chiamate (una per
@@ -232,7 +209,7 @@ export type AiCallLog = {
   //   'submitforbacklinks' a flat per-submission fee; 'sandbox' microVM seconds.
   //   'internal' is an agent EVENT, not a call: `cost_usd` stays null, so it can't touch credits or
   //   rate limits (both filter `cost_usd is not null`) and the Usage page excludes it by provider.
-  provider: 'gemini' | 'kie' | 'openrouter' | 'opencode' | 'llm' | 'deepseek' | 'scrapecreators' | 'exa' | 'tavily' | 'dataforseo' | 'pagespeed' | 'ads' | 'submitforbacklinks' | 'sandbox' | 'internal';
+  provider: 'openrouter' | 'opencode' | 'llm' | 'scrapecreators' | 'exa' | 'tavily' | 'dataforseo' | 'pagespeed' | 'ads' | 'submitforbacklinks' | 'sandbox' | 'internal';
   model?: string;
   // Flat per-request price for non-token providers; when set it wins over the token rates.
   flatCostUsd?: number;
@@ -312,7 +289,7 @@ const RATES: Record<string, { input: number; cachedInput: number; output: number
 };
 
 function usesGeminiVisualCreditShare(entry: AiCallLog): boolean {
-  return isGeminiFlashId(entry.model) || (!entry.model && entry.provider === 'gemini') || isNanoBananaProId(entry.model);
+  return isGeminiFlashId(entry.model) || !entry.model || isNanoBananaProId(entry.model);
 }
 
 function planForVisualShare(explicit?: string | null): string | null | undefined {
@@ -382,7 +359,9 @@ export function computeCostUsd(entry: AiCallLog, plan?: string | null): number |
     // non ha caricato — e allora decidono le RATES, come prima.
     gatewayRate(entry.model) ??
     (isGeminiFlashId(entry.model) ? RATES[GEMINI_FLASH] : null) ??
-    (!entry.model && entry.provider === 'gemini' ? RATES[GEMINI_FLASH] : null);
+    // Una riga senza modello non è senza prezzo: il chiamante non l'ha scritto, ma la chiamata è
+    // stata pagata. Flash è il bound conservativo, e `null` qui vorrebbe dire «gratis».
+    (!entry.model ? RATES[GEMINI_FLASH] : null);
   if (!rate) return null;
   const input = entry.inputTokens ?? 0;
   const cached = Math.min(entry.cachedTokens ?? 0, input);
@@ -410,12 +389,6 @@ export function promptHash(prompt: string | undefined): string | null {
 
 export function logAiCall(entry: AiCallLog): void {
   try {
-    // Il costo resta quello delle RATES: i credits_consumed sottostimano, valgono come
-    // osservabilità e non come prezzo.
-    if (entry.provider === 'kie' && entry.providerCredits == null) {
-      const credits = takeKieCredits();
-      if (credits != null) entry = { ...entry, providerCredits: credits };
-    }
     // La fattura vera del gateway, se questo turno ne ha lasciata una. Si ritira QUI, sincrono:
     // dopo il primo await un'altra riga dello stesso scope se la porterebbe via.
     if (entry.provider === 'llm' && entry.flatCostUsd == null) {

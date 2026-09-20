@@ -19,7 +19,7 @@ import { craftAgentModel } from '$lib/server/craft-model';
 export type MotionAgentModel = {
 	model: LanguageModel;
 	modelId: string;
-	provider: 'gemini' | 'kie' | 'openrouter' | 'opencode' | 'llm';
+	provider: 'llm';
 };
 
 /**

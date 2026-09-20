@@ -14,7 +14,7 @@ import { turnModelFamily } from '$lib/chat-model-policy';
 
 export type ChatModelResolved = {
   model: LanguageModel;
-  provider: 'deepseek' | 'kie' | 'xiaomi' | 'gemini' | 'openrouter' | 'opencode' | 'llm';
+  provider: 'openrouter' | 'opencode' | 'llm';
   modelId: string;
   tier: ChatTier | null;
   /** Effort actually requested — logged so a slow turn can be explained after the fact. */
@@ -74,9 +74,7 @@ export function modelSeesVideo(m: ChatModelResolved): boolean {
 }
 
 export function modelSeesImages(m: ChatModelResolved): boolean {
-  if (m.provider === 'llm' || m.provider === 'gemini') return true;
-  if (m.provider === 'kie' && /gpt-5|grok/i.test(m.modelId)) return true;
-  return false;
+  return m.provider === 'llm';
 }
 
 /**

@@ -13,6 +13,7 @@
  * the prompt would rescale history silently at every change. Positioning is a layer ON TOP of an
  * unchanged score: a query, not a new instrument.
  */
+import { CATEGORY_SOURCE_MODEL } from '$lib/server/market-categorise';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -114,7 +115,7 @@ async function fetchSide(
   let q = admin
     .from('market_posts')
     .select(COLS)
-    .eq('category_source', 'gemini')
+    .eq('category_source', CATEGORY_SOURCE_MODEL)
     .not('outperformance', 'is', null);
 
   if (opts.contentForm) q = q.eq('content_form', opts.contentForm);

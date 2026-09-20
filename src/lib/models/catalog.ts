@@ -1,5 +1,5 @@
 /**
- * Catalogo modelli: interfaccia comune + mappa verso il vocabolario nativo di ogni provider.
+ * Catalogo modelli: interfaccia comune + mappa verso il vocabolario nativo di ogni famiglia.
  *
  * La UI e gli agenti parlano SOLO la scala comune (`ThinkingLevel`). Ogni famiglia dichiara
  * quali gradini offre e come si scrivono sul filo. Cambiare Grok o Luna è una riga qui,
@@ -33,7 +33,6 @@ export const THINKING_RANK: Record<ThinkingLevel, number> = {
   max: 4
 };
 
-export type ModelProvider = 'kie' | 'gemini' | 'deepseek' | 'xiaomi';
 
 export type ModelCapabilities = {
   vision: boolean;
@@ -44,12 +43,11 @@ export type ModelCapabilities = {
 
 /**
  * Una famiglia di modello: id stabile, id wire (o factory), livelli comuni offerti,
- * e la mappa verso ciò che il provider accetta davvero.
+ * e la mappa verso ciò che il modello accetta davvero.
  */
 export type ModelFamily = {
   id: ModelFamilyId;
   /** Provider di trasporto preferito. */
-  provider: ModelProvider;
   /** Id sul filo (o prefisso leggibile). Può essere sovrascritto da env al resolve. */
   wireId: string;
   /** Gradini del picker quando QUESTA famiglia è sotto. */
@@ -104,12 +102,11 @@ const DEEPSEEK_THINKING = ['off', 'low', 'high', 'max'] as const satisfies reado
 const GPT56_THINKING = ['off', 'low', 'medium', 'high', 'max'] as const satisfies readonly ThinkingLevel[];
 
 /**
- * GPT 5.6 Luna (kie Codex). Tre gradini misurati; off/max collassano sul pavimento/soffitto.
- * Native: reasoning.effort low|medium|high (kie non ha off; max → high).
+ * GPT 5.6 Luna. Tre gradini misurati; off/max collassano sul pavimento/soffitto.
+ * Native: reasoning.effort low|medium|high (niente off; max → high).
  */
 export const LUNA: ModelFamily = {
   id: 'luna',
-  provider: 'kie',
   wireId: 'gpt-5-6-luna',
   thinking: LUNA_THINKING,
   defaultThinking: 'medium',
@@ -121,11 +118,10 @@ export const LUNA: ModelFamily = {
 };
 
 /**
- * Grok 4.6 (kie). Native: low|medium|high|xhigh — il nostro max diventa xhigh.
+ * Grok 4.6. Native: low|medium|high|xhigh — il nostro max diventa xhigh.
  */
 export const GROK: ModelFamily = {
   id: 'grok',
-  provider: 'kie',
   wireId: 'grok-4-6',
   thinking: GROK_THINKING,
   defaultThinking: 'high',
@@ -141,7 +137,6 @@ export const GROK: ModelFamily = {
  */
 export const GEMINI_FLASH: ModelFamily = {
   id: 'gemini-flash',
-  provider: 'gemini',
   wireId: 'gemini-3.7-flash',
   thinking: LUNA_THINKING,
   defaultThinking: 'medium',
@@ -155,7 +150,6 @@ export const GEMINI_FLASH: ModelFamily = {
  */
 export const DEEPSEEK_PRO: ModelFamily = {
   id: 'deepseek-pro',
-  provider: 'deepseek',
   wireId: 'deepseek-v4-pro',
   thinking: DEEPSEEK_THINKING,
   defaultThinking: 'high',
@@ -173,7 +167,6 @@ export const DEEPSEEK_PRO: ModelFamily = {
 function gpt56Family(id: 'gpt-terra' | 'gpt-sol', wireId: string): ModelFamily {
   return {
     id,
-    provider: 'kie',
     wireId,
     thinking: GPT56_THINKING,
     defaultThinking: 'high',

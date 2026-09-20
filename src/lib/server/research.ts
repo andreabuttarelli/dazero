@@ -129,7 +129,7 @@ export async function structuredGemini<T>(
 
 // Provider-aware structured call: MiMo when GTM_PROVIDER=xiaomi (text→pro tier, images→vision
 // tier), Gemini otherwise — with automatic Gemini fallback either way. Every structured caller
-// in the codebase (blog, GEO, personas, normalisation, …) switches provider through this one door.
+// in the codebase (blog, GEO, personas, normalisation, …) passes through this one door.
 export async function structured<T>(
   prompt: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -140,7 +140,6 @@ export async function structured<T>(
     images?: Array<{ inlineData: { mimeType: string; data: string } }>;
     temperature?: number;
     model?: string;
-    provider?: 'gateway' | 'kie';
     reasoningEffort?: ReasoningEffort;
     brandId?: string;
     userId?: string;

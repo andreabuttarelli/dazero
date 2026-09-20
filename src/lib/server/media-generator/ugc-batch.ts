@@ -1337,7 +1337,7 @@ export function streamUgcBatchResponse(opts: UgcBatchOpts): Response {
 
         logAiCall({
           label: 'ugc-batch',
-          provider: 'gemini',
+          provider: 'llm',
           model: 'ugc-batch',
           ms: Date.now() - t0,
           ok: tally.done > 0,

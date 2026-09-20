@@ -13,7 +13,7 @@ import { llmApiKey, llmDefaultModel, llmLanguageModel, llmModelForPicker } from 
 export type CraftAgentModel = {
 	model: LanguageModel;
 	modelId: string;
-	provider: 'gemini' | 'kie' | 'openrouter' | 'opencode' | 'llm';
+	provider: 'llm';
 };
 
 export function craftAgentModel(opts: {

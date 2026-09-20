@@ -225,6 +225,13 @@ export type CatalogueResult = {
 };
 
 /**
+ * Chi ha messo la categoria. Non il nome di un fornitore: il modello che giudica si sceglie dal
+ * catalogo del gateway e cambia, l'etichetta no. Una riga senza questo valore porta la categoria
+ * che la query ha indovinato, ed è la coda da giudicare.
+ */
+export const CATEGORY_SOURCE_MODEL = 'model';
+
+/**
  * Catalogue everything the model has not judged yet.
  *
  * Rows keep whatever category the query gave them until this overwrites it, so the bank is never
@@ -238,13 +245,13 @@ export async function catalogueMarketPosts(
   const limit = Math.min(opts.limit ?? MAX_PER_RUN, MAX_PER_RUN);
   const errors: CatalogueResult['errors'] = [];
 
-  // `.neq('category_source','gemini')` alone would be wrong: in Postgres a comparison against NULL
+  // Il confronto da solo sarebbe sbagliato: in Postgres un paragone contro NULL
   // is NULL, not true, so the rows that have never been catalogued — precisely the queue — would be
   // filtered out and this would only ever re-judge rows that already carry a query-derived label.
   const { data, error } = await admin
     .from('market_posts')
     .select('id, content, platform, format_bucket, market_video_analyses(spoken, on_screen, summary)')
-    .or('category_source.is.null,category_source.neq.gemini')
+    .or(`category_source.is.null,category_source.neq.${CATEGORY_SOURCE_MODEL}`)
     .order('discovered_at', { ascending: false })
     .limit(limit);
   if (error) {
@@ -294,7 +301,7 @@ export async function catalogueMarketPosts(
           category: j.category,
           content_form: j.content_form,
           topic: j.topic,
-          category_source: 'gemini',
+          category_source: CATEGORY_SOURCE_MODEL,
           categorised_at: now
         })
         .eq('id', j.id);

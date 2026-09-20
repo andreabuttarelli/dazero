@@ -40,7 +40,7 @@ const CREDITS_PER_USD = 100;
 const usd = (model: string, inTok: number, outTok: number, imageOut = 0): number =>
   computeCostUsd({
     label: 'estimate',
-    provider: 'gemini',
+    provider: 'llm',
     model,
     ms: 0,
     ok: true,
