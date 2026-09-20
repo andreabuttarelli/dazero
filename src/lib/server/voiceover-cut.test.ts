@@ -16,12 +16,6 @@ vi.mock('$lib/server/ai-log', () => ({
 		logged.push(row);
 	}
 }));
-const kieJobs = vi.hoisted(() => ({
-	generateSpeechOnKie: vi.fn(),
-	kieFlatCostUsd: (c?: number) => (typeof c === 'number' ? 0.001 * c : null),
-	kieTtsModel: () => 'gemini-3.5-pro-preview-tts'
-}));
-vi.mock('$lib/server/kie-jobs', () => kieJobs);
 import {
 	TTS_SAMPLE_RATE,
 	cutAtSeconds,
@@ -511,27 +505,6 @@ describe('generateMusicBed', () => {
 	});
 });
 
-describe('generateVoiceOver sul ripiego kie', () => {
-	beforeEach(() => setEnv({ ...KEYS, AI_ROUTE_TTS: 'gemini-tts@kie' }));
-	afterEach(() => setEnv(KEYS));
-
-	it('un caricamento fallito lascia una riga nel registro, non il silenzio', async () => {
-		kieJobs.generateSpeechOnKie.mockResolvedValue({
-			wav: wavFromPcm(new Uint8Array(TTS_SAMPLE_RATE * 2)),
-			credits: 1,
-			model: 'gemini-3.5-pro-preview-tts'
-		});
-		await expect(
-			generateVoiceOver({
-				supabase: fakeSupabase('disk on fire'),
-				brandId: 'b',
-				lines: ['una riga']
-			})
-		).rejects.toThrow(/Audio upload failed/);
-		expect(logged.at(-1)).toMatchObject({ label: 'voiceover', ok: false });
-	});
-});
-
 /**
  * LA VOCE SU OPENROUTER.
  *
@@ -609,18 +582,14 @@ describe('generateVoiceOver su openrouter', () => {
 		for (const line of lines) expect(calls[0]).toContain(line);
 	});
 
-	it('senza chiave openrouter la voce ripiega su kie, e lo dice', async () => {
-		setEnv({ KIE_API_KEY: 'test-key' });
-		kieJobs.generateSpeechOnKie.mockResolvedValue({
-			wav: wavFromPcm(new Uint8Array(spokenPcm(take))),
-			credits: 1,
-			model: 'gemini-3.5-pro-preview-tts'
-		});
-		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		const res = await generateVoiceOver({ supabase: fakeSupabase(), brandId: 'b', lines: ['una riga'] });
-		expect(res.fullDurationSeconds).toBeCloseTo(take.length / TTS_SAMPLE_RATE, 6);
-		expect(logged.at(-1)).toMatchObject({ label: 'voiceover', ok: true, provider: 'kie' });
-		expect(warn).toHaveBeenCalledWith(expect.stringMatching(/AI_ROUTE_TTS.*Ripiego su kie/));
-		warn.mockRestore();
+	// C'era un secondo trasporto, e senza chiave la voce ci ripiegava. Ora la chiave mancante non
+	// ha una seconda strada: deve FALLIRE, e lasciare la riga che dice perché. Un ripiego che non
+	// esiste più, se non si prova, torna come un silenzio: nessun audio e nessuna traccia.
+	it('senza chiave fallisce e lo scrive, invece di restare in silenzio', async () => {
+		setEnv({});
+		await expect(
+			generateVoiceOver({ supabase: fakeSupabase(), brandId: 'b', lines: ['una riga'] })
+		).rejects.toThrow(/LLM_API_KEY/);
+		expect(logged.at(-1)).toMatchObject({ label: 'voiceover', ok: false });
 	});
 });

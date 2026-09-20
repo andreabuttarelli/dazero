@@ -13,10 +13,9 @@
  * Gli id dei modelli si leggono dall'ambiente: la suite audio di Gemini si muove più in fretta
  * della nostra release, e un id cablato costa un deploy mentre una variabile costa un minuto.
  *
- * La famiglia è Gemini da entrambi i trasporti, ed è il motivo per cui lo slot si sposta senza che
- * il brand cambi voce: openrouter e kie servono gli stessi preset. Il costo lo scrive solo kie
- * (`creditsConsumed`); su openrouter `/audio/speech` non porta nessuna fattura e la riga resta
- * senza costo — un buco visibile, che qui è la regola.
+ * Il parlato non porta una fattura: `/audio/speech` risponde con l'audio e basta, quindi la riga in
+ * `ai_calls` resta senza costo. È un buco visibile, e va tenuto tale: a listino Google sbaglieremmo
+ * di 16×, e un numero credibile e falso non si scopre mai.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { spawnSync } from 'node:child_process';
@@ -25,7 +24,6 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { env } from '$env/dynamic/private';
 import { logAiCall } from '$lib/server/ai-log';
-import { generateSpeechOnKie, kieFlatCostUsd, kieTtsModel } from '$lib/server/kie-jobs';
 import { route } from '$lib/server/model-routing';
 import {
 	LYRIA_CLIP_SECONDS,
@@ -207,9 +205,7 @@ export async function generateVoiceOver(opts: {
 	if (!lines.length) throw new Error('No lines to read.');
 	const voice = opts.voice && isVoiceOverVoice(opts.voice) ? opts.voice : DEFAULT_VOICE;
 	const endpoint = route('tts').endpoint;
-	const useKie = endpoint === 'kie';
-	const model = useKie ? kieTtsModel() : llmTtsModel();
-	let credits: number | undefined;
+	const model = llmTtsModel();
 	const t0 = Date.now();
 
 	/**
@@ -220,27 +216,10 @@ export async function generateVoiceOver(opts: {
 	let samples: Int16Array;
 	let fullUrl: string;
 	try {
-		if (useKie) {
-			const spoken = await generateSpeechOnKie({
-				lines,
-				// L'istruzione di recitazione NON può stare nel testo: verrebbe letta ad alta voce. Su
-				// kie il campo libero è `sample_context`; `style` è un enum di sei valori, il resto è 422.
-				direction: voiceOverDirection(opts.style),
-				voiceName: voiceName(voice),
-				languageCode: opts.languageCode,
-				signal: opts.abortSignal
-			});
-			if (!spoken) throw new Error('kie returned no audio.');
-			credits = spoken.credits;
-			const decoded = pcmFromWav(spoken.wav);
-			assertCuttable(model, decoded);
-			samples = decoded.samples;
-			// Il WAV di kie è già valido e il suo URL vive 24h: si carica subito.
-			fullUrl = await uploadAudio(opts.supabase, opts.brandId, spoken.wav, 'full');
-		} else {
-			// UNA chiamata per tutte le righe anche qui: il copione intero è l'`input`. La direzione
-			// di lettura ci sta dentro senza essere letta ad alta voce — misurato, il take con la
-			// direzione non dura più di quello senza.
+		{
+			// UNA chiamata per tutte le righe: il copione intero è l'`input`. La direzione di lettura
+			// ci sta dentro senza essere letta ad alta voce — misurato, il take con la direzione non
+			// dura più di quello senza.
 			const spoken = await llmSpeech({
 				model,
 				input: buildVoiceOverPrompt(lines, opts.style),
@@ -281,11 +260,10 @@ export async function generateVoiceOver(opts: {
 		ok: true,
 		brandId: opts.brandId,
 		userId: opts.userId,
-		// Dai crediti che kie ha DAVVERO addebitato, mai da una tariffa nostra: a listino Google
-		// sbaglierebbe di 16× senza fare rumore. Senza crediti il costo resta null — un buco
-		// visibile batte un numero plausibile e sbagliato.
-		providerCredits: credits,
-		flatCostUsd: kieFlatCostUsd(credits),
+		// NIENTE COSTO, e si vede. `/audio/speech` non porta una fattura in risposta, quindi la riga
+		// resta senza prezzo: un buco visibile batte un numero plausibile e sbagliato — a listino
+		// Google sbaglieremmo di 16×. `ai-log` considera un `ok` senza costo un guasto di
+		// prezzatura, ed è giusto che lo segnali finché il gateway non fattura il parlato.
 		context: `voiceover:lines${lines.length}:gaps${gaps.length}`
 	});
 
