@@ -219,3 +219,42 @@ describe('LLM_REASONING_EFFORT', () => {
     expect(['low', 'medium', 'high']).toContain(LLM_REASONING_EFFORT);
   });
 });
+
+/**
+ * IL DIFETTO PAGATO, 2026-09-19. `.env` conteneva ancora il segnaposto `<la STRINGA…>` al posto
+ * della chiave. Non essendo vuoto, `llmConfigured()` diceva di sì, `llmClient()` non si fermava, e
+ * la chiave finta partiva sul filo: OpenRouter rispondeva `401 Missing Authentication header` e la
+ * strategia GTM moriva tre volte su tre — un errore di un terzo, su una configurazione nostra.
+ *
+ * Un segnaposto non è una chiave: vale quanto una variabile assente, e deve fermarsi con lo stesso
+ * errore nominato che il file di esempio promette.
+ */
+describe('llmApiKey — un segnaposto non è una chiave', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    setEnv({});
+    M.catalogDefault = null;
+  });
+
+  for (const placeholder of ['<la STRINGA della chiave>', '<your-key>', '<LLM_API_KEY>']) {
+    it(`scarta ${placeholder}`, async () => {
+      setEnv({ LLM_API_KEY: placeholder });
+      const { llmApiKey, llmConfigured } = await import('./llm');
+      expect(llmApiKey()).toBeUndefined();
+      expect(llmConfigured()).toBe(false);
+    });
+  }
+
+  it('una chiave vera passa intatta', async () => {
+    setEnv({ LLM_API_KEY: 'sk-or-v1-abc123' });
+    const { llmApiKey, llmConfigured } = await import('./llm');
+    expect(llmApiKey()).toBe('sk-or-v1-abc123');
+    expect(llmConfigured()).toBe(true);
+  });
+
+  it('il client si ferma sul segnaposto invece di mandarlo al gateway', async () => {
+    setEnv({ LLM_API_KEY: '<la STRINGA della chiave>' });
+    const { llmClient } = await import('./llm');
+    expect(() => llmClient()).toThrow('LLM_API_KEY is not configured');
+  });
+});
