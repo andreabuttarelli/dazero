@@ -93,3 +93,7 @@ vite.config.ts.timestamp-*.mjs
 
 # Prove locali: immagini e file generati per verificare a mano, mai da committare.
 .probe/
+
+# Vercel builds with `npm ci`: un secondo lockfile diverge in silenzio e fa installare
+# versioni che nessuno ha scelto.
+bun.lock

@@ -201,11 +201,15 @@ The evaluation (`scripts/eval/`) is the only thing that verifies **the product w
 the real agents to work on a disposable trial brand, with real requests, and judges FACTS before
 tastes — does the artifact exist? is the number right? how many text blocks? what did it cost?
 
-**What exists today. Only this command is real:**
+**What exists today — three commands, and they measure different things:**
 
 ```bash
 npm run eval:durability   # the work does not vanish: 3 scenarios against the real database and the real plpgsql
 npm run eval:durability -- --only=<scenario>
+npm run eval:creative     # rubrics → plan → posts → rendered images, each image judged on craft facts
+npm run eval:creative -- --no-images --posts=2
+npm run eval:clip         # renders real UGC clips and judges the RESA on them
+npm run eval:clip -- --clips=3 --model=bytedance/seedance-2-5
 ```
 
 `eval:durability` measures whether the product *keeps what it produced* — a turn killed
@@ -214,6 +218,17 @@ message. It runs against real SQL, which is the whole point: the two defects tha
 through in one session were a changed function signature and a reaper whose contract had moved
 under its own tests, and a fake client cannot see either.
 
+`eval:creative` walks the real path (`proposeRubrics` → `planStrategy` → `executePlan` → render)
+on a brand with stories and no catalogue, and since 2026-09-19 every rendered image goes through
+`photo-craft-review`: contact shadow present? lighting gear in the frame? product opened when
+nobody asked? It writes `04-mestiere.md` next to the images, which is what makes a prompt change
+comparable instead of a matter of opinion.
+
+`eval:clip` is the same question one medium further on, and the expensive one: it renders real UGC
+clips through `renderVideo` and has `clip-craft-review` watch them — a third hand, an object that
+teleports, lip-sync that smears, a stretch where nothing moves. One clip by default, because a clip
+is the most expensive thing the product buys.
+
 **What does NOT exist, so nobody writes it in a report as if it had run:** `npm run eval`,
 `npm run eval:ux` — the onboarding walk was removed: it cost real money on every run and graded
 the in-app chat, which is not where the product is going — the
@@ -221,6 +236,12 @@ the in-app chat, which is not where the product is going — the
 and the browser engine with a throttled network. The richer scenario catalogue described in the
 frozen `CHANGELOG.md` (`brand-nudo`, `conteggio-secco`, …) was designed and never merged. Reading
 about a command here is not evidence that it runs — check `package.json`.
+
+**And being in `package.json` is not evidence that it WORKS.** `eval:creative` sat there broken for
+weeks: three of its calls still passed a `null as never` first argument that had been dropped from
+those signatures, so it died with a `TypeError` on its first step. Nothing was red, because no test
+covers a script and nobody ran it — it costs money. A probe nobody runs rots exactly like the
+product it was meant to watch: run it before you trust its last report.
 
 **When to run it** — not on every commit (it costs real money), but always:
 

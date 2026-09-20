@@ -35,6 +35,7 @@
     "test:durability": "npm run eval:durability",
     "postinstall": "patch-package",
     "eval:durability": "vite-node --config scripts/vite-node.config.ts scripts/eval/durability.ts",
+    "eval:clip": "vite-node --config scripts/vite-node.config.ts scripts/eval/clip.ts",
     "test:constraints": "node scripts/constraint-harness.mjs",
     "test:storage-policies": "node scripts/storage-policy-harness.mjs",
     "test:privileges": "node scripts/privilege-harness.mjs"
@@ -91,6 +92,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/functions": "^3.9.5",
     "@vercel/sandbox": "^3.0.1",
+    "@xyflow/svelte": "^1.6.6",
     "ai": "^7.0.77",
     "bits-ui": "^2.18.1",
     "clsx": "^2.1.1",

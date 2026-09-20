@@ -3,8 +3,8 @@
 > Generato da `node scripts/mcp-inventory.mjs --write`, leggendo `tools/list` dal server vero.
 > Non si modifica a mano: il prossimo che rigenera cancella le correzioni.
 
-**80 tool** — 9 in lettura, 53 in scrittura, 18 che distruggono.
-Il payload di `tools/list` pesa **88.948 caratteri**, circa **22.237 token**, ed e' il costo che ogni sessione paga prima di dire una parola.
+**81 tool** — 9 in lettura, 54 in scrittura, 18 che distruggono.
+Il payload di `tools/list` pesa **90.410 caratteri**, circa **22.603 token**, ed e' il costo che ogni sessione paga prima di dire una parola.
 
 | gruppo | tool |
 |---|---:|
@@ -18,8 +18,8 @@ Il payload di `tools/list` pesa **88.948 caratteri**, circa **22.237 token**, ed
 | Brand: identita e impostazioni | 5 |
 | Radar e mercato | 4 |
 | Memoria e conoscenza | 4 |
+| Altro | 3 |
 | Accesso diretto al database | 3 |
-| Altro | 2 |
 
 Legenda: **R** legge e non cambia niente · **W** scrive · **D** distrugge, e il client puo' chiedere conferma.
 
@@ -992,6 +992,50 @@ Ask the brand's own documents a question and get back the passages that answer i
 | `collection`? | `brand` \| `product` \| `commercial` \| `legal` \| `operations` \| `research` | Restrict to one shelf of the corpus |
 | `slug` | string |  |
 
+## Altro
+
+### `check_content` · W
+
+*Check content*
+
+Run the checks Anomalia runs on its own copy against a spec you wrote, before you create anything. Returns blocking errors, warnings and a 0-100 quality score per platform, each naming the field to repair. Deterministic: it writes nothing, and the same spec always returns the same verdict. Perceptual review of an image or a video is a separate, explicitly paid action — this never looks at pixels. Free.
+
+| campo | tipo | |
+|---|---|---|
+| `platforms` | string[] | Where this would be published, e.g. ["instagram","x"] |
+| `caption` | string | The copy you wrote. It is read, scored and returned untouched |
+| `platform_captions`? | object | Per-platform overrides: each platform is checked against the copy IT would publish |
+| `media_ids`? | string[] | Full ids from this brand media library (see list_media) — unlike a post id, a media id is never resolved from a prefix. An id that is not this brand is reported |
+| `title`? | string | Required for Reddit |
+| `scheduled_for`? | string | Proposed publication instant, ISO. Without an offset it is read on the brand clock |
+| `slug` | string |  |
+
+### `enhance_prompt` · W
+
+*Rewrite a prompt for the model that will render it*
+
+Rewrites a brief into the SHAPE the model you are about to render with wants — one reads labelled sections, another one flowing paragraph, another a command when it edits. Pass the `model` (`get_media_models` lists them) and give the `prompt` that comes back to generate_image, generate_video or generate_carousel. It rewrites, it never invents: a rewrite that adds a subject, asks for readable text or states an aspect ratio is thrown away and the original returns with `changed: false` and the reason in `notes`, as does a model we have no guide for. Draws nothing, files nothing. Spends credits.
+
+| campo | tipo | |
+|---|---|---|
+| `prompt` | string | The brief as it is written now |
+| `model` | string | The image or video model you are about to render with — see get_media_models |
+| `shot_mode`? | `hero` \| `flat-lay` \| `on-model` \| `close-up` \| `lifestyle` \| `studio` | For a product photo: which kind of shot this is, so the brief is ordered the way that shot needs |
+| `slug`? | string | Brand URL slug. Optional here: omit it to run without a brand — the tool description says what changes. |
+
+### `get_creation_kit` · R
+
+*Creation kit*
+
+The smallest brief you need before writing one post: what the platform allows, the brand's own facts and its approved voice, the checklist your copy will be judged against, ONE worked example chosen for this goal and format, the rewrites this brand's own team wrote, what has already worked here, and which calendar minutes are taken. It is a SELECTION, not the whole library: empty sections are absent, and the whole thing is capped so it never floods your context. Pictures live in list_media; checking a draft before you create it is check_content. Free.
+
+| campo | tipo | |
+|---|---|---|
+| `goal` | string | What this post has to achieve, in one line. It selects the template and ranks the products and examples |
+| `platforms` | string | Where it would be published, comma-separated: "instagram,linkedin" |
+| `format` | `single_image` \| `carousel` \| `text_post` \| `link_post` \| `video` | The format you intend to write |
+| `slug` | string |  |
+
 ## Accesso diretto al database
 
 ### `insert_row` · W
@@ -1035,36 +1079,5 @@ Change columns on rows that ALREADY EXIST, as you. ONLY the columns you send are
 | `table` | string | Table name, bare. The same names `query` reads. |
 | `where` | object[] | Filters, ANDed. Required: without one this would rewrite the whole table. |
 | `values` | object | Column name → value. Only the columns you name are written. |
-| `slug` | string |  |
-
-## Altro
-
-### `check_content` · W
-
-*Check content*
-
-Run the checks Anomalia runs on its own copy against a spec you wrote, before you create anything. Returns blocking errors, warnings and a 0-100 quality score per platform, each naming the field to repair. Deterministic: it writes nothing, and the same spec always returns the same verdict. Perceptual review of an image or a video is a separate, explicitly paid action — this never looks at pixels. Free.
-
-| campo | tipo | |
-|---|---|---|
-| `platforms` | string[] | Where this would be published, e.g. ["instagram","x"] |
-| `caption` | string | The copy you wrote. It is read, scored and returned untouched |
-| `platform_captions`? | object | Per-platform overrides: each platform is checked against the copy IT would publish |
-| `media_ids`? | string[] | Full ids from this brand media library (see list_media) — unlike a post id, a media id is never resolved from a prefix. An id that is not this brand is reported |
-| `title`? | string | Required for Reddit |
-| `scheduled_for`? | string | Proposed publication instant, ISO. Without an offset it is read on the brand clock |
-| `slug` | string |  |
-
-### `get_creation_kit` · R
-
-*Creation kit*
-
-The smallest brief you need before writing one post: what the platform allows, the brand's own facts and its approved voice, the checklist your copy will be judged against, ONE worked example chosen for this goal and format, the rewrites this brand's own team wrote, what has already worked here, and which calendar minutes are taken. It is a SELECTION, not the whole library: empty sections are absent, and the whole thing is capped so it never floods your context. Pictures live in list_media; checking a draft before you create it is check_content. Free.
-
-| campo | tipo | |
-|---|---|---|
-| `goal` | string | What this post has to achieve, in one line. It selects the template and ranks the products and examples |
-| `platforms` | string | Where it would be published, comma-separated: "instagram,linkedin" |
-| `format` | `single_image` \| `carousel` \| `text_post` \| `link_post` \| `video` | The format you intend to write |
 | `slug` | string |  |
 
