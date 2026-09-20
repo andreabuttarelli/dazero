@@ -2,6 +2,8 @@ import { UGC_AD_SECONDS, UGC_ORGANIC_SECONDS } from '$lib/ugc-formats';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { env } from '$env/dynamic/private';
 import { videoModel } from '$lib/server/model-routing';
+import { OPENROUTER_UPSCALE_MODEL } from '$lib/video-models';
+import { videoCraftFor } from '$lib/design/video-craft';
 import { getBrandContext, getOrgContext, logAiCall } from '$lib/server/ai-log';
 import { isVideoUrl } from '$lib/content-formats';
 import { KIE_CREDIT_USD } from '$lib/server/kie';
@@ -445,6 +447,14 @@ export function fitScriptToDuration(script: string, seconds: number): string {
   return cut.join(' ');
 }
 
+/**
+ * La regola che sopravanza tutte le altre, e per questo chiude sempre il prompt. È una costante
+ * perché `buildVideoPrompt` deve poterla riconoscere in coda per infilarci il craft PRIMA: una
+ * nota di mestiere dopo questa riga la farebbe sembrare negoziabile.
+ */
+const CLEAN_FRAME_RULE =
+  'ABSOLUTE RULE — CLEAN FRAME: NO text anywhere in the video. No subtitles, no captions, no burned-in words, no lower thirds, no titles, no watermark, no UI overlay, no emoji, no logo. Every pixel is photographic. This outranks every other instruction: even though there is spoken dialogue, do NOT add subtitles.';
+
 // L'`image_prompt` salvato descrive uno STILL: mandarlo verbatim produce clip generiche che
 // reimmaginano la scena da capo. L'image-to-video vuole un brief di MOVIMENTO ancorato alla cover;
 // il text-to-video vuole la scena PIÙ la direzione di movimento e lo stile del brand.
@@ -452,7 +462,30 @@ export function fitScriptToDuration(script: string, seconds: number): string {
 // Tre modi creativi, vince il primo: `prompt` esplicito → freeform; `ugc` → template UGC;
 // altrimenti cinematografico leggero. Le protezioni (frame pulito, riga parlata bloccata) valgono
 // sempre quando c'è dialogo.
+/**
+ * Il prompt, più le note del modello che lo renderà.
+ *
+ * Le note entrano QUI e non dentro i quattro rami di `composeVideoPrompt`: ripeterle in ognuno
+ * significherebbe quattro punti da aggiornare al prossimo modello, e il quarto verrebbe
+ * dimenticato. Vanno in coda perché la scena resta la prima cosa che il modello legge, e prima
+ * della regola del fotogramma pulito, che è l'ultima parola su tutto.
+ */
 export function buildVideoPrompt(
+  imagePrompt: string,
+  opts: Parameters<typeof composeVideoPrompt>[1] = { hasCover: false }
+): string {
+  const body = composeVideoPrompt(imagePrompt, opts);
+  const craft = videoCraftFor(opts.model);
+  if (!craft) {
+    return body;
+  }
+  // La regola del fotogramma pulito chiude il prompt anche quando c'è il craft: è l'unica che
+  // sopravanza tutto, e una nota di mestiere messa dopo la farebbe sembrare negoziabile.
+  const clean = CLEAN_FRAME_RULE;
+  return body.endsWith(clean) ? `${body.slice(0, -clean.length)}${craft}\n\n${clean}` : `${body}\n\n${craft}`;
+}
+
+function composeVideoPrompt(
   imagePrompt: string,
   opts: {
     hasCover: boolean;
@@ -473,6 +506,13 @@ export function buildVideoPrompt(
     shotBrief?: string | null;
     /** Clip length — scales the default UGC timeline when no shotBrief is passed. */
     durationSeconds?: number | null;
+    /**
+     * Il modello che renderà la clip. Serve SOLO a scegliere le note di mestiere: i modelli
+     * sbagliano cose diverse (Seedance aggiunge watermark, Grok ignora le esclusioni, Kling
+     * fonde i personaggi senza etichette) e un prompt uguale per tutti è scritto bene per
+     * nessuno. Il registro sta in `$lib/design/video-craft`, non in un `if` qui dentro.
+     */
+    model?: string | null;
   } = { hasCover: false }
 ): string {
   const scene = imagePrompt.replace(/\s+/g, ' ').trim().slice(0, 600);
@@ -482,8 +522,7 @@ export function buildVideoPrompt(
   const brandDirection = opts.instructions?.trim()
     ? `${free ? 'EXTRA DIRECTION' : 'BRAND DIRECTION'} (follow for delivery, energy and behaviour on camera, but never at the cost of the clean-frame rule): ${opts.instructions.trim().replace(/\s+/g, ' ').slice(0, 600)}`
     : '';
-  const clean =
-    'ABSOLUTE RULE — CLEAN FRAME: NO text anywhere in the video. No subtitles, no captions, no burned-in words, no lower thirds, no titles, no watermark, no UI overlay, no emoji, no logo. Every pixel is photographic. This outranks every other instruction: even though there is spoken dialogue, do NOT add subtitles.';
+  const clean = CLEAN_FRAME_RULE;
   const speech = line
     ? `SPOKEN LINE — the person says exactly this, and nothing else: "${line}"`
     : '';
@@ -718,19 +757,18 @@ export function buildJobInput(
  * mentre la variabile dice openrouter è esattamente il guasto che `SERVED_BY` esiste per impedire,
  * e non lascerebbe traccia da nessuna parte.
  */
-function videoEndpoint(model: string, opts: { hasRefs?: boolean } = {}): 'kie' | 'openrouter' {
+function videoEndpoint(model: string): 'kie' | 'openrouter' {
   if (route('video').endpoint !== 'openrouter') return 'kie';
 
   if (!openrouterVideoModel(model)) {
     console.warn(`[video] AI_ROUTE_VIDEO chiede openrouter ma ${model} non è nel suo catalogo video: ripiego su kie.`);
     return 'kie';
   }
-  // I `reference_*` di Seedance non esistono sulla superficie video di OpenRouter: mandarli lì
-  // significherebbe girare la clip SENZA i riferimenti, con un 200 e nessun errore.
-  if (opts.hasRefs) {
-    console.warn('[video] i riferimenti non passano da openrouter: questo render resta su kie.');
-    return 'kie';
-  }
+  // I riferimenti PASSANO da OpenRouter, e questa guardia diceva il contrario. Il campo si chiama
+  // `input_references` e prende immagini, audio e video in un elenco solo (`openrouter-video.ts`);
+  // il nome cercato prima era quello di kie — `reference_*` — ed è per questo che sembrava assente.
+  // La degradazione per provider la fa il gateway: audio e video li onora chi li regge (Seedance 2
+  // e successivi) e gli altri usano le sole immagini.
   return 'openrouter';
 }
 
@@ -753,7 +791,20 @@ async function runVideoJob(
 ): Promise<(VideoJobResult & { costUsd?: number }) | undefined> {
   if (endpoint === 'openrouter') {
     const out = await renderOpenrouterVideo(
-      { model, prompt, durationSeconds, resolution, aspectRatio, imageUrl: opts.imageUrl, lastFrameUrl: opts.lastFrameUrl },
+      {
+        model,
+        prompt,
+        durationSeconds,
+        resolution,
+        aspectRatio,
+        imageUrl: opts.imageUrl,
+        lastFrameUrl: opts.lastFrameUrl,
+        // I riferimenti arrivavano solo a kie, e su questa strada sparivano in silenzio: la clip
+        // usciva senza l'ancoraggio a persona, prodotto e voce, e il render riusciva lo stesso.
+        referenceImageUrls: opts.referenceImageUrls,
+        referenceAudioUrls: opts.referenceAudioUrls,
+        referenceVideoUrls: opts.referenceVideoUrls
+      },
       { signal: opts.abortSignal, context: 'inline' }
     );
     // Come su kie: una scadenza non riapre niente. Il job resta del fornitore col suo id.
@@ -861,14 +912,21 @@ export async function renderVideo(
   return runPreparedRender(supabase, userId, prepared, opts.abortSignal);
 }
 
-async function prepareVideoRender(
+/**
+ * Esportata per il test, non per i chiamanti: `renderVideo` resta l'unica porta. Senza, il punto
+ * in cui il modello risolto incontra il prompt non lo verifica nessuno — ed è esattamente il tipo
+ * di cavo che si stacca in silenzio, come è successo al pavimento del craft delle immagini.
+ */
+export async function prepareVideoRender(
   imagePrompt: string,
   opts: RenderVideoOpts = {}
 ): Promise<PreparedRender> {
-  if (!env.KIE_API_KEY) {
-
-    throw new Error('KIE_API_KEY not configured');
-  }
+  // NESSUN CANCELLO DI FORNITORE QUI. C'era `if (!env.KIE_API_KEY) throw`, e rifiutava ogni render
+  // — compresi quelli diretti a OpenRouter, che di quella chiave non sanno niente. Con kie spento
+  // il video non partiva affatto, e il messaggio nominava un fornitore che non c'entrava.
+  //
+  // La chiave si controlla dove si usa: `runVideoJob` e `finishVideoRender` la chiedono sul ramo
+  // kie, e `route('video')` ripiega da solo quando un endpoint non è configurato.
 
   // Una clip è la cosa più cara che il motore possa comprare: chi ha i crediti esauriti non deve
   // poterci spendere da NESSUN percorso. `CreditsExhaustedError` si propaga — l'utente deve sapere
@@ -924,7 +982,9 @@ async function prepareVideoRender(
     instructions: opts.instructions,
     prompt: opts.prompt,
     shotBrief,
-    durationSeconds
+    durationSeconds,
+    // Il modello è già stato risolto sopra: le note di mestiere sono sue, non del brief.
+    model
   });
 
   return {
@@ -960,9 +1020,7 @@ async function runPreparedRender(
   const { model, prompt, durationSeconds, aspectRatio, resolution, cover, script, lastFrame } = p;
   const { referenceVideoUrls, referenceAudioUrls, referenceImageUrls } = p;
   const t0 = Date.now();
-  const endpoint = videoEndpoint(model, {
-    hasRefs: referenceVideoUrls.length > 0 || referenceAudioUrls.length > 0 || referenceImageUrls.length > 0
-  });
+  const endpoint = videoEndpoint(model);
   try {
     const job = await runVideoJob(endpoint, model, prompt, durationSeconds, aspectRatio, resolution, {
       imageUrl: cover,
@@ -1099,9 +1157,31 @@ export async function transformVideo(opts: {
 
   const t0 = Date.now();
   let job: VideoJobResult | undefined;
+  // Il trasporto si CHIEDE, non si dà per scontato. Questa funzione andava sempre su kie, perché
+  // l'unico modello che sapeva rifinire era Aleph, che lì vive. Ora Seedance dichiara quel ruolo e
+  // legge un video da `input_references`: la domanda torna ad avere due risposte.
+  const endpoint = videoEndpoint(model);
   try {
     job =
-      spec?.endpoint === 'aleph'
+      endpoint === 'openrouter'
+        ? await (async () => {
+            const out = await renderOpenrouterVideo(
+              {
+                model,
+                prompt: opts.prompt ?? '',
+                durationSeconds: 0,
+                resolution: '',
+                aspectRatio: opts.aspectRatio ?? '',
+                // Il video sorgente è un RIFERIMENTO, non un fotogramma: `frame_images` direbbe
+                // «parti da questa immagine», che è un altro mestiere.
+                referenceVideoUrls: [opts.videoUrl],
+                ...(opts.imageUrl ? { referenceImageUrls: [opts.imageUrl] } : {})
+              },
+              { signal: opts.abortSignal, context: `transform:${opts.role}`, label: 'video.transform' }
+            );
+            return out.status === 'done' ? { url: out.url, taskId: tagOpenrouterJob(out.jobId) } : undefined;
+          })()
+        : spec?.endpoint === 'aleph'
         ? await runAlephJob(input, opts.abortSignal)
         : await (async () => {
             const taskId = await createKieTask(
@@ -1174,10 +1254,7 @@ export async function submitVideoRender(
   // so the caller ships the cover. Without this a blip unwinds into the caller's outer catch and
   // takes the whole post with it — including the cover image already generated and paid for.
   // CreditsExhaustedError is re-thrown: that is a message for the user, not a render failure.
-  const endpoint = videoEndpoint(p.model, {
-    hasRefs:
-      p.referenceVideoUrls.length > 0 || p.referenceAudioUrls.length > 0 || p.referenceImageUrls.length > 0
-  });
+  const endpoint = videoEndpoint(p.model);
 
   let taskId: string | undefined;
   try {
@@ -1191,7 +1268,12 @@ export async function submitVideoRender(
           resolution: p.resolution,
           aspectRatio: p.aspectRatio,
           imageUrl: p.cover,
-          lastFrameUrl: p.lastFrame
+          lastFrameUrl: p.lastFrame,
+          // Come sul percorso inline: senza, una clip UGC inviata in asincrono perde l'ancoraggio
+          // e nessuno se ne accorge finché non la guarda.
+          referenceImageUrls: p.referenceImageUrls,
+          referenceAudioUrls: p.referenceAudioUrls,
+          referenceVideoUrls: p.referenceVideoUrls
         },
         opts.abortSignal
       );
@@ -1401,13 +1483,24 @@ export async function upscaleVideo(
   supabase: SupabaseClient,
   userId: string,
   taskId: string,
-  resolution: string = UPSCALE_RESOLUTION
+  resolution: string = UPSCALE_RESOLUTION,
+  opts: { videoUrl?: string } = {}
 ): Promise<{ url: string; resolution: string } | undefined> {
-  if (!env.KIE_API_KEY || !taskId) return undefined;
+  if (!taskId) return undefined;
 
-  // L'upscale di kie prende un task_id DI KIE. Un id di OpenRouter qui otterrebbe un 404 dopo un
-  // giro di rete, e nel caso peggiore l'id di qualcun altro.
-  if (untagOpenrouterJob(taskId)) return undefined;
+  // DUE UPSCALE, DUE INGRESSI DIVERSI. kie riparte dal LAVORO originale (`task_id`, e solo uno
+  // suo); `black-forest-labs/flux-video-upscale` riparte dal FILE — «requires video input:
+  // include an input_references entry of type video_url», risponde se manca.
+  //
+  // Chi chiama il file ce l'ha già (`post.media_url`), quindi non c'è niente da conservare: senza
+  // quello non si ingrandisce una clip di OpenRouter, e tacere sarebbe peggio che dirlo.
+  if (untagOpenrouterJob(taskId)) {
+    return opts.videoUrl
+      ? await upscaleOnOpenrouter(supabase, userId, opts.videoUrl, resolution)
+      : undefined;
+  }
+
+  if (!env.KIE_API_KEY) return undefined;
 
   // Upscale is a Grok-Imagine endpoint that takes a Grok task_id. Seedance (and unknown) drafts
   // have no matching upscale path — skip rather than burn a round-trip that will fail.
@@ -1448,4 +1541,40 @@ export async function upscaleVideo(
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Ingrandisce una clip su OpenRouter, partendo dal FILE.
+ *
+ * Nessun `task_id` da conservare e nessun fornitore da interrogare sul lavoro di prima: si manda
+ * il video e si riceve il video. `renderOpenrouterVideo` fa già invio, attesa e costo — qui resta
+ * solo la forma dell'ingresso, che per questo modello è obbligatoria.
+ */
+async function upscaleOnOpenrouter(
+  supabase: SupabaseClient,
+  userId: string,
+  videoUrl: string,
+  resolution: string
+): Promise<{ url: string; resolution: string } | undefined> {
+  try {
+    await gateScopedCredits();
+  } catch {
+    return undefined;
+  }
+
+  const out = await renderOpenrouterVideo(
+    {
+      model: OPENROUTER_UPSCALE_MODEL,
+      prompt: '',
+      durationSeconds: 0,
+      resolution,
+      aspectRatio: '',
+      referenceVideoUrls: [videoUrl]
+    },
+    { context: 'upscale', timeoutMs: UPSCALE_TIMEOUT_MS }
+  );
+  if (out.status !== 'done') return undefined;
+
+  const url = await persistMp4(supabase, userId, out.url);
+  return url ? { url, resolution } : undefined;
 }

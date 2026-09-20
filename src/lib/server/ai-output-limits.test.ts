@@ -3,6 +3,7 @@ import {
   CLAUDE_MAX_OUTPUT_TOKENS,
   DEEPSEEK_MAX_OUTPUT_TOKENS,
   GEMINI_MAX_OUTPUT_TOKENS,
+  HARNESS_MAX_OUTPUT_TOKENS,
   KIE_GPT_MAX_OUTPUT_TOKENS,
   KIE_GROK_MAX_OUTPUT_TOKENS,
   XIAOMI_MAX_OUTPUT_TOKENS,
@@ -36,6 +37,21 @@ describe('ai output limits', () => {
     // Grok publishes no output cap; the bound is ours, so it must stay inside the range xAI
     // describes as realistic for one call rather than drift up to the context window.
     expect(KIE_GROK_MAX_OUTPUT_TOKENS).toBeLessThanOrEqual(65_536);
+  });
+
+  /**
+   * IL TETTO DELL'HARNESS VALE 65.536, E NON SI MUOVE DA SOLO.
+   *
+   * Oggi prende il valore in prestito da una costante di kie. Kie se ne va, e il numero deve
+   * restare: e` il tetto di OGNI strada viva — openrouter, opencode, llm. Sotto, le risposte si
+   * troncano a meta`; sopra, e` un 400 a turno iniziato. Nessuno dei due si vede in una suite
+   * verde, e nessuno dei due si nota finche` non e` in produzione.
+   */
+  it('il tetto dell’harness resta 65.536 anche quando kie non c’e’ piu’', () => {
+    expect(HARNESS_MAX_OUTPUT_TOKENS).toBe(65_536);
+    for (const p of ['openrouter', 'opencode', 'llm'] as AiProviderId[]) {
+      expect(maxOutputTokensFor(p), p).toBe(65_536);
+    }
   });
 
   it('splits kie by model family — one provider, three ceilings that differ 2x', () => {

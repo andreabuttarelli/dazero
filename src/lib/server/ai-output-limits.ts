@@ -22,16 +22,6 @@
 /** Gemini 3.7 Flash / 3.x Pro — 64k output, 1M context. (checked 2026-08-20) */
 export const GEMINI_MAX_OUTPUT_TOKENS = 65_536;
 
-/**
- * Grok 4.6 on kie's Responses API. xAI publishes NO separate output cap — output is bounded by the
- * shared 500k context, with 32–64k the realistic single-call ceiling once the model reserves
- * reasoning headroom. 64k is therefore a chosen bound, not a documented one. (checked 2026-08-20)
- */
-export const KIE_GROK_MAX_OUTPUT_TOKENS = 65_536;
-
-/** GPT 5.6 Terra / Sol / Luna on kie Codex — 128k output, 1.05M context. (checked 2026-08-20) */
-export const KIE_GPT_MAX_OUTPUT_TOKENS = 128_000;
-
 /** MiMo v2.5 and v2.5-Pro (`max_completion_tokens`) — 128k output. (checked 2026-08-20) */
 export const XIAOMI_MAX_OUTPUT_TOKENS = 131_072;
 
@@ -46,13 +36,29 @@ export const DEEPSEEK_MAX_OUTPUT_TOKENS = 384_000;
 export const CLAUDE_MAX_OUTPUT_TOKENS = 64_000;
 
 /**
- * I provider dell'harness (openrouter, opencode) sono uno sportello davanti a decine di famiglie:
- * il tetto lo decide il modello, non il trasporto, e chiederlo al trasporto darebbe lo stesso
- * numero a GLM e a un modello da 8k. Finche' non serve distinguerli, il tetto conservativo di
- * Grok vale per tutti — il rischio di sottostimare e` una risposta piu` corta, quello di
- * sovrastimare e` un 400 a meta` turno.
+ * Grok 4.6 sulla Responses API di kie. xAI non pubblica un tetto di output separato: il limite e`
+ * il contesto condiviso da 500k, e 32–64k e` il massimo realistico per una chiamata sola una volta
+ * che il modello si e` riservato lo spazio per ragionare. 64k e` quindi un bound scelto, non
+ * documentato. (verificato 2026-08-20)
  */
-export const HARNESS_MAX_OUTPUT_TOKENS = KIE_GROK_MAX_OUTPUT_TOKENS;
+export const KIE_GROK_MAX_OUTPUT_TOKENS = 65_536;
+
+/** GPT 5.6 Terra / Sol / Luna su kie Codex — 128k di output, 1,05M di contesto. (2026-08-20) */
+export const KIE_GPT_MAX_OUTPUT_TOKENS = 128_000;
+
+/**
+ * I provider dell'harness (openrouter, opencode, llm) sono uno sportello davanti a decine di
+ * famiglie: il tetto lo decide il modello, non il trasporto, e chiederlo al trasporto darebbe lo
+ * stesso numero a GLM e a un modello da 8k. Finche' non serve distinguerli vale un bound
+ * conservativo per tutti — il rischio di sottostimare e` una risposta piu` corta, quello di
+ * sovrastimare e` un 400 a meta` turno.
+ *
+ * 64k e` un bound SCELTO, non pubblicato: xAI non dichiara un tetto di output separato, e il
+ * limite vero e` il contesto condiviso una volta che il modello si e` riservato lo spazio per
+ * ragionare. Il numero stava su una costante di kie e ne e` uscito intatto quando kie e` uscito:
+ * il trasporto se n'e` andato, il tetto dei modelli no.
+ */
+export const HARNESS_MAX_OUTPUT_TOKENS = 65_536;
 
 export type AiProviderId = 'gemini' | 'kie' | 'xiaomi' | 'deepseek' | 'claude' | 'openrouter' | 'opencode' | 'llm';
 
