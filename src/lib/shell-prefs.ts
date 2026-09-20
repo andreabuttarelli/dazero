@@ -2,8 +2,12 @@
 
 export const SHELL_PREF_KEYS = {
   sidebarOpen: 'anomalia.sidebarOpen',
-  sidebarPanePx: 'anomalia.sidebarPanePx'
+  sidebarPanePx: 'anomalia.sidebarPanePx',
+  sidebarPane: 'anomalia.sidebarPane'
 } as const;
+
+export const SIDEBAR_PANES = ['chat', 'pages', 'assets'] as const;
+export type SidebarPane = (typeof SIDEBAR_PANES)[number];
 
 /** Cookie kept in sync so SSR / first paint can match the sidebar open state. */
 export const SIDEBAR_OPEN_COOKIE = 'sidebar_state';
@@ -77,6 +81,16 @@ export function readSidebarPanePx(): number {
 
 export function writeSidebarPanePx(px: number) {
   writeRaw(SHELL_PREF_KEYS.sidebarPanePx, String(Math.round(px)));
+}
+
+/** Quale dei tre pannelli era aperto. Un valore fuori vocabolario ripiega invece di rompere. */
+export function readSidebarPane(): SidebarPane {
+  const raw = readRaw(SHELL_PREF_KEYS.sidebarPane);
+  return (SIDEBAR_PANES as readonly string[]).includes(raw ?? '') ? (raw as SidebarPane) : 'pages';
+}
+
+export function writeSidebarPane(pane: SidebarPane) {
+  writeRaw(SHELL_PREF_KEYS.sidebarPane, pane);
 }
 
 export const SHELL_LAYOUT = {
