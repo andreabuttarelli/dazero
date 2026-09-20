@@ -9,16 +9,24 @@ vi.mock('$lib/server/wall-digest', () => ({
 // Il percorso vero: kie. Prima si fingeva `{ endpoint: 'google' }` — un endpoint che il registro
 // non sa produrre — e si leggevano i prompt dal ramo Google, che nessuna richiesta poteva
 // raggiungere. Il pavimento del design si verificava su codice morto.
-const renderOnKie = vi.fn();
+const renderImage = vi.fn();
 
-vi.mock('$lib/server/kie-jobs', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('$lib/server/kie-jobs')>()),
-  generateImageOnKie: renderOnKie
+// I due trasporti OpenRouter, entrambi: il bivio si sceglie sul MODELLO — l'API immagini per chi
+// vive li', la via Gemini per gli altri — e un test che ne finge uno solo misura il prompt del ramo
+// che non e' stato preso. Qui interessa cosa arriva al modello, non da quale porta passa.
+vi.mock('$lib/server/openrouter-image', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/server/openrouter-image')>()),
+  generateImageOnOpenrouter: renderImage
+}));
+
+vi.mock('$lib/server/openrouter-images-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/server/openrouter-images-api')>()),
+  generateImageOnOpenrouterImages: renderImage
 }));
 
 vi.mock('$lib/server/model-routing', async (importOriginal) => ({
   ...(await importOriginal<typeof import('$lib/server/model-routing')>()),
-  route: () => ({ family: 'nano-banana', endpoint: 'kie', provider: 'kie' })
+  route: () => ({ family: 'nano-banana', endpoint: 'openrouter', provider: 'openrouter' })
 }));
 
 vi.mock('$lib/server/research', async (importOriginal) => ({
@@ -28,7 +36,7 @@ vi.mock('$lib/server/research', async (importOriginal) => ({
 
 const { buildImageRequest, renderBrandImage, renderCarouselSlide } = await import('./images');
 
-const RENDERED = { dataUrl: 'data:image/png;base64,AAAA' };
+const RENDERED = 'data:image/png;base64,AAAA';
 
 const DESIGN_FLOOR =
   '\n\nAMBIENT DESIGN FLOOR (distilled 2026-08-20 from the strongest current feed design):\none oversized headline, 3-5 words, 60% of canvas height\n';
@@ -37,7 +45,7 @@ const PROMPT = 'A jar of honey on a linen cloth';
 const RENDER_OPTS = { visualStyle: 'warm editorial', aspectRatio: '1:1' as const };
 
 const promptsSentToModel = () =>
-  renderOnKie.mock.calls.map((c) => c[0].contents[0].parts[0].text as string);
+  renderImage.mock.calls.map((c) => c[0].contents[0].parts[0].text as string);
 
 const failingStorage = {
   storage: { from: () => ({ upload: async () => ({ error: { message: 'no bucket' } }) }) }
@@ -45,8 +53,8 @@ const failingStorage = {
 
 beforeEach(() => {
   digest.section = '';
-  renderOnKie.mockReset();
-  renderOnKie.mockResolvedValue(RENDERED);
+  renderImage.mockReset();
+  renderImage.mockResolvedValue(RENDERED);
 });
 
 describe('il pavimento di esecuzione del design arriva al percorso immagine', () => {

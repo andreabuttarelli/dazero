@@ -16,14 +16,21 @@ vi.mock('$lib/server/credits', () => ({
   gateOrgCredits: vi.fn()
 }));
 
-vi.mock('$lib/server/kie-jobs', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('$lib/server/kie-jobs')>()),
-  generateImageOnKie: (...args: unknown[]) => state.render(...args)
+// Entrambi i trasporti OpenRouter: il bivio si sceglie sul modello, e fingerne uno solo misura
+// il ramo che non e' stato preso.
+vi.mock('$lib/server/openrouter-image', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/server/openrouter-image')>()),
+  generateImageOnOpenrouter: (...args: unknown[]) => state.render(...args)
+}));
+
+vi.mock('$lib/server/openrouter-images-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/server/openrouter-images-api')>()),
+  generateImageOnOpenrouterImages: (...args: unknown[]) => state.render(...args)
 }));
 
 vi.mock('$lib/server/model-routing', async (importOriginal) => ({
   ...(await importOriginal<typeof import('$lib/server/model-routing')>()),
-  route: () => ({ family: 'nano-banana', endpoint: 'kie', provider: 'kie' })
+  route: () => ({ family: 'nano-banana', endpoint: 'openrouter', provider: 'openrouter' })
 }));
 
 vi.mock('$lib/server/image-constraint-review', () => ({
@@ -37,7 +44,7 @@ beforeEach(() => {
   state.render.mockReset();
   state.review.mockReset();
   state.gateCredits.mockReset();
-  state.render.mockResolvedValue({ dataUrl: 'data:image/png;base64,AAAA' });
+  state.render.mockResolvedValue('data:image/png;base64,AAAA');
   state.review.mockResolvedValue({ pass: false, issues: ['TAJIMA is embroidered on the polo shirt.'] });
 });
 

@@ -13,7 +13,6 @@ import { generateImageOnOpenrouterImages } from '$lib/server/openrouter-images-a
 import { GEMINI_NANO_BANANA_2, googleImageModel, imageModelSpec } from '$lib/image-models';
 import { structured } from '$lib/server/research';
 import { signKnowledgePaths } from '$lib/server/media-archive';
-import { generateImageOnKie } from '$lib/server/kie-jobs';
 import { generateImageOnOpenrouter } from '$lib/server/openrouter-image';
 import { route } from '$lib/server/model-routing';
 import { signPaths } from '$lib/server/people';
@@ -21,6 +20,9 @@ import { svgToPng } from '$lib/server/brand-analysis';
 import { normalizeContentFormat } from '$lib/content-formats';
 import { firstLogoUrl } from '$lib/brand-fields';
 import { designWallDigestSection } from '$lib/server/wall-digest';
+import { PHOTO_CRAFT_FLOOR } from '$lib/design/photo-craft';
+import { photoModeSpec, type PhotoModeId } from '$lib/design/photo-modes';
+import { imageCraftFor } from '$lib/design/image-craft';
 import { buildMemoryContext } from '$lib/server/brand-memory';
 import { APPAREL_BRANDING_DIRECTIVE, extractBrandConstraints, reviewImageConstraints } from '$lib/server/image-constraint-review';
 
@@ -156,6 +158,8 @@ export type RenderImageOpts = {
   model?: string;
   craftFloor?: string;
   brandRules?: string;
+  /** La modalità di scatto, quando il brief ne ha una. Senza, il prompt non dice niente in merito. */
+  shotMode?: PhotoModeId;
 };
 
 /**
@@ -226,7 +230,22 @@ export function buildImageRequest(imagePrompt: string, opts: RenderImageOpts = {
     ? '\n\nThe user attached the following image(s) as REFERENCES for this specific edit — use them to guide the change described above: match the look, composition, colours or subject they show, as the feedback implies. Let the user\'s instruction decide exactly what to take from them.'
     : '';
   const brandRulesSuffix = opts.brandRules ? `\n\nBRAND APPAREL RULES:\n${opts.brandRules}` : '';
-  const text = `${cleanPrompt}\n\n${ASPECT_LABEL[aspectRatio]}, high quality, social-media ready. No text overlays unless natural.\n\n${HOUSE_LOOK}\n\n${APPAREL_BRANDING_DIRECTIVE}${brandRulesSuffix}${opts.craftFloor ?? ''}${styleSuffix}${brandSuffix}${playbookSuffix}${baseSuffix}${logoSuffix}${personSuffix}${refSuffix}${userRefSuffix}${moodSuffix}`;
+  // Il mestiere fotografico è il pavimento di PRODOTTO, e sta qui invece che nei chiamanti perché
+  // qui ci passano tutti: i due wrapper che il digest lo passavano già, e i cinque che non lo
+  // passavano affatto (il media-generator e i quattro render UGC), che restavano senza.
+  //
+  // `craftFloor` esplicito SOSTITUISCE, non si somma: chi ne passa uno su misura ha deciso, e
+  // sommarglielo sotto gli rimetterebbe in bocca proprio le regole che stava scavalcando.
+  const craftFloor = opts.craftFloor ?? PHOTO_CRAFT_FLOOR;
+  // La modalità segue il mestiere e precede lo stile: dice come si inquadra QUESTO scatto, che è
+  // più specifico di come si fa una fotografia e meno di come guarda questo brand.
+  const modeSpec = opts.shotMode ? photoModeSpec(opts.shotMode) : '';
+  const modeSuffix = modeSpec ? `\n\n${modeSpec}\n` : '';
+  // Le note di mestiere del modello che renderà DAVVERO: `imageModel` è già risolto qui sopra, e
+  // scriverle dal chiamante vorrebbe dire ricopiarle in tredici punti — cioè dimenticarle in uno.
+  const modelCraft = imageCraftFor(imageModel);
+  const modelSuffix = modelCraft ? `\n\n${modelCraft}\n` : '';
+  const text = `${cleanPrompt}\n\n${ASPECT_LABEL[aspectRatio]}, high quality, social-media ready. No text overlays unless natural.\n\n${HOUSE_LOOK}\n\n${APPAREL_BRANDING_DIRECTIVE}${brandRulesSuffix}${craftFloor}${modelSuffix}${modeSuffix}${styleSuffix}${brandSuffix}${playbookSuffix}${baseSuffix}${logoSuffix}${personSuffix}${refSuffix}${userRefSuffix}${moodSuffix}`;
   // L'immagine base va per PRIMA: il prompt la chiama "the FIRST attached image". I mood per ultimi.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parts: any[] = [{ text }, ...(opts.baseImage ? [opts.baseImage] : []), ...(opts.logoImage ? [opts.logoImage] : []), ...(opts.personImages ?? []), ...(opts.referenceImages ?? []), ...(opts.userRefImages ?? []), ...(opts.moodImages ?? [])];
@@ -275,17 +294,16 @@ export async function renderPostImage(
 
   const req = buildImageRequest(imagePrompt, opts);
   const imageModel = req.model;
-  // OpenRouter serve lo STESSO modello Google in una richiesta sincrona: 3,4s di media contro 25,0s
-  // su kie, e senza createTask/polling non esiste il task abbandonato-e-fatturato. Costa il 68% in
-  // più per render ($0,0336 contro ~$0,020), quindi è una scelta di latenza, non di risparmio.
-  // Nessun ritentativo qui: un fallimento sincrono torna già diagnosticato, e `generateImageOnOpenrouter`
-  // alza l'eccezione invece di restituire un successo vuoto.
-  // Tre trasporti, un bivio solo. L'API immagini quando il modello vive LÌ — i GPT Image 2.5 e
+  // La richiesta e' SINCRONA: niente createTask e niente polling, quindi non esiste il task
+  // abbandonato-e-fatturato. Nessun ritentativo qui — un fallimento torna gia' diagnosticato, e i
+  // due trasporti alzano l'eccezione invece di restituire un successo vuoto.
+  // Due trasporti, un bivio solo. L'API immagini quando il modello vive LÌ — i GPT Image 2.5 e
   // nient'altro — e la via Gemini per il resto di OpenRouter. Il ramo si sceglie sul MODELLO e non
   // sulla rotta, perché è il modello a esistere o non esistere su quell'endpoint: un brand che ha
   // scelto Nano Banana continua a passare di sotto anche con lo slot su gpt-image.
   if (route('image').endpoint === 'openrouter' && imageModelSpec(imageModel)?.openrouterImages) {
-    return await generateImageOnOpenrouterImages(req, { context: `image:${imageModel}` });
+    const dataUrl = await generateImageOnOpenrouterImages(req, { context: `image:${imageModel}` });
+    return await review(dataUrl);
   }
   if (route('image').endpoint === 'openrouter') {
     const dataUrl = await generateImageOnOpenrouter(
@@ -294,31 +312,8 @@ export async function renderPostImage(
     );
     return await review(dataUrl);
   }
-  // Nano Banana gira su kie: stesso modello, −33%/−40% per immagine (misurato sui crediti
-  // addebitati). È l'UNICO punto da cambiare perché ogni render del prodotto passa di qui.
-  //
-  // Due tentativi, non tre: su kie il fallimento arriva già diagnosticato in pochi secondi.
-  // Il ritentativo vale su un RIFIUTO, che non ci è costato niente. Su una SCADENZA no: kie sta
-  // ancora renderizzando quel task e lo fatturerà comunque, quindi aprirne un secondo è chiedere
-  // lo stesso lavoro due volte — proprio quando il fornitore è in affanno — e pagarlo due volte.
-  // Si riprende lo stesso taskId.
-  let resumeTaskId: string | undefined;
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    // L'URL di kie vive 24 ore: non deve sopravvivere alla funzione, men che meno finire in una
-    // riga del database.
-    const viaKie = await generateImageOnKie(req, {
-      context: `image:${imageModel}`,
-      resumeTaskId
-    });
-    if (viaKie.dataUrl) {
-      return await review(viaKie.dataUrl);
-    }
-    resumeTaskId = viaKie.timedOutTaskId;
-  }
   throw new Error(
-    resumeTaskId
-      ? `kie task ${resumeTaskId} (${imageModel}) still unfinished — it is rendering and will be billed`
-      : `No image returned from kie (${imageModel}) after 2 attempts`
+    `AI_ROUTE_IMAGE non punta a openrouter e non c'e' un altro trasporto: ${imageModel} non ha dove renderizzare`
   );
 }
 
@@ -350,12 +345,15 @@ export function carouselSeriesDirective(slideIndex: number, totalSlides: number)
 }
 
 /**
- * UN render, con il pavimento di esecuzione del design attaccato.
+ * I DUE PAVIMENTI, sommati: il mestiere e il gusto corrente del campo.
  *
- * Il pavimento lo iniettava `renderWithQC`, che non esiste piu': senza un posto suo sarebbe uscito
- * dal percorso immagine insieme al critico, e nessuno se ne sarebbe accorto — non fallisce niente,
- * le immagini diventano solo un po' peggiori. Sta qui, in una funzione sola, cosi' i cinque
- * chiamanti non se lo ricopiano e non se lo dimenticano.
+ * Il mestiere (`PHOTO_CRAFT_SPECS`) lo mette `buildImageRequest` e non scade. Il digest del wall
+ * dice «cosa funziona in questo momento» e scade a 30 giorni — oggi è vuoto, perché il muro
+ * pubblico è spento e nessuno scrive più i digest.
+ *
+ * Passarlo come `craftFloor` li metteva in alternativa: il digest vuoto SOSTITUIVA il mestiere con
+ * niente, e il percorso immagine restava con le due righe di `HOUSE_LOOK`. Sommarli è l'unico modo
+ * perché il ritorno del wall aggiunga invece di rimpiazzare.
  */
 export async function renderBrandImage(
   imagePrompt: string,
@@ -363,8 +361,13 @@ export async function renderBrandImage(
 ): Promise<string | undefined> {
   return renderPostImage(imagePrompt, {
     ...renderOpts,
-    craftFloor: renderOpts.craftFloor ?? (await designWallDigestSection())
+    craftFloor: await craftFloorWith(renderOpts.craftFloor)
   });
+}
+
+/** Il pavimento di prodotto, più quello ambientale quando c'è. Un `base` esplicito lo sostituisce. */
+async function craftFloorWith(base?: string): Promise<string> {
+  return `${base ?? PHOTO_CRAFT_FLOOR}${await designWallDigestSection()}`;
 }
 
 /** Le direttive visive estratte dai post migliori del brand, per il renderer. */
@@ -392,7 +395,7 @@ export async function renderCarouselSlide(
 ): Promise<string | undefined> {
   const seriesDirective = carouselSeriesDirective(slideIndex, totalSlides);
   // La slide 1 precede i mood del brand, così domina l'ancoraggio estetico.
-  const opts = { ...renderOpts, craftFloor: await designWallDigestSection(), moodImages: [...(slideOneAnchor ? [slideOneAnchor] : []), ...(renderOpts.moodImages ?? [])] };
+  const opts = { ...renderOpts, craftFloor: await craftFloorWith(renderOpts.craftFloor), moodImages: [...(slideOneAnchor ? [slideOneAnchor] : []), ...(renderOpts.moodImages ?? [])] };
   try {
     // Un render per slide. Il ritentativo su verdetto del critico e' sparito con il critico: una
     // slide storta si corregge con refine_image guardandola, non ridisegnandola a scatola chiusa.

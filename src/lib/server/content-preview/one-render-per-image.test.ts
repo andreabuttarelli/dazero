@@ -21,25 +21,33 @@ vi.mock('$lib/server/wall-digest', () => ({
   designWallDigestSection: () => Promise.resolve('')
 }));
 
-const renderOnKie = vi.fn();
+const renderImage = vi.fn();
 
-vi.mock('$lib/server/kie-jobs', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('$lib/server/kie-jobs')>()),
-  generateImageOnKie: renderOnKie
+// I due trasporti OpenRouter, entrambi: il bivio si sceglie sul MODELLO — l'API immagini per chi
+// vive li', la via Gemini per gli altri — e un test che ne finge uno solo misura il prompt del ramo
+// che non e' stato preso. Qui interessa cosa arriva al modello, non da quale porta passa.
+vi.mock('$lib/server/openrouter-image', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/server/openrouter-image')>()),
+  generateImageOnOpenrouter: renderImage
+}));
+
+vi.mock('$lib/server/openrouter-images-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/server/openrouter-images-api')>()),
+  generateImageOnOpenrouterImages: renderImage
 }));
 
 vi.mock('$lib/server/model-routing', async (importOriginal) => ({
   ...(await importOriginal<typeof import('$lib/server/model-routing')>()),
-  route: () => ({ family: 'nano-banana', endpoint: 'kie', provider: 'kie' })
+  route: () => ({ family: 'nano-banana', endpoint: 'openrouter', provider: 'openrouter' })
 }));
 
 const images = await import('./images');
 
-const RENDERED = { dataUrl: 'data:image/png;base64,AAAA' };
+const RENDERED = 'data:image/png;base64,AAAA';
 
 beforeEach(() => {
-  renderOnKie.mockReset();
-  renderOnKie.mockResolvedValue(RENDERED);
+  renderImage.mockReset();
+  renderImage.mockResolvedValue(RENDERED);
 });
 
 describe('un render per immagine', () => {
@@ -50,7 +58,7 @@ describe('un render per immagine', () => {
 
     expect(out).toBeTruthy();
     // Il numero che conta. Con il critico erano 2 in parallelo, e fino a 4 col ritentativo.
-    expect(renderOnKie).toHaveBeenCalledTimes(1);
+    expect(renderImage).toHaveBeenCalledTimes(1);
   });
 
   it('il critico non e piu raggiungibile da nessuna parte', () => {
@@ -59,16 +67,15 @@ describe('un render per immagine', () => {
     expect('MAX_QC_RETRIES' in images).toBe(false);
   });
 
-  it('un render che torna vuoto ritenta ancora: quello e il ritentativo legittimo', async () => {
-    // Nessuna parte immagine al primo giro: e' un fallimento vero del modello, non un verdetto di
-    // qualita'. Qui ritentare e' giusto e non c'entra con la QC che si e' tolta.
-    renderOnKie
-      .mockResolvedValueOnce({ dataUrl: undefined })
-      .mockResolvedValueOnce(RENDERED);
+  // Il ritentativo di kie non ha piu' soggetto: quel trasporto restituiva un SUCCESSO vuoto, e
+  // riprovare era l'unico modo di accorgersene. OpenRouter alza l'eccezione quando non c'e'
+  // un'immagine nella risposta (`openrouter-image.ts`), quindi un render fallito si presenta come
+  // un errore diagnosticato e non come un vuoto da indovinare. Un giro solo, e l'errore passa.
+  it('un render fallito alza l’errore invece di riprovare alla cieca', async () => {
+    renderImage.mockRejectedValueOnce(new Error('OpenRouter (nessuna immagine nella risposta)'));
 
-    const out = await images.renderBrandImage('x', {});
+    await expect(images.renderBrandImage('x', {})).rejects.toThrow(/nessuna immagine/);
 
-    expect(out).toBeTruthy();
-    expect(renderOnKie).toHaveBeenCalledTimes(2);
+    expect(renderImage).toHaveBeenCalledTimes(1);
   });
 });
