@@ -5,7 +5,12 @@
   import { _ } from 'svelte-i18n';
   import { createSupabaseBrowserClient } from '$lib/supabase/client';
   import { jpegIfHeicFile } from '$lib/raster-image-client';
-  import { RASTER_OR_VIDEO_ACCEPT, isRasterOrVideoFile } from '$lib/raster-image';
+  import {
+    RASTER_OR_VIDEO_ACCEPT,
+    SVG_MIME,
+    isUploadableMediaFile,
+    isVectorImageSource
+  } from '$lib/raster-image';
   import PageHead from '$lib/components/PageHead.svelte';
   import { Upload } from '@lucide/svelte';
 
@@ -111,7 +116,27 @@
     return `${(n / (1024 * 1024)).toFixed(1)} MB`;
   }
 
+  // `createImageBitmap` rifiuta un SVG senza dimensioni intrinseche, e su alcuni browser anche
+  // quando ce le ha: le misure si leggono dal viewBox, che è dove un vettoriale le dichiara.
+  function svgMeta(text: string): { width: number | null; height: number | null } {
+    const box = /viewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i.exec(text);
+    if (box) return { width: Math.round(Number(box[1])), height: Math.round(Number(box[2])) };
+
+    const w = /\bwidth\s*=\s*["']\s*([\d.]+)/i.exec(text);
+    const h = /\bheight\s*=\s*["']\s*([\d.]+)/i.exec(text);
+    if (w && h) return { width: Math.round(Number(w[1])), height: Math.round(Number(h[1])) };
+
+    return { width: null, height: null };
+  }
+
   async function readImageMeta(file: File): Promise<{ width: number | null; height: number | null }> {
+    if (isVectorImageSource({ mime: file.type, filename: file.name })) {
+      try {
+        return svgMeta(await file.text());
+      } catch {
+        return { width: null, height: null };
+      }
+    }
     if (!file.type.startsWith('image/')) return { width: null, height: null };
     try {
       const bmp = await createImageBitmap(file);
@@ -161,16 +186,20 @@
     try {
       const fd = new FormData();
       for (const file of files.slice(0, 20)) {
-        if (!isRasterOrVideoFile(file)) continue;
+        if (!isUploadableMediaFile(file)) continue;
         if (file.size > 40 * 1024 * 1024) {
           uploadError = $_('app.media.fileTooLarge');
           continue;
         }
-        const ready = file.type.startsWith('video/') ? file : await jpegIfHeicFile(file);
+        const vector = isVectorImageSource({ mime: file.type, filename: file.name });
+        const ready = file.type.startsWith('video/') || vector ? file : await jpegIfHeicFile(file);
+        // Alcuni browser danno type vuoto per un .svg scelto dal disco: senza questo, il file
+        // partirebbe come octet-stream e il server lo rifiuterebbe per mime non-immagine.
+        const mime = ready.type || (vector ? SVG_MIME : '');
         const path = `${userId}/${brandId}/media/${crypto.randomUUID()}-${safeName(ready.name)}`;
         const up = await supabase.storage
           .from('brand-knowledge')
-          .upload(path, ready, { contentType: ready.type || 'application/octet-stream', upsert: false });
+          .upload(path, ready, { contentType: mime || 'application/octet-stream', upsert: false });
         if (up.error) throw new Error(up.error.message);
 
         const imgMeta = await readImageMeta(ready);
@@ -178,7 +207,7 @@
 
         fd.append('path', path);
         fd.append('file_name', ready.name);
-        fd.append('mime_type', ready.type);
+        fd.append('mime_type', mime);
         fd.append('size_bytes', String(ready.size));
         fd.append('width', String(imgMeta.width ?? vidMeta.width ?? ''));
         fd.append('height', String(imgMeta.height ?? vidMeta.height ?? ''));
@@ -298,7 +327,13 @@
               {/if}
               <span class="badge vid">video</span>
             {:else if m.signed_url}
-              <img src={m.signed_url} alt="" loading="lazy" decoding="async" />
+              <img
+                src={m.signed_url}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                class:vector={isVectorImageSource({ mime: m.mime ?? '', filename: m.file_name ?? '' })}
+              />
             {:else}
               <span class="ph">img</span>
             {/if}
@@ -333,7 +368,11 @@
         {#if selected.kind === 'video' && selected.signed_url}
           <video src={selected.signed_url} controls playsinline></video>
         {:else if selected.signed_url}
-          <img src={selected.signed_url} alt="" />
+          <img
+            src={selected.signed_url}
+            alt=""
+            class:vector={isVectorImageSource({ mime: selected.mime ?? '', filename: selected.file_name ?? '' })}
+          />
         {/if}
       </div>
 
@@ -515,6 +554,9 @@
     background: var(--paper-2); color: inherit;
   }
   .pin img, .pin video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* Un vettoriale è quasi sempre un logo: ritagliarlo ne taglia via il senso, e uno con lo sfondo
+     trasparente sparirebbe sulla tessera scura. Contenuto e su carta, come lo si guarderebbe. */
+  .pin img.vector { object-fit: contain; padding: 10%; background: #fff; box-sizing: border-box; }
   .pin::after {
     content: ''; position: absolute; inset: 0; border-radius: 14px; pointer-events: none;
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 9%, transparent);
@@ -573,6 +615,7 @@
   .drawer-head h2 { margin: 0; font-size: 18px; line-height: 1.3; }
   .preview { border-radius: 12px; overflow: hidden; background: var(--paper-2); }
   .preview img, .preview video { width: 100%; display: block; max-height: 280px; object-fit: contain; background: #111; }
+  .preview img.vector { background: #fff; padding: 16px; box-sizing: border-box; }
 
   .tech { margin: 0; display: grid; gap: 8px; }
   .tech > div { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }

@@ -419,35 +419,38 @@
          delle pagine (`--shell-top-h`) e lo stesso filo, cosi' i due bordi sono una riga sola che
          attraversa la finestra invece di due tratti sfalsati. -->
     <Sidebar.Header class="shell-top-header shell-top-divider justify-center p-0">
-      <a
-        href="/app"
-        class="flex w-full items-center px-5 no-underline group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-        style="color: inherit"
-        aria-label={$_('landing.nav.brandAria')}
-        title={$_('landing.nav.brandAria')}
-      >
-        <BrandMark size={mobile ? 32 : 30} />
-      </a>
+      <div class="flex w-full items-center gap-2 px-5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+        <a
+          href="/app"
+          class="flex shrink-0 items-center no-underline"
+          style="color: inherit"
+          aria-label={$_('landing.nav.brandAria')}
+          title={$_('landing.nav.brandAria')}
+        >
+          <BrandMark size={mobile ? 32 : 30} />
+        </a>
+
+        <!-- A destra nell'header, non sopra la lista: il controllo sta sulla riga che già esiste
+             invece di rubare una fascia di altezza al contenuto. Sul rail collassato sparisce —
+             tre segmenti in 3.25rem non ci stanno. -->
+        {#if brandSlug}
+          <div class="ml-auto min-w-0 group-data-[collapsible=icon]:hidden">
+            <SegmentedControl
+              bind:value={pane}
+              ariaLabel={$_('landing.nav.brandAria')}
+              segments={[
+                { value: 'chat', label: 'Chat' },
+                { value: 'pages', label: 'Pagine' },
+                { value: 'assets', label: 'Media' }
+              ]}
+            />
+          </div>
+        {/if}
+      </div>
     </Sidebar.Header>
   {/if}
 
   <Sidebar.Content class="flex-1 gap-0 overflow-y-auto px-2.5 py-3 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2.5 group-data-[collapsible=icon]:overflow-visible">
-    <!-- Il segmented control esiste solo dentro un brand e solo a barra aperta: sul rail da
-         3.25rem tre segmenti non ci stanno, e la navigazione resta l'unica cosa che serve. -->
-    {#if brandSlug}
-      <div class="shrink-0 pb-2.5 group-data-[collapsible=icon]:hidden">
-        <SegmentedControl
-          bind:value={pane}
-          ariaLabel={$_('app.nav.settings')}
-          segments={[
-            { value: 'chat', label: 'Chat' },
-            { value: 'pages', label: 'Pagine' },
-            { value: 'assets', label: 'Media' }
-          ]}
-        />
-      </div>
-    {/if}
-
     <!-- I tre pannelli restano MONTATI e si nascondono con CSS: il pannello della chat tiene uno
          stream aperto e la cronologia caricata, e smontarlo a ogni cambio di segmento
          chiuderebbe la connessione a metà risposta. -->

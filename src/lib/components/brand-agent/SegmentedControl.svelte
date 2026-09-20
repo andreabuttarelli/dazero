@@ -41,24 +41,26 @@
 </div>
 
 <style>
+  /* Sta su una riga già occupata dal marchio: piccolo per scelta, non per svista. */
   .seg {
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
-    gap: 2px;
-    padding: 2px;
-    border-radius: 9px;
+    gap: 1px;
+    padding: 1.5px;
+    border-radius: 7px;
     background: var(--surface, #f5f5f7);
   }
   button {
     appearance: none;
     border: none;
     background: transparent;
-    border-radius: 7px;
-    padding: 5px 10px;
-    font-size: 12.5px;
-    font-weight: 550;
-    line-height: 1.2;
+    border-radius: 5.5px;
+    padding: 2.5px 7px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
     color: var(--ink-soft, #6e6e73);
     cursor: pointer;
     white-space: nowrap;
