@@ -17,9 +17,19 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CANVAS_EDGE_KINDS, type CanvasEdgeKind, type CanvasEdgeRow } from '$lib/canvas-edges';
+import type { GenMedium } from '$lib/canvas/gen-node';
 
 /** Gli stessi valori del check in migrazione: due elenchi divergerebbero al primo tipo nuovo. */
-export const CANVAS_REF_KINDS = ['post', 'media', 'document', 'memory', 'graphic', 'note'] as const;
+export const CANVAS_REF_KINDS = [
+  'post',
+  'media',
+  'document',
+  'memory',
+  'graphic',
+  'note',
+  // Il nodo che produce: nasce senza riferimento e lo acquista girando. Vedi `canvas-gen.ts`.
+  'gen'
+] as const;
 
 export type CanvasRefKind = (typeof CANVAS_REF_KINDS)[number];
 
@@ -30,6 +40,18 @@ export type CanvasItemRow = {
   ref_kind: CanvasRefKind;
   ref_id: string | null;
   body: string | null;
+  /**
+   * Le quattro colonne del nodo che PRODUCE. Null su ogni altro tipo: una tile che punta a un post
+   * non ha un prompt, e il medium glielo porta il post.
+   *
+   * Facoltative nel TIPO e non solo nel valore, perché una tela letta con un `select` più stretto
+   * — e ce n'è uno, in `ensureBrandCanvas` — non le porta affatto: dichiararle presenti costringe
+   * ogni lettura parziale a inventarle.
+   */
+  medium?: GenMedium | null;
+  model?: string | null;
+  prompt?: string | null;
+  params?: Record<string, unknown> | null;
   x: number;
   y: number;
   w: number;
@@ -41,8 +63,21 @@ export type CanvasItemRow = {
 
 type Row = Record<string, unknown>;
 
-/** Un indice per tipo. La nota non compare: non punta a niente. */
-export type CanvasRefs = Record<Exclude<CanvasRefKind, 'note'>, Map<string, Row>>;
+/**
+ * I tipi che puntano DAVVERO a una riga di un'altra tabella. Fuori restano la nota, che porta il
+ * suo testo, e il nodo che produce, che il riferimento lo acquista solo dopo aver girato.
+ */
+export type CanvasRefKindWithRow = Exclude<CanvasRefKind, 'note' | 'gen'>;
+
+/**
+ * Dove sta il risultato di un nodo che ha prodotto: in `brand_media`, come ogni altro asset del
+ * brand. Il nodo non ha una tabella sua — sarebbe una seconda libreria — quindi `ref_kind = 'gen'`
+ * si idrata di lì, ed è l'unico tipo il cui nome non è quello della sua tabella.
+ */
+const GEN_REF_TABLE = 'media' satisfies CanvasRefKindWithRow;
+
+/** Un indice per tipo, per idratare senza una query per tile. */
+export type CanvasRefs = Record<CanvasRefKindWithRow, Map<string, Row>>;
 
 export type CanvasItem = CanvasItemRow & {
   ref: Row | null;
@@ -52,10 +87,13 @@ export type CanvasItem = CanvasItemRow & {
 
 export function hydrateCanvasItems(rows: CanvasItemRow[], refs: CanvasRefs): CanvasItem[] {
   return rows.map((row) => {
-    if (row.ref_kind === 'note') {
+    // La nota non punta a niente, e il nodo che produce non ci punta ANCORA: in entrambi i casi
+    // `missing` dipingerebbe «questa cosa non c'è più» su qualcosa che non è mai sparito.
+    if (row.ref_kind === 'note' || (row.ref_kind === 'gen' && !row.ref_id)) {
       return { ...row, ref: null, missing: false };
     }
-    const ref = row.ref_id ? (refs[row.ref_kind]?.get(row.ref_id) ?? null) : null;
+    const kind = row.ref_kind === 'gen' ? GEN_REF_TABLE : row.ref_kind;
+    const ref = row.ref_id ? (refs[kind]?.get(row.ref_id) ?? null) : null;
     return { ...row, ref, missing: !ref };
   });
 }
@@ -224,7 +262,7 @@ export async function loadCanvasEdges(
 }
 
 /** Le colonne che ogni tipo porta sulla tela: abbastanza per disegnarla, non l'oggetto intero. */
-const REF_SELECT: Record<Exclude<CanvasRefKind, 'note'>, { table: string; columns: string }> = {
+const REF_SELECT: Record<CanvasRefKindWithRow, { table: string; columns: string }> = {
   post: { table: 'posts', columns: 'id, caption, media_url, media_urls, platform, status, content_type, scheduled_for' },
   media: { table: 'brand_media', columns: 'id, kind, url, storage_path, title, file_name, width, height' },
   document: { table: 'brand_documents', columns: 'id, title, kind, status, summary' },
@@ -245,7 +283,9 @@ export async function loadCanvasItems(
 ): Promise<CanvasItem[]> {
   const { data } = await supabase
     .from('brand_canvas_items')
-    .select('id, canvas_id, brand_id, ref_kind, ref_id, body, x, y, w, h, z, updated_at')
+    .select(
+      'id, canvas_id, brand_id, ref_kind, ref_id, body, medium, model, prompt, params, x, y, w, h, z, updated_at'
+    )
     .eq('canvas_id', canvasId)
     .order('z');
 
@@ -255,12 +295,13 @@ export async function loadCanvasItems(
   ) as CanvasRefs;
   if (!rows.length) return [];
 
-  const byKind = new Map<Exclude<CanvasRefKind, 'note'>, string[]>();
+  const byKind = new Map<CanvasRefKindWithRow, string[]>();
   for (const row of rows) {
     if (row.ref_kind === 'note' || !row.ref_id) continue;
-    const list = byKind.get(row.ref_kind) ?? [];
+    const kind = row.ref_kind === 'gen' ? GEN_REF_TABLE : row.ref_kind;
+    const list = byKind.get(kind) ?? [];
     list.push(row.ref_id);
-    byKind.set(row.ref_kind, list);
+    byKind.set(kind, list);
   }
 
   await Promise.all(

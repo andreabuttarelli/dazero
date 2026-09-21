@@ -21,7 +21,9 @@
   import { SvelteFlow, Background, Controls, MiniMap, type Node } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
   import CanvasTile from './CanvasTile.svelte';
+  import CanvasPointer from './CanvasPointer.svelte';
   import type { FlowEdge } from '$lib/canvas-edges';
+  import { GEN_MEDIUMS, type GenMedium } from '$lib/canvas/gen-node';
 
   /**
    * Dove sta una tile e quanto è grande, in unità di tela — le stesse di `brand_canvas_items`.
@@ -45,6 +47,7 @@
     edges: incomingEdges = [],
     onMove,
     onConnect,
+    onCreate,
     tile
   }: {
     tiles?: Tile[];
@@ -54,6 +57,8 @@
     onMove?: (id: string, x: number, y: number) => void;
     /** Una linea appena tirata fra due tile, perché chi usa la tela la salvi. */
     onConnect?: (sourceItemId: string, targetItemId: string) => void;
+    /** Un nodo nuovo chiesto col doppio clic, col punto già in unità di tela. */
+    onCreate?: (medium: GenMedium, at: { x: number; y: number }) => void;
     /** Cosa disegnare dentro una tile. La tela non sa cosa mostra: lo decide chi la usa. */
     tile: import('svelte').Snippet<[{ id: string }]>;
   } = $props();
@@ -121,9 +126,47 @@
     if (!source || !target || source === target) return;
     onConnect?.(source, target);
   }
+
+  /**
+   * IL MENÙ DEL DOPPIO CLIC.
+   *
+   * Si apre dove si è cliccato e porta i tre medium. Tiene DUE punti: quello dello schermo, che
+   * serve a disegnarlo, e quello della tela, che è dove il nodo andrà — separati perché la tela
+   * si può scorrere mentre il menù è aperto, e un solo punto darebbe un nodo che nasce altrove.
+   */
+  const MEDIUM_LABEL: Record<GenMedium, string> = {
+    text: 'Testo',
+    image: 'Immagine',
+    video: 'Video'
+  };
+
+  let menu = $state<{ screen: { x: number; y: number }; flow: { x: number; y: number } } | null>(null);
+  let toFlow: ((p: { x: number; y: number }) => { x: number; y: number }) | null = null;
+
+  function openMenu(e: MouseEvent) {
+    if (!onCreate || !toFlow) return;
+    // Solo sullo sfondo: doppio clic su una tile è un gesto suo (aprire, rinominare), e aprirci
+    // sopra un menù di creazione lo ruberebbe.
+    if ((e.target as HTMLElement)?.closest('.svelte-flow__node')) return;
+
+    e.preventDefault();
+    menu = {
+      screen: { x: e.clientX, y: e.clientY },
+      flow: toFlow({ x: e.clientX, y: e.clientY })
+    };
+  }
+
+  function pick(medium: GenMedium) {
+    if (!menu) return;
+    onCreate?.(medium, menu.flow);
+    menu = null;
+  }
 </script>
 
-<div class="wrap">
+<!-- svelte-ignore a11y_no_static_element_interactions -- il doppio clic è una scorciatoia sulla
+     tela, non l'unico modo di creare un nodo: chi usa la tastiera passa dai bottoni di chi la
+     monta, e il menù che si apre è raggiungibile da lì. -->
+<div class="wrap" ondblclick={openMenu}>
   <!--
     I gesti che ci si aspetta da una tela, e qui sono tre flag: due dita spostano (`panOnScroll`),
     il pinch ingrandisce (`zoomOnPinch`), e la rotella nuda NON ingrandisce (`zoomOnScroll={false}`)
@@ -141,11 +184,40 @@
     zoomOnScroll={false}
     fitView
   >
+    <CanvasPointer onready={(fn) => (toFlow = fn)} />
     <Background gap={24} />
     <Controls />
     <MiniMap />
   </SvelteFlow>
+
+  {#if menu}
+    <!-- Chiude cliccando altrove o con Esc: un menù che resta aperto mentre si scorre la tela
+         punterebbe a un posto che non è più quello. -->
+    <div
+      class="gen-menu-veil"
+      role="presentation"
+      onclick={() => (menu = null)}
+      oncontextmenu={(e) => {
+        e.preventDefault();
+        menu = null;
+      }}
+    ></div>
+    <div
+      class="gen-menu"
+      role="menu"
+      tabindex="-1"
+      style={`left:${menu.screen.x}px; top:${menu.screen.y}px`}
+    >
+      {#each GEN_MEDIUMS as medium (medium)}
+        <button type="button" role="menuitem" onclick={() => pick(medium)}>
+          {MEDIUM_LABEL[medium]}
+        </button>
+      {/each}
+    </div>
+  {/if}
 </div>
+
+<svelte:window onkeydown={(e) => e.key === 'Escape' && (menu = null)} />
 
 <style>
   /*
@@ -189,6 +261,41 @@
   /* Il colore del link è scritto fisso nella libreria (`#999`), quindi non basta una variabile. */
   .wrap :global(.svelte-flow__attribution a) {
     color: var(--ink-soft, #6e6e73);
+  }
+
+  /* Il menù del doppio clic. `position: fixed` perché il punto che lo colloca è quello dello
+     SCHERMO: dentro il flusso si muoverebbe con la tela mentre lo si guarda. */
+  .gen-menu-veil {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+  }
+  .gen-menu {
+    position: fixed;
+    z-index: 21;
+    display: flex;
+    flex-direction: column;
+    min-width: 132px;
+    padding: 4px;
+    border-radius: 10px;
+    background: var(--paper, #fff);
+    border: 1px solid var(--line-2, #d2d2d7);
+    box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
+  }
+  .gen-menu button {
+    padding: 6px 10px;
+    font: inherit;
+    font-size: 12.5px;
+    text-align: left;
+    color: var(--ink, #1d1d1f);
+    background: none;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  .gen-menu button:hover,
+  .gen-menu button:focus-visible {
+    background: var(--paper-2, #f9f9f9);
   }
 
   /* La minimappa e i controlli restano riquadri dell'app: stesso bordo e stesso raggio del resto. */

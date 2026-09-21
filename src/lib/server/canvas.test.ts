@@ -72,8 +72,24 @@ describe('hydrateCanvasItems — la tela mostra gli oggetti, non una loro copia'
     expect(out.map((i) => i.id)).toEqual(['sotto', 'sopra']);
   });
 
-  it('i tipi ammessi sono quelli del vincolo, non una lista parallela', () => {
-    expect([...CANVAS_REF_KINDS]).toEqual(['post', 'media', 'document', 'memory', 'graphic', 'note']);
+  it('i tipi ammessi sono quelli del vincolo, non una lista parallela', async () => {
+    // Un elenco riscritto a mano qui NON prova quel che il nome promette: proverebbe che questo
+    // file è d'accordo con se stesso. Il confronto è con il check che morde davvero, letto dalle
+    // migrazioni — quella che lo ha creato e quelle che lo hanno riscritto, l'ultima vince.
+    const { readdirSync, readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+
+    const dir = join(process.cwd(), 'supabase', 'migrations');
+    const checks = readdirSync(dir)
+      .sort()
+      .map((f) => readFileSync(join(dir, f), 'utf8'))
+      .flatMap((sql) => [...sql.matchAll(/ref_kind\s+in\s+\(([^)]*)\)/gi)].map((m) => m[1]));
+
+    const last = checks.at(-1);
+    const fromDatabase = [...(last ?? '').matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+
+    expect(fromDatabase.length).toBeGreaterThan(0);
+    expect([...CANVAS_REF_KINDS].sort()).toEqual(fromDatabase.sort());
   });
 });
 
