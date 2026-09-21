@@ -32,11 +32,21 @@ const RETIRED = [
 const KEPT_ON_PURPOSE: Record<string, string> = {
   list_brands:
     'risponde a «quali brand esistono», cioè la domanda PRIMA dello slug: `query` è scoped su un brand e non può porsela',
-  publish_post: 'manda il post fuori davvero: `update_row` darebbe post pubblicati che non escono',
-  publish_article: 'mette l\'articolo online: `update_row` lo marcherebbe pubblicato e basta',
-  approve_post: 'innesca coda e scheduling, non cambia solo uno stato',
-  approve_plan: 'attiva il piano, non lo marca soltanto',
-  check_content: 'esegue controlli: non è una lettura',
+  publish_post:
+    'chiama `publishApprovedPost`, che consegna alle piattaforme: `update_row` darebbe post marcati pubblicati che non escono',
+  publish_article:
+    'scrive con il client admin — `brand_articles` è SELECT-only sotto RLS, quindi `update_row` verrebbe proprio rifiutato — e notifica IndexNow ed Exa',
+  approve_post:
+    'pubblica o schedula davvero, e distingue tre esiti che uno stato non contiene: schedulato, rifiutato dalla piattaforma, approvato-ma-senza-account collegato',
+  approve_plan:
+    'supersede il piano attivo, timbra le date di inizio settimana e risincronizza le preferenze del brand: tre scritture oltre allo stato',
+  check_content:
+    'compone sei moduli di regole — limiti di piattaforma, proof discipline, punteggio, conflitti di calendario, igiene hashtag — e ne versiona la composizione: nessuna riga da leggere esiste',
+  propose_plan: 'passa da `gateAiAction` e fa scrivere il piano al modello: spende crediti',
+  save_week_seeds:
+    'conia gli id di riga stabili, mappa i formati legacy sull\'enum, clampa le capacità media e tiene UN solo draft per brand: `insert_row` depositerebbe seeds grezzi che il CHECK accetta e `produce_week` non sa produrre',
+  reject_post:
+    'revoca la schedulazione su Zernio PRIMA di cancellare, e se la revoca fallisce non cancella: `delete_row` toglierebbe la riga lasciando viva la schedulazione — il post esce e non resta nulla che lo racconti (incidente luglio 2026)',
   make_video: 'genera e spende crediti',
   get_gsc: 'legge Google, non una tabella nostra',
   get_creation_kit: 'compone un brief da più fonti',
@@ -44,11 +54,12 @@ const KEPT_ON_PURPOSE: Record<string, string> = {
 };
 
 /**
- * Non tutti i tool nascono dal registro: `approve_post` e `publish_post` sono registrati a mano
- * nel server MCP, e un test che guardasse solo `BRAND_ENDPOINTS` li direbbe assenti mentre
- * esistono — cioè coprirebbe metà della superficie credendo di coprirla tutta.
+ * Non tutti i tool nascono dal registro: quelli che risolvono un id da un prefisso — `approve_post`,
+ * `publish_post`, `reject_post` — sono registrati a mano nel server MCP, e un test che guardasse
+ * solo `BRAND_ENDPOINTS` li direbbe assenti mentre esistono, cioè coprirebbe metà della superficie
+ * credendo di coprirla tutta. Va tenuto allineato a `cli/mcp/tools/brand-content.ts`.
  */
-const HAND_REGISTERED = ['approve_post', 'publish_post', 'list_brands'];
+const HAND_REGISTERED = ['approve_post', 'publish_post', 'reject_post', 'list_brands'];
 
 describe('i tool ritirati in favore dei quattro generici', () => {
   const names = new Set([...BRAND_ENDPOINTS.map((e) => e.tool), ...HAND_REGISTERED]);
