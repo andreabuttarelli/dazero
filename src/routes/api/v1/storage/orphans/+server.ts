@@ -17,6 +17,9 @@ import { collectOrphans } from '$lib/server/storage-collect';
  *
  * Service role, non sessione: l'inventario sta in `storage.objects`, che la RLS di un utente non
  * fa vedere, e i file di cui si parla attraversano tutti i brand.
+ *
+ * Richiede la migrazione `20260921170000_storage_objects_page`: senza quella funzione l'inventario
+ * non è leggibile da nessun client e la risposta è 500 su ogni giro, `mode=report` compreso.
  */
 export const config = { maxDuration: 60 };
 

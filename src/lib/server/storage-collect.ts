@@ -15,6 +15,11 @@
  * su S3, e per questo una riga tolta a mano — o un trigger che cancellasse in cascata — lascerebbe
  * il file pagato e IRRAGGIUNGIBILE: un orfano peggiore di quello che si voleva togliere. I byte si
  * tolgono solo dall'API dello Storage, che è quello che fa `removeOrphans`.
+ *
+ * Ma `storage` NON è uno schema esposto da PostgREST — solo `public` e `graphql_public` lo sono —
+ * e perciò si passa per `public.storage_objects_page`, la funzione della migrazione
+ * `20260921170000`. Finché quella migrazione non è applicata questo raccoglitore risponde errore
+ * su OGNI giro, che è esattamente quel che faceva prima senza che nessuno lo avesse notato.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { swallow } from '$lib/server/swallow';
@@ -30,14 +35,66 @@ import {
   type StorageFile
 } from '$lib/server/storage-refs';
 
-/** Quante righe per pagina quando si legge una tabella intera di riferimenti. */
-const REF_PAGE = 1000;
+/**
+ * Quante righe per pagina. Deve valere ESATTAMENTE il `max-rows` di PostgREST (1.000 qui, misurato:
+ * `?limit=5000` su `market_posts` risponde `content-range: 0-999/37444`). Chiederne di più non ne
+ * porta di più e fa credere finita una lettura che è stata troncata; chiederne di meno moltiplica
+ * i giri senza guadagnare niente.
+ */
+const PAGE_ROWS = 1000;
+
+/**
+ * Il tetto di righe che una sola lettura accetta di percorrere. Non è un'ottimizzazione: è il
+ * modo di NON restare in un ciclo infinito se una pagina smettesse di rimpicciolirsi, e il modo
+ * di accorgersi che una tabella è cresciuta oltre quel che questo giro sa leggere. Superarlo è un
+ * errore, mai un insieme più piccolo — vedi `readAllRows`.
+ */
+export const MAX_REF_ROWS = 200_000;
 
 /** Quanti file elencare nel report: abbastanza per giudicare, non tanti da non leggerli. */
 export const REPORT_SAMPLE = 50;
 
 /** Quanti path accetta una sola `remove()`. Oltre, lo Storage rifiuta la richiesta intera. */
 const REMOVE_BATCH = 100;
+
+/**
+ * UNA LETTURA INTERA, o un errore. Mai una lettura parziale che sembra intera.
+ *
+ * Due difetti abitano qui, e sbagliano in direzioni opposte:
+ *
+ *   l'INVENTARIO troncato SOTTOSTIMA — un file che la lettura non vede non viene proposto, quindi
+ *   si sbaglia dalla parte sicura ma il report mente sulla sua portata (`wall` ha 20.917 oggetti:
+ *   una lettura senza pagine ne vedeva 1.000);
+ *
+ *   i RIFERIMENTI troncati CANCELLANO FILE VIVI — un path nominato da una riga che la query non
+ *   ha letto sembra orfano. `market_posts` ha 37.444 righe, trentasette pagine: fermarsi alla
+ *   prima proponeva per la cancellazione quasi tutto il bucket `wall`.
+ *
+ * Perciò l'ordine TOTALE non è un dettaglio di stile. Senza `order`, due `range` consecutivi sono
+ * due query indipendenti e Postgres non promette che restituiscano la stessa sequenza: una riga
+ * può ricomparire nella pagina dopo, e — il caso che costa — può non comparire in nessuna. Una
+ * riga saltata nella lettura dei riferimenti è un file vivo proposto per la cancellazione, che è
+ * esattamente il difetto contro cui l'intero modulo è scritto. Con quali colonne si ordina lo dice
+ * `orderBy` della regola, perché non è `id` dappertutto: `social_thumb_cache` ha per chiave
+ * `(platform, handle)` e di `id` non ne ha affatto.
+ */
+async function readAllRows(
+  page: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>
+): Promise<{ rows: Array<Record<string, unknown>>; error: string | null }> {
+  const rows: Array<Record<string, unknown>> = [];
+
+  for (let from = 0; from < MAX_REF_ROWS; from += PAGE_ROWS) {
+    const { data, error } = await page(from, from + PAGE_ROWS - 1);
+    if (error) return { rows, error: error.message };
+
+    const batch = (data ?? []) as Array<Record<string, unknown>>;
+    rows.push(...batch);
+
+    if (batch.length < PAGE_ROWS) return { rows, error: null };
+  }
+
+  return { rows, error: `more than ${MAX_REF_ROWS} rows — the read cannot be proven complete` };
+}
 
 export type CollectMode = 'report' | 'collect';
 
@@ -69,20 +126,16 @@ export async function referencedPaths(
   const paths = new Set<string>();
 
   for (const rule of STORAGE_REFS) {
-    for (let from = 0; ; from += REF_PAGE) {
-      const { data, error } = await supabase
-        .from(rule.table)
-        .select(rule.columns.join(', '))
-        .range(from, from + REF_PAGE - 1);
+    const { rows, error } = await readAllRows((from, to) => {
+      let query = supabase.from(rule.table).select(rule.columns.join(', '));
+      for (const column of rule.orderBy) query = query.order(column, { ascending: true });
+      return query.range(from, to);
+    });
 
-      if (error) return { paths, error: `${rule.table}: ${error.message}` };
+    if (error) return { paths, error: `${rule.table}: ${error}` };
 
-      const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
-      for (const row of rows) {
-        for (const ref of pathsInRow(rule, row)) paths.add(refKey(ref.bucket, ref.path));
-      }
-
-      if (rows.length < REF_PAGE) break;
+    for (const row of rows) {
+      for (const ref of pathsInRow(rule, row)) paths.add(refKey(ref.bucket, ref.path));
     }
   }
 
@@ -93,6 +146,11 @@ export async function referencedPaths(
  * L'inventario dei file, e SOLO dei bucket che il registro sa leggere. Un bucket assente da
  * `COLLECTABLE_AREAS` non viene nemmeno elencato: quel che non si guarda non si può cancellare
  * per sbaglio.
+ *
+ * Passa da una funzione di `public` e non da `schema('storage')` perché PostgREST espone soltanto
+ * `public` e `graphql_public`: `supabase.schema('storage')` risponde PGRST106 SEMPRE, e per questo
+ * il raccoglitore non ha mai prodotto un report in vita sua. I 582 orfani citati nella storia di
+ * questo modulo vennero da SQL scritto a mano, non da questo codice.
  */
 export async function listCoveredFiles(
   supabase: SupabaseClient
@@ -101,15 +159,17 @@ export async function listCoveredFiles(
   const files: StorageFile[] = [];
 
   for (const bucket of buckets) {
-    const { data, error } = await supabase
-      .schema('storage')
-      .from('objects')
-      .select('name, created_at, bucket_id')
-      .eq('bucket_id', bucket);
+    const { rows, error } = await readAllRows((from, to) =>
+      supabase.rpc('storage_objects_page', {
+        p_bucket: bucket,
+        p_from: from,
+        p_limit: to - from + 1
+      })
+    );
 
-    if (error) return { files, error: `${bucket}: ${error.message}` };
+    if (error) return { files, error: `${bucket}: ${error}` };
 
-    for (const row of (data ?? []) as Array<{ name: string; created_at: string }>) {
+    for (const row of rows as Array<{ name: string; created_at: string }>) {
       files.push({ bucket, path: row.name, createdAt: row.created_at });
     }
   }

@@ -50,6 +50,18 @@ describe('il registro delle dipendenze riga → file', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
+  it('ogni regola dichiara con quali colonne si ordina, o non si può paginare', () => {
+    for (const rule of STORAGE_REFS) {
+      expect(rule.orderBy.length, rule.table).toBeGreaterThan(0);
+      for (const column of rule.orderBy) expect(column, rule.table).toMatch(/^[a-z_]+$/);
+    }
+  });
+
+  it('`social_thumb_cache` non ha `id`: si ordina sulla sua chiave vera', () => {
+    const rule = STORAGE_REFS.find((r) => r.table === 'social_thumb_cache');
+    expect(rule!.orderBy).toEqual(['platform', 'handle']);
+  });
+
   it('una tabella può referenziare due bucket, e resta una regola per bucket', () => {
     const market = STORAGE_REFS.filter((r) => r.table === 'market_posts');
     expect(market.map((r) => r.bucket).sort()).toEqual(['brand-knowledge', 'wall']);

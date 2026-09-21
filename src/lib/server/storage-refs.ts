@@ -41,6 +41,13 @@ export type StorageRef = {
   key?: string;
   /** Le aree che questa regola referenzia — il legame fra il registro e il recinto del raccoglitore. */
   areas: string[];
+  /**
+   * Le colonne che danno un ordine TOTALE alla tabella, per leggerla a pagine senza saltarne una.
+   * Sta qui e non nel lettore perché è una proprietà della tabella, e `social_thumb_cache` — senza
+   * `id`, con chiave `(platform, handle)` — è la riga che lo dimostra: un `'id'` scritto a mano nel
+   * ciclo funziona su otto tabelle su nove e fallisce sulla nona il giorno che ha la prima riga.
+   */
+  orderBy: string[];
 };
 
 /**
@@ -62,6 +69,7 @@ export const STORAGE_REFS: StorageRef[] = [
     bucket: 'brand-knowledge',
     columns: ['thumbnail_path'],
     form: 'path',
+    orderBy: ['id'],
     areas: ['history']
   },
   {
@@ -69,6 +77,7 @@ export const STORAGE_REFS: StorageRef[] = [
     bucket: 'brand-knowledge',
     columns: ['paths'],
     form: 'jsonb_path',
+    orderBy: ['platform', 'handle'],
     areas: ['history']
   },
   {
@@ -77,6 +86,7 @@ export const STORAGE_REFS: StorageRef[] = [
     columns: ['images'],
     form: 'jsonb_path',
     key: 'path',
+    orderBy: ['id'],
     areas: ['people']
   },
   {
@@ -85,6 +95,7 @@ export const STORAGE_REFS: StorageRef[] = [
     bucket: 'brand-knowledge',
     columns: ['storage_path', 'url'],
     form: 'path',
+    orderBy: ['id'],
     areas: ['media']
   },
   {
@@ -92,6 +103,7 @@ export const STORAGE_REFS: StorageRef[] = [
     bucket: 'brand-knowledge',
     columns: ['storage_path'],
     form: 'path',
+    orderBy: ['id'],
     areas: ['artifacts']
   },
   {
@@ -101,6 +113,7 @@ export const STORAGE_REFS: StorageRef[] = [
     bucket: 'brand-knowledge',
     columns: ['file_url'],
     form: 'path',
+    orderBy: ['id'],
     areas: ['documents']
   },
   {
@@ -108,6 +121,7 @@ export const STORAGE_REFS: StorageRef[] = [
     bucket: 'brand-knowledge',
     columns: ['media_path'],
     form: 'path',
+    orderBy: ['id'],
     areas: ['market']
   },
   {
@@ -115,6 +129,7 @@ export const STORAGE_REFS: StorageRef[] = [
     bucket: 'wall',
     columns: ['poster_path', 'preview_path'],
     form: 'path',
+    orderBy: ['id'],
     areas: ['wall']
   },
   {
@@ -122,6 +137,7 @@ export const STORAGE_REFS: StorageRef[] = [
     bucket: 'talent',
     columns: ['path'],
     form: 'path',
+    orderBy: ['id'],
     areas: ['talent']
   }
 ];
