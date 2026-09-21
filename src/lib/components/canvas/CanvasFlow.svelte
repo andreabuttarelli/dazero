@@ -141,7 +141,10 @@
   };
 
   let menu = $state<{ screen: { x: number; y: number }; flow: { x: number; y: number } } | null>(null);
-  let toFlow: ((p: { x: number; y: number }) => { x: number; y: number }) | null = null;
+  // `$state` e non un `let` semplice: la conversione arriva da `CanvasPointer` DOPO il mount, e in
+  // una variabile non reattiva il gestore del doppio clic continuerebbe a leggere il `null` di
+  // partenza — il menù non si aprirebbe mai, e senza errori.
+  let toFlow = $state<((p: { x: number; y: number }) => { x: number; y: number }) | null>(null);
 
   function openMenu(e: MouseEvent) {
     if (!onCreate || !toFlow) return;
