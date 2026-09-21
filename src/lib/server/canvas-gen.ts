@@ -20,6 +20,15 @@ export type SaveGenNode = {
   canvasId: string;
   /** Null per un nodo appena nato; l'id della riga quando si sta modificando. */
   itemId: string | null;
+  /**
+   * L'id che il client ha già coniato per il nodo che sta disegnando.
+   *
+   * Serve a NON avere due id per la stessa cosa. Prima il nodo nasceva con un id provvisorio e lo
+   * scambiava con quello del database appena la riga esisteva: la tela si ritrovava la copia
+   * vecchia accanto a quella nuova — il fantasma che restava indietro sulla mappa. Coniandolo una
+   * volta sola non c'è niente da scambiare.
+   */
+  newId?: string | null;
   medium: string;
   prompt: string;
   model: string | null;
@@ -35,6 +44,13 @@ function finite(...values: number[]): boolean {
   return values.every((v) => Number.isFinite(v));
 }
 
+/**
+ * Un id coniato dal client è comunque roba che arriva da fuori: un valore che non è un UUID lo
+ * rifiuta Postgres con un `invalid input syntax for type uuid`, che a chi ha solo aggiunto un
+ * riquadro non dice niente.
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function saveGenNode(
   supabase: SupabaseClient,
   input: SaveGenNode
@@ -47,6 +63,10 @@ export async function saveGenNode(
   }
   if (!finite(input.x, input.y, input.w, input.h) || input.w <= 0 || input.h <= 0) {
     return { ok: false, error: 'posizione e misura devono essere numeri, con larghezza e altezza positive' };
+  }
+
+  if (input.newId && !UUID.test(input.newId)) {
+    return { ok: false, error: `id non valido: ${input.newId}` };
   }
 
   let params: unknown;
@@ -83,6 +103,9 @@ export async function saveGenNode(
   const { data, error } = await supabase
     .from('brand_canvas_items')
     .insert({
+      // Assente quando il client non ne ha coniato uno: lì decide il default della colonna, non
+      // un id inventato qui.
+      ...(input.newId ? { id: input.newId } : {}),
       canvas_id: input.canvasId,
       brand_id: input.brandId,
       ref_kind: 'gen',

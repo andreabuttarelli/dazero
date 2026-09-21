@@ -60,6 +60,7 @@ export const actions: Actions = {
       userId: user.id,
       canvasId: String(fd.get('canvas_id') ?? ''),
       itemId: String(fd.get('item_id') ?? '') || null,
+      newId: String(fd.get('new_id') ?? '') || null,
       medium: String(fd.get('medium') ?? ''),
       prompt: String(fd.get('prompt') ?? ''),
       model: String(fd.get('model') ?? '') || null,

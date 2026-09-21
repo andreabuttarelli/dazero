@@ -122,11 +122,13 @@
     gens = [...gens, { id: tile.id, medium, model: null, prompt: '', params: {}, refId: null }];
     places = { ...places, [tile.id]: { x: tile.x, y: tile.y, w: tile.w, h: tile.h } };
 
-    // L'id vero lo conia il database: quello locale serve solo a disegnare subito il nodo, e
-    // viene sostituito appena la riga esiste — senza, il primo salvataggio del prompt creerebbe
-    // una SECONDA riga invece di aggiornare la prima.
-    const res = await post('gen', {
+    // L'id viaggia con la riga: è un UUID coniato qui, e il database lo scrive com'è. Prima la
+    // riga nasceva con un id suo e il nodo locale doveva cambiare nome appena la risposta
+    // arrivava — la tela si teneva anche la copia vecchia, che è il fantasma che restava
+    // indietro. Un id solo, e non c'è più niente da scambiare.
+    const saved = await post('gen', {
       canvas_id: data.canvasId,
+      new_id: tile.id,
       medium,
       prompt: '',
       model: '',
@@ -137,11 +139,13 @@
       h: tile.h
     });
 
-    const realId = res?.id;
-    if (typeof realId !== 'string') return;
-
-    gens = gens.map((g) => (g.id === tile.id ? { ...g, id: realId } : g));
-    places = { ...places, [realId]: places[tile.id] };
+    // Il salvataggio fallito toglie il nodo invece di lasciarlo lì: disegnato ma senza riga, il
+    // primo prompt scritto dentro finirebbe su un id che non esiste.
+    if (!saved) {
+      gens = gens.filter((g) => g.id !== tile.id);
+      const { [tile.id]: _gone, ...rest } = places;
+      places = rest;
+    }
   }
 
   function patch(id: string, change: Partial<GenNodeState>) {

@@ -11,6 +11,13 @@
  */
 import { genNodeSize, type GenMedium } from './gen-node';
 
+/**
+ * Il tipo MIME con cui un medium viaggia dentro un trascinamento. Un tipo nostro e non
+ * `text/plain`: così un testo trascinato da fuori — una selezione, un link — non si traveste da
+ * richiesta di creare un nodo.
+ */
+export const CANVAS_DRAG_MEDIUM = 'application/x-anomalia-medium';
+
 export type NewGenTile = {
   id: string;
   medium: GenMedium;

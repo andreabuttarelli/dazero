@@ -163,3 +163,38 @@ describe('caricare una tela con nodi che hanno prodotto', () => {
     expect(item.ref).toMatchObject({ id: 'm1' });
   });
 });
+
+describe('l id di un nodo appena creato', () => {
+  it('è quello che il client ha coniato, non uno nuovo del database', async () => {
+    // Il finto database restituisce l'id che gli si è chiesto di scrivere, come fa Postgres con
+    // `.select('id')` dopo un insert.
+    const { client, insert } = writer({ data: { id: '11111111-2222-4333-8444-555555555555' }, error: null });
+
+    // Lo scambio di id era la CAUSA del fantasma sulla tela: il nodo nasceva con un id
+    // provvisorio e lo cambiava quando la riga esisteva, e la copia vecchia restava disegnata.
+    // Coniandolo una volta sola non c'è niente da scambiare.
+    const saved = await saveGenNode(client, { ...gen, itemId: null, newId: '11111111-2222-4333-8444-555555555555' });
+
+    expect(saved).toEqual({ ok: true, id: '11111111-2222-4333-8444-555555555555' });
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ id: '11111111-2222-4333-8444-555555555555' }));
+  });
+
+  it('senza un id dal client lascia decidere il database, invece di inventarne uno', async () => {
+    const { client, insert } = writer();
+
+    await saveGenNode(client, { ...gen, itemId: null });
+
+    expect(insert.mock.calls[0][0]).not.toHaveProperty('id');
+  });
+});
+
+describe('un id che arriva dal client', () => {
+  it('deve essere un UUID: qualunque altra cosa la rifiuta Postgres con un messaggio illeggibile', async () => {
+    const { client, insert } = writer();
+
+    const saved = await saveGenNode(client, { ...gen, itemId: null, newId: 'non-un-uuid' });
+
+    expect(saved.ok).toBe(false);
+    expect(insert).not.toHaveBeenCalled();
+  });
+});

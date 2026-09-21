@@ -22,6 +22,9 @@
   import '@xyflow/svelte/dist/style.css';
   import CanvasTile from './CanvasTile.svelte';
   import CanvasPointer from './CanvasPointer.svelte';
+  import CanvasAddBar from './CanvasAddBar.svelte';
+  import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
+  import { syncNodes } from '$lib/canvas/tile-sync';
   import type { FlowEdge } from '$lib/canvas-edges';
   import { GEN_MEDIUMS, type GenMedium } from '$lib/canvas/gen-node';
 
@@ -91,25 +94,20 @@
   // da qui in poi gli archi sono di SvelteFlow, e l'effetto sotto ci porta dentro solo i NUOVI.
   let edges = $state.raw<FlowEdge[]>([...incomingEdges]);
 
-  // Le tile che arrivano dal server entrano; quelle che l'utente sta muovendo restano dove le ha
-  // lasciate. Senza questo confronto per id, ogni ricarica dei dati riporterebbe tutto indietro.
+  // Le tile che arrivano dal server entrano, quelle sparite escono, e quelle che l'utente sta
+  // muovendo restano dove le ha lasciate — la riconciliazione sta in `syncNodes`, col suo test.
   $effect(() => {
     const incoming = tiles;
     // `untrack` sui nodi: l'effetto reagisce alle tile in arrivo, non alle proprie scritture —
     // senza, aggiungerne uno lo rimetterebbe subito in coda a se stesso.
-    const known = new Set(untrack(() => nodes).map((n) => n.id));
-    const added = incoming.filter((t) => !known.has(t.id)).map(toNode);
-    if (added.length) nodes = [...untrack(() => nodes), ...added];
+    const next = syncNodes(untrack(() => nodes), incoming, toNode);
+    if (next) nodes = next;
   });
 
-  // Gli archi che arrivano dal server entrano; quelli appena tirati restano. Stesso confronto per
-  // id dei nodi, e per la stessa ragione: senza, un ricarico dei dati cancellerebbe la linea che
-  // l'utente ha appena disegnato e che il server non ha ancora restituito.
+  // Gli archi seguono la stessa riconciliazione dei nodi: entrano i nuovi, escono quelli tolti.
   $effect(() => {
-    const incoming = incomingEdges;
-    const known = new Set(untrack(() => edges).map((e) => e.id));
-    const added = incoming.filter((e) => !known.has(e.id));
-    if (added.length) edges = [...untrack(() => edges), ...added];
+    const next = syncNodes(untrack(() => edges), incomingEdges, (e) => e);
+    if (next) edges = next;
   });
 
   function onNodeDragStop({ targetNode }: { targetNode: Node | null }) {
@@ -164,12 +162,47 @@
     onCreate?.(medium, menu.flow);
     menu = null;
   }
+
+  /**
+   * Un medium lasciato cadere sulla tela. `ondragover` con `preventDefault` non è cerimonia: senza,
+   * il browser rifiuta il rilascio e il trascinamento finisce in un nulla di fatto.
+   */
+  function onDragOver(e: DragEvent) {
+    if (!e.dataTransfer?.types.includes(CANVAS_DRAG_MEDIUM)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }
+
+  function onDrop(e: DragEvent) {
+    const medium = e.dataTransfer?.getData(CANVAS_DRAG_MEDIUM);
+    if (!medium || !toFlow) return;
+
+    e.preventDefault();
+    onCreate?.(medium as GenMedium, toFlow({ x: e.clientX, y: e.clientY }));
+  }
+
+  /** Il clic sulla barra: nessun punto scelto, quindi al centro di quel che si sta guardando. */
+  function addAtCentre(medium: GenMedium) {
+    if (!toFlow) return;
+    const box = wrap?.getBoundingClientRect();
+    if (!box) return;
+
+    onCreate?.(medium, toFlow({ x: box.left + box.width / 2, y: box.top + box.height / 2 }));
+  }
+
+  let wrap = $state<HTMLDivElement | null>(null);
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -- il doppio clic è una scorciatoia sulla
      tela, non l'unico modo di creare un nodo: chi usa la tastiera passa dai bottoni di chi la
      monta, e il menù che si apre è raggiungibile da lì. -->
-<div class="wrap" ondblclick={openMenu}>
+<div
+  class="wrap"
+  bind:this={wrap}
+  ondblclick={openMenu}
+  ondragover={onDragOver}
+  ondrop={onDrop}
+>
   <!--
     I gesti che ci si aspetta da una tela, e qui sono quattro flag: due dita spostano
     (`panOnScroll`), il pinch ingrandisce (`zoomOnPinch`), e la rotella nuda NON ingrandisce
@@ -199,6 +232,10 @@
     <Controls />
     <MiniMap />
   </SvelteFlow>
+
+  {#if onCreate}
+    <CanvasAddBar onpick={addAtCentre} />
+  {/if}
 
   {#if menu}
     <!-- Chiude cliccando altrove o con Esc: un menù che resta aperto mentre si scorre la tela
@@ -239,6 +276,9 @@
    * sulle classi interne darebbe lo stesso risultato oggi e si romperebbe al primo aggiornamento.
    */
   .wrap {
+    /* La barra sta sopra la tela, ancorata a questo riquadro e non alla finestra: dentro il
+       flusso scorrerebbe con la tela, fuori si scollerebbe quando il guscio cambia misura. */
+    position: relative;
     width: 100%;
     height: 100%;
 
