@@ -457,3 +457,18 @@ export type { CreateProductInput, CreateProductResult } from './studio';
 export type { CreateShareInput, CreateShareResult, SharedViewType } from './shares';
 export { INSERT_ROW, UPDATE_ROW, DELETE_ROW, UPDATE_MAX_ROWS, DELETE_MAX_ROWS } from './write';
 export { TABLE_CHECKS, WRITABLE_COLUMNS } from './write-rules';
+
+/**
+ * I CONTRATTI DEI TOOL RITIRATI, che restano esportati.
+ *
+ * Ritirare un tool vuol dire toglierlo da `BRAND_ENDPOINTS`, cioè smettere di esporlo su MCP. La
+ * rotta REST resta, il CLI e l'app la chiamano, e il contratto è la forma con cui la chiamano:
+ * toglierlo anche di qui ha fatto smettere di compilare tre rotte, con errori di TIPO che il
+ * codice in esecuzione non mostra e che si perdono fra i trecento preesistenti.
+ */
+export { ADD_COMPETITOR, DELETE_COMPETITOR, DELETE_PRODUCT } from './studio';
+export { ADD_RADAR_SOURCE, REMOVE_RADAR_SOURCE } from './radar';
+export { REMOVE_BLOG_TERM } from './blog-settings';
+export { GET_ADS } from './reads';
+export { RECORD_MEMORY_USED } from './memory';
+export { DISCARD_PLAN } from './plans';
