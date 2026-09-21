@@ -84,6 +84,32 @@ export async function readArticle(
   return data ? toArticle(data as ArticleRow, timezone) : null;
 }
 
+const SLUG_MAX = 200;
+const SLUG_FALLBACK = 'articolo';
+
+/**
+ * Lo slug è la chiave con cui il blog pubblico risolve un articolo, e lo fa con `.maybeSingle()`:
+ * due righe che se lo contendono non si nascondono a vicenda, diventano irraggiungibili tutte e
+ * due. In database non c'è un indice unico che lo vieti, quindi il suffisso si decide qui, dove
+ * l'articolo nasce e dove gli slug già presi sono noti.
+ */
+export function articleSlug(title: string, taken: ReadonlySet<string>): string {
+  const base =
+    title
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, SLUG_MAX) || SLUG_FALLBACK;
+
+  if (!taken.has(base)) return base;
+
+  let suffix = 2;
+  while (taken.has(`${base}-${suffix}`)) suffix += 1;
+  return `${base}-${suffix}`;
+}
+
 export type ArticlePatch = {
   title?: string;
   body_md?: string;
@@ -133,6 +159,84 @@ async function idsOwnedByBrand(
 ): Promise<Set<string>> {
   const { data } = await client.from(table).select('id').eq('brand_id', brandId).in('id', ids);
   return new Set(((data ?? []) as { id: string }[]).map((row) => row.id));
+}
+
+export type ArticleDraft = {
+  title: string;
+  body_md: string;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  category_id?: string | null;
+  author_id?: string | null;
+  tag_ids?: string[];
+  language?: string;
+};
+
+export type ArticleCreation =
+  | { ok: true; article: Article }
+  | { ok: false; error: ArticleEditFailure; details?: unknown };
+
+/**
+ * Deposita un articolo scritto fuori. Nasce `draft` e `source: 'manual'`: non passa da nessun
+ * modello, quindi non è `'ai'`, e non è pubblicabile finché qualcuno non lo data o non lo
+ * pubblica — le stesse due porte che un articolo generato attraversa.
+ */
+export async function createArticle(args: {
+  client: SupabaseClient;
+  brandId: string;
+  timezone: string;
+  draft: ArticleDraft;
+}): Promise<ArticleCreation> {
+  const { client, brandId, timezone, draft } = args;
+
+  const columns: Record<string, unknown> = {
+    brand_id: brandId,
+    title: draft.title,
+    body_md: draft.body_md,
+    meta_title: draft.meta_title ?? null,
+    meta_description: draft.meta_description ?? null,
+    category_id: draft.category_id ?? null,
+    author_id: draft.author_id ?? null,
+    status: 'draft',
+    source: 'manual'
+  };
+
+  if (draft.language !== undefined) {
+    if (!isBlogLocale(draft.language)) return { ok: false, error: 'invalid_language' };
+    columns.language = BLOG_LOCALE_LANGUAGE[draft.language];
+  }
+
+  for (const [field, reference] of Object.entries(BRAND_REFERENCES)) {
+    const id = draft[field as keyof typeof BRAND_REFERENCES];
+    if (typeof id !== 'string') continue;
+    const owned = await idsOwnedByBrand(client, reference.table, brandId, [id]);
+    if (!owned.has(id)) return { ok: false, error: reference.failure };
+  }
+
+  if (draft.tag_ids?.length) {
+    const wanted = new Set(draft.tag_ids);
+    const owned = await idsOwnedByBrand(client, 'blog_tags', brandId, [...wanted]);
+    if (owned.size !== wanted.size) return { ok: false, error: 'tags_not_found' };
+  }
+
+  const { data: existing } = await client.from('brand_articles').select('slug').eq('brand_id', brandId);
+  const taken = new Set(((existing ?? []) as { slug: string }[]).map((row) => row.slug));
+  columns.slug = articleSlug(draft.title, taken);
+
+  const { data, error } = await client.from('brand_articles').insert(columns).select('id').maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.id) return { ok: false, error: 'article_not_found' };
+
+  if (draft.tag_ids?.length) {
+    await client
+      .from('brand_article_tags')
+      .insert(draft.tag_ids.map((tag_id) => ({ article_id: data.id, tag_id })));
+  }
+
+  const article = await readArticle(client, brandId, data.id, timezone);
+  if (!article) return { ok: false, error: 'article_not_found' };
+
+  return { ok: true, article };
 }
 
 export async function updateArticle(args: {

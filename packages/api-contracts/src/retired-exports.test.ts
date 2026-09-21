@@ -22,7 +22,17 @@ const RETIRED_BUT_EXPORTED = [
   'GET_ADS',
   'RECORD_MEMORY_USED',
   'REMOVE_BLOG_TERM',
-  'REMOVE_RADAR_SOURCE'
+  'REMOVE_RADAR_SOURCE',
+  // I sette che scrivevano testo con un modello loro. L'autopilot gira sulle stesse funzioni che
+  // le loro rotte chiamano, su ogni brand con un piano attivo: la rotta deve continuare a
+  // compilare e a validare, ed è questo export a tenerla in piedi.
+  'GENERATE_ARTICLE',
+  'OPTIMIZE_ARTICLE',
+  'GENERATE_CAPTIONS',
+  'PROPOSE_PLAN',
+  'REVISE_PLAN',
+  'PLAN_WEEK',
+  'REPLAN_WEEK'
 ] as const;
 
 describe('i contratti dei tool ritirati', () => {

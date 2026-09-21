@@ -16,21 +16,10 @@ const OPEN_WORLD = { readOnlyHint: false, destructiveHint: false, openWorldHint:
 // il piano proposto è una riga di `content_plans` che cambia stato, aggiungere un competitor è una
 // riga in `competitors`. Le fanno `update_row` e `insert_row`, e la forma da difendere qui è solo
 // quella dei tool che un client vede ancora.
+//
+// `propose_plan` e `revise_plan` sono usciti per un'altra ragione: scrivevano il piano con un
+// modello loro, e ora lo scrive l'agente che chiama, che deposita con `save_plan`.
 const MIGRATED_WRITES = [
-  {
-    name: 'propose_plan',
-    title: 'Propose editorial plan',
-    properties: { slug: SLUG },
-    required: ['slug'],
-    annotations: NOT_DESTRUCTIVE,
-  },
-  {
-    name: 'revise_plan',
-    title: 'Revise editorial plan',
-    properties: { slug: SLUG, feedback: { type: 'string', minLength: 1 } },
-    required: ['slug', 'feedback'],
-    annotations: NOT_DESTRUCTIVE,
-  },
   {
     name: 'approve_plan',
     title: 'Approve editorial plan',

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { articleEditRefusal, articleScheduleChange } from './article-editing';
+import { articleEditRefusal, articleScheduleChange, articleSlug } from './article-editing';
 
 describe('la tabella che dice cosa uno stato permette', () => {
   it.each(['draft', 'planned', 'approved'])('%s si modifica', (status) => {
@@ -44,5 +44,31 @@ describe('la tabella che dice cosa uno stato permette', () => {
     ['togliendogli la data', null]
   ])('un published non si tocca nemmeno %s', (_label, when) => {
     expect(articleScheduleChange('published', when)).toEqual({ ok: false, reason: 'article_published' });
+  });
+});
+
+describe('lo slug con cui un articolo scritto fuori atterra', () => {
+  it('dal titolo, minuscolo e con i trattini', () => {
+    expect(articleSlug('Come Scegliere il Caffè', new Set())).toBe('come-scegliere-il-caffe');
+  });
+
+  /**
+   * Il blog risolve un articolo con `.maybeSingle()` su `slug`: due righe con lo stesso slug non
+   * ne nascondono una, le rendono irraggiungibili ENTRAMBE. Nessun indice unico lo impedisce in
+   * database, quindi lo impedisce qui — dove l'articolo nasce.
+   */
+  it('un titolo che ripete uno slug già preso prende un suffisso, non lo stesso slug', () => {
+    expect(articleSlug('Come scegliere il caffè', new Set(['come-scegliere-il-caffe']))).toBe(
+      'come-scegliere-il-caffe-2'
+    );
+  });
+
+  it('e continua a contare finché ne trova uno libero', () => {
+    const taken = new Set(['guida', 'guida-2', 'guida-3']);
+    expect(articleSlug('Guida', taken)).toBe('guida-4');
+  });
+
+  it('un titolo senza lettere né numeri non produce uno slug vuoto', () => {
+    expect(articleSlug('!!! ???', new Set())).not.toBe('');
   });
 });

@@ -149,7 +149,15 @@ const REST_ONLY = [
   'connections/[id]',
   'connections/[id]/complete',
   'connections/catalog',
+  // Le quattro rotte che scrivevano piano e settimana con un modello loro. Il tool esce — chi
+  // chiama Anomalia è già un agente che scrive, e `save_plan` / `save_week_seeds` depositano il
+  // testo suo — ma la rotta resta, perché l'autopilot passa da queste stesse funzioni su ogni
+  // brand con un piano attivo.
+  'captions/generate',
   'editorial-plan',
+  'editorial-plan/propose',
+  'editorial-plan/replan-week',
+  'editorial-plan/revise',
   'editorial-plan/update',
   'goals',
   'gtm',
@@ -185,12 +193,18 @@ const REST_ONLY = [
   'tick',
   'voice',
   'web',
+  // `generate_article` e `optimize_article` sono usciti per la stessa ragione: il markdown lo
+  // scrive chi chiama e `create_article` lo deposita. Il radar e il cron del blog continuano a
+  // passare di qui.
+  'web/article/[id]/optimize',
+  'web/generate',
   'web/audits',
   'web/audits/citations',
   'web/audits/findings',
   'web/fixes',
   'webhook',
   'weekly-plan',
+  'weekly-plan/plan',
   'weekly-plan/produce',
   'weekly-plan/render',
   'weekly-plan/save',

@@ -171,7 +171,6 @@ now one of the three, on the table named beside it:
 | `get_creation_kit` | (MCP only) |
 | `create_post` | (MCP only) |
 | `check_content` | (MCP only) |
-| `generate_captions` | (MCP only) |
 | `import_media_url` | (MCP only) |
 | `enhance_prompt` | (MCP only) |
 | `generate_image` | (MCP only) |
@@ -269,10 +268,11 @@ nothing was drawn; `video_budget_exhausted` (400) means the monthly video allowa
 counting the clips still rendering; `render_failed` (502) is the model returning nothing, and
 nothing is stored; `store_failed` (502) means it was drawn but could not be filed.
 
-`generate_captions` writes captions and nothing else — text, no image, no video, and **no post**:
-it creates nothing in the calendar, so the caption you keep still has to go to `create_post` as
-`caption` (or inside `platform_captions`) to exist anywhere. Required: `slug`, `topic`; optional
-`platforms` and `format`. **This spends credits** — one model turn per call.
+There is no caption tool: **you write the captions**. `create_post` takes the copy as `caption`,
+or one per platform inside `platform_captions`, and `edit_post` rewrites the copy of a post that
+already exists — neither calls a model and neither costs credits. Write each platform its own
+caption inside its own character limit rather than one text trimmed nine different ways;
+`check_content` names any limit you crossed before you create, for free.
 
 Called with `topic` alone it writes for every platform at once, each caption composed for the
 platform it is going to and already inside that platform's character limit, rather than one text
@@ -496,9 +496,9 @@ Both writes need the `shared_views` table. Until it is migrated they answer
 
 | MCP | CLI |
 |-----|-----|
-| `propose_plan` / `revise_plan` / `approve_plan` | `anomalia plan <slug> propose\|revise\|approve` |
-| `save_brief` / `replan_week` | `anomalia plan <slug> save-brief\|replan --week N …` |
-| `plan_week` / `produce_week` | `anomalia weekly-plan <slug> plan\|produce --week N` |
+| `approve_plan` | `anomalia plan <slug> approve` |
+| `save_brief` | `anomalia plan <slug> save-brief --week N …` |
+| `produce_week` | `anomalia weekly-plan <slug> produce --week N` |
 | `save_plan` | (MCP only) |
 | `save_week_seeds` | (MCP only) |
 
@@ -506,10 +506,10 @@ Reading the plan back is `query` on `editorial_plans` — `strategy`, `voice`, `
 `platform_mix` and `weeks`, filtered `status` `eq` `active` — or `anomalia plan <slug>` and
 `anomalia weekly-plan <slug>`, which both still answer.
 
-`propose_plan` and `plan_week` ask Anomalia's model to write the strategy and the week's rows,
-and they bill it. `save_plan` and `save_week_seeds` are the other half: you wrote them, Anomalia
-only stores them — no model call, no credits. Both paths land in the same place, so a saved plan
-is reviewed, approved and produced exactly like a generated one.
+**You write the strategy and the week's rows**; `save_plan` and `save_week_seeds` only store them
+— no model call, no credits. They land where a generated plan used to, so a saved plan is
+reviewed, approved and produced exactly the same way. Saving again replaces the proposal or the
+week draft in review, which is how you revise one.
 
 Throwing away a proposal you do not want is `update_row` on `editorial_plans`, `where` the pending
 row, setting its `status`: the retired `discard_plan` did that one write. The active plan is not
@@ -867,8 +867,7 @@ writes it.
 | `geo_action` | `anomalia geo <slug> [run\|fix]` |
 | `refresh_keywords` | `anomalia keywords <slug> [refresh]` |
 | `get_gsc` | (MCP only) |
-| `generate_article` / `optimize_article` | `anomalia web <slug> …` |
-| `update_article` | (MCP only) |
+| `create_article` / `update_article` | (MCP only) |
 | `publish_article` / `unpublish_article` / `delete_article` | `anomalia web <slug> publish\|…` |
 | `ads_action` | `anomalia ads <slug> [--propose\|--create\|--approve\|--pause\|--resume\|--duplicate\|--delete\|--reject] [--ad <adId>]` |
 | `ads_remix` | (MCP only) |

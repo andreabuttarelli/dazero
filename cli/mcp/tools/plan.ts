@@ -13,7 +13,7 @@ export function registerPlanTools(server: McpServer) {
       description:
         'Turn this week\'s plan into actual posts — copy and images, one per seed. It spends ' +
         'credits, once per post. The posts land waiting for approval; nothing is published. ' +
-        'plan_week or save_week_seeds is what puts the seeds there first, and get_weekly_plan ' +
+        'save_week_seeds is what puts the seeds there first, and query on `weekly_plan_drafts` ' +
         'shows them. row_index produces one seed only.',
       inputSchema: z.object({
         slug,
@@ -25,7 +25,7 @@ export function registerPlanTools(server: McpServer) {
     async ({ slug, row_index }) =>
       withAuth(async (token) => {
         const data = await api.getWeeklyPlan(token, slug);
-        if (!data.seeds?.id) throw new Error('No weekly seeds draft found. Call plan_week first.');
+        if (!data.seeds?.id) throw new Error('No weekly seeds draft found. Call save_week_seeds first.');
         return api.produceWeek(token, slug, data.seeds.id, row_index);
       }),
   );

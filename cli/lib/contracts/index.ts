@@ -4,11 +4,9 @@ import { ADS_ACTION, ADS_REMIX } from './ads';
 import { SET_APPEARANCE } from './appearance';
 import { SET_AUTOMATION } from './automations';
 import { BILLING_PORTAL_LINK, CHECKOUT_LINK } from './billing';
-import { GENERATE_CAPTIONS } from './captions';
 import {
+  CREATE_ARTICLE,
   DELETE_ARTICLE,
-  GENERATE_ARTICLE,
-  OPTIMIZE_ARTICLE,
   PUBLISH_ARTICLE,
   UNPUBLISH_ARTICLE,
   UPDATE_ARTICLE
@@ -21,10 +19,6 @@ import {
   APPROVE_PLAN,
   PLAN_CADENCES,
   PLAN_CYCLE_WEEKS,
-  PLAN_WEEK,
-  PROPOSE_PLAN,
-  REPLAN_WEEK,
-  REVISE_PLAN,
   SAVE_BRIEF,
   SAVE_PLAN,
   SAVE_WEEK_SEEDS,
@@ -158,6 +152,7 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   BILLING_PORTAL_LINK,
   CHECKOUT_LINK,
   CHECK_CONTENT,
+  CREATE_ARTICLE,
   CREATE_POST,
   CREATE_SHARE,
   DELETE_ARTICLE,
@@ -167,8 +162,6 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   DIAGNOSE_RADAR,
   EDIT_POST,
   ENHANCE_PROMPT,
-  GENERATE_ARTICLE,
-  GENERATE_CAPTIONS,
   GENERATE_CAROUSEL,
   GENERATE_IMAGE,
   GENERATE_VIDEO,
@@ -181,9 +174,6 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   DELETE_ROW,
   INSERT_ROW,
   MAKE_VIDEO,
-  OPTIMIZE_ARTICLE,
-  PLAN_WEEK,
-  PROPOSE_PLAN,
   PUBLISH_ARTICLE,
   QUERY_DATABASE,
   REFINE_MEDIA,
@@ -192,10 +182,8 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   REGENERATE_SLIDE,
   RENDER_POST,
   REORDER_SLIDES,
-  REPLAN_WEEK,
   RESCHEDULE_POST,
   RESEARCH_COMPETITORS,
-  REVISE_PLAN,
   REVOKE_SHARE,
   SAVE_BRIEF,
   SAVE_MEMORY,
@@ -272,7 +260,6 @@ export {
   ADS_REMIX,
   CHECK_CONTENT,
   CREATE_POST,
-  GENERATE_CAPTIONS,
   GENERATE_CAROUSEL,
   GENERATE_IMAGE,
   GENERATE_VIDEO,
@@ -304,16 +291,25 @@ export {
 export { LIST_SHARES_READ } from './shares';
 export { LIST_SOCIAL_ACCOUNTS_READ } from './social';
 
+export { GENERATE_CAPTIONS } from './captions';
 export { QUERY_DATABASE, QUERY_OPS, QUERY_TABLE_NAMES, QUERY_DEFAULT_ROWS, QUERY_MAX_ROWS } from './query';
 export { QUERY_TABLES } from './query-tables';
 export {
+  CREATE_ARTICLE,
   DELETE_ARTICLE,
   GENERATE_ARTICLE,
   OPTIMIZE_ARTICLE,
   PUBLISH_ARTICLE,
   UNPUBLISH_ARTICLE
 } from './articles';
-export type { Article, GetArticleInput, UpdateArticleInput, UpdateArticleResult } from './articles';
+export type {
+  Article,
+  CreateArticleInput,
+  CreateArticleResult,
+  GetArticleInput,
+  UpdateArticleInput,
+  UpdateArticleResult
+} from './articles';
 export {
   AUDIT_CITATIONS_DEFAULT,
   AUDIT_CITATIONS_MAX,
@@ -444,14 +440,11 @@ export {
   APPROVE_PLAN,
   PLAN_CADENCES,
   PLAN_CYCLE_WEEKS,
-  PLAN_WEEK,
-  PROPOSE_PLAN,
-  REPLAN_WEEK,
-  REVISE_PLAN,
   SAVE_BRIEF,
   SAVE_PLAN,
   SAVE_WEEK_SEEDS
 };
+export { PLAN_WEEK, PROPOSE_PLAN, REPLAN_WEEK, REVISE_PLAN } from './plans';
 export type { SavePlanInput, SavePlanResult, SaveWeekSeedsInput, SaveWeekSeedsResult } from './plans';
 export type { CreateProductInput, CreateProductResult } from './studio';
 export type { CreateShareInput, CreateShareResult, SharedViewType } from './shares';

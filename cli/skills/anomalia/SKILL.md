@@ -240,10 +240,11 @@ and a clip has no brand preference to read, so pass `model` or it comes back `no
 the field to repair. It costs nothing and calls no model, so run it on every draft and fix what
 it names before creating.
 
-**Write the plan yourself** → `save_plan`. You write the strategy, voice, cadence, platform mix
-and the four weeks; Anomalia stores them and calls no model. It lands as the pending proposal —
-the active plan is untouched, and `approve_plan` is what activates it. `propose_plan` remains
-there for when you want Anomalia to write one and bill it.
+**Write the plan** → `save_plan`. You write the strategy, voice, cadence, platform mix and the
+four weeks; Anomalia stores them and calls no model. It lands as the pending proposal — the
+active plan is untouched, and `approve_plan` is what activates it. There is no tool that writes
+the plan for you: you have the conversation and the brand's writing skills, so the words are
+yours.
 
 **Plan a week yourself** → `save_week_seeds` (`week_index`, `theme`, one seed per planned post).
 No model call, no credits. The rows become the week draft the plan page shows; `produce_week` is
@@ -335,7 +336,9 @@ access to the brand.
 
 **Fix one carousel slide** → `query` on `posts` for its `media_urls` → `regenerate_slide` (`index`, instruction; 0 = cover).
 
-**Blog draft** → `generate_article` → optional `optimize_article` → `publish_article` when asked.
+**Blog draft** → you write the markdown → `create_article` (title + `body_md`) → `update_article`
+for later passes → `publish_article` when asked. No tool writes the article: `get_writing_skills`
+is the craft to write it with.
 
 **Make the copy sound like this brand** → `query` on `brands.content_prefs` for how it is supposed
 to sound — mood, tone, register, the words it avoids, the rules that change per platform — and

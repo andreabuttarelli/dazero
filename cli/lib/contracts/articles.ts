@@ -83,6 +83,31 @@ const UpdateArticleInputSchema = z
   })
   .strict();
 
+const CreateArticleInputSchema = z
+  .object({
+    title: z.string().min(1).max(MAX_TITLE).describe('The H1. The URL slug is derived from it'),
+    body_md: z
+      .string()
+      .min(1)
+      .describe(
+        'The COMPLETE article in markdown, WITHOUT repeating the title as an H1. Stored exactly ' +
+          'as sent — the public blog escapes any raw HTML in it, so markdown is the only markup ' +
+          'that renders'
+      ),
+    meta_title: z.string().max(MAX_META_TITLE).nullable().optional(),
+    meta_description: z.string().max(MAX_META_DESCRIPTION).nullable().optional(),
+    category_id: z.string().nullable().optional().describe('A category of THIS brand'),
+    author_id: z.string().nullable().optional().describe('An author of THIS brand'),
+    tag_ids: z.array(z.string().min(1)).max(MAX_TAGS).optional().describe('Tags of THIS brand'),
+    language: z.string().min(2).max(5).optional().describe('ISO 639-1 code, e.g. "it"')
+  })
+  .strict();
+
+const CreateArticleResultSchema = z.object({ ok: z.literal(true), article: ArticleSchema });
+
+export type CreateArticleInput = z.infer<typeof CreateArticleInputSchema>;
+export type CreateArticleResult = z.infer<typeof CreateArticleResultSchema>;
+
 const GetArticleResultSchema = z.object({ article: ArticleSchema });
 
 const UpdateArticleResultSchema = z.object({
@@ -105,6 +130,28 @@ export const GET_ARTICLE_READ = {
   input: GetArticleInputSchema,
   failures: [{ error: 'article_not_found', status: 404 }]
 } as const;
+
+export const CREATE_ARTICLE = {
+  tool: 'create_article',
+  title: 'Create article',
+  description:
+    'Store a blog article you wrote yourself, as a draft. No model runs and nothing is ' +
+    'rewritten: the markdown lands exactly as you send it. The URL slug comes from the title, ' +
+    'with a suffix when the brand already has that slug. It does not publish — publish_article ' +
+    'is the separate step, and update_article changes an article that already exists. Free.',
+  method: 'POST',
+  pathUnderBrand: '/web/article/create',
+  input: CreateArticleInputSchema,
+  output: CreateArticleResultSchema,
+  failures: [
+    { error: 'invalid_input', status: 400 },
+    { error: 'invalid_language', status: 400 },
+    { error: 'category_not_found', status: 400 },
+    { error: 'author_not_found', status: 400 },
+    { error: 'tags_not_found', status: 400 }
+  ],
+  destructive: false
+} satisfies BrandEndpoint;
 
 export const UPDATE_ARTICLE = {
   tool: 'update_article',
