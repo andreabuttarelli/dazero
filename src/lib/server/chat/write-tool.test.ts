@@ -5,7 +5,8 @@ import {
   createWriteTools,
   explainWriteError,
   NO_SESSION_WRITE_ERROR,
-  UPDATE_MAX_ROWS
+  UPDATE_MAX_ROWS,
+  DELETE_MAX_ROWS
 } from './write-tool';
 import { markRlsScoped } from '$lib/server/rls-client';
 
@@ -21,7 +22,7 @@ type Step = {
 
 type Recorded = {
   table: string;
-  verb: 'select' | 'insert' | 'update';
+  verb: 'select' | 'insert' | 'update' | 'delete';
   payload?: Record<string, unknown>;
   filters: string[][];
   head?: boolean;
@@ -72,7 +73,8 @@ function fakeClient(script: Step[], opts: { authority?: 'user' | 'service' } = {
       select: (_cols: string, options?: { head?: boolean }) =>
         chain({ table, verb: 'select', filters: [], head: options?.head }),
       insert: (payload: Record<string, unknown>) => chain({ table, verb: 'insert', payload, filters: [] }),
-      update: (payload: Record<string, unknown>) => chain({ table, verb: 'update', payload, filters: [] })
+      update: (payload: Record<string, unknown>) => chain({ table, verb: 'update', payload, filters: [] }),
+      delete: () => chain({ table, verb: 'delete', filters: [] })
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
@@ -87,10 +89,20 @@ const insert = (client: any, input: Record<string, unknown>): Promise<any> => to
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const update = (client: any, input: Record<string, unknown>): Promise<any> => tools(client).updateRow(input as never);
 
-describe('una cancellazione non è rifiutata: è inesprimibile', () => {
-  it('il modulo non nomina nessun metodo che cancella o che esegue SQL', () => {
+describe('quel che questo modulo NON sa fare resta inesprimibile', () => {
+  /**
+   * `.delete(` stava in questo elenco, e l'invariante era «cancellare non è rifiutato: è
+   * inesprimibile». È stata rovesciata di proposito: senza una cancellazione l'agente crea e
+   * corregge ma non toglie, e una riga sbagliata resta lì per sempre. Al posto dell'assenza c'è
+   * ora un tetto più basso di quello degli update, un filtro obbligatorio e un rifiuto intero —
+   * le tre cose che rendono il danno limitato invece che impossibile.
+   *
+   * Gli altri due restano fuori, e per una ragione diversa: `rpc` esegue codice del database e
+   * `upsert` sostituisce di nascosto una riga che esiste, cioè un update che nessuno ha chiesto.
+   */
+  it('non nomina nessun metodo che esegua codice o sostituisca righe di nascosto', () => {
     const body = SRC.slice(SRC.indexOf('export function createWriteTools'));
-    for (const m of ['.delete(', '.rpc(', '.upsert(']) {
+    for (const m of ['.rpc(', '.upsert(']) {
       expect(body).not.toContain(m);
     }
   });
@@ -255,7 +267,7 @@ describe('un update senza filtro è la cancellazione appena vietata, travestita'
   });
 
   it('zero righe corrispondenti non è un successo muto', async () => {
-    const { client } = fakeClient([{ count: 0 }]);
+    const { client, calls } = fakeClient([{ count: 0 }]);
     const out = await update(client, {
       table: 'products',
       where: [{ column: 'id', op: 'eq', value: 'non-esiste' }],
@@ -375,5 +387,70 @@ describe('il registro dei vincoli e dei grant si genera, non si batte a mano', (
       cwd: new URL('../../../../', import.meta.url).pathname
     });
     expect(readFileSync(generated, 'utf8')).toBe(before);
+  });
+});
+
+
+/**
+ * CANCELLARE NON SI CORREGGE, e il tetto è l'unica cosa che sta fra un filtro largo e una lista
+ * svuotata. Si conta PRIMA, e una corrispondenza oltre il tetto è un rifiuto INTERO: metà righe
+ * tolte sarebbero il caso peggiore, perché non si sa quali.
+ */
+describe('deleteRow', () => {
+  it('conta prima di togliere, e rifiuta tutto quando il filtro prende troppo', async () => {
+    const { client, calls } = fakeClient([{ count: DELETE_MAX_ROWS + 1 }]);
+
+    const out: any = await tools(client).deleteRow({
+      table: 'competitors',
+      where: [{ column: 'name', op: 'like', value: '%a%' }]
+    });
+
+    expect(out.error).toBe('too_many_rows');
+    expect(calls.some((c: any) => c.verb === 'delete')).toBe(false);
+  });
+
+  it('toglie quando il filtro sta nel tetto', async () => {
+    const { client, calls } = fakeClient([{ count: 2 }, { rows: [{ id: 'a' }, { id: 'b' }] }]);
+
+    const out: any = await tools(client).deleteRow({
+      table: 'competitors',
+      where: [{ column: 'id', op: 'in', value: ['a', 'b'] }]
+    });
+
+    expect(out.deleted).toBe(2);
+    expect(calls.some((c: any) => c.verb === 'delete')).toBe(true);
+  });
+
+  it('dice che non c era niente invece di riportare zero come successo', async () => {
+    const { client, calls } = fakeClient([{ count: 0 }]);
+
+    const out: any = await tools(client).deleteRow({
+      table: 'competitors',
+      where: [{ column: 'id', op: 'eq', value: 'mai-esistito' }]
+    });
+
+    expect(out.error).toBe('no_rows_matched');
+    expect(calls.some((c: any) => c.verb === 'delete')).toBe(false);
+  });
+
+  it('rifiuta un filtro vuoto senza nemmeno contare', async () => {
+    const { client, calls } = fakeClient([]);
+
+    const out: any = await tools(client).deleteRow({ table: 'competitors', where: [] });
+
+    expect(out.error).toBeTruthy();
+    expect(calls).toHaveLength(0);
+  });
+
+  it('rifiuta una tabella che non e nell elenco di `query`', async () => {
+    const { client, calls } = fakeClient([]);
+
+    const out: any = await tools(client).deleteRow({
+      table: 'pg_catalog',
+      where: [{ column: 'id', op: 'eq', value: 'x' }]
+    });
+
+    expect(out.error).toBeTruthy();
+    expect(calls).toHaveLength(0);
   });
 });

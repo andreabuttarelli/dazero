@@ -35,13 +35,13 @@
  *    per colonna (e le elenca) dalla RLS (che è una riga di un altro, e non si aggira). Vincoli e
  *    grant vengono da `write-rules.ts`, generato dalle migrazioni.
  */
-import { QUERY_TABLES, UPDATE_MAX_ROWS } from '@anomalia/api-contracts';
+import { QUERY_TABLES, UPDATE_MAX_ROWS, DELETE_MAX_ROWS } from '@anomalia/api-contracts';
 import { TABLE_CHECKS, WRITABLE_COLUMNS } from '@anomalia/api-contracts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isRlsScoped } from '$lib/server/rls-client';
 import { logAiCall } from '$lib/server/ai-log';
 
-export { UPDATE_MAX_ROWS };
+export { UPDATE_MAX_ROWS, DELETE_MAX_ROWS };
 
 /** Il guinzaglio sulla connessione HTTP. Il database molla da solo prima (8s sul ruolo). */
 export const WRITE_ABORT_MS = 12_000;
@@ -420,5 +420,113 @@ export function createWriteTools({ supabase, brandId, userId, threadId }: WriteT
     );
   };
 
-  return { insertRow, updateRow };
+  /**
+   * CANCELLARE, con il tetto più basso di tutti e il rifiuto INTERO.
+   *
+   * Condivide con l'update le tre guardie che contano — sessione dell'utente, identificatori,
+   * filtro obbligatorio — e cambia dove il danno cambia: il tetto è `DELETE_MAX_ROWS` e non
+   * `UPDATE_MAX_ROWS`, perché un update sbagliato si riscrive quando si sa cosa c'era prima, e
+   * una riga tolta non torna.
+   *
+   * IL RIFIUTO È INTERO, mai parziale: PostgREST non sa mettere un LIMIT su una DELETE, quindi
+   * togliere «le prime dieci» di un filtro che ne prende venti lascerebbe dieci righe vive scelte
+   * da un ordine che nessuno ha chiesto — e nessuno saprebbe quali. Si conta prima, e oltre il
+   * tetto non si tocca niente.
+   */
+  const deleteRow = async (input: { table: string; where?: Filter[] }) => {
+    const t0 = Date.now();
+    const where = input.where ?? [];
+
+    if (!isRlsScoped(supabase)) return finish({ ...NO_SESSION_WRITE_ERROR }, 'db_write:refused:no_session', t0);
+
+    const refusal = badIdentifier(input.table, {}, where);
+    if (refusal) return finish(refusal, `db_write:refused:${refusal.error}`, t0);
+
+    if (!where.length) {
+      return finish(
+        {
+          error: 'where_required',
+          message:
+            'A delete with no filter empties every row this user can reach in that table, and none of them come back.',
+          fix: 'Name the rows: where: [{ column: "id", op: "eq", value: "<the id>" }]. Read them with `query` first — a prefix that looked unambiguous in a list is how the wrong row goes.'
+        },
+        'db_write:refused:where_required',
+        t0
+      );
+    }
+
+    const table = input.table.trim();
+    const brandNamed = where.some((f) => String(f.column).trim() === 'brand_id');
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    type Filterable = { filter: (c: string, o: string, v: string) => any; not: (c: string, o: string, v: string) => any };
+    const filtered = <T extends Filterable>(q: T, withBrand: boolean) => {
+      let out = q;
+      for (const f of where) {
+        const column = String(f.column).trim();
+        const value = wireValue(f.op, f.value);
+        out = f.negate ? out.not(column, f.op, value) : out.filter(column, f.op, value);
+      }
+      if (withBrand) out = out.filter('brand_id', 'eq', brandId);
+      return out;
+    };
+
+    let withBrand = !brandNamed;
+    const counted = async () =>
+      filtered(supabase.from(table).select('*', { count: 'exact' }), withBrand)
+        .limit(1)
+        .abortSignal(AbortSignal.timeout(WRITE_ABORT_MS));
+
+    let count = await counted();
+    if (withBrand && missesBrandColumn(count.error)) {
+      withBrand = false;
+      count = await counted();
+    }
+
+    if (count.error) return failed(table, count.error, `db_write:${table}:count:err:${count.error.code ?? '?'}`, t0);
+
+    const matched = count.count ?? 0;
+    if (matched === 0) {
+      return finish(
+        {
+          error: 'no_rows_matched',
+          message: `No row of ${table} matches that filter inside this brand, so nothing was removed.`,
+          fix: 'Read the rows with `query` using the same filter: either the id is wrong, or the row belongs to another brand and RLS hides it.',
+          matched: 0
+        },
+        `db_write:${table}:delete:no_rows`,
+        t0
+      );
+    }
+
+    if (matched > DELETE_MAX_ROWS) {
+      return finish(
+        {
+          error: 'too_many_rows',
+          message: `That filter matches ${matched} rows and the ceiling is ${DELETE_MAX_ROWS}. Nothing was removed.`,
+          fix: 'Narrow the filter, or remove them in batches by adding a filter that splits them. Read them with `query` first to see what you are about to lose.',
+          matched
+        },
+        `db_write:${table}:delete:too_many:${matched}`,
+        t0
+      );
+    }
+
+    const removed = await filtered(supabase.from(table).delete(), withBrand)
+      .select()
+      .abortSignal(AbortSignal.timeout(WRITE_ABORT_MS));
+
+    if (removed.error) {
+      return failed(table, removed.error, `db_write:${table}:delete:err:${removed.error.code ?? '?'}`, t0);
+    }
+
+    const rows = (removed.data ?? []) as Array<Record<string, unknown>>;
+    return finish(
+      { table, deleted: rows.length, matched, note: 'Gone. Nothing here restores them.' },
+      `db_write:${table}:delete:rows=${rows.length}/${matched}`,
+      t0
+    );
+  };
+
+  return { insertRow, updateRow, deleteRow };
 }

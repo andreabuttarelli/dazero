@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
-import { INSERT_ROW, UPDATE_ROW } from '@anomalia/api-contracts';
+import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from '@anomalia/api-contracts';
 import { createWriteTools } from '$lib/server/chat/write-tool';
 
 /**
@@ -14,17 +14,17 @@ import { createWriteTools } from '$lib/server/chat/write-tool';
  * qui perché non ci arriverebbe mai — quel percorso è già chiuso a monte, e un secondo cancello
  * sulla stessa porta è una condizione in più da tenere allineata, non una difesa in più.
  *
- * POST inserisce, PUT aggiorna: il verbo HTTP è quello dell'operazione, e il registro ne ricava
- * `destructive` per tool — false sull'una, true sull'altra.
+ * POST inserisce, PUT aggiorna, DELETE toglie: il verbo HTTP è quello dell'operazione, e il
+ * registro ne ricava `destructive` per tool — false sull'inserimento, true sugli altri due.
  */
-const write = async (request: Request, slug: string, op: 'insert' | 'update') => {
+const write = async (request: Request, slug: string, op: 'insert' | 'update' | 'delete') => {
   const { supabase, error, user, apiKey } = await authenticate(request);
   if (error) return error;
 
   const { brand, error: brandError } = await loadBrandForUser(supabase, slug, apiKey);
   if (brandError) return brandError;
 
-  const contract = op === 'insert' ? INSERT_ROW : UPDATE_ROW;
+  const contract = op === 'insert' ? INSERT_ROW : op === 'update' ? UPDATE_ROW : DELETE_ROW;
   const parsed = contract.input.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
     return json({ error: 'invalid_input', details: parsed.error.issues }, { status: 400 });
@@ -32,13 +32,17 @@ const write = async (request: Request, slug: string, op: 'insert' | 'update') =>
 
   const tools = createWriteTools({ supabase, brandId: brand.id, userId: user.id });
 
-  return json(
-    op === 'insert'
-      ? await tools.insertRow(parsed.data as Parameters<typeof tools.insertRow>[0])
-      : await tools.updateRow(parsed.data as Parameters<typeof tools.updateRow>[0])
-  );
+  if (op === 'insert') {
+    return json(await tools.insertRow(parsed.data as Parameters<typeof tools.insertRow>[0]));
+  }
+  if (op === 'update') {
+    return json(await tools.updateRow(parsed.data as Parameters<typeof tools.updateRow>[0]));
+  }
+  return json(await tools.deleteRow(parsed.data as Parameters<typeof tools.deleteRow>[0]));
 };
 
 export const POST: RequestHandler = ({ request, params }) => write(request, params.slug, 'insert');
 
 export const PUT: RequestHandler = ({ request, params }) => write(request, params.slug, 'update');
+
+export const DELETE: RequestHandler = ({ request, params }) => write(request, params.slug, 'delete');

@@ -9,6 +9,16 @@ import { QUERY_OPS } from './query';
  */
 export const UPDATE_MAX_ROWS = 50;
 
+/**
+ * Il tetto su quante righe UNA cancellazione può togliere, e non è lo stesso degli update.
+ *
+ * Un update sbagliato si riscrive — se si sa cosa c'era prima. Una riga cancellata non c'è più, e
+ * nessun tetto la riporta indietro: l'asimmetria del danno è la ragione del numero più basso.
+ * Dieci è quanto serve a ripulire una lista che si è sbagliato a riempire, e troppo poco perché
+ * un filtro largo scritto per distrazione svuoti qualcosa che contava.
+ */
+export const DELETE_MAX_ROWS = 10;
+
 const Filter = z.object({
   column: z.string().describe('A bare column name'),
   op: z.enum(QUERY_OPS),
@@ -107,6 +117,43 @@ export const UPDATE_ROW = {
     message: z.string().optional(),
     fix: z.string().optional(),
     columns_available: z.array(z.string()).optional()
+  }),
+  failures: [],
+  destructive: true
+} satisfies BrandEndpoint;
+
+
+export const DELETE_ROW = {
+  tool: 'delete_row',
+  title: 'Delete rows',
+  description:
+    'Remove rows that exist, as you: anon key plus your own session, so Postgres RLS decides ' +
+    'what you can reach and a row in a brand you do not belong to is not yours to delete. ' +
+    '`where` is REQUIRED and may not be empty — a delete with no filter empties every row you ' +
+    `can reach. At most ${DELETE_MAX_ROWS} rows per call, counted BEFORE anything is removed ` +
+    'and reported back to you: a filter that matches more is refused whole, so nothing is ' +
+    'half-deleted. THIS DOES NOT COME BACK. Read the rows with `query` first whenever you are ' +
+    'not certain which ones you are about to hit — a prefix that looked unambiguous in a list ' +
+    'is how the wrong row goes. To stop using something without losing it, prefer update_row on ' +
+    'the column that marks it inactive, where the table has one. Free.',
+  method: 'DELETE',
+  pathUnderBrand: '/rows',
+  input: z
+    .object({
+      table: z.string().describe('Table name, bare. The same names `query` reads.'),
+      where: z
+        .array(Filter)
+        .min(1, 'where may not be empty: a delete with no filter empties the whole table')
+        .describe('Filters, ANDed. Required: without one this would empty the table.')
+    })
+    .strict(),
+  output: z.object({
+    table: z.string().optional(),
+    deleted: z.number().optional(),
+    note: z.string().optional(),
+    error: z.string().optional(),
+    message: z.string().optional(),
+    fix: z.string().optional()
   }),
   failures: [],
   destructive: true
