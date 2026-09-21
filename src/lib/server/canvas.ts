@@ -16,6 +16,7 @@
  * possibilità di rimettere qualcosa al suo posto.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { CANVAS_EDGE_KINDS, type CanvasEdgeKind, type CanvasEdgeRow } from '$lib/canvas-edges';
 
 /** Gli stessi valori del check in migrazione: due elenchi divergerebbero al primo tipo nuovo. */
 export const CANVAS_REF_KINDS = ['post', 'media', 'document', 'memory', 'graphic', 'note'] as const;
@@ -158,6 +159,68 @@ export async function saveCanvasPositions(
   );
 
   return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+export type SaveEdge = {
+  brandId: string;
+  userId: string;
+  canvasId: string;
+  sourceItemId: string;
+  targetItemId: string;
+  kind: string;
+  label?: string | null;
+};
+
+/**
+ * Una connessione fra due tile. Un upsert come per le posizioni, e per la stessa ragione: la
+ * stessa linea tirata due volte deve restare una riga sola.
+ *
+ * I CONTROLLI PRIMA DELLA SCRITTURA, e qui più che per le posizioni, perché chi scrive è spesso un
+ * agente: un `kind` inventato bocciato da Postgres torna come 23514 che nomina un vincolo, e chi
+ * lo legge riprova con un'altra invenzione. Nominare le tre parole ammesse chiude il giro al primo
+ * tentativo invece che al terzo.
+ */
+export async function saveCanvasEdge(
+  supabase: SupabaseClient,
+  input: SaveEdge
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!CANVAS_EDGE_KINDS.includes(input.kind as CanvasEdgeKind)) {
+    return { ok: false, error: `kind non ammesso: ${input.kind}. Sono ${CANVAS_EDGE_KINDS.join(', ')}.` };
+  }
+  if (!input.canvasId || !input.sourceItemId || !input.targetItemId) {
+    return { ok: false, error: 'canvas_id, source_item_id e target_item_id sono obbligatori' };
+  }
+  if (input.sourceItemId === input.targetItemId) {
+    return { ok: false, error: 'una tile non si collega a se stessa' };
+  }
+
+  const { error } = await supabase.from('brand_canvas_edges').upsert(
+    {
+      canvas_id: input.canvasId,
+      brand_id: input.brandId,
+      source_item_id: input.sourceItemId,
+      target_item_id: input.targetItemId,
+      kind: input.kind,
+      label: input.label?.trim() || null,
+      created_by: input.userId
+    },
+    { onConflict: 'canvas_id,source_item_id,target_item_id,kind' }
+  );
+
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/** Le linee di una tela, nella forma che il disegno vuole. */
+export async function loadCanvasEdges(
+  supabase: SupabaseClient,
+  canvasId: string
+): Promise<CanvasEdgeRow[]> {
+  const { data } = await supabase
+    .from('brand_canvas_edges')
+    .select('id, source_item_id, target_item_id, kind, label')
+    .eq('canvas_id', canvasId);
+
+  return (data ?? []) as CanvasEdgeRow[];
 }
 
 /** Le colonne che ogni tipo porta sulla tela: abbastanza per disegnarla, non l'oggetto intero. */

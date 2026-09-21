@@ -69,6 +69,12 @@ describe('shellShimmerFor', () => {
     expect(shellShimmerFor(nav('/app/acme/calendar', '/app/acme/seo'))).toBe('page');
   });
 
+  it('il workbench ha il proprio, perché è una tela e non una colonna', () => {
+    // Con `page` lo scheletro si disegna incolonnato e la tela arriva a tutta larghezza: il
+    // contenuto salta di un padding alla fine di ogni navigazione verso il workbench.
+    expect(shellShimmerFor(nav('/app/acme/calendar', '/app/acme/workbench'))).toBe('workbench');
+  });
+
   it('fuori dalla shell del brand non si disegna niente', () => {
     expect(shellShimmerFor(nav('/app/acme', '/app/onboarding'))).toBeNull();
     expect(shellShimmerFor(nav('/app/acme', '/app/acme/success'))).toBeNull();

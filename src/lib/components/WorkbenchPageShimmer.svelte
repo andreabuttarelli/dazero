@@ -3,8 +3,10 @@
     variant = 'page'
   }: {
     /** overview = composer + cards; home = the Overview workbench BELOW the real composer;
-     *  chat = transcript + dock; calendar = month grid; media = masonry generator; page = generic hub */
-    variant?: 'page' | 'overview' | 'home' | 'chat' | 'calendar' | 'media';
+     *  chat = transcript + dock; calendar = month grid; media = masonry generator;
+     *  workbench = the canvas, which fills the content area instead of a column;
+     *  page = generic hub */
+    variant?: 'page' | 'overview' | 'home' | 'chat' | 'calendar' | 'media' | 'workbench';
   } = $props();
 
   /** Sparse post-card placement so the skeleton feels like a real month, not a filled grid. */
@@ -70,10 +72,15 @@
   class:is-home={variant === 'home'}
   class:is-calendar={variant === 'calendar'}
   class:is-media={variant === 'media'}
+  class:is-workbench={variant === 'workbench'}
   aria-busy="true"
   aria-live="polite"
 >
-  {#if variant === 'overview'}
+  {#if variant === 'workbench'}
+    <!-- La tela: un solo riquadro che riempie lo spazio, come il nodo del recap che sta per
+         arrivare. Blocchi incolonnati qui mentirebbero due volte — sulla forma e sul padding. -->
+    <div class="wb-shimmer-block wb-shimmer-canvas"></div>
+  {:else if variant === 'overview'}
     <div class="wb-shimmer-hero">
       <div class="wb-shimmer-block wb-shimmer-avatar"></div>
       <div class="wb-shimmer-block wb-shimmer-title"></div>
@@ -325,6 +332,20 @@
     flex: 1;
     min-height: 0;
     height: 100%;
+  }
+
+  /* La tela non è una colonna di blocchi: è una superficie sola, alta quanto l'area contenuto. */
+  .wb-shimmer.is-workbench {
+    gap: 0;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    padding: 0;
+  }
+  .wb-shimmer-canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
   }
 
   .wb-shimmer-block {

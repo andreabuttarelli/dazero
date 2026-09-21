@@ -7,7 +7,7 @@
  * insieme né mettere sotto test, ed è così che ci è passata sotto la più cara — la chat.
  */
 
-export type ShellShimmer = 'page' | 'overview' | 'chat' | 'calendar' | 'media';
+export type ShellShimmer = 'page' | 'overview' | 'chat' | 'calendar' | 'media' | 'workbench';
 
 /** Il primo segmento di `/app/...` quando è uno slug di brand (non una rotta sorella). */
 const NON_BRAND_APP_SEGMENTS = new Set(['onboarding']);
@@ -61,6 +61,9 @@ export function shellShimmerFor(nav: ShellNavigation): ShellShimmer | null {
   const toBase = toBrand ? `/app/${toBrand}` : base;
   if (to === toBase || to === `${toBase}/`) return 'overview';
   if (isThreadPath(to)) return 'chat';
+  // Il workbench è una tela, e una tela non ha colonna: con lo scheletro di `page` il contenuto
+  // salterebbe di un padding a navigazione finita.
+  if (/\/workbench\/?$/.test(to)) return 'workbench';
   if (/\/calendar\/?$/.test(to)) return 'calendar';
   if (/\/(media-generator|ugc-creator|motion-video)\/?$/.test(to)) return 'media';
   return 'page';

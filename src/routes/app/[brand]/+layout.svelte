@@ -52,6 +52,10 @@
   const isBrandRoot = $derived(path === base || path === `${base}/`);
   const isPlanPage = $derived(/\/plans\/[^/]+\/?$/.test(path));
   const isCalendar = $derived(/\/calendar\/?$/.test(path));
+  // Il workbench è una tela: prende tutta l'area contenuto, senza colonna né padding, mentre la
+  // barra laterale e la topbar restano quelle di sempre. `endsWith` e non `includes` perché la
+  // home del brand ci RIMANDA, e le rotte che gli stanno sotto la colonna la vogliono ancora.
+  const isWorkbench = $derived(path.endsWith('/workbench'));
   const isLeads = $derived(/\/leads\/?$/.test(path));
   const isMediaWorkbench = $derived(
     /\/(media-generator|ugc-creator|motion-video)\/?$/.test(path)
@@ -75,7 +79,9 @@
   );
   const shellNavigating = $derived(shimmer !== null);
   const shimmerVariant = $derived(shimmer ?? 'page');
-  const navToFlush = $derived(shimmerVariant === 'calendar' || shimmerVariant === 'media');
+  const navToFlush = $derived(
+    shimmerVariant === 'calendar' || shimmerVariant === 'media' || shimmerVariant === 'workbench'
+  );
 
   const showPageTopBar = $derived(true);
 
@@ -360,7 +366,7 @@
             <div class="wb-frame">
               <div
                 class="content-shell"
-                class:calendar-flush={isCalendar || isMediaWorkbench}
+                class:calendar-flush={isCalendar || isMediaWorkbench || isWorkbench}
                 class:editor-wide={isArticleEdit}
                 class:leads-flush={isLeads}
               >

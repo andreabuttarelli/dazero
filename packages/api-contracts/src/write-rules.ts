@@ -18,6 +18,7 @@ export const TABLE_CHECKS: Record<string, string> = {
   "brand_articles_text_len": "length(body_md) <= 500000 and length(meta_title) <= 300 and length(meta_description) <= 1000 and length(language) <= 60",
   "brand_articles_title_check": "btrim(title) <> '' and length(title) <= 500",
   "brand_articles_version_seq_check": "version_seq >= 0",
+  "brand_canvas_edges_no_self_loop": "source_item_id <> target_item_id",
   "brand_canvas_items_ref_shape": "(ref_kind = 'note' and ref_id is null) or (ref_kind <> 'note' and ref_id is not null)",
   "brand_canvas_items_size": "w > 0 and h > 0",
   "brand_documents_kind_check": "kind in ('note', 'document', 'image', 'plan')",
