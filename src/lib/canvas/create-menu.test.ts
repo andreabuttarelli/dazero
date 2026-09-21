@@ -34,6 +34,13 @@ describe('il menù per aggiungere un nodo', () => {
     expect(flow).toMatch(/ondblclick=\{openMenu\}/);
   });
 
+  it('e quel doppio clic non ingrandisce anche la tela', () => {
+    // SvelteFlow zooma sul doppio clic di default, e lo fa PRIMA che l'evento arrivi qui: il
+    // menù si apriva mentre la tela saltava di una tacca sotto di lui. Il gesto è uno solo e
+    // ora significa una cosa sola.
+    expect(flow).toMatch(/zoomOnDoubleClick=\{false\}/);
+  });
+
   it('offre i tre medium che un nodo può produrre', () => {
     expect(flow).toMatch(/#each GEN_MEDIUMS as medium/);
   });

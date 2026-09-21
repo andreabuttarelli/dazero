@@ -171,9 +171,15 @@
      monta, e il menù che si apre è raggiungibile da lì. -->
 <div class="wrap" ondblclick={openMenu}>
   <!--
-    I gesti che ci si aspetta da una tela, e qui sono tre flag: due dita spostano (`panOnScroll`),
-    il pinch ingrandisce (`zoomOnPinch`), e la rotella nuda NON ingrandisce (`zoomOnScroll={false}`)
-    — che sarebbe il difetto peggiore su un trackpad, la scala che salta mentre si scorre.
+    I gesti che ci si aspetta da una tela, e qui sono quattro flag: due dita spostano
+    (`panOnScroll`), il pinch ingrandisce (`zoomOnPinch`), e la rotella nuda NON ingrandisce
+    (`zoomOnScroll={false}`) — che sarebbe il difetto peggiore su un trackpad, la scala che salta
+    mentre si scorre.
+
+    Il quarto spegne lo zoom sul DOPPIO CLIC, che la libreria fa di default e prima che l'evento
+    arrivi a noi: il menù per aggiungere un nodo si apriva mentre la tela saltava di una tacca
+    sotto di lui. Un gesto, un significato.
+
     È il caso in cui la libreria guadagna: il comportamento si chiede, non si scrive.
   -->
   <SvelteFlow
@@ -185,6 +191,7 @@
     panOnScroll
     zoomOnPinch
     zoomOnScroll={false}
+    zoomOnDoubleClick={false}
     fitView
   >
     <CanvasPointer onready={(fn) => (toFlow = fn)} />
