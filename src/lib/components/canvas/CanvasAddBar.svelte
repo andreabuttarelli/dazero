@@ -21,18 +21,13 @@
    * dall'evento sopravvive a un trascinamento annullato — il nodo successivo nascerebbe del tipo
    * sbagliato.
    */
-  import Type from '@lucide/svelte/icons/type';
-  import Image from '@lucide/svelte/icons/image';
-  import Video from '@lucide/svelte/icons/video';
-  import Globe from '@lucide/svelte/icons/globe';
   import Keyboard from '@lucide/svelte/icons/keyboard';
   import { CANVAS_ADDABLE, ADDABLE_LABEL, type Addable } from '$lib/canvas/addable';
+  import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
   import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
   import { CANVAS_SHORTCUTS } from '$lib/canvas/shortcuts';
 
   let { onpick }: { onpick?: (what: Addable) => void } = $props();
-
-  const ICON = { text: Type, image: Image, video: Video, iframe: Globe };
 
   let showKeys = $state(false);
 
@@ -46,7 +41,7 @@
 
 <div class="add-bar">
   {#each CANVAS_ADDABLE as what, i (what)}
-    {@const Icon = ICON[what]}
+    {@const Icon = ADDABLE_ICON[what]}
     <!-- Il numero nel `title` è il posto in cui la scorciatoia si incontra SENZA cercarla: la
          scheda accanto la elenca, ma la si apre solo sospettando che esista. -->
     <button

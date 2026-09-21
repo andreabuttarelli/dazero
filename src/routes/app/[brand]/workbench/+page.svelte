@@ -10,7 +10,9 @@
   import { newGenNodeAt } from '$lib/canvas/new-node';
   import { newIframeNodeAt, sourceOf, type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
   import { isGenAddable, type Addable } from '$lib/canvas/addable';
-  import { toFlowEdges, type CanvasEdgeRow } from '$lib/canvas-edges';
+  import { toFlowEdges, type CanvasEdgeRow, type CanvasEdgeKind, type FlowEdge } from '$lib/canvas-edges';
+  import { tileNode } from '$lib/canvas/connect-rules';
+  import { planDelete } from '$lib/canvas/delete-plan';
   import type { GenMedium, GenNode as GenNodeState, ModelChoice } from '$lib/canvas/gen-node';
 
   let { data } = $props();
@@ -91,12 +93,35 @@
     )
   );
 
+  /**
+   * `node` è quel che serve a dire NO a un arco prima che nasca. Senza, `verdictBetween` non sa
+   * che tipo sia una tile e — per la sua regola, che è giusta — lascia passare tutto: la verifica
+   * esisteva, testata, e non mordeva su nessuna tile vera.
+   *
+   * Una pagina incorporata non ha `medium`, e `tileNode` la riconosce proprio da quello.
+   */
   const tiles = $derived([
     RECAP,
-    ...[...gens, ...frames].map((n) => ({ id: n.id, ...places[n.id], connectable: true }))
+    ...gens.map((n) => ({
+      id: n.id,
+      ...places[n.id],
+      connectable: true,
+      node: tileNode({ id: n.id, medium: n.medium, model: n.model })
+    })),
+    ...frames.map((n) => ({
+      id: n.id,
+      ...places[n.id],
+      connectable: true,
+      node: tileNode({ id: n.id })
+    }))
   ]);
 
-  const edges = $derived(toFlowEdges((data.edges ?? []) as CanvasEdgeRow[]));
+  /**
+   * Le linee stanno in uno STATO, non in un `$derived` di `data.edges`: toglierne una vuol dire
+   * toglierla da qui, e una lista derivata dal server la riporterebbe indietro al primo ricalcolo
+   * — lo stesso «torna in scena» che si vedeva sulle tile, sulle linee.
+   */
+  let edges = $state<FlowEdge[]>(toFlowEdges((data.edges ?? []) as CanvasEdgeRow[]));
 
   // I modelli arrivano dal server: il testo dal centralino, immagine e video dal registro dei
   // media coi loro limiti. Un nodo nasce comunque SENZA modello scelto — sceglierne uno al posto
@@ -251,14 +276,89 @@
     void post('move', { item_id: id, x, y });
   }
 
-  function connect(source: string, target: string) {
+  /**
+   * Il verso arriva dalla tela, che l'ha già scelto guardando i due estremi. Fisso a
+   * `derives_from` com'era, si sarebbe salvata una derivazione anche fra due cose che non si
+   * derivano — un dato falso scritto senza che nessuno l'avesse chiesto.
+   */
+  function connect(source: string, target: string, kind: CanvasEdgeKind) {
     if (!data.canvasId) return;
     void post('connect', {
       canvas_id: data.canvasId,
       source_item_id: source,
       target_item_id: target,
-      kind: 'derives_from'
+      kind
     });
+  }
+
+  /**
+   * Una linea tolta. SPARISCE SUBITO e torna se il server rifiuta.
+   *
+   * L'attesa qui si vedrebbe: fra il clic su «Togli» e la risposta la linea resterebbe disegnata,
+   * e chi ha cliccato riclicca. Il rimedio del pentimento è già scritto — `failed` dice che non è
+   * andata, e la linea ricompare dov'era invece di sparire in silenzio su un database che la
+   * contiene ancora.
+   */
+  async function disconnect(edgeId: string) {
+    const removed = edges.find((e) => e.id === edgeId);
+    if (!removed) return;
+
+    edges = edges.filter((e) => e.id !== edgeId);
+
+    const done = await post('disconnect', { edge_id: edgeId });
+    if (!done) edges = [...edges, removed];
+  }
+
+  function retype(edgeId: string, kind: CanvasEdgeKind) {
+    void post('retype', { edge_id: edgeId, kind });
+  }
+
+  /**
+   * LE TILE TOLTE, ED È QUI CHE LA CANCELLAZIONE DIVENTA VERA.
+   *
+   * Prima nessuno chiamava niente: SvelteFlow toglieva il nodo dal proprio stato, la riga restava,
+   * e `syncNodes` lo riportava dentro al battito dopo perché `tiles` lo conteneva ancora. Il nodo
+   * «tornava in scena», che è il difetto come lo si vedeva.
+   *
+   * SI TOGLIE SUBITO E SI RIMETTE SE IL SERVER RIFIUTA. La tela è un posto dove si lavora a gesti,
+   * e un nodo che resta lì mezzo secondo dopo ⌫ fa premere ⌫ una seconda volta. Il ripristino
+   * riporta indietro anche il POSTO: `places` senza la sua voce darebbe una tile senza misure, che
+   * è una tile che non si disegna.
+   *
+   * GLI ARCHI CADONO CON LE TILE anche qui, dove il database lo fa già da sé con
+   * `on delete cascade`: senza, resterebbero disegnati verso un nodo che non esiste più fino al
+   * prossimo ricarico.
+   */
+  async function remove(ids: string[]) {
+    const plan = planDelete({ ids, edges, undeletable: [RECAP.id] });
+    if (plan.empty) return;
+
+    const goneGens = gens.filter((g) => plan.itemIds.includes(g.id));
+    const goneFrames = frames.filter((f) => plan.itemIds.includes(f.id));
+    const gonePlaces = Object.fromEntries(plan.itemIds.map((id) => [id, places[id]]));
+    const goneEdges = edges.filter((e) => plan.edgeIds.includes(e.id));
+
+    gens = gens.filter((g) => !plan.itemIds.includes(g.id));
+    frames = frames.filter((f) => !plan.itemIds.includes(f.id));
+    places = Object.fromEntries(
+      Object.entries(places).filter(([id]) => !plan.itemIds.includes(id))
+    );
+    edges = edges.filter((e) => !plan.edgeIds.includes(e.id));
+
+    // Una pagina incorporata ancora senza contenuto non ha MAI avuto una riga — `saved` tiene
+    // proprio quelle che ce l'hanno — e chiederne la cancellazione darebbe un rifiuto rosso su un
+    // gesto perfettamente riuscito.
+    const unsaved = new Set(goneFrames.filter((f) => !saved.has(f.id)).map((f) => f.id));
+    const rows = plan.itemIds.filter((id) => !unsaved.has(id));
+    if (!rows.length) return;
+
+    const done = await post('remove', { item_ids: rows.join(',') });
+    if (done) return;
+
+    gens = [...gens, ...goneGens];
+    frames = [...frames, ...goneFrames];
+    places = { ...places, ...gonePlaces };
+    edges = [...edges, ...goneEdges];
   }
 </script>
 
@@ -284,7 +384,16 @@
            scritto non c'è più e nessuno sa perché. -->
       <p class="wb-saving" role="status">{failed}</p>
     {/if}
-    <CanvasFlow {tiles} {edges} onMove={move} onConnect={connect} onCreate={create}>
+    <CanvasFlow
+      {tiles}
+      {edges}
+      onMove={move}
+      onConnect={connect}
+      onDelete={remove}
+      onEdgeDelete={disconnect}
+      onEdgeRetype={retype}
+      onCreate={create}
+    >
       {#snippet tile({ id, selected })}
         {#if id === 'recap'}
           <div class="wb-recap">

@@ -23,6 +23,8 @@
    * di tornare come un rifiuto pagato.
    */
   import { runStateOf, promptTooLong, type GenNode, type ModelChoice } from '$lib/canvas/gen-node';
+  import { ADDABLE_LABEL } from '$lib/canvas/addable';
+  import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
 
   let {
     node,
@@ -55,16 +57,25 @@
     done: 'Fatto'
   };
 
+  const TypeIcon = $derived(ADDABLE_ICON[node.medium]);
+
   function patchParams(patch: Record<string, unknown>) {
     onchange?.({ params: { ...node.params, ...patch } });
   }
 </script>
 
 <div class="gen" class:is-running={state === 'running'} class:is-chosen={selected}>
+  <!-- La targhetta resta SEMPRE: da lontano, con lo zoom stretto, è l'unica cosa che dice cosa
+       sia un riquadro quando il contenuto è ancora vuoto o è una miniatura illeggibile. Nome e
+       icona vengono dal registro, gli stessi della barra in basso: due elenchi darebbero un globo
+       in fondo allo schermo e un quadrato sul nodo, per la stessa cosa. -->
+  <div class="gen-tag">
+    <TypeIcon size={13} strokeWidth={1.8} />
+    <span>{ADDABLE_LABEL[node.medium]}</span>
+  </div>
+
   {#if selected}
   <header class="gen-head">
-    <span class="gen-medium">{node.medium}</span>
-
     <select
       class="gen-field"
       value={node.model ?? ''}
@@ -224,11 +235,24 @@
     background: var(--paper, #fff);
     box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
   }
-  .gen-medium {
-    font-size: 10.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+  /* Galleggia sull'angolo alto, fuori dal flusso: dentro toglierebbe spazio al contenuto, che è
+     la cosa che si guarda. */
+  .gen-tag {
+    position: absolute;
+    z-index: 2;
+    top: 8px;
+    left: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px 3px 6px;
+    font-size: 11px;
     color: var(--ink-soft, #6e6e73);
+    background: color-mix(in srgb, var(--paper, #fff) 86%, transparent);
+    border: 1px solid var(--line-2, #d2d2d7);
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
+    pointer-events: none;
   }
   .gen-field {
     max-width: 130px;
