@@ -34,7 +34,8 @@
     "eval:clip": "vite-node --config scripts/vite-node.config.ts scripts/eval/clip.ts",
     "test:constraints": "node scripts/constraint-harness.mjs",
     "test:storage-policies": "node scripts/storage-policy-harness.mjs",
-    "test:privileges": "node scripts/privilege-harness.mjs"
+    "test:privileges": "node scripts/privilege-harness.mjs",
+    "db:types": "supabase gen types typescript --project-id klnswzhhgrqvbfjzioul > src/lib/database.types.ts"
   },
   "devDependencies": {
     "@internationalized/date": "^3.12.0",

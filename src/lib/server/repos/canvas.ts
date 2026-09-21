@@ -15,9 +15,33 @@ import type { Database } from '$lib/database.types';
  *   A riscrive il prompt e B cambia il modello, l'ultimo che arriva butta via l'altro senza dirlo.
  *   Per questo `data` passa dalla versione attesa e zero righe è un conflitto, non un successo.
  */
-type NodeRow = Database['public']['Tables']['nodes']['Row'];
-type ConnectionRow = Database['public']['Tables']['nodes_connections']['Row'];
-type CanvasRow = Database['public']['Tables']['canvases']['Row'];
+type Json = Database['public']['Tables']['nodes']['Row']['data'];
+
+type NodeColumns = Pick<
+  Database['public']['Tables']['nodes']['Row'],
+  | 'id'
+  | 'canvas_id'
+  | 'project_id'
+  | 'type'
+  | 'display_name'
+  | 'x'
+  | 'y'
+  | 'z'
+  | 'width'
+  | 'height'
+  | 'data'
+  | 'version'
+>;
+
+type ConnectionColumns = Pick<
+  Database['public']['Tables']['nodes_connections']['Row'],
+  'id' | 'canvas_id' | 'source_node_id' | 'target_node_id' | 'source_handle' | 'target_handle'
+>;
+
+type CanvasColumns = Pick<
+  Database['public']['Tables']['canvases']['Row'],
+  'id' | 'project_id' | 'name' | 'viewport'
+>;
 
 export type Canvas = {
   id: string;
@@ -57,7 +81,7 @@ const CONNECTION_COLUMNS =
   'id, canvas_id, source_node_id, target_node_id, source_handle, target_handle';
 const CANVAS_COLUMNS = 'id, project_id, name, viewport';
 
-function toCanvas(row: Pick<CanvasRow, 'id' | 'project_id' | 'name' | 'viewport'>): Canvas {
+function toCanvas(row: CanvasColumns): Canvas {
   return {
     id: row.id,
     projectId: row.project_id,
@@ -66,7 +90,7 @@ function toCanvas(row: Pick<CanvasRow, 'id' | 'project_id' | 'name' | 'viewport'
   };
 }
 
-function toNode(row: NodeRow): CanvasNodeRecord {
+function toNode(row: NodeColumns): CanvasNodeRecord {
   return {
     id: row.id,
     canvasId: row.canvas_id,
@@ -83,7 +107,7 @@ function toNode(row: NodeRow): CanvasNodeRecord {
   };
 }
 
-function toConnection(row: ConnectionRow): Connection {
+function toConnection(row: ConnectionColumns): Connection {
   return {
     id: row.id,
     canvasId: row.canvas_id,
@@ -183,7 +207,7 @@ export async function createNode(
       display_name: input.displayName ?? null,
       x: input.x,
       y: input.y,
-      data: input.data ?? {}
+      data: (input.data ?? {}) as Json
     })
     .select(NODE_COLUMNS)
     .single();
@@ -250,7 +274,7 @@ export async function writeNodeData(
   const { data, error } = await db
     .from('nodes')
     .update({
-      data: input.data,
+      data: input.data as Json,
       version: input.expectedVersion + 1,
       updated_at: new Date().toISOString()
     })
