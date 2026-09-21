@@ -60,6 +60,42 @@ describe('hydrateCanvasItems — la tela mostra gli oggetti, non una loro copia'
     expect(out[0].body).toBe('ricordati');
   });
 
+  it('una pagina incorporata porta il suo indirizzo e non cerca nessun oggetto', () => {
+    // Lo stesso difetto che `gen` ha già pagato: senza il suo caso, una tile che non punta a
+    // niente si disegnerebbe come «questa cosa non c'è più». Qui non è sparito niente — non c'è
+    // mai stata una riga a cui puntare.
+    const out = hydrateCanvasItems(
+      [item({ ref_kind: 'iframe', ref_id: null, url: 'https://example.com' })],
+      {
+        post: new Map(),
+        media: new Map(),
+        document: new Map(),
+        memory: new Map(),
+        graphic: new Map()
+      }
+    );
+
+    expect(out[0].missing).toBe(false);
+    expect(out[0].ref).toBeNull();
+    expect(out[0].url).toBe('https://example.com');
+  });
+
+  it('una pagina incorporata che porta il suo HTML non è una tile mancante', () => {
+    const out = hydrateCanvasItems(
+      [item({ ref_kind: 'iframe', ref_id: null, url: null, html: '<h1>ciao</h1>' })],
+      {
+        post: new Map(),
+        media: new Map(),
+        document: new Map(),
+        memory: new Map(),
+        graphic: new Map()
+      }
+    );
+
+    expect(out[0].missing).toBe(false);
+    expect(out[0].html).toBe('<h1>ciao</h1>');
+  });
+
   it('tiene l ordine di impilamento che il database ha dato', () => {
     const out = hydrateCanvasItems(
       [
@@ -76,6 +112,12 @@ describe('hydrateCanvasItems — la tela mostra gli oggetti, non una loro copia'
     // Un elenco riscritto a mano qui NON prova quel che il nome promette: proverebbe che questo
     // file è d'accordo con se stesso. Il confronto è con il check che morde davvero, letto dalle
     // migrazioni — quella che lo ha creato e quelle che lo hanno riscritto, l'ultima vince.
+    //
+    // Si cerca il vincolo PER NOME, e non un `ref_kind in (...)` qualsiasi: `ref_shape` ne
+    // contiene altri (`ref_kind in ('note', 'iframe')`), e prendendo l'ultima occorrenza del
+    // file questo test finiva per confrontare i tipi della tela con i due che stanno senza
+    // riferimento. Rosso quando doveva esserlo, ma per il motivo sbagliato — e verde il giorno
+    // in cui quei due elenchi avessero coinciso per caso.
     const { readdirSync, readFileSync } = await import('node:fs');
     const { join } = await import('node:path');
 
@@ -83,7 +125,9 @@ describe('hydrateCanvasItems — la tela mostra gli oggetti, non una loro copia'
     const checks = readdirSync(dir)
       .sort()
       .map((f) => readFileSync(join(dir, f), 'utf8'))
-      .flatMap((sql) => [...sql.matchAll(/ref_kind\s+in\s+\(([^)]*)\)/gi)].map((m) => m[1]));
+      .flatMap((sql) => [
+        ...sql.matchAll(/brand_canvas_items_ref_kind_check[\s\S]*?ref_kind\s+in\s+\(([^)]*)\)/gi)
+      ].map((m) => m[1]));
 
     const last = checks.at(-1);
     const fromDatabase = [...(last ?? '').matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
@@ -102,6 +146,19 @@ describe('saveCanvasPositions — una posizione che resta dove è stata lasciata
     const out = await saveCanvasPositions(fakeWriter(upsert) as never, { ...ok, refKind: 'inventato' });
 
     expect(out.ok).toBe(false);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('rifiuta i tipi che non puntano a niente: questa strada li identifica dal referente', async () => {
+    // L'upsert va su `(canvas_id, ref_kind, ref_id)`. Un tipo che il contenuto se lo porta non ha
+    // un `ref_id` con cui essere ritrovato, quindi qui non passa mai: si sposta per id di riga,
+    // che è `moveCanvasItem`.
+    const upsert = vi.fn();
+
+    for (const refKind of ['note', 'iframe']) {
+      const out = await saveCanvasPositions(fakeWriter(upsert) as never, { ...ok, refKind });
+      expect(out.ok).toBe(false);
+    }
     expect(upsert).not.toHaveBeenCalled();
   });
 

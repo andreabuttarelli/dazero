@@ -6,7 +6,10 @@
   import WorkbenchPageShimmer from '$lib/components/WorkbenchPageShimmer.svelte';
   import CanvasFlow from '$lib/components/canvas/CanvasFlow.svelte';
   import GenNode from '$lib/components/canvas/GenNode.svelte';
+  import IframeNode from '$lib/components/canvas/IframeNode.svelte';
   import { newGenNodeAt } from '$lib/canvas/new-node';
+  import { newIframeNodeAt, sourceOf, type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
+  import { isGenAddable, type Addable } from '$lib/canvas/addable';
   import { toFlowEdges, type CanvasEdgeRow } from '$lib/canvas-edges';
   import type { GenMedium, GenNode as GenNodeState, ModelChoice } from '$lib/canvas/gen-node';
 
@@ -35,6 +38,8 @@
     model: string | null;
     prompt: string | null;
     params: Record<string, unknown> | null;
+    url: string | null;
+    html: string | null;
     x: number;
     y: number;
     w: number;
@@ -60,24 +65,45 @@
       }))
   );
 
+  /**
+   * Le pagine incorporate, accanto ai nodi che producono e non mescolate a loro: non condividono
+   * nessun campo — una ha un indirizzo o dell'HTML, l'altro modello, prompt e parametri — e una
+   * lista sola costringerebbe ogni lettura a chiedersi quale dei due sta guardando.
+   */
+  let frames = $state<IframeNodeState[]>(
+    ((data.items ?? []) as ItemRow[])
+      .filter((i) => i.ref_kind === 'iframe')
+      .map((i) => ({
+        id: i.id,
+        source: sourceOf(i),
+        url: i.url ?? '',
+        html: i.html ?? ''
+      }))
+  );
+
+  const TILE_KINDS = ['gen', 'iframe'];
+
   let places = $state<Record<string, { x: number; y: number; w: number; h: number }>>(
     Object.fromEntries(
       ((data.items ?? []) as ItemRow[])
-        .filter((i) => i.ref_kind === 'gen')
+        .filter((i) => TILE_KINDS.includes(i.ref_kind))
         .map((i) => [i.id, { x: i.x, y: i.y, w: i.w, h: i.h }])
     )
   );
 
   const tiles = $derived([
     RECAP,
-    ...gens.map((g) => ({ id: g.id, ...places[g.id], connectable: true }))
+    ...[...gens, ...frames].map((n) => ({ id: n.id, ...places[n.id], connectable: true }))
   ]);
 
   const edges = $derived(toFlowEdges((data.edges ?? []) as CanvasEdgeRow[]));
 
-  // Il catalogo dei modelli arriva più tardi: il nodo nasce senza modello e l'overlay lo chiede.
-  // Finché non c'è, `Genera` resta spento — meglio di un modello scelto a caso e pagato.
-  let catalogue = $state<Record<GenMedium, ModelChoice[]>>({ text: [], image: [], video: [] });
+  // I modelli arrivano dal server: il testo dal centralino, immagine e video dal registro dei
+  // media coi loro limiti. Un nodo nasce comunque SENZA modello scelto — sceglierne uno al posto
+  // dell'utente significherebbe spendere su una decisione che non ha preso.
+  const catalogue = $derived(
+    (data.catalogue ?? { text: [], image: [], video: [] }) as Record<GenMedium, ModelChoice[]>
+  );
 
   /**
    * `x-sveltekit-action` è ciò che distingue questa chiamata dall'invio di un form: senza,
@@ -115,7 +141,16 @@
 
   let failed = $state<string | null>(null);
 
-  async function create(medium: GenMedium, at: { x: number; y: number }) {
+  /**
+   * Una tile nuova. Quale delle due la decide `isGenAddable`, in un posto solo: la domanda «questo
+   * produce o porta?» ha una risposta sola e vive accanto all'elenco di cosa si può aggiungere.
+   */
+  function create(what: Addable, at: { x: number; y: number }) {
+    if (isGenAddable(what)) return createGen(what, at);
+    return createFrame(at);
+  }
+
+  async function createGen(medium: GenMedium, at: { x: number; y: number }) {
     if (!data.canvasId) return;
 
     const tile = newGenNodeAt(medium, at);
@@ -146,6 +181,48 @@
       const { [tile.id]: _gone, ...rest } = places;
       places = rest;
     }
+  }
+
+  /**
+   * Una pagina incorporata nasce SENZA riga nel database, ed è l'unica che lo fa.
+   *
+   * Il vincolo `brand_canvas_items_iframe_source` vuole un indirizzo o dell'HTML, e una tile
+   * appena nata non ha né l'uno né l'altro: salvarla subito sarebbe un rifiuto garantito, e
+   * l'errore comparirebbe prima ancora che ci sia qualcosa da sbagliare. La riga nasce al primo
+   * salvataggio con un contenuto — l'id è già quello definitivo, quindi non c'è niente da
+   * scambiare dopo.
+   */
+  function createFrame(at: { x: number; y: number }) {
+    if (!data.canvasId) return;
+
+    const tile = newIframeNodeAt(at);
+    frames = [...frames, { id: tile.id, source: tile.source, url: tile.url, html: tile.html }];
+    places = { ...places, [tile.id]: { x: tile.x, y: tile.y, w: tile.w, h: tile.h } };
+  }
+
+  /** `saved` tiene gli id che una riga ce l'hanno già: il primo salvataggio crea, gli altri aggiornano. */
+  let saved = $state(new Set(frames.map((f) => f.id)));
+
+  async function patchFrame(id: string, change: Partial<IframeNodeState>) {
+    frames = frames.map((f) => (f.id === id ? { ...f, ...change } : f));
+
+    const node = frames.find((f) => f.id === id);
+    const place = places[id];
+    if (!node || !place || !data.canvasId) return;
+
+    // Senza contenuto non si scrive: è la tile appena nata, e il database la rifiuterebbe.
+    if (!node.url.trim() && !node.html.trim()) return;
+
+    const exists = saved.has(id);
+    const res = await post('iframe', {
+      canvas_id: data.canvasId,
+      ...(exists ? { item_id: id } : { new_id: id }),
+      url: node.url,
+      html: node.html,
+      ...place
+    });
+
+    if (res && !exists) saved = new Set([...saved, id]);
   }
 
   function patch(id: string, change: Partial<GenNodeState>) {
@@ -208,7 +285,7 @@
       <p class="wb-saving" role="status">{failed}</p>
     {/if}
     <CanvasFlow {tiles} {edges} onMove={move} onConnect={connect} onCreate={create}>
-      {#snippet tile({ id })}
+      {#snippet tile({ id, selected })}
         {#if id === 'recap'}
           <div class="wb-recap">
             <HomeHead {overview} brandSlug={data.brand.slug} />
@@ -220,12 +297,16 @@
           </div>
         {:else}
           {@const node = gens.find((g) => g.id === id)}
+          {@const frame = frames.find((f) => f.id === id)}
           {#if node}
             <GenNode
               {node}
+              {selected}
               choices={catalogue[node.medium]}
               onchange={(change) => patch(id, change)}
             />
+          {:else if frame}
+            <IframeNode node={frame} onchange={(change) => patchFrame(id, change)} />
           {/if}
         {/if}
       {/snippet}

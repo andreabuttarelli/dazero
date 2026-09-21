@@ -16,6 +16,13 @@
    * la tela aveva un lettore solo: adesso ne ha due, e per l'agente una linea è l'unico modo di
    * dire perché due cose stanno insieme — e di ritrovarlo al turno dopo. Restano spente le
    * connessioni MULTIPLE per attacco e la riconnessione al volo: non c'è ancora la domanda.
+   *
+   * E UNA LINEA SI CHIEDE IL PERMESSO PRIMA DI NASCERE. `isValidConnection` è il punto in cui la
+   * libreria si ferma e domanda, ed è l'unico in cui si può ancora dire di no senza che l'utente
+   * abbia già visto comparire qualcosa: rifiutare dopo vorrebbe dire far sparire una linea appena
+   * disegnata, che si legge come un difetto e non come una risposta. La regola non sta qui — sta
+   * in `connect-rules.ts`, sopra `graph.ts` — perché la stessa domanda la fanno anche l'attacco
+   * che si colora e il menù dei versi, e tre copie diverrebbero diverse al primo caso nuovo.
    */
   import { untrack } from 'svelte';
   import { SvelteFlow, Background, Controls, MiniMap, type Node } from '@xyflow/svelte';
@@ -23,10 +30,13 @@
   import CanvasTile from './CanvasTile.svelte';
   import CanvasPointer from './CanvasPointer.svelte';
   import CanvasAddBar from './CanvasAddBar.svelte';
+  import CanvasKeys from './CanvasKeys.svelte';
   import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
   import { syncNodes } from '$lib/canvas/tile-sync';
-  import type { FlowEdge } from '$lib/canvas-edges';
-  import { GEN_MEDIUMS, type GenMedium } from '$lib/canvas/gen-node';
+  import { CANVAS_EDGE_KINDS, EDGE_KIND_LABEL, type CanvasEdgeKind, type FlowEdge } from '$lib/canvas-edges';
+  import { CANVAS_ADDABLE, ADDABLE_LABEL, isAddable, type Addable } from '$lib/canvas/addable';
+  import { DEFAULT_EDGE_KIND, edgeKindsFor, verdictBetween } from '$lib/canvas/connect-rules';
+  import type { CanvasNode } from '$lib/canvas/graph';
 
   /**
    * Dove sta una tile e quanto è grande, in unità di tela — le stesse di `brand_canvas_items`.
@@ -35,6 +45,11 @@
    * altro. Un post e un documento sì; un pannello che riassume il brand no, e due puntini sopra
    * sarebbero l'invito a un gesto che poi fallisce. Assente vale COLLEGABILE, perché il contenuto
    * è il caso normale e l'arredo è l'eccezione.
+   *
+   * `node` è COSA c'è dentro, nel vocabolario di `graph.ts`, e serve a una cosa sola: poter dire
+   * di no a un arco mentre il puntatore è ancora in aria. Facoltativo perché non tutto quel che
+   * sta sulla tela è un nodo del modello — il recap non lo è — e chi non lo dichiara non viene
+   * rifiutato: non sapere abbastanza non è un motivo per impedire.
    */
   export type Tile = {
     id: string;
@@ -43,6 +58,7 @@
     w: number;
     h: number;
     connectable?: boolean;
+    node?: CanvasNode;
   };
 
   let {
@@ -50,6 +66,8 @@
     edges: incomingEdges = [],
     onMove,
     onConnect,
+    onEdgeDelete,
+    onEdgeRetype,
     onCreate,
     tile
   }: {
@@ -58,12 +76,20 @@
     edges?: FlowEdge[];
     /** Dove una tile è finita, per scriverlo dove vive davvero. */
     onMove?: (id: string, x: number, y: number) => void;
-    /** Una linea appena tirata fra due tile, perché chi usa la tela la salvi. */
-    onConnect?: (sourceItemId: string, targetItemId: string) => void;
-    /** Un nodo nuovo chiesto col doppio clic, col punto già in unità di tela. */
-    onCreate?: (medium: GenMedium, at: { x: number; y: number }) => void;
+    /**
+     * Una linea appena tirata fra due tile, col verso già scelto: il primo che `edgeKindsFor`
+     * propone su quella coppia. Un `kind` fisso qui sarebbe una derivazione salvata anche fra due
+     * cose che non si derivano — cioè un dato falso scritto senza che nessuno l'abbia chiesto.
+     */
+    onConnect?: (sourceItemId: string, targetItemId: string, kind: CanvasEdgeKind) => void;
+    /** Una linea da togliere. Senza, il primo errore resta sulla tela per sempre. */
+    onEdgeDelete?: (edgeId: string) => void;
+    /** Il verso di una linea che c'è già: si corregge, non si rifà. */
+    onEdgeRetype?: (edgeId: string, kind: CanvasEdgeKind) => void;
+    /** Una tile nuova chiesta col doppio clic, col punto già in unità di tela. */
+    onCreate?: (what: Addable, at: { x: number; y: number }) => void;
     /** Cosa disegnare dentro una tile. La tela non sa cosa mostra: lo decide chi la usa. */
-    tile: import('svelte').Snippet<[{ id: string }]>;
+    tile: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
   } = $props();
 
   // Un tipo di nodo solo: la tela non ha tipi di NODO, ha tipi di CONTENUTO, e quelli li decide
@@ -115,6 +141,36 @@
   }
 
   /**
+   * COSA C'È DIETRO UNA TILE, per id. Una mappa e non una `find` nel corpo di `isValidConnection`:
+   * quella funzione la libreria la chiama a ogni movimento del puntatore mentre si tira una linea,
+   * e una scansione lineare per fotogramma su una tela piena è il modo per far arrancare il gesto
+   * che dovrebbe sembrare il più diretto di tutti.
+   */
+  const nodeOf = $derived(new Map(tiles.filter((t) => t.node).map((t) => [t.id, t.node!])));
+
+  const lookup = (id: string) => nodeOf.get(id) ?? null;
+
+  /**
+   * IL RIFIUTO, MENTRE IL PUNTATORE È ANCORA IN ARIA. La libreria si ferma qui e domanda: tornare
+   * `false` significa che la linea non si aggancia e l'attacco non si accende, senza che nessuno
+   * abbia visto comparire qualcosa da far poi sparire.
+   *
+   * IL MOTIVO SI TIENE, e non è un di più: una linea che semplicemente non si attacca si legge
+   * come un difetto del mouse, e chi l'ha tirata riprova identico. `canConnect` il motivo ce
+   * l'ha già scritto — buttarlo via qui sarebbe l'unico vero errore di tutto il collegamento.
+   */
+  let refusal = $state<string | null>(null);
+
+  function isValidConnection(c: { source?: string | null; target?: string | null }): boolean {
+    const { source, target } = c;
+    if (!source || !target) return false;
+
+    const verdict = verdictBetween(lookup, source, target);
+    refusal = verdict.ok ? null : verdict.why;
+    return verdict.ok;
+  }
+
+  /**
    * Una linea appena tirata. NON si aggiunge qui agli archi: la si annuncia e basta, e comparirà
    * quando il server la restituisce con il suo id vero. Disegnarla subito con un id inventato
    * significherebbe averla due volte appena i dati tornano — la copia ottimista e quella vera.
@@ -122,22 +178,57 @@
   function onConnected(connection: { source?: string | null; target?: string | null }) {
     const { source, target } = connection;
     if (!source || !target || source === target) return;
-    onConnect?.(source, target);
+
+    refusal = null;
+    onConnect?.(source, target, edgeKindsFor(lookup, source, target)[0] ?? DEFAULT_EDGE_KIND);
+  }
+
+  /**
+   * IL PANNELLO DI UNA LINEA, al clic su di lei.
+   *
+   * Un arco è largo un paio di pixel: un menù al tasto destro sarebbe il gesto giusto per un
+   * bersaglio grande, e su questo costringerebbe a centrarlo due volte. Il clic lo apre, un clic
+   * altrove lo chiude, ed è il solo posto in cui un arco si cambia o si toglie.
+   *
+   * I VERSI PROPOSTI SONO QUELLI CHE HANNO SENSO su quella coppia, letti dallo stesso
+   * `edgeKindsFor` che ha scelto il verso alla nascita: offrire «nasce da» fra due immagini
+   * sarebbe far scegliere un arco che il modello rifiuta.
+   */
+  let picked = $state<{ edge: FlowEdge; screen: { x: number; y: number } } | null>(null);
+
+  const pickedKinds = $derived(
+    picked ? edgeKindsFor(lookup, picked.edge.source, picked.edge.target) : []
+  );
+
+  function onEdgeClick({ edge, event }: { edge: FlowEdge; event: MouseEvent | TouchEvent }) {
+    const point = 'clientX' in event ? event : event.touches[0];
+    if (!point) return;
+
+    picked = { edge, screen: { x: point.clientX, y: point.clientY } };
+  }
+
+  function retype(kind: CanvasEdgeKind) {
+    if (!picked) return;
+
+    onEdgeRetype?.(picked.edge.id, kind);
+    picked = null;
+  }
+
+  function drop() {
+    if (!picked) return;
+
+    onEdgeDelete?.(picked.edge.id);
+    picked = null;
   }
 
   /**
    * IL MENÙ DEL DOPPIO CLIC.
    *
-   * Si apre dove si è cliccato e porta i tre medium. Tiene DUE punti: quello dello schermo, che
-   * serve a disegnarlo, e quello della tela, che è dove il nodo andrà — separati perché la tela
-   * si può scorrere mentre il menù è aperto, e un solo punto darebbe un nodo che nasce altrove.
+   * Si apre dove si è cliccato e porta tutto ciò che si può aggiungere. Tiene DUE punti: quello
+   * dello schermo, che serve a disegnarlo, e quello della tela, che è dove il nodo andrà —
+   * separati perché la tela si può scorrere mentre il menù è aperto, e un solo punto darebbe un
+   * nodo che nasce altrove.
    */
-  const MEDIUM_LABEL: Record<GenMedium, string> = {
-    text: 'Testo',
-    image: 'Immagine',
-    video: 'Video'
-  };
-
   let menu = $state<{ screen: { x: number; y: number }; flow: { x: number; y: number } } | null>(null);
   // `$state` e non un `let` semplice: la conversione arriva da `CanvasPointer` DOPO il mount, e in
   // una variabile non reattiva il gestore del doppio clic continuerebbe a leggere il `null` di
@@ -157,14 +248,14 @@
     };
   }
 
-  function pick(medium: GenMedium) {
+  function pick(what: Addable) {
     if (!menu) return;
-    onCreate?.(medium, menu.flow);
+    onCreate?.(what, menu.flow);
     menu = null;
   }
 
   /**
-   * Un medium lasciato cadere sulla tela. `ondragover` con `preventDefault` non è cerimonia: senza,
+   * Qualcosa lasciato cadere sulla tela. `ondragover` con `preventDefault` non è cerimonia: senza,
    * il browser rifiuta il rilascio e il trascinamento finisce in un nulla di fatto.
    */
   function onDragOver(e: DragEvent) {
@@ -174,20 +265,20 @@
   }
 
   function onDrop(e: DragEvent) {
-    const medium = e.dataTransfer?.getData(CANVAS_DRAG_MEDIUM);
-    if (!medium || !toFlow) return;
+    const what = e.dataTransfer?.getData(CANVAS_DRAG_MEDIUM);
+    if (!what || !isAddable(what) || !toFlow) return;
 
     e.preventDefault();
-    onCreate?.(medium as GenMedium, toFlow({ x: e.clientX, y: e.clientY }));
+    onCreate?.(what, toFlow({ x: e.clientX, y: e.clientY }));
   }
 
   /** Il clic sulla barra: nessun punto scelto, quindi al centro di quel che si sta guardando. */
-  function addAtCentre(medium: GenMedium) {
+  function addAtCentre(what: Addable) {
     if (!toFlow) return;
     const box = wrap?.getBoundingClientRect();
     if (!box) return;
 
-    onCreate?.(medium, toFlow({ x: box.left + box.width / 2, y: box.top + box.height / 2 }));
+    onCreate?.(what, toFlow({ x: box.left + box.width / 2, y: box.top + box.height / 2 }));
   }
 
   let wrap = $state<HTMLDivElement | null>(null);
@@ -221,6 +312,9 @@
     {nodeTypes}
     onnodedragstop={onNodeDragStop}
     onconnect={onConnected}
+    onedgeclick={onEdgeClick}
+    {isValidConnection}
+    onconnectend={() => (refusal = null)}
     panOnScroll
     zoomOnPinch
     zoomOnScroll={false}
@@ -228,13 +322,48 @@
     fitView
   >
     <CanvasPointer onready={(fn) => (toFlow = fn)} />
+    <CanvasKeys onadd={addAtCentre} onmove={onMove} />
     <Background gap={24} />
     <Controls />
     <MiniMap />
   </SvelteFlow>
 
+  {#if refusal}
+    <!-- `role="status"` e non `alert`: il lettore di schermo lo annuncia senza interrompere il
+         gesto in corso, che è l'unico momento in cui questo messaggio serve. -->
+    <p class="edge-refusal" role="status">{refusal}</p>
+  {/if}
+
   {#if onCreate}
     <CanvasAddBar onpick={addAtCentre} />
+  {/if}
+
+  {#if picked && (onEdgeRetype || onEdgeDelete)}
+    <div class="gen-menu-veil" role="presentation" onclick={() => (picked = null)}></div>
+    <div
+      class="edge-panel"
+      role="menu"
+      tabindex="-1"
+      style={`left:${picked.screen.x}px; top:${picked.screen.y}px`}
+    >
+      {#if onEdgeRetype}
+        {#each pickedKinds as kind (kind)}
+          <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={kind === picked.edge.kind}
+            class:is-on={kind === picked.edge.kind}
+            onclick={() => retype(kind)}
+          >
+            {EDGE_KIND_LABEL[kind]}
+          </button>
+        {/each}
+      {/if}
+
+      {#if onEdgeDelete}
+        <button type="button" role="menuitem" class="edge-drop" onclick={drop}>Togli</button>
+      {/if}
+    </div>
   {/if}
 
   {#if menu}
@@ -255,16 +384,23 @@
       tabindex="-1"
       style={`left:${menu.screen.x}px; top:${menu.screen.y}px`}
     >
-      {#each GEN_MEDIUMS as medium (medium)}
-        <button type="button" role="menuitem" onclick={() => pick(medium)}>
-          {MEDIUM_LABEL[medium]}
+      {#each CANVAS_ADDABLE as what (what)}
+        <button type="button" role="menuitem" onclick={() => pick(what)}>
+          {ADDABLE_LABEL[what]}
         </button>
       {/each}
     </div>
   {/if}
 </div>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && (menu = null)} />
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key !== 'Escape') return;
+    menu = null;
+    picked = null;
+    refusal = null;
+  }}
+/>
 
 <style>
   /*
@@ -354,5 +490,81 @@
     border: 1px solid var(--line-2, #d2d2d7);
     border-radius: 10px;
     overflow: hidden;
+  }
+
+  /* Il motivo del rifiuto, sotto lo sguardo di chi sta tirando la linea e non in un angolo:
+     `pointer-events: none` perché compare a metà gesto, e un riquadro che intercetta il puntatore
+     lo interromperebbe proprio mentre spiega perché non si può. */
+  .edge-refusal {
+    position: absolute;
+    z-index: 12;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: var(--ink, #1d1d1f);
+    background: var(--paper, #fff);
+    border: 1px solid var(--line-2, #d2d2d7);
+    border-radius: 999px;
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.1);
+    pointer-events: none;
+  }
+
+  /* SvelteFlow mette `.connectingto` sull'attacco sotto il puntatore e `.valid` solo quando
+     `isValidConnection` ha detto di sì — i nomi delle classi stanno in `Handle.svelte` della
+     libreria, non sono indovinati. La coppia senza `.valid` è ESATTAMENTE «qui non si può», e
+     dirlo col colore è ciò che evita di far tirare una linea che poi non si aggancia e basta.
+
+     Visibili sempre durante il gesto, non solo col puntatore sopra la tile: il verdetto serve
+     mentre si cerca dove posare la linea, che è prima di essere arrivati. */
+  .wrap :global(.svelte-flow__handle.connectingto) {
+    opacity: 1;
+  }
+  .wrap :global(.svelte-flow__handle.connectingto:not(.valid)) {
+    background: #c0392b;
+    cursor: not-allowed;
+  }
+  .wrap :global(.svelte-flow__handle.connectingto.valid) {
+    background: var(--accent, #7c5cff);
+  }
+
+  .edge-panel {
+    position: fixed;
+    z-index: 21;
+    display: flex;
+    flex-direction: column;
+    min-width: 128px;
+    padding: 4px;
+    border-radius: 10px;
+    background: var(--paper, #fff);
+    border: 1px solid var(--line-2, #d2d2d7);
+    box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
+  }
+  .edge-panel button {
+    padding: 6px 10px;
+    font: inherit;
+    font-size: 12.5px;
+    text-align: left;
+    color: var(--ink, #1d1d1f);
+    background: none;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+  .edge-panel button:hover,
+  .edge-panel button:focus-visible {
+    background: var(--paper-2, #f9f9f9);
+  }
+  .edge-panel button.is-on {
+    color: var(--accent, #7c5cff);
+  }
+  .edge-panel button.edge-drop {
+    margin-top: 3px;
+    padding-top: 7px;
+    border-top: 1px solid var(--line, #e5e5e5);
+    border-radius: 0;
+    color: #c0392b;
   }
 </style>

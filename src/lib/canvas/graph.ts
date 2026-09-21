@@ -37,7 +37,16 @@ export type Medium = (typeof MEDIUMS)[number];
  * ruoli che il prodotto già conosce — le righe di `brand_media`, `brand_documents`,
  * `brand_memory`, `posts`.
  */
-export const NODE_KINDS = ['text', 'image', 'video', 'post', 'media', 'document', 'memory'] as const;
+export const NODE_KINDS = [
+  'text',
+  'image',
+  'video',
+  'post',
+  'media',
+  'document',
+  'memory',
+  'iframe'
+] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
 export type CanvasNode = {
@@ -76,7 +85,12 @@ export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
   // Le tre righe che esistono già nel database. Niente le genera: sono sorgenti.
   media: { medium: null, generated: false, accepts: [], requires: [] },
   document: { medium: 'text', generated: false, accepts: [], requires: [] },
-  memory: { medium: 'text', generated: false, accepts: [], requires: [] }
+  memory: { medium: 'text', generated: false, accepts: [], requires: [] },
+  // Una pagina incorporata è una SORGENTE come le tre qui sopra: esiste già, e niente la produce.
+  // È testo perché quel che se ne può usare a valle è quel che c'è scritto — «riassumi questa
+  // pagina», «fai un'immagine ispirata a questa» sono le catene che la rendono utile. L'immagine
+  // che il sito mostra non è sua: è del sito, e non c'è un file da passare a valle.
+  iframe: { medium: 'text', generated: false, accepts: [], requires: [] }
 };
 
 /** Da `posts.content_type` al medium: è il ruolo che porta dentro il medium, e qui si separano. */

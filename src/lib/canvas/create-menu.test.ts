@@ -41,8 +41,10 @@ describe('il menù per aggiungere un nodo', () => {
     expect(flow).toMatch(/zoomOnDoubleClick=\{false\}/);
   });
 
-  it('offre i tre medium che un nodo può produrre', () => {
-    expect(flow).toMatch(/#each GEN_MEDIUMS as medium/);
+  it('offre tutto ciò che si può mettere sulla tela, non solo ciò che si produce', () => {
+    // I due elenchi sono diversi di proposito: `GEN_MEDIUMS` è «cosa un nodo produce», e la
+    // pagina incorporata non produce niente — porta una pagina che esiste già.
+    expect(flow).toMatch(/#each CANVAS_ADDABLE as what/);
   });
 
   it('non ruba il doppio clic fatto sopra una tile', () => {

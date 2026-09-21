@@ -126,6 +126,35 @@ describe('quanti ingressi accetta un nodo, e dipende dal modello', () => {
   });
 });
 
+describe('una pagina incorporata è una sorgente, come un documento', () => {
+  it('non si genera: la pagina esiste già, e un arco verso di lei non farebbe niente', () => {
+    expect(CANVAS_NODE_SPECS.iframe.generated).toBe(false);
+  });
+
+  it('non accetta ingressi', () => {
+    expect(canConnect(node('t', 'text'), node('f', 'iframe')).ok).toBe(false);
+    expect(canConnect(node('i', 'image'), node('f', 'iframe')).ok).toBe(false);
+  });
+
+  it('alimenta invece quel che si genera: è un riferimento, come un documento', () => {
+    // La ragione per cui vale la pena metterla nel registro: «riassumi questa pagina» e «fai
+    // un'immagine ispirata a questa» sono le due catene che la rendono utile.
+    expect(canConnect(node('f', 'iframe'), node('i', 'image')).ok).toBe(true);
+    expect(canConnect(node('f', 'iframe'), node('t', 'text')).ok).toBe(false);
+    expect(canConnect(node('f', 'iframe'), node('p', 'post')).ok).toBe(true);
+  });
+
+  it('è testo: quel che se ne può usare è quel che c è scritto', () => {
+    expect(mediumOf(node('f', 'iframe'))).toBe('text');
+  });
+
+  it('da sola basta a far girare quel che alimenta', () => {
+    // Un nodo immagine chiede un testo. Se un iframe non contasse come tale, un arco lecito
+    // lascerebbe comunque il nodo «non pronto» — un vicolo cieco senza spiegazione.
+    expect(readyToRun(node('i', 'image'), [node('f', 'iframe')])).toBe(true);
+  });
+});
+
 describe('il registro è una tabella sola', () => {
   it('ogni tipo dichiara se si genera e cosa accetta', () => {
     for (const spec of Object.values(CANVAS_NODE_SPECS)) {

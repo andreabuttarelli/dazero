@@ -28,7 +28,10 @@ export const CANVAS_REF_KINDS = [
   'graphic',
   'note',
   // Il nodo che produce: nasce senza riferimento e lo acquista girando. Vedi `canvas-gen.ts`.
-  'gen'
+  'gen',
+  // La pagina incorporata: porta il suo contenuto — un indirizzo o dell'HTML — e non punta a
+  // nessuna riga, mai. Vedi `canvas-iframe.ts`.
+  'iframe'
 ] as const;
 
 export type CanvasRefKind = (typeof CANVAS_REF_KINDS)[number];
@@ -52,6 +55,13 @@ export type CanvasItemRow = {
   model?: string | null;
   prompt?: string | null;
   params?: Record<string, unknown> | null;
+  /**
+   * I due modi di riempire una pagina incorporata, e ne vale UNO SOLO alla volta — il vincolo
+   * `brand_canvas_items_iframe_source` non lascia esistere una riga con entrambi o con nessuno.
+   * Null su ogni altro tipo. Facoltative nel tipo per la stessa ragione delle quattro sopra.
+   */
+  url?: string | null;
+  html?: string | null;
   x: number;
   y: number;
   w: number;
@@ -64,10 +74,11 @@ export type CanvasItemRow = {
 type Row = Record<string, unknown>;
 
 /**
- * I tipi che puntano DAVVERO a una riga di un'altra tabella. Fuori restano la nota, che porta il
- * suo testo, e il nodo che produce, che il riferimento lo acquista solo dopo aver girato.
+ * I tipi che puntano DAVVERO a una riga di un'altra tabella. Fuori restano quelli che il contenuto
+ * se lo portano: la nota col suo testo, la pagina incorporata col suo indirizzo o il suo HTML, e
+ * il nodo che produce, che il riferimento lo acquista solo dopo aver girato.
  */
-export type CanvasRefKindWithRow = Exclude<CanvasRefKind, 'note' | 'gen'>;
+export type CanvasRefKindWithRow = Exclude<CanvasRefKind, 'note' | 'gen' | 'iframe'>;
 
 /**
  * Dove sta il risultato di un nodo che ha prodotto: in `brand_media`, come ogni altro asset del
@@ -85,11 +96,33 @@ export type CanvasItem = CanvasItemRow & {
   missing: boolean;
 };
 
+/**
+ * I tipi che il contenuto se lo portano dentro: nessuno di loro va cercato in un'altra tabella, e
+ * nessuno di loro può essere `missing` — non è sparito niente, non c'è mai stata una riga.
+ *
+ * Un elenco invece di un `if` per tipo: al quarto caso sarebbero tre condizioni sparse da tenere
+ * d'accordo, che è il modo in cui `gen` si era già disegnato «questa cosa non c'è più» addosso.
+ */
+const SELF_CONTAINED_KINDS = ['note', 'iframe'] as const;
+
+type SelfContainedKind = (typeof SELF_CONTAINED_KINDS)[number];
+
+/**
+ * Un predicato e non un `includes` nudo: così il compilatore SA che dopo questa guardia il tipo
+ * non può più essere `note` né `iframe`, e l'accesso a `REF_SELECT` è provato invece che sperato.
+ * Senza, resta lecito scrivere `REF_SELECT[kind]` su un tipo che non ha riga — che è il
+ * `TypeError` con cui un nodo `gen` riuscito rendeva illeggibile l'intera tela.
+ */
+function carriesOwnContent(kind: CanvasRefKind): kind is SelfContainedKind {
+  return (SELF_CONTAINED_KINDS as readonly CanvasRefKind[]).includes(kind);
+}
+
 export function hydrateCanvasItems(rows: CanvasItemRow[], refs: CanvasRefs): CanvasItem[] {
   return rows.map((row) => {
-    // La nota non punta a niente, e il nodo che produce non ci punta ANCORA: in entrambi i casi
-    // `missing` dipingerebbe «questa cosa non c'è più» su qualcosa che non è mai sparito.
-    if (row.ref_kind === 'note' || (row.ref_kind === 'gen' && !row.ref_id)) {
+    // Chi porta il proprio contenuto non cerca niente, e il nodo che produce non ci punta ANCORA:
+    // in entrambi i casi `missing` dipingerebbe «questa cosa non c'è più» su qualcosa che non è
+    // mai sparito.
+    if (carriesOwnContent(row.ref_kind) || (row.ref_kind === 'gen' && !row.ref_id)) {
       return { ...row, ref: null, missing: false };
     }
     const kind = row.ref_kind === 'gen' ? GEN_REF_TABLE : row.ref_kind;
@@ -168,7 +201,12 @@ export async function saveCanvasPositions(
   supabase: SupabaseClient,
   input: SavePosition
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!CANVAS_REF_KINDS.includes(input.refKind as CanvasRefKind) || input.refKind === 'note') {
+  // Questa strada ritrova una tile dal suo REFERENTE, quindi vale solo per chi ne ha uno: chi il
+  // contenuto se lo porta si sposta per id di riga, con `moveCanvasItem`.
+  if (
+    !CANVAS_REF_KINDS.includes(input.refKind as CanvasRefKind) ||
+    carriesOwnContent(input.refKind as CanvasRefKind)
+  ) {
     return { ok: false, error: `ref_kind non ammesso: ${input.refKind}` };
   }
   if (!input.canvasId || !input.refId) {
@@ -284,7 +322,7 @@ export async function loadCanvasItems(
   const { data } = await supabase
     .from('brand_canvas_items')
     .select(
-      'id, canvas_id, brand_id, ref_kind, ref_id, body, medium, model, prompt, params, x, y, w, h, z, updated_at'
+      'id, canvas_id, brand_id, ref_kind, ref_id, body, medium, model, prompt, params, url, html, x, y, w, h, z, updated_at'
     )
     .eq('canvas_id', canvasId)
     .order('z');
@@ -297,7 +335,10 @@ export async function loadCanvasItems(
 
   const byKind = new Map<CanvasRefKindWithRow, string[]>();
   for (const row of rows) {
-    if (row.ref_kind === 'note' || !row.ref_id) continue;
+    // Il filtro è sul TIPO prima che sul valore: un tipo che si porta il contenuto non ha una
+    // riga in `REF_SELECT`, e arrivarci significherebbe `spec.table` su `undefined` — cioè
+    // l'intera tela illeggibile per una tile sola. È il difetto che `gen` ha già pagato.
+    if (carriesOwnContent(row.ref_kind) || !row.ref_id) continue;
     const kind = row.ref_kind === 'gen' ? GEN_REF_TABLE : row.ref_kind;
     const list = byKind.get(kind) ?? [];
     list.push(row.ref_id);

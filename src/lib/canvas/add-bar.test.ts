@@ -19,8 +19,10 @@ const bar = readFileSync(join(dir, '..', 'components', 'canvas', 'CanvasAddBar.s
 const flow = readFileSync(join(dir, '..', 'components', 'canvas', 'CanvasFlow.svelte'), 'utf8');
 
 describe('la barra per aggiungere un nodo', () => {
-  it('offre i tre medium, presi dal modello e non riscritti', () => {
-    expect(bar).toMatch(/GEN_MEDIUMS/);
+  it('offre tutto ciò che si può aggiungere, preso dal modello e non riscritto', () => {
+    // `CANVAS_ADDABLE` e non `GEN_MEDIUMS`: la barra mostra anche la pagina incorporata, che non
+    // produce niente. Un elenco riscritto qui perderebbe la quarta voce senza che nulla lo dica.
+    expect(bar).toMatch(/CANVAS_ADDABLE/);
   });
 
   it('ogni voce si può cliccare', () => {
@@ -32,7 +34,7 @@ describe('la barra per aggiungere un nodo', () => {
     expect(bar).toMatch(/ondragstart=/);
   });
 
-  it('dice quale medium sta viaggiando, o la tela non saprebbe cosa creare', () => {
+  it('dice cosa sta viaggiando, o la tela non saprebbe cosa creare', () => {
     expect(bar).toMatch(/setData\(/);
   });
 
