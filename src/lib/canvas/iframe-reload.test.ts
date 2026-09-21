@@ -48,3 +48,16 @@ describe('scrivere il codice di un embed', () => {
     expect(frame).toMatch(/srcdoc=\{(?!node\.html\})/);
   });
 });
+
+describe("l'observer che misura il riquadro", () => {
+  it('non si riaggancia a ogni misura che scrive', () => {
+    // `$effect` traccia OGNI stato letto nel suo corpo, callback comprese: leggere `measured` per
+    // confrontarlo lo rende una dipendenza dell'effect, quindi ogni scrittura stacca l'observer e
+    // ne aggancia uno nuovo — e agganciare un observer fa scattare una misura iniziale. Il
+    // confronto pensato per CHIUDERE il ciclo lo teneva aperto da un'altra parte.
+    const body = /\$effect\(\(\) => \{[\s\S]*?\n  \}\);/.exec(frame)?.[0] ?? '';
+
+    expect(body).toMatch(/untrack|\.width\b(?![\s\S]*measured\.width === )/);
+    expect(body).not.toMatch(/if \(measured\.width === /);
+  });
+});

@@ -117,22 +117,30 @@
   let body = $state<HTMLElement | null>(null);
   let measured = $state({ width: 0, height: 0 });
 
+  /**
+   * L'ultima misura vista, FUORI dallo stato reattivo — ed è la riga che chiude il ciclo.
+   *
+   * Il confronto serve perché `{width, height}` è un oggetto nuovo a ogni battuta anche coi due
+   * numeri identici: scriverlo comunque ricalcola `frameStyle`, riscrive lo `style` dell'iframe,
+   * fa rifare il layout e richiama l'observer. Ma leggere `measured` DENTRO l'effect per fare
+   * quel confronto lo rende una sua dipendenza — e allora ogni scrittura stacca l'observer e ne
+   * aggancia un altro, che alla prima misura riparte. Il ciclo si spostava soltanto.
+   *
+   * Una variabile normale non è tracciata: l'effect dipende solo da `body`, e si riaggancia
+   * quando cambia il riquadro, che è l'unica ragione per cui dovrebbe.
+   */
+  let lastSeen = { width: 0, height: 0 };
+
   $effect(() => {
     const el = body;
     if (!el) return;
 
     const observer = new ResizeObserver(([entry]) => {
       const { inlineSize, blockSize } = entry.contentBoxSize[0];
+      if (lastSeen.width === inlineSize && lastSeen.height === blockSize) return;
 
-      // SI SCRIVE SOLO SE È DAVVERO CAMBIATA, e senza questo confronto l'anteprima ripartiva da
-      // capo all'infinito: `{width, height}` è un oggetto NUOVO a ogni battuta anche coi due
-      // numeri identici, quindi `frameStyle` si ricalcolava, lo `style` dell'iframe veniva
-      // riscritto, il browser rifaceva il layout e l'observer riscattava. Il ciclo si chiude su
-      // se stesso perché questo observer guarda un riquadro la cui geometria dipende da ciò che
-      // lui stesso scrive.
-      if (measured.width === inlineSize && measured.height === blockSize) return;
-
-      measured = { width: inlineSize, height: blockSize };
+      lastSeen = { width: inlineSize, height: blockSize };
+      measured = lastSeen;
     });
 
     observer.observe(el);
