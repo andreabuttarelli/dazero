@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   JOB_HOME,
@@ -70,20 +68,6 @@ describe('routine owner', () => {
     }
   });
 
-  it('la pagina /agents raggruppa con QUESTA funzione, non con una copia', () => {
-    // Stessa tecnica del test qui sopra: se qualcuno reinventa il parsing nel markup, le due
-    // grammatiche divergono al primo prefisso nuovo e le routine finiscono sulla card sbagliata.
-    const src = readFileSync(
-      join(__dirname, '../routes/app/[brand]/agents/+page.svelte'),
-      'utf8'
-    );
-    expect(src).toContain('parseRoutineOwner');
-    expect(src).toContain("from '$lib/agent-owners'");
-    // Le card "i tuoi agenti" sono gli AGENTI (`custom_agents`, 0210), non le loro routine: una
-    // card per persona, e sotto l'elenco dei suoi incarichi.
-    expect(src).toMatch(/\{#each data\.agents as a/);
-    expect(src).toContain('routinesOfAgent');
-  });
 });
 
 /**

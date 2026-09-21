@@ -136,6 +136,11 @@ const BRAND_ROOT = '.';
 
 const REST_ONLY = [
   BRAND_ROOT,
+  // La chat nella sidebar: il browser arriva con un cookie di sessione, non con un Bearer, quindi
+  // queste due non passano da `authenticate` e non possono diventare un tool MCP. Restano rotte e
+  // basta, ed è la superficie che `src/lib/server/brand-agent/` serve.
+  'agent',
+  'agent/assets',
   'agent-sessions',
   'agent-sessions/[id]',
   'analytics',
@@ -154,6 +159,9 @@ const REST_ONLY = [
   // brand con un piano attivo.
   'captions/generate',
   'editorial-plan',
+  // `discard_plan` metteva a `rejected` una riga sola: `update_row` fa lo stesso con la RLS di chi
+  // chiama. Il tool esce, la rotta resta perché il CLI la chiama ancora (`cli/lib/api.ts`).
+  'editorial-plan/discard',
   'editorial-plan/propose',
   'editorial-plan/replan-week',
   'editorial-plan/revise',
@@ -163,13 +171,16 @@ const REST_ONLY = [
   'ideas',
   'knowledge',
   'library/scan',
+  // `record_memory_used` segnava l'uso di una memoria per rallentarne il decadimento: una colonna
+  // per riga, che `update_row` tocca. Il tool esce, la rotta resta per il CLI.
+  'memory/used',
   // `generate_media` era la porta vecchia: inoltrava a `generate_image` e `generate_video` e la
   // sua stessa descrizione diceva di preferirli. Il tool esce, la rotta resta per chi l'ha cablata.
   'media/generate',
-  // `create_product` e `update_person` erano un insert e un update di una riga e nient'altro:
-  // `insert_row` e `update_row` li fanno con la RLS di chi chiama. I tool escono, le rotte
-  // restano. Le altre due — `update_product` e `update_competitor` — non compaiono qui perché
-  // le loro cartelle le rivendica ancora la cancellazione che ci abita accanto.
+  // `create_product`, `update_person`, `update_product` e `update_competitor` erano un insert e un
+  // update di una riga e nient'altro: `insert_row` e `update_row` li fanno con la RLS di chi
+  // chiama. I tool escono, le rotte restano — il CLI le chiama ancora, e con `delete_product` e
+  // `delete_competitor` ritirati nessun contratto rivendica più quelle due cartelle.
   'people/[id]',
   'posts/[id]/approve',
   'posts/[id]/media',
@@ -177,12 +188,20 @@ const REST_ONLY = [
   'posts/[id]/revoke',
   'posts/approve-all',
   'products',
+  'products/[id]',
   'publishing',
   'rubrics',
   'rubrics/approve',
   'rubrics/propose',
+  // `remove_blog_term` toglie una categoria, un tag o un autore: una `delete` che `delete_row` fa.
+  // Il conto degli articoli toccati resta comodo per il CLI, quindi la rotta non se ne va.
+  'settings/blog/terms/remove',
   'social/accounts',
   'studio',
+  // `add_competitor` e `delete_competitor` erano un insert e una delete di una riga. I tool
+  // escono, le rotte restano: `cli/lib/api.ts` le chiama entrambe.
+  'studio/competitors',
+  'studio/competitors/[id]',
   'studio/memory',
   'studio/memory/[id]',
   'studio/products',
@@ -193,10 +212,6 @@ const REST_ONLY = [
   // passare di qui.
   'web/article/[id]/optimize',
   'web/generate',
-  'web/audits',
-  'web/audits/citations',
-  'web/audits/findings',
-  'web/fixes',
   'webhook',
   'weekly-plan',
   'weekly-plan/plan',

@@ -266,8 +266,8 @@ describe('maybeSendCreditWarning', () => {
 
   it('claims the warning once per org, not once per brand', async () => {
     const { client, db } = makeDb({ ...migratedOrg('pro'), spendByOrg: { [ORG]: 0 } });
-    vi.doMock('./scheduler', () => ({
-      brandContacts: async () => [{ email: 'ana@example.com', locale: 'en' }]
+    vi.doMock('./brand-contacts', () => ({
+      brandContacts: async () => [{ userId: 'user-1', email: 'ana@example.com', locale: 'en' }]
     }));
     vi.doMock('$lib/server/brand-notify', () => ({ notifyBrandContacts: async () => {} }));
 
