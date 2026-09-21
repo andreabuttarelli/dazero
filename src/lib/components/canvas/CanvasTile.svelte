@@ -22,12 +22,16 @@
   import { Handle, Position, type NodeProps } from '@xyflow/svelte';
 
   type TileData = {
-    render?: import('svelte').Snippet<[{ id: string }]>;
+    render?: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
     id: string;
     connectable?: boolean;
   };
 
-  let { data }: NodeProps = $props();
+  // `selected` lo tiene SvelteFlow e lo passa a ogni nodo: è l'unico che sa davvero cosa è
+  // selezionato, e una copia nostra divergerebbe al primo clic sullo sfondo. Passa allo snippet
+  // perché è il contenuto a decidere cosa farne — un nodo che produce apre le sue proprietà, il
+  // recap no.
+  let { data, selected }: NodeProps = $props();
   const tile = $derived(data as unknown as TileData);
 </script>
 
@@ -36,7 +40,7 @@
 {/if}
 
 {#if tile.render}
-  {@render tile.render({ id: tile.id })}
+  {@render tile.render({ id: tile.id, selected })}
 {/if}
 
 {#if tile.connectable}

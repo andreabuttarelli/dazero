@@ -7,9 +7,16 @@
    * riscrive dieci volte guardando il risultato che le sta sopra — al contrario, ogni modifica
    * spingerebbe il risultato fuori dallo sguardo.
    *
-   * L'OVERLAY NON SI APRE: sta sempre lì. Un menù a scomparsa per modello e formato nasconde
-   * esattamente ciò che si cambia fra un tentativo e l'altro, e su una tela dove i nodi sono
-   * molti costringerebbe ad aprirlo su ognuno per sapere con cosa è stato fatto.
+   * LE PROPRIETÀ COMPAIONO SUL NODO SELEZIONATO, e stanno FUORI dal suo corpo.
+   *
+   * Erano una fascia fissa dentro ogni nodo, e la ragione scritta qui era che nascondere modello e
+   * formato costringe ad aprirli per sapere con cosa una cosa è stata fatta. Vero per un nodo; su
+   * una tela con dieci sono dieci file di menù addosso a quel che si sta guardando, e il contenuto
+   * — l'immagine, la clip — resta schiacciato sotto. Vince il contenuto: i controlli servono a chi
+   * sta lavorando su QUEL nodo, e chi ci sta lavorando l'ha selezionato.
+   *
+   * Fuori dal corpo e non dentro: dentro, aprirli cambierebbe la misura del nodo, e tutto quel che
+   * c'è sotto salterebbe a ogni selezione.
    *
    * I LIMITI SONO QUELLI DEL MODELLO, letti dal catalogo: i formati sono quelli che serve, la
    * durata sta fra il suo minimo e il suo massimo, e il prompt troppo lungo si dice PRIMA invece
@@ -20,6 +27,7 @@
   let {
     node,
     choices = [],
+    selected = false,
     onchange,
     onrun,
     result
@@ -27,6 +35,8 @@
     node: GenNode;
     /** I modelli che questo medium può usare, dal catalogo del brand. */
     choices?: ModelChoice[];
+    /** Le proprietà si aprono solo sul nodo scelto: dieci fasce addosso al contenuto lo coprono. */
+    selected?: boolean;
     onchange?: (patch: Partial<GenNode>) => void;
     onrun?: () => void;
     /** Come si disegna quel che è uscito. Il nodo non sa da dove venga l'URL firmato. */
@@ -51,6 +61,7 @@
 </script>
 
 <div class="gen" class:is-running={state === 'running'}>
+  {#if selected}
   <header class="gen-head">
     <span class="gen-medium">{node.medium}</span>
 
@@ -107,6 +118,7 @@
       </label>
     {/if}
   </header>
+  {/if}
 
   <!-- Il risultato, quando c'è. Il testo lo mostra qui perché è esso stesso il prodotto; immagine
        e video li disegna chi usa il nodo, che sa da dove viene l'URL firmato. -->
@@ -142,6 +154,8 @@
 
 <style>
   .gen {
+    /* Il riferimento per l'overlay, che gli sta sopra e fuori. */
+    position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -149,20 +163,32 @@
     border-radius: 14px;
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
-    overflow: hidden;
   }
+
   .gen.is-running {
     border-color: var(--accent, #c485fe);
   }
 
+  /* Galleggia SOPRA il nodo, ancorata al suo bordo alto: dentro il corpo cambierebbe la misura
+     del nodo a ogni selezione, e quel che sta sotto salterebbe. `max-content` perché i controlli
+     sono pochi e diversi per medium — una barra larga quanto il nodo sarebbe mezza vuota su un
+     nodo di testo. */
   .gen-head {
+    position: absolute;
+    z-index: 3;
+    bottom: calc(100% + 8px);
+    left: 0;
+    width: max-content;
+    max-width: 148%;
     display: flex;
     align-items: center;
     gap: 6px;
     flex-wrap: wrap;
-    padding: 7px 9px;
-    border-bottom: 1px solid var(--line-2, #d2d2d7);
+    padding: 6px 8px;
+    border: 1px solid var(--line-2, #d2d2d7);
+    border-radius: 11px;
     background: var(--paper, #fff);
+    box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
   }
   .gen-medium {
     font-size: 10.5px;
@@ -192,6 +218,8 @@
     color: var(--ink-soft, #6e6e73);
   }
 
+  /* Il taglio vale per il CONTENUTO, non per il nodo: `overflow: hidden` sul nodo intero
+     mangerebbe la fascia delle proprietà, che sporge apposta. */
   .gen-body {
     flex: 1;
     min-height: 0;
@@ -200,6 +228,7 @@
     justify-content: center;
     padding: 10px;
     overflow: hidden;
+    border-radius: 13px 13px 0 0;
   }
   .gen-hint {
     margin: 0;
@@ -208,6 +237,7 @@
   }
 
   .gen-foot {
+    border-radius: 0 0 13px 13px;
     padding: 8px 9px 9px;
     border-top: 1px solid var(--line-2, #d2d2d7);
     background: var(--paper, #fff);
