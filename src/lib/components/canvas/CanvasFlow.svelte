@@ -66,6 +66,7 @@
     edges: incomingEdges = [],
     onMove,
     onConnect,
+    onDelete,
     onEdgeDelete,
     onEdgeRetype,
     onCreate,
@@ -82,6 +83,12 @@
      * cose che non si derivano — cioè un dato falso scritto senza che nessuno l'abbia chiesto.
      */
     onConnect?: (sourceItemId: string, targetItemId: string, kind: CanvasEdgeKind) => void;
+    /**
+     * Le tile da togliere. Chiesto fuori e non fatto qui: SvelteFlow le toglierebbe dal proprio
+     * stato e basta, e alla prima riconciliazione `syncNodes` le rimetterebbe dentro perché
+     * `tiles` le contiene ancora — il difetto era esattamente il nodo che torna in scena.
+     */
+    onDelete?: (ids: string[]) => void;
     /** Una linea da togliere. Senza, il primo errore resta sulla tela per sempre. */
     onEdgeDelete?: (edgeId: string) => void;
     /** Il verso di una linea che c'è già: si corregge, non si rifà. */
@@ -222,6 +229,25 @@
   }
 
   /**
+   * ⌫ SULLA SELEZIONE, e i due tipi vanno a due porte diverse.
+   *
+   * Qui non si tocca `nodes`: togliere il nodo dallo stato della libreria e basta è esattamente il
+   * difetto che si vedeva — la tile spariva per un attimo e tornava, perché la riga c'era ancora e
+   * `syncNodes` la riportava dentro alla riconciliazione dopo. Sparisce quando `tiles` non la
+   * contiene più, il che vuol dire quando chi ha la riga l'ha tolta.
+   *
+   * Il pannello di una linea si chiude: potrebbe essere aperto proprio su quella che sta cadendo,
+   * e resterebbe a offrire versi per un arco che non c'è.
+   */
+  function dropSelection(chosen: { nodes: string[]; edges: string[] }) {
+    picked = null;
+    for (const id of chosen.edges) {
+      onEdgeDelete?.(id);
+    }
+    if (chosen.nodes.length) onDelete?.(chosen.nodes);
+  }
+
+  /**
    * IL MENÙ DEL DOPPIO CLIC.
    *
    * Si apre dove si è cliccato e porta tutto ciò che si può aggiungere. Tiene DUE punti: quello
@@ -305,6 +331,13 @@
     sotto di lui. Un gesto, un significato.
 
     È il caso in cui la libreria guadagna: il comportamento si chiede, non si scrive.
+
+    E IL QUINTO SPEGNE LA CANCELLAZIONE DELLA LIBRERIA, che è il difetto pagato: `deleteKey` vale
+    'Backspace' di default, e il suo `KeyHandler` chiama `deleteElements` da sé. Il nodo spariva
+    dal solo stato di SvelteFlow — la riga in `brand_canvas_items` restava, `tiles` continuava a
+    contenerla, e alla riconciliazione dopo il nodo RIENTRAVA. Si vedeva come «⌫ non funziona»,
+    ed era invece una cancellazione a metà, locale e muta. ⌫ resta uno: lo riconosce
+    `shortcuts.ts` e lo esegue `CanvasKeys`, che passa da chi la riga ce l'ha davvero.
   -->
   <SvelteFlow
     bind:nodes
@@ -319,10 +352,11 @@
     zoomOnPinch
     zoomOnScroll={false}
     zoomOnDoubleClick={false}
+    deleteKey={null}
     fitView
   >
     <CanvasPointer onready={(fn) => (toFlow = fn)} />
-    <CanvasKeys onadd={addAtCentre} onmove={onMove} />
+    <CanvasKeys onadd={addAtCentre} onmove={onMove} ondelete={dropSelection} />
     <Background gap={24} />
     <Controls />
     <MiniMap />

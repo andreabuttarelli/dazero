@@ -28,17 +28,26 @@
     /** Aggiungi una tile del tipo chiesto, dove chi monta la tela decide. */
     onadd?: (what: Addable) => void;
     /**
-     * Togli queste tile. Prop e non azione locale: la riga nel database la conosce chi monta la
-     * tela, e cancellare solo il nodo disegnato lo farebbe tornare alla prossima apertura.
+     * Togli questa selezione. Prop e non azione locale: la riga nel database la conosce chi monta
+     * la tela, e cancellare solo il nodo disegnato lo farebbe tornare alla prossima apertura.
+     *
+     * TILE E LINEE INSIEME, in una chiamata sola: ⌫ è un gesto solo, e una selezione può tenere
+     * entrambe. Due prop separate costringerebbero chi ascolta a ricomporre quel che il gesto
+     * aveva già unito — e a sbagliare l'ordine, che qui conta: le linee cadono con le tile.
      */
-    ondelete?: (ids: string[]) => void;
+    ondelete?: (picked: { nodes: string[]; edges: string[] }) => void;
     /** Dove una tile è finita, con lo stesso contratto del trascinamento. */
     onmove?: (id: string, x: number, y: number) => void;
   } = $props();
 
-  const { fitView, zoomIn, zoomOut, getNodes, updateNode } = useSvelteFlow();
+  const { fitView, zoomIn, zoomOut, getNodes, getEdges, updateNode } = useSvelteFlow();
 
   const selected = (): Node[] => getNodes().filter((n) => n.selected);
+
+  const selectedEdges = (): string[] =>
+    getEdges()
+      .filter((e) => e.selected)
+      .map((e) => e.id);
 
   function setSelection(on: boolean) {
     for (const n of getNodes()) {
@@ -63,8 +72,9 @@
     add: (c) => c.id === 'add' && onadd?.(c.what),
     nudge: (c) => c.id === 'nudge' && nudge(c.dx, c.dy),
     delete: () => {
-      const ids = selected().map((n) => n.id);
-      if (ids.length) ondelete?.(ids);
+      const nodes = selected().map((n) => n.id);
+      const edges = selectedEdges();
+      if (nodes.length || edges.length) ondelete?.({ nodes, edges });
     },
     deselect: () => setSelection(false),
     'select-all': () => setSelection(true),
