@@ -358,8 +358,11 @@
     <CanvasPointer onready={(fn) => (toFlow = fn)} />
     <CanvasKeys onadd={addAtCentre} onmove={onMove} ondelete={dropSelection} />
     <Background gap={24} />
-    <Controls />
-    <MiniMap />
+    <Controls position="bottom-right" orientation="horizontal" />
+    <!-- Accanto ai controlli e piccola: la mappa serve a sapere DOVE si è, non a leggere quel che
+         c'è dentro — a 200×150 copriva un angolo intero della tela per un'informazione che si
+         coglie in un colpo d'occhio. -->
+    <MiniMap position="bottom-right" width={132} height={92} pannable zoomable />
   </SvelteFlow>
 
   {#if refusal}
@@ -524,6 +527,18 @@
     border: 1px solid var(--line-2, #d2d2d7);
     border-radius: 10px;
     overflow: hidden;
+  }
+
+  /* Stanno nello STESSO angolo, quindi vanno impilati a mano: la libreria li ancora entrambi in
+     basso a destra e si sovrapporrebbero. La mappa sopra, i controlli sotto — l'ordine in cui si
+     guardano, e i controlli restano dove la mano li cerca. Il margine tiene conto della barra per
+     aggiungere, che sta in mezzo in basso. */
+  .wrap :global(.svelte-flow__minimap) {
+    /* 12 di bordo + 28 di controlli (bottoni da 26px più il bordo) + 6 di respiro fra i due. */
+    margin: 0 12px 46px 0;
+  }
+  .wrap :global(.svelte-flow__controls) {
+    margin: 0 12px 12px 0;
   }
 
   /* Il motivo del rifiuto, sotto lo sguardo di chi sta tirando la linea e non in un angolo:
