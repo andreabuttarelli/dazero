@@ -26,6 +26,7 @@
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import { ADDABLE_LABEL } from '$lib/canvas/addable';
   import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
+  import { embedBox } from '$lib/canvas/iframe-scale';
   import {
     EMBED_REFUSAL_HINT,
     IFRAME_REFERRER_POLICY,
@@ -51,6 +52,24 @@
    * tutti indirizzi che non esistono, chiesti alla rete uno per uno.
    */
   let draft = $state(node.url);
+
+  /**
+   * Stessa ragione per il codice, e senza questa bozza l'anteprima ripartiva a OGNI CARATTERE:
+   * `srcdoc` legato al valore che si sta digitando ricarica l'iframe a ogni tasto, e incollare a
+   * mano un embed di YouTube sono un centinaio di ricariche. Qui non c'è un «valido» da
+   * riconoscere come per l'indirizzo — un HTML a metà è comunque disegnabile — quindi il momento
+   * lo sceglie chi scrive: si esce dal campo, o si preme il bottone.
+   */
+  let htmlDraft = $state(node.html);
+
+  /** L'HTML che l'anteprima mostra davvero: l'ultimo confermato, non quel che è nel campo. */
+  let shownHtml = $state(node.html);
+
+  function commitHtml() {
+    if (htmlDraft === shownHtml) return;
+    shownHtml = htmlDraft;
+    onchange?.({ html: htmlDraft, url: '' });
+  }
 
   // L'indirizzo che l'iframe carica davvero: l'ultimo VALIDO, non quel che c'è nel campo.
   const embedded = $derived.by(() => {
@@ -78,6 +97,59 @@
     // il rifiuto arriverebbe molto dopo il gesto che lo ha causato.
     onchange?.(source === 'url' ? { source, html: '' } : { source, url: '' });
   }
+
+  /**
+   * LA MISURA VERA DEL RIQUADRO, che è quella che decide di quanto rimpicciolire la pagina.
+   *
+   * Un `ResizeObserver` e non la misura che la tile dichiara: il nodo lo si ridimensiona
+   * trascinandone l'angolo, e un numero letto una volta lascerebbe la pagina alla scala di
+   * quando è nata — cioè il difetto di prima con un passaggio in più.
+   *
+   * Non si legge lo zoom della tela: SvelteFlow scala già tutto il viewport, quindi il nostro
+   * fattore si compone con il suo e la pagina si rimpicciolisce insieme al nodo da sé. Il
+   * ragionamento per esteso sta in `iframe-scale.ts`.
+   *
+   * `$effect` e non `onMount`: il riquadro esiste solo nel ramo che disegna una pagina, quindi
+   * compare e sparisce passando fra indirizzo e codice — e l'observer va riagganciato ogni volta.
+   * Il ritorno lo stacca, che è l'unica cosa che impedisce a un nodo cancellato di tenersi in
+   * vita un ascoltatore sul proprio riquadro morto.
+   */
+  let body = $state<HTMLElement | null>(null);
+  let measured = $state({ width: 0, height: 0 });
+
+  $effect(() => {
+    const el = body;
+    if (!el) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      const { inlineSize, blockSize } = entry.contentBoxSize[0];
+
+      // SI SCRIVE SOLO SE È DAVVERO CAMBIATA, e senza questo confronto l'anteprima ripartiva da
+      // capo all'infinito: `{width, height}` è un oggetto NUOVO a ogni battuta anche coi due
+      // numeri identici, quindi `frameStyle` si ricalcolava, lo `style` dell'iframe veniva
+      // riscritto, il browser rifaceva il layout e l'observer riscattava. Il ciclo si chiude su
+      // se stesso perché questo observer guarda un riquadro la cui geometria dipende da ciò che
+      // lui stesso scrive.
+      if (measured.width === inlineSize && measured.height === blockSize) return;
+
+      measured = { width: inlineSize, height: blockSize };
+    });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
+
+  const box = $derived(embedBox(measured));
+
+  /**
+   * `transform-origin: top left` è la metà che non si vede e senza cui niente funziona: di
+   * default `scale` riduce attorno al CENTRO, e un elemento largo 1280 dentro un riquadro da 340
+   * finirebbe ridotto ma spostato di metà della differenza — la pagina uscirebbe dal riquadro a
+   * sinistra e in alto, che è esattamente il sintomo che si stava togliendo.
+   */
+  const frameStyle = $derived(
+    `width:${box.width}px;height:${box.height}px;transform:scale(${box.scale});transform-origin:top left`
+  );
 </script>
 
 <div class="frame">
@@ -134,7 +206,12 @@
     {/if}
   </header>
 
-  <div class="frame-body">
+  <!-- `loading` NON SI DICHIARA su nessuno dei due, ed è la cura di un difetto pagato: era
+       `lazy`, e il caricamento differito è guidato dall'intersezione. SvelteFlow tiene ogni nodo
+       dentro un viewport che trasforma e a cui riscrive `visibility` a ogni misura nuova, quindi
+       il differimento si riarmava a ogni pan e a ogni zoom — la pagina ripartiva da capo per
+       sempre. Un'anteprima su una tela non ha niente da differire: il nodo è lì per guardarlo. -->
+  <div class="frame-body" bind:this={body}>
     {#if node.source === 'html'}
       <!--
         `srcdoc` È IL CASO PERICOLOSO, ed è quello che la sandbox rende innocuo: senza
@@ -143,10 +220,10 @@
       -->
       <iframe
         title="Contenuto incorporato"
-        srcdoc={node.html}
+        srcdoc={shownHtml}
         sandbox={IFRAME_SANDBOX}
         referrerpolicy={IFRAME_REFERRER_POLICY}
-        loading="lazy"
+        style={frameStyle}
       ></iframe>
     {:else if embedded}
       <iframe
@@ -154,7 +231,7 @@
         src={embedded}
         sandbox={IFRAME_SANDBOX}
         referrerpolicy={IFRAME_REFERRER_POLICY}
-        loading="lazy"
+        style={frameStyle}
       ></iframe>
     {:else}
       <p class="frame-hint">{refusal ?? 'Incolla un indirizzo'}</p>
@@ -169,9 +246,14 @@
         spellcheck="false"
         placeholder="&lt;iframe src=…&gt; oppure dell'HTML"
         aria-label="Codice da mostrare"
-        value={node.html}
-        oninput={(e) => onchange?.({ html: e.currentTarget.value })}
+        bind:value={htmlDraft}
+        onblur={commitHtml}
       ></textarea>
+      <div class="frame-code-actions">
+        <button type="button" onclick={commitHtml} disabled={htmlDraft === shownHtml}>
+          Mostra
+        </button>
+      </div>
     </footer>
   {:else if embedded}
     <p class="frame-note">{EMBED_REFUSAL_HINT}</p>
@@ -297,25 +379,60 @@
     pointer-events: none;
   }
 
+  /* `overflow: hidden` perché l'iframe dentro è largo quanto un desktop: prima della `transform`
+     — e per un fotogramma, prima che l'observer riporti la misura — sborderebbe dal nodo e
+     coprirebbe la tela accanto.
+
+     Non centra più niente con flex: la pagina è ancorata all'angolo alto a sinistra dal suo
+     `transform-origin`, e un `align-items: center` sposterebbe il riquadro NON scalato di metà
+     della differenza fra le due altezze, cioè fuori dal nodo. */
   .frame-body {
     flex: 1;
     min-height: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: relative;
+    overflow: hidden;
     background: var(--paper, #fff);
   }
+  /* Misure e fattore arrivano inline da `frameStyle`: dipendono dalla misura vera del riquadro,
+     che solo il `ResizeObserver` conosce. Qui resta quel che non cambia mai. */
   .frame-body iframe {
-    width: 100%;
-    height: 100%;
+    display: block;
     border: none;
     /* La pagina dentro è bianca quasi sempre: su tema scuro un fondo trasparente la farebbe
        sembrare rotta a metà mentre carica. */
     background: #fff;
   }
-  .frame-hint {
-    margin: 0;
+  /* Si centra da sé perché il riquadro non lo fa più: il `flex` che lo teneva in mezzo è stato
+     tolto per non spostare la pagina scalata, e senza queste righe il messaggio resterebbe
+     appiccicato all'angolo alto a sinistra di un riquadro vuoto e alto. */
+  .frame-code-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
+  }
+  .frame-code-actions button {
+    padding: 4px 12px;
+    font: inherit;
     font-size: 12px;
+    border: none;
+    border-radius: 8px;
+    background: var(--ink, #1d1d1f);
+    color: var(--paper, #fff);
+    cursor: pointer;
+  }
+  .frame-code-actions button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .frame-hint {
+    display: grid;
+    place-content: center;
+    height: 100%;
+    margin: 0;
+    padding: 0 16px;
+    font-size: 12px;
+    text-align: center;
     color: var(--ink-soft, #6e6e73);
   }
 

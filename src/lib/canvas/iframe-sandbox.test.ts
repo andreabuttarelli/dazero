@@ -57,10 +57,11 @@ describe('gli iframe della tela', () => {
     expect(IFRAME_SANDBOX).not.toMatch(/allow-same-origin/);
   });
 
-  it('ognuno dichiara da chi arriva e si carica solo quando serve', () => {
+  it('ognuno dichiara da chi arriva', () => {
+    // `loading` non si chiede più: era `lazy` e faceva ripartire la pagina a ogni pan della tela.
+    // Il perché sta in `iframe-reload.test.ts`, che è il test che lo tiene fuori.
     for (const tag of iframeTags) {
       expect(tag).toMatch(/referrerpolicy=\{IFRAME_REFERRER_POLICY\}/);
-      expect(tag).toMatch(/loading="lazy"/);
     }
   });
 
