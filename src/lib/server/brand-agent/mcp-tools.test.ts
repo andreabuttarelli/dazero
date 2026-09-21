@@ -64,3 +64,30 @@ describe('toAiTools — i tool del brand vengono dal server, non da una lista qu
     expect(await run(tools.query, {})).toBe('a\nb');
   });
 });
+
+describe('il tetto non decide per caso quali tool spariscono', () => {
+  const many = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({ name: `tool_${i}`, description: 'x' }));
+
+  it('tiene i tre che leggono e scrivono, anche se il server li elenca per ultimi', () => {
+    // Il taglio era posizionale: con 77 tool sul server e un tetto di 40, quali sopravvivono lo
+    // decideva l'ordine di `tools/list`. `query`, `insert_row` e `update_row` cadevano fuori —
+    // e con loro OGNI tabella che non ha un tool suo, cioè la tela intera. Un agente che non
+    // sa leggere il database non può correggere niente di ciò che non ha un verbo dedicato.
+    const listed = [...many(60), { name: 'query' }, { name: 'insert_row' }, { name: 'update_row' }];
+
+    const names = Object.keys(toAiTools(listed as never, async () => null));
+
+    expect(names).toContain('query');
+    expect(names).toContain('insert_row');
+    expect(names).toContain('update_row');
+  });
+
+  it('resta comunque entro il tetto: il conto del prompt si paga a ogni turno', () => {
+    const listed = [...many(60), { name: 'query' }, { name: 'insert_row' }];
+
+    expect(Object.keys(toAiTools(listed as never, async () => null)).length).toBeLessThanOrEqual(
+      MCP_TOOL_LIMIT
+    );
+  });
+});

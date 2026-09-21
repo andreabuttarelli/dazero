@@ -15,6 +15,20 @@ export type McpCall = (name: string, args: Record<string, unknown>) => Promise<u
  */
 export const MCP_TOOL_LIMIT = 40;
 
+/**
+ * I TRE CHE NON POSSONO CADERE, e cadevano.
+ *
+ * Il taglio era posizionale: il server ne elenca ~77, il tetto ne tiene 40, e quali sopravvivono
+ * lo decideva l'ordine di `tools/list`. `query`, `insert_row` e `update_row` finivano oltre la
+ * soglia — con l'effetto che l'agente diceva, in buona fede, di non avere modo di leggere il
+ * database. Per la tela era fatale: le sue tabelle non hanno un tool dedicato apposta, perché
+ * questi tre bastano.
+ *
+ * Sono i soli privilegiati perché sono i soli GENERICI: ogni altro tool copre una cosa sola, e
+ * perderlo toglie quella; perdere questi toglie tutto ciò che non ha un verbo suo.
+ */
+const ALWAYS_KEEP = ['query', 'insert_row', 'update_row'] as const;
+
 const OPEN_OBJECT = { type: 'object', properties: {}, additionalProperties: true } as const;
 
 function textOf(result: unknown): string {
@@ -41,7 +55,15 @@ function textOf(result: unknown): string {
 export function toAiTools(listed: McpListedTool[], call: McpCall): Record<string, Tool> {
 	const tools: Record<string, Tool> = {};
 
-	for (const listedTool of listed.slice(0, MCP_TOOL_LIMIT)) {
+	// I generici davanti, poi gli altri nell'ordine del server: il tetto resta quello: quel che
+	// cambia è CHI perde il posto, che non può più essere deciso dal caso.
+	const keep = new Set<string>(ALWAYS_KEEP);
+	const ordered = [
+		...listed.filter((t) => keep.has(t.name)),
+		...listed.filter((t) => !keep.has(t.name))
+	];
+
+	for (const listedTool of ordered.slice(0, MCP_TOOL_LIMIT)) {
 		tools[listedTool.name] = tool({
 			description: listedTool.description ?? listedTool.name,
 			inputSchema: jsonSchema((listedTool.inputSchema ?? OPEN_OBJECT) as never),
