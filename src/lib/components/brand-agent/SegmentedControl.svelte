@@ -49,7 +49,7 @@
     gap: 1px;
     padding: 1.5px;
     border-radius: 7px;
-    background: var(--surface, #f5f5f7);
+    background: var(--paper-2, #f9f9f9);
   }
   button {
     appearance: none;

@@ -72,7 +72,7 @@
     aspect-ratio: 1;
     border-radius: 8px;
     overflow: hidden;
-    background: var(--surface, #f5f5f7);
+    background: var(--paper-2, #f9f9f9);
   }
   img,
   video {
