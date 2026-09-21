@@ -20,8 +20,12 @@ export function isCanvasEdgeKind(x: string): x is CanvasEdgeKind {
   return (CANVAS_EDGE_KINDS as readonly string[]).includes(x);
 }
 
-/** Come si legge un verso sulla linea, quando nessuno ha scritto una didascalia. */
-const KIND_LABEL: Record<CanvasEdgeKind, string> = {
+/**
+ * Come si legge un verso, sulla linea e nel menù che lo cambia. Esportato perché le superfici sono
+ * due: un secondo elenco scritto a mano nel componente direbbe «nasce da» in un posto e «derivato
+ * da» nell'altro, sulla stessa linea.
+ */
+export const EDGE_KIND_LABEL: Record<CanvasEdgeKind, string> = {
   derives_from: 'nasce da',
   responds_to: 'risponde a',
   groups_with: 'insieme a'
@@ -41,6 +45,12 @@ export type FlowEdge = {
   source: string;
   target: string;
   label: string;
+  /**
+   * Il verso, addosso alla linea disegnata. Non si ricava dall'etichetta: quella può essere la
+   * didascalia di una persona, e allora il verso non si leggerebbe più da nessuna parte — il menù
+   * che lo cambia lo sbaglierebbe appena qualcuno scrive «insieme a» su una derivazione.
+   */
+  kind: CanvasEdgeKind;
   /** Assente su `groups_with`: stare insieme non ha un verso, e una freccia ne inventerebbe uno. */
   markerEnd?: { type: 'arrowclosed' };
 };
@@ -50,7 +60,8 @@ export function toFlowEdges(rows: CanvasEdgeRow[]): FlowEdge[] {
     id: row.id,
     source: row.source_item_id,
     target: row.target_item_id,
-    label: row.label ?? KIND_LABEL[row.kind],
+    label: row.label ?? EDGE_KIND_LABEL[row.kind],
+    kind: row.kind,
     ...(row.kind === 'groups_with' ? {} : { markerEnd: { type: 'arrowclosed' as const } })
   }));
 }

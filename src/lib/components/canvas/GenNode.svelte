@@ -60,7 +60,7 @@
   }
 </script>
 
-<div class="gen" class:is-running={state === 'running'}>
+<div class="gen" class:is-running={state === 'running'} class:is-chosen={selected}>
   {#if selected}
   <header class="gen-head">
     <span class="gen-medium">{node.medium}</span>
@@ -153,6 +153,17 @@
 </div>
 
 <style>
+  /*
+   * UN NODO GALLEGGIA, non è appoggiato.
+   *
+   * Su una tela è tutto su un piano solo: un bordo da un pixel è l'unica cosa che separa il nodo
+   * dallo sfondo, e a zoom ridotto sparisce — restano rettangoli che si confondono col pattern.
+   * L'ombra dà la profondità che il bordo da solo non ha, e cresce con la selezione perché il
+   * nodo su cui si sta lavorando deve stare AVANTI agli altri, non solo essere contornato.
+   *
+   * `--paper` e non `--paper-2`: il nodo è il foglio, e la tela è ciò che gli sta sotto. Invertiti
+   * — come erano — il nodo era più scuro dello sfondo, che è il contrario di quel che galleggia.
+   */
   .gen {
     /* Il riferimento per l'overlay, che gli sta sopra e fuori. */
     position: relative;
@@ -160,13 +171,36 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    border-radius: 14px;
-    background: var(--paper-2, #f9f9f9);
-    border: 1px solid var(--line-2, #d2d2d7);
+    border-radius: 16px;
+    background: var(--paper, #fff);
+    border: 1px solid var(--line, #e5e5e5);
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.05),
+      0 8px 24px -12px rgb(0 0 0 / 0.2);
+    transition:
+      box-shadow 140ms ease,
+      border-color 140ms ease;
+  }
+  .gen:hover {
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.06),
+      0 12px 32px -14px rgb(0 0 0 / 0.26);
+  }
+  .gen.is-chosen {
+    border-color: var(--accent, #c485fe);
+    box-shadow:
+      0 0 0 1px var(--accent, #c485fe),
+      0 16px 40px -16px rgb(0 0 0 / 0.3);
   }
 
   .gen.is-running {
     border-color: var(--accent, #c485fe);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gen {
+      transition: none;
+    }
   }
 
   /* Galleggia SOPRA il nodo, ancorata al suo bordo alto: dentro il corpo cambierebbe la misura
@@ -218,28 +252,49 @@
     color: var(--ink-soft, #6e6e73);
   }
 
-  /* Il taglio vale per il CONTENUTO, non per il nodo: `overflow: hidden` sul nodo intero
-     mangerebbe la fascia delle proprietà, che sporge apposta. */
+  /*
+   * IL RISULTATO ARRIVA AI BORDI. Il nodo esiste per guardare quel che è uscito: dentro un
+   * `padding` diventa una miniatura con una cornice attorno, e su una clip verticale la cornice
+   * è più larga del contenuto. Il taglio col raggio del guscio è quel che dà il bordo pulito
+   * senza che l'immagine debba saperlo.
+   *
+   * Il taglio vale per il CONTENUTO, non per il nodo: `overflow: hidden` sul nodo intero
+   * mangerebbe la fascia delle proprietà, che sporge apposta.
+   */
   .gen-body {
     flex: 1;
     min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px;
     overflow: hidden;
-    border-radius: 13px 13px 0 0;
+    border-radius: 15px 15px 0 0;
+    background: var(--paper-2, #f9f9f9);
   }
+
+  /* Il contenuto che il chiamante disegna riempie la fascia invece di galleggiarci dentro:
+     `contain` e non `cover` perché un'immagine tagliata a metà non si può giudicare, ed è il
+     giudizio la ragione per cui sta lì. */
+  .gen-body :global(img),
+  .gen-body :global(video) {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
   .gen-hint {
     margin: 0;
+    padding: 10px;
     font-size: 12px;
+    text-align: center;
     color: var(--ink-soft, #6e6e73);
   }
 
   .gen-foot {
-    border-radius: 0 0 13px 13px;
+    border-radius: 0 0 15px 15px;
     padding: 8px 9px 9px;
-    border-top: 1px solid var(--line-2, #d2d2d7);
+    border-top: 1px solid var(--line, #e5e5e5);
     background: var(--paper, #fff);
   }
   .gen-prompt {
@@ -287,13 +342,13 @@
 
   .gen-dots {
     display: inline-flex;
-    gap: 4px;
+    gap: 5px;
   }
   .gen-dots i {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--ink-soft, #6e6e73);
+    background: var(--accent, #c485fe);
     animation: gen-blink 1.2s infinite;
   }
   .gen-dots i:nth-child(2) {

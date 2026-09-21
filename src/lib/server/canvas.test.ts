@@ -188,9 +188,9 @@ describe('saveCanvasPositions — una posizione che resta dove è stata lasciata
     const out = await saveCanvasPositions(fakeWriter(upsert) as never, ok);
 
     expect(out.ok).toBe(true);
-    expect(upsert.mock.calls[0][0]).toMatchObject({
+    expect(upsert).toHaveBeenCalledWith(expect.objectContaining({
       canvas_id: 'c1', brand_id: 'b1', ref_kind: 'media', ref_id: 'm1', x: 10, y: 20, w: 300, h: 300
-    });
+    }), expect.anything());
   });
 
   it('un errore del database torna come rifiuto, non come successo', async () => {

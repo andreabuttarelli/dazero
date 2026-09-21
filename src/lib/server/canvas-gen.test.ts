@@ -184,7 +184,7 @@ describe('l id di un nodo appena creato', () => {
 
     await saveGenNode(client, { ...gen, itemId: null });
 
-    expect(insert.mock.calls[0][0]).not.toHaveProperty('id');
+    expect(insert).toHaveBeenCalledWith(expect.not.objectContaining({ id: expect.anything() }));
   });
 });
 
