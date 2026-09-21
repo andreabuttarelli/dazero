@@ -48,9 +48,20 @@ const find = (all: Tool[], name: string): Tool => {
  * dentro la risposta. È scritto nella skill, dove un agente lo legge prima di provarci.
  */
 describe('le scritture dello studio esposte dal registry', () => {
-  const RETIRED = ['create_product', 'update_product', 'update_person', 'update_competitor'];
+  // Gli altri quattro sono caduti per la stessa ragione, un giro dopo: aggiungere un competitor
+  // è un `insert_row` su `competitors`, toglierlo — o togliere un prodotto — è un `delete_row`.
+  // `delete_person` e `delete_document` restano perché portano via anche i file dallo Storage.
+  const RETIRED = [
+    'create_product',
+    'update_product',
+    'update_person',
+    'update_competitor',
+    'add_competitor',
+    'delete_competitor',
+    'delete_product',
+  ];
 
-  test('i quattro CRUD di una riga non sono più tool', async () => {
+  test('i CRUD di una riga non sono più tool', async () => {
     const names = (await tools()).map((t) => t.name);
 
     for (const gone of RETIRED) {
@@ -73,7 +84,7 @@ describe('le scritture dello studio esposte dal registry', () => {
   test('creare, togliere e la bio restano dove stavano', async () => {
     const names = (await tools()).map((t) => t.name);
 
-    for (const name of ['add_person', 'add_competitor', 'delete_product', 'delete_person', 'delete_competitor', 'set_bio']) {
+    for (const name of ['add_person', 'delete_person', 'delete_document', 'set_bio']) {
       expect(names, name).toContain(name);
     }
   });
@@ -81,8 +92,11 @@ describe('le scritture dello studio esposte dal registry', () => {
   test('solo le cancellazioni si annunciano distruttive', async () => {
     const all = await tools();
 
-    expect(find(all, 'delete_product').annotations?.destructiveHint).toBe(true);
-    for (const name of ['add_person', 'add_competitor', 'set_bio']) {
+    expect(find(all, 'delete_person').annotations?.destructiveHint).toBe(true);
+    // `delete_row` cancella righe da ogni tabella dell'allowlist: se questa smettesse di
+    // annunciarsi distruttiva, il tool più pericoloso dei quattro sarebbe il solo a tacerlo.
+    expect(find(all, 'delete_row').annotations?.destructiveHint).toBe(true);
+    for (const name of ['add_person', 'set_bio']) {
       expect(find(all, name).annotations?.destructiveHint, name).toBe(false);
     }
   });

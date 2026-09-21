@@ -65,7 +65,7 @@ describe('i tool sono quello che il registry dichiara', () => {
  * Ogni lettura di tabella esce; `query` la serve. Il conteggio si misura QUI, sul transport, e non
  * sui sorgenti: contando le `registerTool` si sbaglia, ed è già successo tre volte.
  *
- * Il criterio è uno solo, e sta scritto accanto ai nove che restano: una lettura resta quando la
+ * Il criterio è uno solo, e sta scritto accanto agli otto che restano: una lettura resta quando la
  * sua risposta non si ricostruisce con `query`. Un `select` con filtri e ordinamento — anche su
  * due tabelle da unire per id — non è mai quel caso.
  */
@@ -77,7 +77,6 @@ const RESTANO: ReadonlyArray<{ tool: string; perche: string }> = [
   { tool: 'get_writing_skills', perche: 'due sorgenti su tre sono markdown del repo e costanti di codice' },
   { tool: 'get_creation_kit', perche: 'seleziona, pesa e taglia a budget; i template stanno in un file' },
   { tool: 'get_gsc', perche: 'somma 28 giorni di righe senza tetto e legge un segreto via rpc' },
-  { tool: 'get_ads', perche: 'diagnosi di affaticamento su 500 righe di metriche per campagna' },
   { tool: 'get_media_models', perche: 'il catalogo dei modelli ammessi sta nel codice, in nessuna tabella' }
 ];
 
@@ -86,6 +85,10 @@ const RESTANO: ReadonlyArray<{ tool: string; perche: string }> = [
  * porta la `query` equivalente già scritta.
  */
 const RITIRATE = [
+  // `get_ads` è l'ultimo entrato, e per un motivo diverso dagli altri: non era un select
+  // impossibile da ricostruire, era l'unione di `ad_campaigns` e `ad_metrics` con un verdetto
+  // sopra. Il verdetto lo dà `ads_action`, che resta; le righe le dà `query` con `embed`.
+  'get_ads',
   'check_media_job',
   'get_analytics',
   'get_article',
@@ -122,7 +125,7 @@ const RITIRATE = [
 ] as const;
 
 describe('le letture le serve `query`', () => {
-  test('ne restano nove, e sono quelle dichiarate', async () => {
+  test('ne restano otto, e sono quelle dichiarate', async () => {
     const reads = (await tools())
       .filter((t) => t.annotations?.readOnlyHint === true)
       .map((t) => t.name)
@@ -153,7 +156,20 @@ describe('le letture le serve `query`', () => {
     expect(MCP_INSTRUCTIONS).toMatch(/offset/i);
   });
 
-  test('nessuna delle nove è un `select` travestito: ognuna porta il suo motivo', () => {
+  /**
+   * Le istruzioni arrivano al client PRIMA di `tools/list` e sopravvivono a ogni turno: un nome
+   * ritirato qui dentro è un tool che il modello crede di avere per tutta la sessione, e che
+   * scopre inesistente solo chiamandolo. `get_ads` ci è rimasto un commit intero.
+   */
+  test('non nominano una lettura che non esiste più', () => {
+    for (const name of RITIRATE) expect(MCP_INSTRUCTIONS, name).not.toContain(name);
+  });
+
+  test('nominano tutte quelle che restano, o il modello non sa che ci sono', () => {
+    for (const { tool } of RESTANO) expect(MCP_INSTRUCTIONS, tool).toContain(tool);
+  });
+
+  test('nessuna delle otto è un `select` travestito: ognuna porta il suo motivo', () => {
     for (const { tool, perche } of RESTANO) expect(perche.length, tool).toBeGreaterThan(20);
   });
 });

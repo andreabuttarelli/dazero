@@ -316,7 +316,7 @@ export const RESEARCH_COMPETITORS = {
   title: 'Research competitors',
   description:
     'Find out who this brand competes with and file what comes back, without being told the ' +
-    'names. It spends credits. add_competitor adds one you already know, for free.',
+    'names. It spends credits. One you already know is a free insert_row on `competitors`.',
   method: 'POST',
   pathUnderBrand: '/studio/competitors/research',
   input: z.object({}).strict(),

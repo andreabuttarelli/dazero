@@ -70,7 +70,8 @@ export const ADS_ACTION = {
     'makes a paused copy as a new proposal (approving that copy is what launches it), and ' +
     '`delete` removes a campaign for good. Pass `campaignId`, and `adId` in `extra` when it is ' +
     'one creative (`next` is active or paused for `toggle`). ' +
-    'Read get_ads first: `ads_not_on_plan` means this brand\'s plan has no advertising at all.',
+    'Read `ad_campaigns` and `ad_metrics` with query first: `ads_not_on_plan` means this ' +
+    'brand\'s plan has no advertising at all.',
   method: 'POST',
   pathUnderBrand: '/ads',
   input: z

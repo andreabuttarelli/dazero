@@ -119,10 +119,12 @@ beforeEach(() => {
 });
 
 describe('ogni chiamata a un tool riempie le tre colonne vuote', () => {
+  // `approve_posts` non esiste più: un tool che approvava tutta la coda in una chiamata. Serviva
+  // qui solo come tool-che-prende-uno-slug-e-fallisce-senza-bearer, e `propose_plan` lo è uguale.
   test('il tool e il brand su cui è stato chiamato', async () => {
-    await callTool('approve_posts', { slug: 'demo' });
+    await callTool('propose_plan', { slug: 'demo' });
 
-    expect(toolCall()?.tool_name).toBe('approve_posts');
+    expect(toolCall()?.tool_name).toBe('propose_plan');
     expect(toolCall()?.brand_slug).toBe('demo');
     expect(typeof toolCall()?.duration_ms).toBe('number');
   });
@@ -146,7 +148,7 @@ describe('ogni chiamata a un tool riempie le tre colonne vuote', () => {
   });
 
   test('un tool che torna un errore lascia un avviso, non il silenzio', async () => {
-    await callTool('approve_posts', { slug: 'demo' });
+    await callTool('propose_plan', { slug: 'demo' });
 
     expect(toolCall()?.level).toBe('warn');
   });

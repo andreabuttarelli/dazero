@@ -212,8 +212,8 @@ export const APPROVE_PLAN = {
   title: 'Approve editorial plan',
   description:
     'Make the proposed editorial plan the one this brand actually follows, replacing the active ' +
-    'one. Ask the person before doing it unless they clearly asked. discard_plan throws the ' +
-    'proposal away instead. Free.',
+    'one. Ask the person before doing it unless they clearly asked. To throw the proposal away ' +
+    'instead, update_row the pending row of `editorial_plans`. Free.',
   method: 'POST',
   pathUnderBrand: '/editorial-plan/approve',
   input: NoInput,

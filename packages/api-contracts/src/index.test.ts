@@ -368,3 +368,36 @@ describe('il nome del tool che arriva per intestazione', () => {
     expect(toolFromHeader('a'.repeat(64))).toBe('a'.repeat(64));
   });
 });
+
+/**
+ * Una descrizione viaggia nel prompt di ogni turno, e un tool ritirato nominato là dentro è
+ * peggio di un tool mancante: il modello lo legge come esistente per l'intera sessione e lo
+ * scopre assente solo chiamandolo, a metà di una cosa che stava facendo.
+ *
+ * Il caso pagato: `ads_action` diceva «Read get_ads first» dopo che `get_ads` era uscito dal
+ * registro, quindi ogni turno che toccava le ads mandava il modello su un tool inesistente.
+ *
+ * L'elenco è quello dei dieci ritirati in favore dei quattro generici, non ogni nome che somiglia
+ * a un tool: le descrizioni citano anche colonne e rotte, e un estrattore che le confonde con i
+ * tool fallisce su tutto tranne che sul difetto.
+ */
+describe('nessuna descrizione manda a uno dei dieci tool ritirati', () => {
+  const RETIRED = [
+    'add_competitor',
+    'add_radar_source',
+    'delete_competitor',
+    'delete_product',
+    'remove_blog_term',
+    'remove_radar_source',
+    'get_ads',
+    'record_memory_used',
+    'discard_plan',
+    'approve_posts'
+  ];
+
+  it.each(BRAND_ENDPOINTS.map((e) => [e.tool, e.description] as const))('%s', (tool, description) => {
+    for (const gone of RETIRED) {
+      expect(description.includes(gone), `${tool} → ${gone}`).toBe(false);
+    }
+  });
+});

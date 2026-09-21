@@ -1,8 +1,8 @@
 # Anomalia MCP tools ↔ CLI
 
 All tools take a brand `slug` when brand-scoped. Ids accept short unambiguous prefixes, except
-on a delete: `delete_product`, `delete_person`, `delete_document`, `delete_competitor` and
-`delete_article` take the full UUID, because an ambiguous prefix would remove the wrong row and
+on a delete: `delete_person`, `delete_document` and `delete_article` take the full UUID, and so
+does a `where` on `id` in `delete_row`, because an ambiguous prefix would remove the wrong row and
 nothing brings it back.
 
 ## Auth
@@ -97,21 +97,23 @@ catalogue of products, offers and services — is the `products` table: one row 
 | share links you handed out | `query` on `shared_views` — `id`, `view_type`, `created_at`, `expires_at`, `revoked_at`; no token, it is shown once at creation |
 | what moves in the brand's field | `GET /api/v1/brands/:slug/market/field` |
 
-Nine reads are NOT a query, because not one of them is a select: `list_brands`, `diagnose_brand`,
-`diagnose_radar`, `search_knowledge`, `get_writing_skills`, `get_creation_kit`, `get_gsc`,
-`get_ads` and `get_media_models`. Each has its own section below. Anything else you remember
-calling is a `query`.
+Eight reads are NOT a query, because not one of them is a select: `list_brands`, `diagnose_brand`,
+`diagnose_radar`, `search_knowledge`, `get_writing_skills`, `get_creation_kit`, `get_gsc` and
+`get_media_models`. Each has its own section below. Anything else you remember calling is a
+`query` — including `get_ads`, which was the join of `ad_campaigns` and `ad_metrics` and is now
+those two tables read directly.
+
 ### Writing a row that has no tool of its own
 
 | MCP | CLI |
 |-----|-----|
 | `insert_row` | (MCP only) |
 | `update_row` | (MCP only) |
+| `delete_row` | (MCP only) |
 
-`insert_row` and `update_row` are `query` turned around: the same session, the same tables, the
-same absence of SQL — and the same consequence, that what they cannot express does not happen.
-There is no delete here and no upsert. **Deleting keeps its own named tools**, because a wrong read
-hands you wrong rows while a wrong write takes yours away.
+`insert_row`, `update_row` and `delete_row` are `query` turned around: the same session, the same
+tables, the same absence of SQL — and the same consequence, that what they cannot express does not
+happen. There is no upsert.
 
 `insert_row({ table, values })` adds one row. `brand_id` is filled in with the brand you are on;
 naming a different one is refused rather than quietly corrected. It never replaces anything: a row
@@ -124,15 +126,42 @@ are not changing, and you cannot blank one by omitting it. `where` is required a
 empty, at most 50 rows move per call, and the rows are counted before anything is written, so
 "nothing matched" comes back as a refusal instead of a cheerful success.
 
+`delete_row({ table, where })` removes rows, and **this does not come back**. `where` is required
+and may not be empty — a delete with no filter empties everything you can reach. The ceiling is
+**10 rows per call**, and it is not a truncation: the matches are counted BEFORE anything goes, so
+a filter that hits eleven is refused **whole** and you are told how many it hit. Nothing is ever
+half-deleted. Read with `query` first whenever you are not certain which rows you are about to
+hit — a prefix that looked unambiguous in a list is exactly how the wrong row goes. To stop using
+something without losing it, prefer `update_row` on the column that marks it inactive, where the
+table has one (`brand_news_sources.active` is one).
+
 Both refuse with `200` and an `error`, `message` and `fix` you can act on: a rejected value is
 answered with the constraint AND the values it admits, a collision with the key you hit, a denial
 with the columns this session may actually write. Read the row with `query` first when you are not
 sure what you are about to overwrite — the old values do not come back.
 
 Prefer a named tool when one exists. The named ones do more than the row: they derive a field,
-attribute a source, kick a side effect. `add_competitor` records that a person added it and not
-the AI; `add_note` rebuilds the brand context; `create_post` computes the slot from the calendar
-date and the brand timezone. Reach for these two when nothing else covers the table.
+attribute a source, kick a side effect. `add_note` rebuilds the brand context; `create_post`
+computes the slot from the calendar date and the brand timezone; `delete_person` and
+`delete_document` also carry the FILES away from Storage, which no row delete can do. Reach for
+these three when nothing else covers the table.
+
+**Where a tool you remember went.** Each of these was a single row and nothing more, so each is
+now one of the three, on the table named beside it:
+
+- **add_competitor** → `insert_row` on `competitors` (`name`, `website`, `rationale`)
+- **delete_competitor** → `delete_row` on `competitors`, `where` the `id`
+- **delete_product** → `delete_row` on `products`, `where` the `id`
+- **add_radar_source** → `insert_row` on `brand_news_sources` (`kind`, `value`, `lang`)
+- **remove_radar_source** → `delete_row` on `brand_news_sources`, `where` **both** `kind` and
+  `value`: the pair is the identity, there is no id
+- **remove_blog_term** → `delete_row` on `blog_categories`, `blog_tags` or `blog_authors`
+- **record_memory_used** → `update_row` on `brand_memory`, raising `times_used` on the ids you used
+- **discard_plan** → `update_row` on `editorial_plans`, setting `status` off the pending row
+- **get_ads** → `query` on `ad_campaigns` and `ad_metrics`; `ads_action` still does the acting
+- **approve_posts** → `approve_post`, once per post. It is the only one that did NOT come back as
+  a row write: it approved the whole pending queue in one call, and approving is what authorises
+  distribution. One post per call is the rate at which a misread costs one post, not a week.
 
 ## Brand & posts
 
@@ -149,7 +178,6 @@ date and the brand timezone. Reach for these two when nothing else covers the ta
 | `refine_media` | (MCP only) |
 | `generate_video` | (MCP only) |
 | `generate_carousel` | (MCP only) |
-| `approve_posts` | `anomalia approve <slug> --all` |
 | `edit_post` | `anomalia post <slug> <id> edit …` |
 | `approve_post` / `publish_post` / `reject_post` | `anomalia post <slug> <id> approve\|publish\|reject` |
 | `reschedule_post` | `anomalia post <slug> <id> reschedule --scheduledFor …` |
@@ -468,7 +496,7 @@ Both writes need the `shared_views` table. Until it is migrated they answer
 
 | MCP | CLI |
 |-----|-----|
-| `propose_plan` / `revise_plan` / `approve_plan` / `discard_plan` | `anomalia plan <slug> propose\|revise\|approve\|discard` |
+| `propose_plan` / `revise_plan` / `approve_plan` | `anomalia plan <slug> propose\|revise\|approve` |
 | `save_brief` / `replan_week` | `anomalia plan <slug> save-brief\|replan --week N …` |
 | `plan_week` / `produce_week` | `anomalia weekly-plan <slug> plan\|produce --week N` |
 | `save_plan` | (MCP only) |
@@ -482,6 +510,10 @@ Reading the plan back is `query` on `editorial_plans` — `strategy`, `voice`, `
 and they bill it. `save_plan` and `save_week_seeds` are the other half: you wrote them, Anomalia
 only stores them — no model call, no credits. Both paths land in the same place, so a saved plan
 is reviewed, approved and produced exactly like a generated one.
+
+Throwing away a proposal you do not want is `update_row` on `editorial_plans`, `where` the pending
+row, setting its `status`: the retired `discard_plan` did that one write. The active plan is not
+touched by it, and a proposal is also replaced simply by saving another.
 
 `save_plan` deposits the plan as the brand's **pending proposal**. The active plan is left alone:
 `approve_plan` stays the step that activates one, and saving replaces an earlier pending proposal,
@@ -504,7 +536,6 @@ A brand keeps one draft in review, so saving replaces the one that is there (`re
 | MCP | CLI |
 |-----|-----|
 | `save_memory` | (MCP only) |
-| `record_memory_used` | (MCP only) |
 
 What the brand already knows lives in `brand_memory` and is read with `query`, so you stop asking
 the operator things it has already answered: its voice, the constraints it works under, the facts
@@ -524,9 +555,10 @@ more `eq` clause. A brand with more memory than one page holds is read by `categ
 walking `offset` — the reply names the one that resumes.
 
 **Reading is not using.** The read changes nothing and counts nothing. When an entry actually
-shaped what you produced, say so with `record_memory_used` and the ids you used — a handful, not
-everything you read. That counter is what keeps a working entry alive: entries nobody reports
-decay out of the prompts they were helping.
+shaped what you produced, say so: `update_row` on `brand_memory`, `where` the `id` of the entries
+you used — a handful, not everything you read — raising `times_used`. That counter is what keeps a
+working entry alive: entries nobody reports decay out of the prompts they were helping. The
+retired `record_memory_used` did nothing else.
 
 `save_memory` records what you learned, so the next conversation starts from it. Writable:
 `fact`, `preference`, `insight`, `skill`. **`voice` and `constraint` are not** — they govern
@@ -568,8 +600,7 @@ deck. No credits, no writes.
 | `update_brand_identity` | `anomalia studio <slug> kit-update\|colors …`, `anomalia voice <slug>` |
 | `add_note` / `delete_document` | `anomalia studio <slug> add-note\|delete-doc …` |
 | `add_person` / `generate_person` / `delete_person` | `anomalia studio <slug> people-*` |
-| `add_competitor` / `delete_competitor` / `research_competitors` | `anomalia studio <slug> add-competitor\|…\|research` |
-| `delete_product` | (MCP only) |
+| `research_competitors` | `anomalia studio <slug> research` |
 | `set_bio` | (MCP only) |
 | `sync_history` | `anomalia studio <slug> sync-history` |
 
@@ -581,8 +612,12 @@ from.
 
 An offer, a person's role, a competitor's website are rows: `insert_row({ table: "products",
 values })` adds one, `update_row({ table, where: [{ column: "id", op: "eq", value }], values })`
-corrects one. Only the columns you send are touched. The e-commerce resync behind `sync_products`
-replaces the whole catalog and would erase a hand-made row.
+corrects one, `delete_row({ table, where: [{ column: "id", op: "eq", value }] })` takes one away.
+Only the columns you send are touched. A competitor is added with `insert_row` on `competitors`
+and removed with `delete_row` on it; a product likewise on `products` — the retired
+`add_competitor`, `delete_competitor` and `delete_product` did exactly that and nothing more. The
+e-commerce resync behind `sync_products` replaces the whole catalog and would erase a hand-made
+row.
 
 **A bare host is refused now, not corrected.** `competitors.website` is checked by
 `competitors_website_check` (`website ~ '^https?://'`) and `products.url` by `products_url_check`:
@@ -591,8 +626,13 @@ turned it into `https://example.com` without saying so. Send the scheme.
 
 **Consent for a real person is the operator's act, not yours.** Never write `consent`,
 `consent_at` or `consent_source` on `people`: a real person's face stays withheld from every
-generator until the operator states it in their own words. The deletes want the UUID in full,
-verbatim from the `query` that listed the row.
+generator until the operator states it in their own words. Every delete — the named ones and a
+`where` on `id` in `delete_row` — wants the UUID in full, verbatim from the `query` that listed the
+row.
+
+`delete_person` and `delete_document` stay named tools, and not for symmetry: they carry the FILES
+out of Storage too, which no row delete reaches. A person removed with `delete_row` would leave
+their photographs behind.
 
 `set_bio` records the link in bio; no publishing API writes a profile bio, so a person still
 pastes it on the profile by hand. What is recorded now is `bio_url` on `social_accounts`, read
@@ -693,8 +733,6 @@ credits.
 | MCP | CLI |
 |-----|-----|
 | `set_radar_platform` | (MCP only) |
-| `add_radar_source` | (MCP only) |
-| `remove_radar_source` | (MCP only) |
 
 Where Radar looks: which platforms are on (`gnews`, `reddit`, `threads`, `x`, `linkedin`) and
 which sources are configured (`gnews_query`, `rss`, `subreddit`, `reddit_query`, plus
@@ -702,17 +740,20 @@ which sources are configured (`gnews_query`, `rss`, `subreddit`, `reddit_query`,
 
 **Read the state first.** `query` on `brand_news_sources` — `id`, `kind`, `value`, `lang`,
 `active` — is what is configured, and `brands.content_prefs.radar` is which platforms are on. The
-two things you cannot read that way are the plan's: Threads, X and LinkedIn belong to the **Pro**
-plan, and below it both writes answer `plan_required` (403). Past the ceiling on how many sources
-a plan allows, `add_radar_source` answers `source_limit` (403) and names it.
+one thing you cannot read that way is the plan's: Threads, X and LinkedIn belong to the **Pro**
+plan, and below it `set_radar_platform` answers `plan_required` (403).
 
-A source is identified by the pair **(kind, value)** — there is no id to remember, and it is what
-`remove_radar_source` takes. Adding one that is already there is not an error: nothing changes and
-`added: false` says so. `rss` must be an http(s) URL; a subreddit is stored without its `r/`, and
-both writes normalise it the same way, so `r/coffee` and `coffee` are the same source.
+**A source is a row in `brand_news_sources`.** `insert_row` adds one (`kind`, `value`, and `lang`
+where it applies), `delete_row` takes one away. There is no id to remember when you remove: the
+pair **(kind, value)** is the identity, so the `where` carries both. The retired
+`add_radar_source` and `remove_radar_source` were those two writes with one normalisation on top,
+which you now do yourself: `rss` must be an http(s) URL, and a subreddit is stored **without** its
+`r/`, so send `coffee`, not `r/coffee`. Inserting a source that is already there is a collision
+naming the key, not a second row.
 
 Adding a source spends no credits by itself, but Radar reads it on every run from then on.
-Removing one is permanent and stops Radar reading it; what it already found stays.
+Removing one is permanent and stops Radar reading it; what it already found stays. To stop Radar
+reading a source without losing it, `update_row` its `active` to `false` instead.
 
 ## Blog settings
 
@@ -720,7 +761,6 @@ Removing one is permanent and stops Radar reading it; what it already found stay
 |-----|-----|
 | `set_blog_settings` | (MCP only) |
 | `add_blog_term` | (MCP only) |
-| `remove_blog_term` | (MCP only) |
 
 How the blog looks (name, colour, font, layout, nav links, whether it is live) and how it writes
 (style brief, articles per week, languages, humanising pass), plus the categories, tags and
@@ -741,10 +781,12 @@ must be unique for the brand — a clash answers `slug_taken` (409), not a secon
 belongs to a category, `bio` and `role` to an author; sending one to the wrong list is refused
 (`field_not_for_term`), not ignored.
 
-`remove_blog_term` deletes no article, but each kind leaves a different mark — say which before
-you do it: a **category** leaves its articles filed under nothing, a **tag** comes off every
-article that carried it, an **author** leaves their articles with no byline. The answer counts
-`articles_affected`.
+Removing a term is `delete_row` on the list it belongs to — `blog_categories`, `blog_tags` or
+`blog_authors` — `where` its `id`, which is what the retired `remove_blog_term` did. **It deletes
+no article, but each kind leaves a different mark, and you no longer get a count back: say which
+before you do it.** A **category** leaves its articles filed under nothing, a **tag** comes off
+every article that carried it, an **author** leaves their articles with no byline. `query` on
+`brand_articles` filtered on that term is how you see how many, BEFORE the delete.
 
 `analytics` is a **closed** list of providers with their measurement id — `ga4` (`G-XXXXXXX`),
 `meta_pixel` (numeric), `plausible` (a domain), `hotjar` (numeric). There is no field for arbitrary
@@ -828,7 +870,7 @@ writes it.
 | `generate_article` / `optimize_article` | `anomalia web <slug> …` |
 | `update_article` | (MCP only) |
 | `publish_article` / `unpublish_article` / `delete_article` | `anomalia web <slug> publish\|…` |
-| `get_ads` / `ads_action` | `anomalia ads <slug> [--propose\|--create\|--approve\|--pause\|--resume\|--duplicate\|--delete\|--reject] [--ad <adId>]` |
+| `ads_action` | `anomalia ads <slug> [--propose\|--create\|--approve\|--pause\|--resume\|--duplicate\|--delete\|--reject] [--ad <adId>]` |
 | `ads_remix` | (MCP only) |
 | `diagnose_radar` | (MCP only) |
 

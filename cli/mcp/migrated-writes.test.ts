@@ -11,6 +11,11 @@ const OPEN_WORLD = { readOnlyHint: false, destructiveHint: false, openWorldHint:
 // Ogni riga è la forma che il tool aveva scritto a mano, catturata da tools/list prima della
 // migrazione. Una descrizione riscritta o un campo perso qui è una regressione, non una
 // migrazione: chi ha già l'integrazione non deve accorgersi di niente.
+//
+// `discard_plan` e `add_competitor` sono usciti dall'elenco perché non sono più tool: buttare via
+// il piano proposto è una riga di `content_plans` che cambia stato, aggiungere un competitor è una
+// riga in `competitors`. Le fanno `update_row` e `insert_row`, e la forma da difendere qui è solo
+// quella dei tool che un client vede ancora.
 const MIGRATED_WRITES = [
   {
     name: 'propose_plan',
@@ -29,13 +34,6 @@ const MIGRATED_WRITES = [
   {
     name: 'approve_plan',
     title: 'Approve editorial plan',
-    properties: { slug: SLUG },
-    required: ['slug'],
-    annotations: DESTRUCTIVE,
-  },
-  {
-    name: 'discard_plan',
-    title: 'Discard editorial plan',
     properties: { slug: SLUG },
     required: ['slug'],
     annotations: DESTRUCTIVE,
@@ -64,18 +62,6 @@ const MIGRATED_WRITES = [
     title: 'GEO action',
     properties: { slug: SLUG, action: { type: 'string', enum: ['audit', 'fix'] } },
     required: ['slug', 'action'],
-    annotations: NOT_DESTRUCTIVE,
-  },
-  {
-    name: 'add_competitor',
-    title: 'Add competitor',
-    properties: {
-      slug: SLUG,
-      name: { type: 'string', minLength: 1 },
-      website: { type: 'string' },
-      rationale: { type: 'string' },
-    },
-    required: ['slug', 'name'],
     annotations: NOT_DESTRUCTIVE,
   },
   {

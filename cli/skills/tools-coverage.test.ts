@@ -11,18 +11,18 @@ const REFERENCE = join(CLI, 'skills', 'anomalia', 'references', 'tools.md');
 const HAND_REGISTERED_BECAUSE: Record<string, string> = {
   list_brands: 'GET /api/v1/brands non sta sotto un brand, e il registry e scoped sul brand',
   approve_post: 'risolve un prefisso di id, poi chiama la rotta del singolo post',
-  approve_posts: 'approva tutta la coda pending con una chiamata dedicata',
   publish_post: 'risolve un prefisso di id, poi pubblica il singolo post',
   reject_post: 'risolve un prefisso di id, poi cancella il post',
   generate_person: 'add_person con kind ai gia impostato',
   produce_week: 'legge il piano per trovare la bozza dei seed, poi la produce'
 };
 
-// Le soglie scendono con le trentatre letture ritirate dentro `query`: restano il guardiano
-// contro un estrattore che smette di estrarre, non una misura della superficie.
-const MIN_REGISTRY_TOOLS = 71;
-const MIN_HAND_REGISTERED = 7;
-const MIN_NAMED_BY_THE_SKILL = 71;
+// Le soglie scendono con le trentatre letture ritirate dentro `query` e con i dieci tool che i
+// quattro generici rimpiazzano: restano il guardiano contro un estrattore che smette di
+// estrarre, non una misura della superficie.
+const MIN_REGISTRY_TOOLS = 60;
+const MIN_HAND_REGISTERED = 6;
+const MIN_NAMED_BY_THE_SKILL = 60;
 
 function names(pattern: RegExp, text: string): string[] {
   return [...text.matchAll(pattern)].map((match) => match[1]);

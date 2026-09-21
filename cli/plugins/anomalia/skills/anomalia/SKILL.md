@@ -57,9 +57,9 @@ Setup details: [references/mcp.md](references/mcp.md).
    `get_writing_skills`. It returns the craft text Anomalia writes with, plus this brand's own
    procedures. Skipping it is how output starts reading as generated.
 5. **Read the brand's memory before asking the operator** something it may already know —
-   `query` on `brand_memory` (the recipe is under Quick workflows) — and call
-   `record_memory_used` with the ids that actually shaped your output. An entry nobody
-   reports decays out of the prompts it was helping.
+   `query` on `brand_memory` (the recipe is under Quick workflows) — and report what you used:
+   `update_row` on `brand_memory`, `where` the ids that actually shaped your output, raising
+   `times_used`. An entry nobody reports decays out of the prompts it was helping.
 6. Confirm before reject / delete / discard unless the user clearly asked.
 7. **A render is one shot.** Nothing looks at an image after the model draws it — no internal
    critic, no automatic retry, no second attempt you did not ask for. **You** are the quality
@@ -123,13 +123,17 @@ imposed — no chat-session notes, no other agent's working notes. Drop them and
 
 ### The reads that are NOT a query
 
-Nine tools remain, and not one of them is a select. Reach for them by subject:
+Eight tools remain, and not one of them is a select. Reach for them by subject:
 `list_brands` (where slugs come from), `diagnose_brand` (what blocks this brand, gate by gate),
 `diagnose_radar` (asks every source live), `search_knowledge`, `get_writing_skills`,
-`get_creation_kit`, `get_gsc`, `get_ads` (campaign fatigue), `get_media_models`.
-Anything else you remember calling is now a `query`.
+`get_creation_kit`, `get_gsc`, `get_media_models`.
+Anything else you remember calling is now a `query` — campaign fatigue included, which was
+`get_ads` and is `ad_campaigns` plus `ad_metrics`.
 
-**A row in a table nothing else writes** → `insert_row` and `update_row`, `query` turned around.
+**A row in a table nothing else writes** → `insert_row`, `update_row` and `delete_row`, `query`
+turned around. `delete_row` needs a non-empty `where`, takes at most **10 rows per call** and
+refuses the whole call when the filter hits more, so nothing is half-deleted — and it does not
+come back.
 `insert_row({table, values})` adds one row and fills in `brand_id` for you; a row that already
 exists comes back naming the key you hit instead of replacing it. `update_row({table, where,
 values})` touches **only the columns you send** and leaves the rest of the row alone, needs a
@@ -247,8 +251,9 @@ the separate paid step that turns them into posts.
 
 **Keep the brand truth current from your own source** → `query` on `products`, `people`,
 `competitors` and `brand_kit` returns every row with its id. `insert_row` adds an offer or a
-row, `update_row` fixes a role or a wrong website, `delete_product` and the other deletes take one
-away. A website wants its scheme — `example.com` is refused by `competitors_website_check`, not
+competitor, `update_row` fixes a role or a wrong website, `delete_row` takes one away — `where`
+the full `id`. `delete_person` and `delete_document` stay named tools because they also carry the
+files out of Storage. A website wants its scheme — `example.com` is refused by `competitors_website_check`, not
 corrected — and consent for a real person is the operator's act: never write `consent`,
 `consent_at` or `consent_source` on `people`, because a real person's face stays withheld from
 every generator until the operator states, in their own words, that they have it.
@@ -268,18 +273,20 @@ attributable to one job — so describe the commitment with cadence and `runs_30
 invent a number.
 
 **Point Radar at a new place** → `query` on `brand_news_sources` shows what is configured, and
-`brands.content_prefs.radar` which platforms are on; `add_radar_source` / `remove_radar_source`
-change them, naming a source by its `(kind, value)` pair, and their schemas carry the kinds.
-Threads, X and LinkedIn are Pro-only and answer `plan_required`, so check the plan first. A source already there comes back
-`added: false` rather than failing.
+`brands.content_prefs.radar` which platforms are on. A source is a row: `insert_row` adds one
+(`kind`, `value`, `lang`), `delete_row` takes one away — `where` **both** `kind` and `value`,
+because that pair is the identity and there is no id. Normalise before you send: `rss` wants an
+http(s) URL, a subreddit is stored without its `r/`. Threads, X and LinkedIn are Pro-only and
+`set_radar_platform` answers `plan_required`, so check the plan first.
 
 **Set up the blog** → `query` on `brands.blog_config` shows how it looks and how it writes, and
 `blog_categories` / `blog_tags` / `blog_authors` the three lists; `set_blog_settings` changes it —
 its schema carries the accepted fonts, layouts and locales, and it clamps to the plan and reports
-back what was saved. and `add_blog_term` / `remove_blog_term` maintain the three lists. `articles_per_week`
-is clamped to the plan, so read back what was saved. Before removing a term, say what it leaves
-behind: a category leaves its articles unfiled, a tag comes off every article, an author leaves no
-byline. `analytics` takes a closed list of providers (`ga4`, `meta_pixel`, `plausible`, `hotjar`)
+back what was saved. `add_blog_term` adds to the three lists and `delete_row` removes from them —
+`blog_categories`, `blog_tags`, `blog_authors`, `where` the `id`. `articles_per_week` is clamped to
+the plan, so read back what was saved. Before removing a term, say what it leaves behind, because
+no count comes back: a category leaves its articles unfiled, a tag comes off every article, an
+author leaves no byline. `analytics` takes a closed list of providers (`ga4`, `meta_pixel`, `plausible`, `hotjar`)
 with their id — there is no field for arbitrary JavaScript, and those trackers load only on a
 verified custom domain, only after the visitor accepts cookies.
 
@@ -316,7 +323,9 @@ it to the account owner; they complete it on Stripe. Never pay, never switch a p
 on their behalf. The URL is a credential — hand it over once and keep no copy. Owner only, and it
 costs no credits, which is the point: whoever ran out is who needs it.
 
-**Approve pending posts** → `query` on `posts` (status `pending_user`) → `approve_posts`.
+**Approve pending posts** → `query` on `posts` (status `pending_user`) → `approve_post`, **one
+post per call**. There is no approve-everything tool: approving is what authorises distribution,
+and a misread of "show me the queue" used to publish the week.
 
 **Send a client the calendar, the month at a glance, or the month's results** → `create_share`
 (`view`: `calendar`, `dashboard`, `monthly_report`, `strategy` or `workspace` — `workspace` puts all four behind one link). It returns a link they open with no account, showing a frozen snapshot of that
