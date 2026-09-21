@@ -28,7 +28,10 @@ async function tools(): Promise<Tool[]> {
   return (listed.result?.tools ?? []) as Tool[];
 }
 
-const DELETES = ['delete_product', 'delete_person', 'delete_document', 'delete_competitor'];
+// `delete_product` e `delete_competitor` non ci sono più: erano una riga tolta e basta, e
+// `delete_row` toglie righe da qualunque tabella dell'allowlist. Restano questi due perché
+// portano via anche i FILE dallo Storage, che nessuna cancellazione di riga sa fare.
+const DELETES = ['delete_person', 'delete_document'];
 
 describe('le cancellazioni esposte dal registry', () => {
   test('chiedono l’UUID pieno della riga, non un prefisso da risolvere', async () => {

@@ -8,7 +8,9 @@ import {
 } from './radar';
 import { BRAND_ENDPOINTS, statusForFailure } from './index';
 
-const ALL = [SET_RADAR_PLATFORM, ADD_RADAR_SOURCE, REMOVE_RADAR_SOURCE];
+// Aggiungere e togliere una sorgente sono scritture di una riga: le fanno `insert_row` e
+// `delete_row`. Restano i contratti REST, non i tool.
+const ALL = [SET_RADAR_PLATFORM];
 
 describe('il Radar come contratto', () => {
   it('sta tutto nel registry, o nessun agente lo vede', () => {

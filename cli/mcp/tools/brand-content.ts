@@ -100,20 +100,13 @@ export function registerBrandTools(server: McpServer) {
   registerDeclaredEndpoints(server);
   registerFamilies(server);
 
-  server.registerTool(
-    'approve_posts',
-    {
-      title: 'Approve all pending posts',
-      description:
-        'Say yes to every post waiting for approval, in one go — they are published or scheduled from ' +
-        'that moment. This is the irreversible one: ask the person first unless they clearly said ' +
-        '"approve them all". approve_post takes one at a time. Free.',
-      inputSchema: z.object({ slug }),
-      annotations: { readOnlyHint: false, destructiveHint: true },
-    },
-    async ({ slug }) => withAuth((token) => api.approveAll(token, slug)),
-  );
-
+  /*
+   * `approve_posts` NON C'È PIÙ, e non è una dimenticanza: approvava ogni post in attesa in una
+   * chiamata sola, e approvare è ciò che autorizza la distribuzione. Un modello che fraintende
+   * «guarda cosa c'è in coda» pubblicava tutto, e non si torna indietro. `approve_post` fa la
+   * stessa cosa un post alla volta, che è il ritmo a cui un errore costa un post e non una
+   * settimana.
+   */
   server.registerTool(
     'approve_post',
     {

@@ -8,7 +8,8 @@ import {
 } from './memory';
 import { BRAND_ENDPOINTS } from './index';
 
-const MEMORY = [SAVE_MEMORY, RECORD_MEMORY_USED];
+// `record_memory_used` incrementa un contatore: è `update_row`.
+const MEMORY = [SAVE_MEMORY];
 
 describe('il contratto della memoria del brand', () => {
   it('sono registrati, o i tool MCP non nascono', () => {

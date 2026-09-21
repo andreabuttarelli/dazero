@@ -10,7 +10,9 @@ import {
 } from './blog-settings';
 import { BRAND_ENDPOINTS, statusForFailure } from './index';
 
-const ALL = [SET_BLOG_SETTINGS, ADD_BLOG_TERM, REMOVE_BLOG_TERM];
+// `remove_blog_term` non è più un tool: toglierlo si fa con `delete_row`, che raggiunge ogni
+// tabella. Il contratto resta come forma dell'endpoint REST, che il CLI usa ancora.
+const ALL = [SET_BLOG_SETTINGS, ADD_BLOG_TERM];
 
 describe('le impostazioni del blog come contratto', () => {
   it('stanno tutte nel registry, o nessun agente le vede', () => {

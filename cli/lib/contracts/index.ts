@@ -19,7 +19,6 @@ import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from './write';
 import { GET_CREATION_KIT } from './creation-kit';
 import {
   APPROVE_PLAN,
-  DISCARD_PLAN,
   PLAN_CADENCES,
   PLAN_CYCLE_WEEKS,
   PLAN_WEEK,
@@ -46,21 +45,17 @@ import {
   REORDER_SLIDES,
   RESCHEDULE_POST,
 } from './posts';
-import { GET_ADS } from './reads';
 import { DIAGNOSE_BRAND } from './brand-state';
 import {
   ADD_BLOG_TERM,
-  REMOVE_BLOG_TERM,
   SET_BLOG_SETTINGS
 } from './blog-settings';
 import { SET_BRAND_SETTINGS } from './brand-settings';
 import { DIAGNOSE_RADAR } from './market';
 import { GET_MEDIA_MODELS, SET_MEDIA_MODEL } from './media-models';
-import { RECORD_MEMORY_USED, SAVE_MEMORY } from './memory';
+import { SAVE_MEMORY } from './memory';
 import { SEARCH_KNOWLEDGE } from './knowledge';
 import {
-  ADD_RADAR_SOURCE,
-  REMOVE_RADAR_SOURCE,
   SET_RADAR_PLATFORM
 } from './radar';
 import { GEO_ACTION, REFRESH_KEYWORDS, SEO_ACTION } from './search';
@@ -74,14 +69,11 @@ import {
   SHARED_VIEW_TYPES,
 } from './shares';
 import {
-  ADD_COMPETITOR,
   ADD_NOTE,
   ADD_PERSON,
   CREATE_PRODUCT,
-  DELETE_COMPETITOR,
   DELETE_DOCUMENT,
   DELETE_PERSON,
-  DELETE_PRODUCT,
   RESEARCH_COMPETITORS,
   SET_BIO,
   SET_COLORS,
@@ -158,10 +150,8 @@ export type BrandEndpoint = ResourcelessEndpoint | ResourceEndpoint;
 
 export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   ADD_BLOG_TERM,
-  ADD_COMPETITOR,
   ADD_NOTE,
   ADD_PERSON,
-  ADD_RADAR_SOURCE,
   ADS_ACTION,
   ADS_REMIX,
   APPROVE_PLAN,
@@ -171,13 +161,10 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   CREATE_POST,
   CREATE_SHARE,
   DELETE_ARTICLE,
-  DELETE_COMPETITOR,
   DELETE_DOCUMENT,
   DELETE_PERSON,
-  DELETE_PRODUCT,
   DIAGNOSE_BRAND,
   DIAGNOSE_RADAR,
-  DISCARD_PLAN,
   EDIT_POST,
   ENHANCE_PROMPT,
   GENERATE_ARTICLE,
@@ -186,7 +173,6 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   GENERATE_IMAGE,
   GENERATE_VIDEO,
   GEO_ACTION,
-  GET_ADS,
   GET_CREATION_KIT,
   GET_GSC,
   GET_MEDIA_MODELS,
@@ -200,13 +186,10 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   PROPOSE_PLAN,
   PUBLISH_ARTICLE,
   QUERY_DATABASE,
-  RECORD_MEMORY_USED,
   REFINE_MEDIA,
   REFRESH_KEYWORDS,
   REGENERATE_POST_MEDIA,
   REGENERATE_SLIDE,
-  REMOVE_BLOG_TERM,
-  REMOVE_RADAR_SOURCE,
   RENDER_POST,
   REORDER_SLIDES,
   REPLAN_WEEK,
@@ -341,7 +324,6 @@ export {
   WEB_FIX_STATUSES,
   WEB_FIX_SURFACES
 } from './evidence';
-export { GET_ADS };
 export { STUDIO_DOCUMENT_MODES } from './reads';
 export type { StudioDocumentMode } from './reads';
 export {
@@ -367,12 +349,10 @@ export {
 } from './media-models';
 export type { MediaModelSlotId } from './media-models';
 export {
-  ADD_RADAR_SOURCE,
   RADAR_BASE_SOURCE_KINDS,
   RADAR_PLATFORMS,
   RADAR_PRO_SOURCE_KINDS,
   RADAR_SOURCE_KINDS,
-  REMOVE_RADAR_SOURCE,
   SET_RADAR_PLATFORM
 } from './radar';
 export type { RadarPlatform, RadarSourceKindName } from './radar';
@@ -392,7 +372,6 @@ export {
   MEMORY_ENTRIES_DEFAULT,
   MEMORY_ENTRIES_MAX,
   MEMORY_USED_MAX,
-  RECORD_MEMORY_USED,
   SAVE_MEMORY,
   UPDATE_MEMORY_ENTRY
 } from './memory';
@@ -407,15 +386,12 @@ export {
 } from './writing-skills';
 export type { WritingDeckAgent } from './writing-skills';
 export {
-  ADD_COMPETITOR,
   ADD_NOTE,
   ADD_PERSON,
   CONSENT_NOT_ATTESTED,
   CREATE_PRODUCT,
-  DELETE_COMPETITOR,
   DELETE_DOCUMENT,
   DELETE_PERSON,
-  DELETE_PRODUCT,
   RESEARCH_COMPETITORS,
   SET_BIO,
   SET_COLORS,
@@ -447,7 +423,6 @@ export {
   BLOG_LAYOUTS,
   BLOG_TERM_KINDS,
   blogAnalyticsIdOk,
-  REMOVE_BLOG_TERM,
   SET_BLOG_SETTINGS
 } from './blog-settings';
 export type { BlogAnalyticsProvider, BlogTermKind } from './blog-settings';
@@ -467,7 +442,6 @@ export type { CreatePostInput, CreatePostResult } from './posts';
 export { MAX_MEDIA_ALTERNATIVES } from './posts';
 export {
   APPROVE_PLAN,
-  DISCARD_PLAN,
   PLAN_CADENCES,
   PLAN_CYCLE_WEEKS,
   PLAN_WEEK,
