@@ -42,14 +42,38 @@ export type GenParams = {
   audio?: boolean;
 };
 
+/**
+ * Un giro già avvenuto: un fatto congelato, non quel che il nodo dice adesso. Il prompt e il
+ * modello si COPIANO qui apposta — quelli sul nodo sono i prossimi, e cambiano dieci volte mentre
+ * si guarda il risultato del giro precedente. Rimandare a loro racconterebbe che l'immagine di
+ * ieri è nata dalla frase di stamattina.
+ */
+export type GenRun = {
+  id: string;
+  /** L'asset prodotto. Null quando la libreria l'ha perso per strada, o quando il giro è in volo. */
+  mediaId: string | null;
+  prompt: string;
+  model: string | null;
+  createdAt: string;
+};
+
 export type GenNode = {
   id: string;
   medium: GenMedium;
   model: string | null;
   prompt: string;
   params: GenParams;
-  /** L'asset prodotto. Null finché il nodo non ha girato: è lo stato normale, non una riga rotta. */
+  /**
+   * L'asset CHE SI VEDE ADESSO. Null finché il nodo non ha girato: è lo stato normale, non una
+   * riga rotta. Non è «l'ultimo prodotto» — tornare indietro su un giro di prima lo sposta lì, ed
+   * è l'unica cosa che sopravvive a una ricarica dicendo dove si era fermato lo sguardo.
+   */
   refId: string | null;
+  /**
+   * Tutti i giri che questo nodo ha fatto, dal più vecchio. Senza, rigenerare sovrascriveva e la
+   * generazione di prima era irrecuperabile DAL NODO: il file restava in libreria, il legame no.
+   */
+  runs: GenRun[];
   running?: boolean;
 };
 

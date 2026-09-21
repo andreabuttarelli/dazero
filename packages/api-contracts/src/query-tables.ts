@@ -11,15 +11,15 @@ export const QUERY_TABLES =
   'agent_kit_runs agent_notifications agent_runs agent_sessions agent_templates ai_calls api_keys app_flags ' +
   'article_views benchmark_runs blog_authors blog_categories blog_integrations blog_month_jobs blog_tags ' +
   'brand_app_connections brand_article_tags brand_article_versions brand_articles brand_backlink_opportunities ' +
-  'brand_backlink_orders brand_backlink_placements brand_canvas_edges brand_canvas_items brand_canvases ' +
-  'brand_community_profiles brand_crawl_runs brand_demo_accounts brand_design_templates brand_doc_chunks ' +
-  'brand_documents brand_field_posts brand_geo_artifacts brand_geo_audits brand_geo_opportunities brand_geo_prompts ' +
-  'brand_gsc_connections brand_gsc_metrics brand_internal_links brand_invites brand_job_optouts brand_kit ' +
-  'brand_knowledge_edges brand_knowledge_sources brand_market_references brand_media brand_members brand_memory ' +
-  'brand_news_items brand_news_sources brand_pages brand_rank_snapshots brand_seo_keyword_strategy brand_seo_plans ' +
-  'brand_site_pages brand_sites brand_social_handles brand_strategy brand_tracked_keywords brand_triggers ' +
-  'brand_usage brand_visual_insights brand_webhooks brands chat_artifacts chat_goal_events chat_goals ' +
-  'chat_jobs chat_messages chat_model_catalog chat_thread_reads chat_threads competitors content_plans ' +
+  'brand_backlink_orders brand_backlink_placements brand_canvas_edges brand_canvas_item_runs brand_canvas_items ' +
+  'brand_canvases brand_community_profiles brand_crawl_runs brand_demo_accounts brand_design_templates ' +
+  'brand_doc_chunks brand_documents brand_field_posts brand_geo_artifacts brand_geo_audits brand_geo_opportunities ' +
+  'brand_geo_prompts brand_gsc_connections brand_gsc_metrics brand_internal_links brand_invites brand_job_optouts ' +
+  'brand_kit brand_knowledge_edges brand_knowledge_sources brand_market_references brand_media brand_members ' +
+  'brand_memory brand_news_items brand_news_sources brand_pages brand_rank_snapshots brand_seo_keyword_strategy ' +
+  'brand_seo_plans brand_site_pages brand_sites brand_social_handles brand_strategy brand_tracked_keywords ' +
+  'brand_triggers brand_usage brand_visual_insights brand_webhooks brands chat_artifacts chat_goal_events ' +
+  'chat_goals chat_jobs chat_messages chat_model_catalog chat_thread_reads chat_threads competitors content_plans ' +
   'content_quality_samples credit_grants custom_agent_schedules custom_agent_thread_runs custom_agents ' +
   'disruptive_ideas editorial_plans expert_requests graphic_designs gtm_plans incidents lead_outcomes ' +
   'lead_suppressions lifecycle_emails loop_cursors loop_ticks market_account_baselines market_account_fetch_attempts ' +

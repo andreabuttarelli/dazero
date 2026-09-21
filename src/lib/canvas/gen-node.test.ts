@@ -24,6 +24,7 @@ const node = (over: Partial<GenNode> = {}): GenNode => ({
   prompt: 'un gatto',
   params: {},
   refId: null,
+  runs: [],
   ...over
 });
 

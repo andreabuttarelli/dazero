@@ -13,7 +13,8 @@
   import { toFlowEdges, type CanvasEdgeRow, type CanvasEdgeKind, type FlowEdge } from '$lib/canvas-edges';
   import { tileNode } from '$lib/canvas/connect-rules';
   import { planDelete } from '$lib/canvas/delete-plan';
-  import type { GenMedium, GenNode as GenNodeState, ModelChoice } from '$lib/canvas/gen-node';
+  import type { GenMedium, GenNode as GenNodeState, GenRun, ModelChoice } from '$lib/canvas/gen-node';
+  import { withRun, showRun, canStartRun } from '$lib/canvas/gen-history';
 
   let { data } = $props();
 
@@ -63,7 +64,10 @@
         model: i.model,
         prompt: i.prompt ?? '',
         params: (i.params ?? {}) as GenNodeState['params'],
-        refId: i.ref_id
+        refId: i.ref_id,
+        // La storia arriva dal server come il resto della tela: senza, riaprire la pagina
+        // mostrerebbe l'ultimo risultato e nessuna traccia di quelli di prima.
+        runs: (data.runs ?? {})[i.id] ?? []
       }))
   );
 
@@ -179,7 +183,7 @@
     if (!data.canvasId) return;
 
     const tile = newGenNodeAt(medium, at);
-    gens = [...gens, { id: tile.id, medium, model: null, prompt: '', params: {}, refId: null }];
+    gens = [...gens, { id: tile.id, medium, model: null, prompt: '', params: {}, refId: null, runs: [] }];
     places = { ...places, [tile.id]: { x: tile.x, y: tile.y, w: tile.w, h: tile.h } };
 
     // L'id viaggia con la riga: è un UUID coniato qui, e il database lo scrive com'è. Prima la
@@ -266,6 +270,56 @@
       params: JSON.stringify(node.params),
       ...place
     });
+  }
+
+  /**
+   * PREMERE GENERA, che è il difetto che questa pagina aveva: il nodo montava senza `onrun`, e
+   * `onrun?.()` con la prop assente è un no-op — il bottone si accendeva e non chiamava nessuno.
+   *
+   * `running` SI ALZA PRIMA DELLA CHIAMATA, ed è la guardia contro il doppio clic: un giro costa
+   * crediti veri, e due pressioni vicine ne pagherebbero due di cui uno viene sovrascritto
+   * dall'altro atterrando. Alzarlo dopo — o solo quando la risposta parte — lascerebbe aperta
+   * esattamente la finestra in cui si clicca due volte.
+   *
+   * E si ABBASSA SEMPRE, anche quando la chiamata fallisce: un nodo lasciato `running` per un
+   * errore di rete non si rilancia più, e l'unico modo di sbloccarlo sarebbe ricaricare.
+   */
+  async function run(id: string) {
+    const node = gens.find((g) => g.id === id);
+    if (!node || !canStartRun(node)) return;
+
+    patchLocal(id, { running: true });
+
+    const res = await post('run', {
+      item_id: id,
+      medium: node.medium,
+      prompt: node.prompt,
+      model: node.model ?? '',
+      params: JSON.stringify(node.params)
+    });
+
+    patchLocal(id, { running: false });
+
+    const landed = (res?.run ?? null) as GenRun | null;
+    if (!landed) return;
+
+    gens = gens.map((g) => (g.id === id ? withRun(g, landed) : g));
+  }
+
+  /**
+   * Tornare a un giro di prima. Lo schermo cambia SUBITO e il salvataggio segue: guardare indietro
+   * non costa niente e deve essere immediato — aspettare il server per spostare un'immagine già
+   * scaricata sarebbe mezzo secondo di niente a ogni clic.
+   */
+  async function show(id: string, runId: string) {
+    gens = gens.map((g) => (g.id === id ? showRun(g, runId) : g));
+
+    void post('restore', { item_id: id, run_id: runId });
+  }
+
+  /** Un cambio che resta sullo schermo e basta: `running` non è una colonna, è uno stato di qui. */
+  function patchLocal(id: string, change: Partial<GenNodeState>) {
+    gens = gens.map((g) => (g.id === id ? { ...g, ...change } : g));
   }
 
   function move(id: string, x: number, y: number) {
@@ -413,7 +467,22 @@
               {selected}
               choices={catalogue[node.medium]}
               onchange={(change) => patch(id, change)}
-            />
+              onrun={() => run(id)}
+              onshow={(runId) => show(id, runId)}
+            >
+              {#snippet result({ refId })}
+                <!-- `/a/<id>` firma lo storage al volo e reindirizza: un URL firmato messo qui
+                     scadrebbe in due ore, e una tela lasciata aperta tutto il giorno mostrerebbe
+                     riquadri rotti senza che nulla dica perché. Il nodo non sa niente di tutto
+                     questo — riceve un id e chiede un disegno. -->
+                {#if node.medium === 'video'}
+                  <!-- svelte-ignore a11y_media_has_caption -->
+                  <video src={`/a/${refId}`} controls playsinline></video>
+                {:else}
+                  <img src={`/a/${refId}`} alt={node.prompt} loading="lazy" />
+                {/if}
+              {/snippet}
+            </GenNode>
           {:else if frame}
             <IframeNode node={frame} onchange={(change) => patchFrame(id, change)} />
           {/if}

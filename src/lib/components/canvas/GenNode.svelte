@@ -23,6 +23,7 @@
    * di tornare come un rifiuto pagato.
    */
   import { runStateOf, promptTooLong, type GenNode, type ModelChoice } from '$lib/canvas/gen-node';
+  import { blockedReason, canStartRun, shownIndex } from '$lib/canvas/gen-history';
   import { ADDABLE_LABEL } from '$lib/canvas/addable';
   import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
 
@@ -32,6 +33,7 @@
     selected = false,
     onchange,
     onrun,
+    onshow,
     result
   }: {
     node: GenNode;
@@ -41,6 +43,8 @@
     selected?: boolean;
     onchange?: (patch: Partial<GenNode>) => void;
     onrun?: () => void;
+    /** Rimettere in vetrina un giro di prima. Il nodo non sa scrivere: chiede a chi lo usa. */
+    onshow?: (runId: string) => void;
     /** Come si disegna quel che è uscito. Il nodo non sa da dove venga l'URL firmato. */
     result?: import('svelte').Snippet<[{ refId: string }]>;
   } = $props();
@@ -48,7 +52,23 @@
   const choice = $derived(choices.find((c) => c.id === node.model) ?? choices[0]);
   const state = $derived(runStateOf(node));
   const tooLong = $derived(!!choice && promptTooLong(node.prompt, choice));
-  const canRun = $derived((state === 'ready' || state === 'done') && !tooLong && !!node.model);
+
+  /**
+   * PERCHÉ IL BOTTONE È SPENTO, da `gen-history` e non da una condizione scritta qui.
+   *
+   * Il difetto segnalato era «Genera non fa niente»: il bottone era collegato allo stato e a
+   * nessun generatore, quindi si accendeva e taceva. Adesso lancia — e quando non può, lo dice.
+   * Un bottone spento senza spiegazione è indistinguibile da uno rotto.
+   *
+   * `tooLong` resta qui e non nel registro: dipende dal CATALOGO, che il nodo ha e le funzioni
+   * pure no — spostarlo là significherebbe passargli il modello scelto a ogni chiamata, per un
+   * caso solo.
+   */
+  const blocked = $derived(
+    tooLong && choice?.maxPromptChars ? `Prompt troppo lungo` : blockedReason(node)
+  );
+  const canRun = $derived(canStartRun(node) && !tooLong);
+  const shown = $derived(shownIndex(node));
 
   const LABEL: Record<string, string> = {
     empty: 'Scrivi cosa vuoi',
@@ -143,6 +163,30 @@
     {/if}
   </div>
 
+  <!-- LA STORIA, sotto il risultato e sopra il prompt: si guarda quel che è uscito, si sceglie
+       fra i giri fatti, si riscrive la frase. Una striscia e non frecce, perché con le frecce per
+       sapere quante generazioni ci sono bisogna premerle fino in fondo.
+
+       Compare da DUE giri in su: con uno solo sarebbe una fila di un elemento che dice quel che il
+       corpo del nodo già mostra, e ruberebbe altezza al risultato. -->
+  {#if node.runs.length > 1}
+    <div class="gen-past" role="group" aria-label="Generazioni di prima">
+      {#each node.runs as run, i (run.id)}
+        <button
+          type="button"
+          class="gen-past-one"
+          class:is-shown={i === shown}
+          title={run.prompt}
+          aria-label={`Generazione ${i + 1} di ${node.runs.length}`}
+          aria-pressed={i === shown}
+          onclick={() => onshow?.(run.id)}
+        >
+          {i + 1}
+        </button>
+      {/each}
+    </div>
+  {/if}
+
   <footer class="gen-foot">
     <textarea
       class="gen-prompt"
@@ -153,8 +197,13 @@
     ></textarea>
 
     <div class="gen-actions">
-      {#if tooLong && choice?.maxPromptChars}
-        <span class="gen-warn">{node.prompt.length}/{choice.maxPromptChars}</span>
+      <!-- Il perché sta ACCANTO al bottone spento, non altrove: un motivo che non si vede da dove
+           si preme è un motivo che nessuno legge. -->
+      {#if blocked}
+        <span class="gen-warn" class:is-soft={!tooLong}>
+          {blocked}{#if tooLong && choice?.maxPromptChars}
+            ({node.prompt.length}/{choice.maxPromptChars}){/if}
+        </span>
       {/if}
       <button type="button" onclick={() => onrun?.()} disabled={!canRun}>
         {state === 'done' ? 'Rifai' : 'Genera'}
@@ -348,6 +397,43 @@
   .gen-warn {
     font-size: 11px;
     color: #c0392b;
+  }
+  /* «Manca ancora qualcosa» non è un errore: in rosso, aprire un nodo nuovo sembrerebbe aver già
+     sbagliato qualcosa. Il rosso resta a quel che il modello rifiuterebbe davvero. */
+  .gen-warn.is-soft {
+    color: var(--ink-soft, #6e6e73);
+  }
+
+  /*
+   * LA STRISCIA DEI GIRI FATTI. Numeri e non miniature: una miniatura dentro una fascia alta
+   * venti pixel è illeggibile — si distinguerebbero due immagini simili solo aprendole — e
+   * caricarne dieci costringerebbe il nodo a scaricare dieci file per una fila che spesso nessuno
+   * guarda. Il prompt di quel giro sta nel `title`, che è dove si cerca quando i numeri non
+   * bastano.
+   */
+  .gen-past {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    padding: 5px 9px;
+    border-top: 1px solid var(--line, #e5e5e5);
+    background: var(--paper, #fff);
+  }
+  .gen-past-one {
+    min-width: 20px;
+    padding: 1px 5px;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--ink-soft, #6e6e73);
+    background: var(--paper-2, #f9f9f9);
+    border: 1px solid var(--line-2, #d2d2d7);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .gen-past-one.is-shown {
+    color: var(--paper, #fff);
+    background: var(--ink, #1d1d1f);
+    border-color: var(--ink, #1d1d1f);
   }
   button {
     padding: 4px 12px;
