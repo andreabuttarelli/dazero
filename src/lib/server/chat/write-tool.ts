@@ -40,6 +40,8 @@ import { TABLE_CHECKS, WRITABLE_COLUMNS } from '@anomalia/api-contracts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isRlsScoped } from '$lib/server/rls-client';
 import { logAiCall } from '$lib/server/ai-log';
+import { swallow } from '$lib/server/swallow';
+import { STORAGE_REFS, pathsInRow, refKey, type StorageRef } from '$lib/server/storage-refs';
 
 export { UPDATE_MAX_ROWS, DELETE_MAX_ROWS };
 
@@ -143,6 +145,99 @@ export function explainWriteError(
     default:
       return `Unrecognized database error. Read one row of ${table} with \`query\` — its keys are the columns, its values the shapes. Raw: ${message}`;
   }
+}
+
+/**
+ * La regola di questa tabella, se il registro ne conosce una. Una tabella può referenziare due
+ * bucket (`market_posts` lo fa), e allora vengono tolti i file di entrambi.
+ */
+const refsFor = (table: string): StorageRef[] | null => {
+  const rules = STORAGE_REFS.filter((r) => r.table === table);
+  return rules.length ? rules : null;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FilterFn = (q: any, withBrand: boolean) => any;
+
+const columnsOfRules = (rules: StorageRef[]): string[] => [...new Set(rules.flatMap((r) => r.columns))];
+
+/** I path che le righe in partenza tengono in vita, letti finché quelle righe esistono. */
+async function pathsHeldBy(
+  supabase: SupabaseClient,
+  rules: StorageRef[],
+  filtered: FilterFn,
+  withBrand: boolean
+): Promise<Array<{ bucket: string; path: string }>> {
+  const columns = ['id', ...columnsOfRules(rules)].join(', ');
+
+  const { data, error } = await filtered(supabase.from(rules[0].table).select(columns), withBrand)
+    .abortSignal(AbortSignal.timeout(WRITE_ABORT_MS))
+    .then((r: { data: unknown; error: unknown }) => r);
+
+  // Una lettura fallita significa «non so quali file»: si prosegue con la cancellazione delle righe
+  // e non si tocca niente nello Storage. Indovinare qui è l'unico modo di cancellare un file vivo.
+  if (error || !Array.isArray(data)) return [];
+
+  const held = new Map<string, { bucket: string; path: string }>();
+  for (const row of data as Array<Record<string, unknown>>) {
+    for (const rule of rules) {
+      for (const ref of pathsInRow(rule, row)) {
+        held.set(refKey(ref.bucket, ref.path), ref);
+      }
+    }
+  }
+
+  return [...held.values()];
+}
+
+/**
+ * Toglie i file che NESSUNA riga superstite nomina più. Il secondo giro non è pedanteria: lo stesso
+ * file può stare nelle `images` di due persone — una foto di gruppo, un'immagine riusata — e
+ * cancellarlo con la prima romperebbe la seconda, che è viva e visibile.
+ */
+async function removeUnheld(
+  supabase: SupabaseClient,
+  rules: StorageRef[],
+  held: Array<{ bucket: string; path: string }>
+): Promise<number> {
+  if (!held.length) return 0;
+
+  const stillHeld = new Set<string>();
+  for (const rule of rules) {
+    const { data } = await supabase
+      .from(rule.table)
+      .select(rule.columns.join(', '))
+      .abortSignal(AbortSignal.timeout(WRITE_ABORT_MS));
+
+    for (const row of (data ?? []) as unknown as Array<Record<string, unknown>>) {
+      for (const ref of pathsInRow(rule, row)) {
+        stillHeld.add(refKey(ref.bucket, ref.path));
+      }
+    }
+  }
+
+  const doomed = held.filter((ref) => !stillHeld.has(refKey(ref.bucket, ref.path)));
+  if (!doomed.length) return 0;
+
+  const byBucket = new Map<string, string[]>();
+  for (const ref of doomed) {
+    byBucket.set(ref.bucket, [...(byBucket.get(ref.bucket) ?? []), ref.path]);
+  }
+
+  let removed = 0;
+  for (const [bucket, paths] of byBucket) {
+    // Lo Storage che non risponde NON trasforma una cancellazione riuscita in un errore: le righe
+    // sono già sparite, e dire «fallito» manderebbe l'agente a ritentare una DELETE che non trova
+    // più niente da togliere.
+    try {
+      await supabase.storage.from(bucket).remove(paths);
+      removed += paths.length;
+    } catch (error) {
+      swallow('remove orphaned files', error);
+    }
+  }
+
+  return removed;
 }
 
 export type WriteToolDeps = {
@@ -512,6 +607,11 @@ export function createWriteTools({ supabase, brandId, userId, threadId }: WriteT
       );
     }
 
+    // I PATH SI LEGGONO ORA, mentre le righe ci sono ancora: dopo la DELETE la riga che li nominava
+    // non esiste più, e con lei l'unico modo di sapere quali file teneva in vita.
+    const rule = refsFor(table);
+    const held = rule ? await pathsHeldBy(supabase, rule, filtered, withBrand) : [];
+
     const removed = await filtered(supabase.from(table).delete(), withBrand)
       .select()
       .abortSignal(AbortSignal.timeout(WRITE_ABORT_MS));
@@ -521,8 +621,21 @@ export function createWriteTools({ supabase, brandId, userId, threadId }: WriteT
     }
 
     const rows = (removed.data ?? []) as Array<Record<string, unknown>>;
+
+    // E SI TOLGONO ADESSO, non prima. Il verso opposto sembra più prudente e non lo è: se la DELETE
+    // fallisse dopo — RLS, una foreign key, il timeout a 8s — resterebbe una riga VIVA che punta a
+    // un file che non c'è più, e l'utente la vede rotta. Un orfano invece non lo vede nessuno: costa
+    // spazio, non fiducia. Fra i due danni si sceglie quello reversibile.
+    const filesRemoved = rule ? await removeUnheld(supabase, rule, held) : undefined;
+
     return finish(
-      { table, deleted: rows.length, matched, note: 'Gone. Nothing here restores them.' },
+      {
+        table,
+        deleted: rows.length,
+        matched,
+        ...(filesRemoved === undefined ? {} : { files_removed: filesRemoved }),
+        note: 'Gone. Nothing here restores them.'
+      },
       `db_write:${table}:delete:rows=${rows.length}/${matched}`,
       t0
     );

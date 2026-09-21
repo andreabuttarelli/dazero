@@ -68,6 +68,8 @@ function fakeClient(script: Step[], opts: { authority?: 'user' | 'service' } = {
     return b;
   };
 
+  const removed: Array<{ bucket: string; paths: string[]; afterCalls: number }> = [];
+
   const client = {
     from: (table: string) => ({
       select: (_cols: string, options?: { head?: boolean }) =>
@@ -75,11 +77,21 @@ function fakeClient(script: Step[], opts: { authority?: 'user' | 'service' } = {
       insert: (payload: Record<string, unknown>) => chain({ table, verb: 'insert', payload, filters: [] }),
       update: (payload: Record<string, unknown>) => chain({ table, verb: 'update', payload, filters: [] }),
       delete: () => chain({ table, verb: 'delete', filters: [] })
-    })
+    }),
+    // `afterCalls` è quello che rende verificabile l'ORDINE: una rimozione registrata quando la
+    // delete non è ancora fra le chiamate è una rimozione avvenuta prima, cioè il difetto.
+    storage: {
+      from: (bucket: string) => ({
+        remove: async (paths: string[]) => {
+          removed.push({ bucket, paths, afterCalls: calls.length });
+          return { data: null, error: null };
+        }
+      })
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 
-  return { calls, client: opts.authority === 'service' ? client : markRlsScoped(client) };
+  return { calls, removed, client: opts.authority === 'service' ? client : markRlsScoped(client) };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -452,5 +464,101 @@ describe('deleteRow', () => {
 
     expect(out.error).toBeTruthy();
     expect(calls).toHaveLength(0);
+  });
+});
+
+/**
+ * I FILE CHE LA RIGA TENEVA IN VITA.
+ *
+ * L'ordine è l'invariante, e va nel verso meno ovvio: prima si leggono i path, POI si cancellano le
+ * righe, POI si tolgono i file. Il verso opposto — file prima — sembra più prudente e non lo è: se
+ * la DELETE poi fallisce (RLS, foreign key, timeout), resta una riga VIVA che punta al vuoto, e
+ * l'utente la vede rotta. Un file orfano invece nessuno lo vede: costa spazio, non fiducia.
+ */
+describe('deleteRow porta via i file che le righe referenziavano', () => {
+  it('legge i path prima, e li rimuove DOPO che le righe sono sparite', async () => {
+    const { client, calls, removed } = fakeClient([
+      { count: 1 },
+      { rows: [{ id: 'p1', images: [{ path: 'own/b1/people/a.png' }] }] },
+      { rows: [{ id: 'p1', images: [{ path: 'own/b1/people/a.png' }] }] }
+    ]);
+
+    const out: any = await tools(client).deleteRow({
+      table: 'people',
+      where: [{ column: 'id', op: 'eq', value: 'p1' }]
+    });
+
+    expect(out.deleted).toBe(1);
+    expect(removed).toEqual([
+      { bucket: 'brand-knowledge', paths: ['own/b1/people/a.png'], afterCalls: calls.length }
+    ]);
+    expect(calls.some((c: any) => c.verb === 'delete')).toBe(true);
+    expect(out.files_removed).toBe(1);
+  });
+
+  it('non tocca nessun file quando la DELETE non è partita', async () => {
+    const { client, removed } = fakeClient([{ count: DELETE_MAX_ROWS + 1 }]);
+
+    const out: any = await tools(client).deleteRow({
+      table: 'people',
+      where: [{ column: 'name', op: 'like', value: '%a%' }]
+    });
+
+    expect(out.error).toBe('too_many_rows');
+    expect(removed).toEqual([]);
+  });
+
+  it('una tabella che non sta nel registro non fa nascere nessuna rimozione', async () => {
+    const { client, removed } = fakeClient([{ count: 1 }, { rows: [{ id: 'c1' }] }]);
+
+    const out: any = await tools(client).deleteRow({
+      table: 'competitors',
+      where: [{ column: 'id', op: 'eq', value: 'c1' }]
+    });
+
+    expect(out.deleted).toBe(1);
+    expect(removed).toEqual([]);
+    expect(out.files_removed).toBeUndefined();
+  });
+
+  it('un file che un\'ALTRA riga referenzia ancora non viene tolto', async () => {
+    const { client, removed } = fakeClient([
+      { count: 1 },
+      { rows: [{ id: 'p1', images: [{ path: 'own/b1/people/shared.png' }] }] },
+      { rows: [{ id: 'p1', images: [{ path: 'own/b1/people/shared.png' }] }] },
+      { rows: [{ id: 'p2', images: [{ path: 'own/b1/people/shared.png' }] }] }
+    ]);
+
+    const out: any = await tools(client).deleteRow({
+      table: 'people',
+      where: [{ column: 'id', op: 'eq', value: 'p1' }]
+    });
+
+    expect(out.deleted).toBe(1);
+    expect(removed).toEqual([]);
+    expect(out.files_removed).toBe(0);
+  });
+
+  it('una rimozione che fallisce non trasforma una cancellazione riuscita in un errore', async () => {
+    const { client } = fakeClient([
+      { count: 1 },
+      { rows: [{ id: 'p1', images: [{ path: 'own/b1/people/a.png' }] }] },
+      { rows: [{ id: 'p1', images: [{ path: 'own/b1/people/a.png' }] }] }
+    ]);
+    client.storage = {
+      from: () => ({
+        remove: async () => {
+          throw new Error('storage down');
+        }
+      })
+    };
+
+    const out: any = await tools(client).deleteRow({
+      table: 'people',
+      where: [{ column: 'id', op: 'eq', value: 'p1' }]
+    });
+
+    expect(out.deleted).toBe(1);
+    expect(out.error).toBeUndefined();
   });
 });
