@@ -1058,3 +1058,34 @@ describe('la settimana del seed', () => {
     expect(out.seeds[0].week).toBeUndefined();
   });
 });
+
+/**
+ * LA NORMALIZZAZIONE È IN LETTURA, NON IN SCRITTURA.
+ *
+ * `save_week_seeds` fu tenuto in vita perché «conia gli id e mappa i formati legacy»: se fosse
+ * vero, togliere il tool lascerebbe `insert_row` a depositare seeds che `produce_week` non sa
+ * produrre. Non lo è — e in produzione si vede: 112 dei 155 seed salvati non hanno `id`, e i
+ * `format` distinti sono dieci contro i cinque dell'enum. Quelle righe si producono lo stesso
+ * perché OGNI strada che le consuma passa da qui prima di guardarle.
+ *
+ * Questi casi sono la prova, messa dove un ritorno indietro la fa fallire: spostare la
+ * normalizzazione dalla lettura alla scrittura romperebbe le righe già in tabella, non le
+ * salverebbe.
+ */
+describe('un seed grezzo, come lo deposita una scrittura che non passa dall\'endpoint', () => {
+  it('prende un id alla rilettura: non serve che chi scrive lo conii', () => {
+    const out = normalizeWeeklyStrategy({ seeds: [{ platform: 'instagram', angle: 'a' }] });
+    expect(out.seeds[0].id).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('il formato legacy finisce sull\'enum alla rilettura', () => {
+    const out = normalizeWeeklyStrategy({ seeds: [{ platform: 'instagram', format: 'reel' }] });
+    expect(out.seeds[0].format).toBe('video');
+    expect(out.seeds[0].media).toBe('video');
+  });
+
+  it('il clamp delle capacità media gira alla rilettura', () => {
+    const out = normalizeWeeklyStrategy({ seeds: [{ platform: 'instagram', media: 'text', format: 'text_post' }] });
+    expect(out.seeds[0].media).toBe('image');
+  });
+});

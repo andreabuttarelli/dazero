@@ -44,7 +44,7 @@ const KEPT_ON_PURPOSE: Record<string, string> = {
     'compone sei moduli di regole — limiti di piattaforma, proof discipline, punteggio, conflitti di calendario, igiene hashtag — e ne versiona la composizione: nessuna riga da leggere esiste',
   propose_plan: 'passa da `gateAiAction` e fa scrivere il piano al modello: spende crediti',
   save_week_seeds:
-    'conia gli id di riga stabili, mappa i formati legacy sull\'enum, clampa le capacità media e tiene UN solo draft per brand: `insert_row` depositerebbe seeds grezzi che il CHECK accetta e `produce_week` non sa produrre',
+    'tiene UN solo draft per brand — aggiorna quello aperto invece di affiancarne un secondo, che sulla pagina piano nasconderebbe il primo: `insert_row` non sa cercare la riga da riusare. La normalizzazione NON è il motivo, perché non vive qui: `normalizeWeeklyStrategy` gira in LETTURA su ogni strada che consuma i seeds (pagina piano, scheduler, generate) e di nuovo dentro `executeWeekStrategy`, quindi un seed grezzo prende id, enum e clamp prima di essere prodotto',
   reject_post:
     'revoca la schedulazione su Zernio PRIMA di cancellare, e se la revoca fallisce non cancella: `delete_row` toglierebbe la riga lasciando viva la schedulazione — il post esce e non resta nulla che lo racconti (incidente luglio 2026)',
   make_video: 'genera e spende crediti',
