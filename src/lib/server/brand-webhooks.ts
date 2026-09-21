@@ -194,11 +194,11 @@ export async function attemptDelivery(
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'user-agent': 'Anomalia-Webhooks/1',
-          'anomalia-delivery-id': delivery.id,
-          'anomalia-event-type': delivery.trigger_slug,
-          'anomalia-timestamp': timestamp,
-          'anomalia-signature': `v1,${signDelivery({
+          'user-agent': 'dazero-Webhooks/1',
+          'dazero-delivery-id': delivery.id,
+          'dazero-event-type': delivery.trigger_slug,
+          'dazero-timestamp': timestamp,
+          'dazero-signature': `v1,${signDelivery({
             secret: webhook.secret,
             deliveryId: delivery.id,
             timestamp,

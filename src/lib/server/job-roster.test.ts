@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AUTOMATION_CADENCES, AUTOMATION_JOBS, AUTOMATION_STATES } from '@anomalia/api-contracts';
+import { AUTOMATION_CADENCES, AUTOMATION_JOBS, AUTOMATION_STATES } from '@dazero/api-contracts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // jobPausedForBrand legge il piano e gli opt-out con il client admin, e registra il salto in
@@ -53,20 +53,20 @@ beforeEach(() => clearJobRosterCache());
 
 describe('jobEnabledForBrand', () => {
   it('è acceso quando il brand non ha nessuna riga di opt-out', async () => {
-    expect(await jobEnabledForBrand('b1', 'geo', fakeAdmin({ data: [] }))).toBe(true);
+    expect(await jobEnabledForBrand('b1', 'market_refs', fakeAdmin({ data: [] }))).toBe(true);
   });
 
   it('è spento quando esiste la riga di opt-out per QUEL lavoro', async () => {
-    const admin = fakeAdmin({ data: [{ job_key: 'geo' }] });
-    expect(await jobEnabledForBrand('b1', 'geo', admin)).toBe(false);
+    const admin = fakeAdmin({ data: [{ job_key: 'market_refs' }] });
+    expect(await jobEnabledForBrand('b1', 'market_refs', admin)).toBe(false);
     // e non spegne gli altri: l'opt-out è per lavoro, non per brand
-    expect(await jobEnabledForBrand('b1', 'seo', admin)).toBe(true);
+    expect(await jobEnabledForBrand('b1', 'strategy_review', admin)).toBe(true);
   });
 
   it('degrada ad ACCESO quando la tabella non esiste (migration non ancora applicata)', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const missing = fakeAdmin({ error: { message: 'relation "brand_job_optouts" does not exist' } });
-    expect(await jobEnabledForBrand('b1', 'geo', missing)).toBe(true);
+    expect(await jobEnabledForBrand('b1', 'market_refs', missing)).toBe(true);
   });
 
   it('degrada ad ACCESO anche se il client esplode', async () => {
@@ -76,7 +76,7 @@ describe('jobEnabledForBrand', () => {
         throw new Error('no network');
       }
     } as unknown as SupabaseClient;
-    expect(await jobEnabledForBrand('b1', 'geo', boom)).toBe(true);
+    expect(await jobEnabledForBrand('b1', 'market_refs', boom)).toBe(true);
   });
 
   it('legge una volta sola per brand: un tick che scorre N lavori non fa N query', async () => {
@@ -132,10 +132,10 @@ describe('brandRoster', () => {
   it('tiene separati i tre stati: spento da te / non è girato / è fallito', async () => {
     const rows = await brandRoster(
       rosterAdmin(
-        ['geo'],
+        ['market_refs'],
         [
-          { loop: 'geo', outcome: 'skipped', reason: 'user_off', created_at: '2026-08-20T08:00:00Z' },
-          { loop: 'seo', outcome: 'skipped', reason: 'no_plan', created_at: '2026-08-20T09:00:00Z' },
+          { loop: 'market_refs', outcome: 'skipped', reason: 'user_off', created_at: '2026-08-20T08:00:00Z' },
+          { loop: 'strategy_review', outcome: 'skipped', reason: 'no_plan', created_at: '2026-08-20T09:00:00Z' },
           { loop: 'library', outcome: 'failed', reason: 'TypeError: fetch failed', created_at: '2026-08-20T10:00:00Z' },
           { loop: 'weekly_recap', outcome: 'ok', reason: null, created_at: '2026-08-20T11:00:00Z' }
         ]
@@ -144,11 +144,11 @@ describe('brandRoster', () => {
     );
     const by = Object.fromEntries(rows.map((r) => [r.key, r]));
 
-    expect(by.geo.state).toBe('off');
-    expect(by.geo.enabled).toBe(false);
+    expect(by.market_refs.state).toBe('off');
+    expect(by.market_refs.enabled).toBe(false);
 
-    expect(by.seo.state).toBe('skipped');
-    expect(by.seo.reason).toBe('no_plan'); // il PERCHÉ, non un generico "non gira"
+    expect(by.strategy_review.state).toBe('skipped');
+    expect(by.strategy_review.reason).toBe('no_plan'); // il PERCHÉ, non un generico "non gira"
 
     expect(by.library.state).toBe('failed');
     expect(by.library.reason).toBeNull(); // il messaggio grezzo non arriva alla UI
@@ -159,12 +159,12 @@ describe('brandRoster', () => {
 
   it('un lavoro riacceso non resta appeso al proprio tick "user_off"', async () => {
     const rows = await brandRoster(
-      rosterAdmin([], [{ loop: 'geo', outcome: 'skipped', reason: 'user_off', created_at: '2026-08-20T08:00:00Z' }]),
+      rosterAdmin([], [{ loop: 'market_refs', outcome: 'skipped', reason: 'user_off', created_at: '2026-08-20T08:00:00Z' }]),
       'b1'
     );
-    const geo = rows.find((r) => r.key === 'geo')!;
-    expect(geo.enabled).toBe(true);
-    expect(geo.state).toBe('never');
+    const marketRefs = rows.find((r) => r.key === 'market_refs')!;
+    expect(marketRefs.enabled).toBe(true);
+    expect(marketRefs.state).toBe('never');
   });
 });
 
@@ -209,32 +209,32 @@ describe('jobPausedForBrand — il gate del piano davanti a ogni tick del roster
   });
 
   it('brand free: salta e registra `no_plan` — il roster su /agents dice PERCHÉ la squadra è ferma', async () => {
-    expect(await jobPausedForBrand('geo', 'b-free', null)).toBe(true);
+    expect(await jobPausedForBrand('market_refs', 'b-free', null)).toBe(true);
     expect(gateState.ticks).toEqual([
-      { loop: 'geo', brandId: 'b-free', outcome: 'skipped', reason: 'no_plan' }
+      { loop: 'market_refs', brandId: 'b-free', outcome: 'skipped', reason: 'no_plan' }
     ]);
   });
 
   it('brand pagante: lavora (nessun tick di salto)', async () => {
-    expect(await jobPausedForBrand('geo', 'b-paid', 'starter')).toBe(false);
+    expect(await jobPausedForBrand('market_refs', 'b-paid', 'starter')).toBe(false);
     expect(gateState.ticks).toEqual([]);
   });
 
   it('senza piano in mano lo legge da sé: free letto dal db = fermo', async () => {
     gateState.admin = gateAdmin({ plan: null });
-    expect(await jobPausedForBrand('seo', 'b-db-free')).toBe(true);
+    expect(await jobPausedForBrand('strategy_review', 'b-db-free')).toBe(true);
     expect(gateState.ticks[0]?.reason).toBe('no_plan');
   });
 
   it('lettura del piano fallita = nel dubbio si lavora (mai fermare i paganti per un errore di rete)', async () => {
     gateState.admin = gateAdmin({ planError: true });
-    expect(await jobPausedForBrand('seo', 'b-unknown')).toBe(false);
+    expect(await jobPausedForBrand('strategy_review', 'b-unknown')).toBe(false);
     expect(gateState.ticks).toEqual([]);
   });
 
   it("l'opt-out dell'utente resta distinto: pagante ma spento = `user_off`", async () => {
-    gateState.admin = gateAdmin({ optOuts: ['geo'] });
-    expect(await jobPausedForBrand('geo', 'b-paid-off', 'pro')).toBe(true);
+    gateState.admin = gateAdmin({ optOuts: ['market_refs'] });
+    expect(await jobPausedForBrand('market_refs', 'b-paid-off', 'pro')).toBe(true);
     expect(gateState.ticks[0]?.reason).toBe('user_off');
   });
 });
@@ -294,13 +294,13 @@ describe('jobRunCounts — quante volte un lavoro ha davvero girato', () => {
 
   it('conta un lavoro per volta, non tutti insieme', async () => {
     const { admin } = ticksAdmin([
-      { loop: 'seo', outcome: 'ok' },
-      { loop: 'seo', outcome: 'failed' },
-      { loop: 'geo', outcome: 'ok' }
+      { loop: 'strategy_review', outcome: 'ok' },
+      { loop: 'strategy_review', outcome: 'failed' },
+      { loop: 'market_refs', outcome: 'ok' }
     ]);
     const counts = await jobRunCounts(admin, 'b1', '2026-08-05T00:00:00.000Z');
-    expect(counts.get('seo')).toBe(2);
-    expect(counts.get('geo')).toBe(1);
+    expect(counts.get('strategy_review')).toBe(2);
+    expect(counts.get('market_refs')).toBe(1);
   });
 
   it('non conta un giro fermato da un gate: non ha speso niente', async () => {
@@ -318,7 +318,7 @@ describe('jobRunCounts — quante volte un lavoro ha davvero girato', () => {
   });
 
   it('un lavoro che non ha mai girato non compare, e vale zero', async () => {
-    const { admin } = ticksAdmin([{ loop: 'seo', outcome: 'ok' }]);
+    const { admin } = ticksAdmin([{ loop: 'strategy_review', outcome: 'ok' }]);
     const counts = await jobRunCounts(admin, 'b1', '2026-08-05T00:00:00.000Z');
     expect(counts.get('library') ?? 0).toBe(0);
   });

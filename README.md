@@ -1,22 +1,22 @@
 <p align="center">
-  <img src="static/favicon.svg" width="72" alt="Anomalia" />
+  <img src="static/favicon.svg" width="72" alt="dazero" />
 </p>
 
-<h1 align="center">Anomalia</h1>
+<h1 align="center">dazero</h1>
 
 <p align="center">
-  <a href="https://github.com/anomaliaso/anomalia/stargazers"><img src="https://img.shields.io/github/stars/anomaliaso/anomalia?style=flat&logo=github&logoColor=white&labelColor=131313&color=c485fe" alt="GitHub stars" /></a>
+  <a href="https://github.com/andreabuttarelli/dazero/stargazers"><img src="https://img.shields.io/github/stars/andreabuttarelli/dazero?style=flat&logo=github&logoColor=white&labelColor=131313&color=c485fe" alt="GitHub stars" /></a>
   <a href="https://discord.gg/PUp37DG6vr"><img src="https://img.shields.io/badge/Discord-community-c485fe?style=flat&logo=discord&logoColor=white&labelColor=131313" alt="Discord" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-c485fe?style=flat&labelColor=131313" alt="Apache-2.0" /></a>
-  <a href="https://anomalia.so"><img src="https://img.shields.io/badge/Get_started-anomalia.so-c485fe?style=flat&labelColor=131313" alt="Get started on anomalia.so" /></a>
+  <a href="https://dazero.co"><img src="https://img.shields.io/badge/Get_started-dazero.co-c485fe?style=flat&labelColor=131313" alt="Get started on dazero.co" /></a>
 </p>
 
-![Anomalia — Your marketing department, automated.](./docs/readme-hero.png)
+![dazero — Your marketing department, automated.](./docs/readme-hero.png)
 
-Your marketing department, automated. Anomalia is an open-source Grok Bot
+Your marketing department, automated. dazero is an open-source Grok Bot
 alternative specialized in marketing, distribution, and sales. It plans, writes,
 designs, and publishes across social, blog, and SEO — nothing goes out until you
-approve. Use it hosted at [anomalia.so](https://anomalia.so), or run the complete
+approve. Use it hosted at [dazero.co](https://dazero.co), or run the complete
 stack yourself.
 
 ## Features
@@ -29,7 +29,7 @@ stack yourself.
 - Blog, SEO, and GEO — rank on Google and get cited by AI assistants
 - Multi-brand workspaces (one account, many brands)
 - Propose-approve throughout: the AI never publishes silently
-- Drive it from Cursor or Claude via MCP, or from the `anomalia` CLI
+- Drive it from Cursor or Claude via MCP, or from the `dazero` CLI
 
 ## Stack
 
@@ -75,7 +75,7 @@ Contributions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md)
 before opening a pull request. For security vulnerabilities, follow
 [SECURITY.md](./SECURITY.md) instead of filing a public issue.
 
-Anomalia is licensed under the [Apache License 2.0](./LICENSE).
+dazero is licensed under the [Apache License 2.0](./LICENSE).
 
 Questions and ideas are welcome in the
 [Discord community](https://discord.gg/PUp37DG6vr).

@@ -371,7 +371,7 @@ Return JSON with a "posts" array in the SAME ORDER as the seeds.`;
     return post;
   });
 
-  // PASS 2.5. L'angolo di ogni seed viaggia come i fatti ammessi di QUEL post: un seed Radar
+  // PASS 2.5. L'angolo di ogni seed viaggia come i fatti ammessi di QUEL post: un seed di attualità
   // porta lì i fatti della fonte, e il chief non deve togliere ciò che la fonte sostiene.
   const seedBriefs = strategy.seeds.map((s, i) => `${i}. ${String(s.angle ?? '').slice(0, 500)}`).join('\n');
   return reviewCaptions(profile, posts, prefs, seedBriefs);

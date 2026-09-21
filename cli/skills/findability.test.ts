@@ -64,11 +64,6 @@ const ASKED_FOR: ReadonlyArray<{ tool: string; question: string; words: readonly
     words: ['brand', 'settings']
   },
   {
-    tool: 'geo_action',
-    question: 'do assistants mention us when someone asks',
-    words: ['chatgpt', 'brand', 'cited']
-  },
-  {
     tool: 'query',
     question: 'how many posts went out last month',
     words: ['table', 'count', 'read']
@@ -95,7 +90,7 @@ const HAND_WRITTEN_TARIFF = /\b\d+\s*credits?\b/i;
  * tools.md resta coperta da `tools-coverage.test.ts`, che pretende ogni tool documentato lì.
  */
 const SKILL = readFileSync(
-  fileURLToPath(new URL('./anomalia/SKILL.md', import.meta.url)),
+  fileURLToPath(new URL('./dazero/SKILL.md', import.meta.url)),
   'utf8'
 ).toLowerCase();
 

@@ -6,10 +6,9 @@
  * non un if sparso in chat-reasoning / model.ts.
  *
  * Tier (auto/fast/pro) ≠ modello: il tier è la scelta utente; la famiglia è ciò che
- * l'agente o il tier risolvono. Il vocabolario delle famiglie vive nei contratti
- * (`@anomalia/agent-contracts/contracts`), vedi anche `AgentSpec.model`.
+ * l'agente o il tier risolvono. Il vocabolario delle famiglie sta in `families.ts`.
  */
-import type { ModelFamilyId } from '@anomalia/agent-contracts/contracts';
+import type { ModelFamilyId } from './families';
 
 export type { ModelFamilyId };
 

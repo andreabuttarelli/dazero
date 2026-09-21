@@ -279,7 +279,7 @@
 </script>
 
 <svelte:head>
-  <title>Anomalia — {$_('app.hub.publish.manualPosting')}</title>
+  <title>dazero — {$_('app.hub.publish.manualPosting')}</title>
 </svelte:head>
 
 <div class="mp">

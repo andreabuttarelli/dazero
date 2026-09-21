@@ -2,7 +2,7 @@
 
 Endpoint per collegare al brand le app esterne che alimentano il corpus (Drive, Notion, GitHub,
 Gmail) e i toolkit che l'agente può chiamare come strumenti. Sono gli endpoint consumati da
-`anomalia connections` e dai tool MCP `list_connections` / `connect_app` / `complete_connection` /
+`dazero connections` e dai tool MCP `list_connections` / `connect_app` / `complete_connection` /
 `revoke_connection`.
 
 Il broker è **Composio**: le credenziali restano da loro, l'app conserva solo l'id del connected
@@ -102,7 +102,7 @@ riga come disconnessa. Per un'app di knowledge disconnette anche la sorgente.
 **Esempio**
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/connections" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/connections" \
   -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
   -d '{"provider":"NOTION"}'
 ```
@@ -126,7 +126,7 @@ GitHub → Composio → POST /api/v1/composio/webhook   (firma Composio, uno per
 ```json
 {
   "webhook": {
-    "url": "https://esempio.com/webhooks/anomalia",
+    "url": "https://esempio.com/webhooks/dazero",
     "events": [],
     "status": "active",
     "failure_count": 0,
@@ -162,10 +162,10 @@ Ogni POST verso il brand porta:
 
 | Header | Contenuto |
 |---|---|
-| `anomalia-delivery-id` | id della consegna, stabile tra i retry |
-| `anomalia-event-type` | slug del trigger, es. `GITHUB_PULL_REQUEST_EVENT` |
-| `anomalia-timestamp` | ISO 8601 |
-| `anomalia-signature` | `v1,<base64>` — `HMAC-SHA256` di `{delivery-id}.{timestamp}.{body}` col secret |
+| `dazero-delivery-id` | id della consegna, stabile tra i retry |
+| `dazero-event-type` | slug del trigger, es. `GITHUB_PULL_REQUEST_EVENT` |
+| `dazero-timestamp` | ISO 8601 |
+| `dazero-signature` | `v1,<base64>` — `HMAC-SHA256` di `{delivery-id}.{timestamp}.{body}` col secret |
 
 Body: `{ "id", "type", "created_at", "data" }`, dove `data` è il payload del trigger.
 

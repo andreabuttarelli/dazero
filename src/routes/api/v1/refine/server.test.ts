@@ -17,7 +17,7 @@ const ORG = { id: 'org-1', name: 'Acme' };
 const OWN = 'user-1/media/generated-a1.png';
 
 async function refine(body: unknown) {
-  const url = new URL('https://anomalia.test/api/v1/refine');
+  const url = new URL('https://dazero.test/api/v1/refine');
   const res = await (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),
     url

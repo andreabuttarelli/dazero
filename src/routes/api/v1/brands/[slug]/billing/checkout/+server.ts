@@ -5,7 +5,7 @@ import { billingLink } from '$lib/server/billing-links';
 import { isOrgOwner, orgBillingForBrand } from '$lib/server/org-billing';
 import { plansAbove } from '$lib/server/plans';
 import { appOrigin } from '$lib/server/app-url';
-import { CHECKOUT_LINK, statusForFailure } from '@anomalia/api-contracts';
+import { CHECKOUT_LINK, statusForFailure } from '@dazero/api-contracts';
 
 /**
  * The plan is named nowhere but here: the hosted page carries the prices, so this endpoint only

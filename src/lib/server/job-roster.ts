@@ -24,12 +24,8 @@ import { JOB_OWNERS, type TeamAgentId } from '$lib/agent-owners';
 /** La chiave di un lavoro del roster. È anche il `loop` con cui scrive in `loop_ticks`. */
 export type JobKey = Extract<
   LoopName,
-  | 'autopilot'
   | 'analytics_review'
   | 'weekly_recap'
-  | 'seo'
-  | 'geo'
-  | 'radar_recap'
   | 'market_refs'
   | 'strategy_review'
   | 'library'
@@ -46,14 +42,8 @@ export type RosterJob = { key: JobKey; cadence: JobCadence };
  * locali. Nessuna migration, nessun backfill.
  */
 export const ROSTER_JOBS: RosterJob[] = [
-  // La chiave resta 'autopilot' perché è il loop con cui il tick scrive in loop_ticks da sempre:
-  // cambiarla azzererebbe la storia visibile sul roster.
-  { key: 'autopilot', cadence: 'weekly' },
   { key: 'analytics_review', cadence: 'weekly' },
   { key: 'weekly_recap', cadence: 'weekly' },
-  { key: 'seo', cadence: 'weekly' },
-  { key: 'geo', cadence: 'weekly' },
-  { key: 'radar_recap', cadence: 'daily' },
   { key: 'market_refs', cadence: 'weekly' },
   // UNA voce per due lavori (ripasso GTM settimanale + rinnovo del piano ogni 4 settimane): è lo
   // stesso mestiere a due granularità, e due card lascerebbero un cliente con metà stratega.
@@ -91,12 +81,8 @@ export function scheduledWorkAllowed(plan: string | null | undefined): boolean {
  * chiave senza blurb cade sul suo nome, così un lavoro nuovo entra nel prompt da solo.
  */
 const ROSTER_JOB_BLURBS: Partial<Record<string, string>> = {
-  autopilot: 'Content producer — plans and produces the recurring weekly batch of posts, then asks for approval.',
   analytics_review: 'Performance review — reads how published posts did and adapts strategy, editorial plan and pending drafts.',
   weekly_recap: 'Weekly recap — the Monday email: what happened, what is coming, what needs the owner.',
-  seo: 'SEO agent — weekly site review: grade, issues, and growth initiatives.',
-  geo: 'GEO agent — weekly AI-visibility check: where AI assistants cite (or skip) the brand.',
-  radar_recap: 'Radar digest — a daily brief of relevant news, conversations and leads found in the field.',
   market_refs: 'Competitor watch — refreshes what competitors are publishing so references stay current.',
   strategy_review: 'Strategy review — rereads strategy and editorial plan against what actually happened and proposes changes.',
   library: 'Library curator — monthly refresh of the indexed site content.'
@@ -195,7 +181,7 @@ export async function jobEnabledForBrand(
 
 /**
  * Il PRIMO controllo di ogni tick, prima di spendere qualunque cosa:
- *   if (await jobPausedForBrand('geo', brand.id)) { skipped++; continue; }
+ *   if (await jobPausedForBrand('library', brand.id)) { skipped++; continue; }
  * Registra anche `skipped/user_off`, o roster e brand doctor non distinguono "l'hai spento tu" da
  * "non è girato".
  */
@@ -369,8 +355,8 @@ const RUN_ROWS_MAX = 1000;
  * e un tentativo fallito può aver già speso.
  *
  * Non è il COSTO, ed è tutto ciò che il database sa dire: `ai_calls` non ha nessuna colonna che
- * nomini il loop, e le label sono condivise fra lavori diversi (`director` sta sia in autopilot
- * sia in radar_recap), quindi nessuna somma per lavoro sarebbe vera.
+ * nomini il loop, e le label sono condivise fra lavori diversi (`director` sta in più lavori
+ * diversi), quindi nessuna somma per lavoro sarebbe vera.
  */
 export async function jobRunCounts(
   admin: SupabaseClient,

@@ -53,7 +53,7 @@ Riepilogo campagne paid (campagne, totali, serie storica), candidati al boost (p
           "period_end": "2026-08-13",
           "synced_at": "2026-08-13T08:00:00Z"
         },
-        "source": "anomalia"
+        "source": "dazero"
       }
     ],
     "totals": { "spend": 4.2, "impressions": 2100, "clicks": 88, "reach": 1900, "conversions": 2, "active": 1, "proposed": 2 },
@@ -93,7 +93,7 @@ Riepilogo campagne paid (campagne, totali, serie storica), candidati al boost (p
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/ads?sync=1" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/ads?sync=1" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -151,7 +151,7 @@ Esegue un'azione sulle campagne ads, selezionata dal campo `action` del body.
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/ads" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/ads" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"action":"approve","campaignId":"0f3d...","budgetAmount":15,"goal":"engagement"}'
 ```
@@ -195,7 +195,7 @@ Elenco dei remix brief attuali del brand, ordinati per rank.
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/ads/remix" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/ads/remix" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -253,7 +253,7 @@ Analizza gli ad dei competitor con la visione AI e sostituisce i remix brief pre
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/ads/remix" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/ads/remix" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"ads":[{"adArchiveId":"1012345678","pageName":"Competitor X","body":"...","cta":"Shop Now"}]}'
 ```
@@ -291,7 +291,7 @@ Framework di voice del brand: modalità, campi del framework, regole per piattaf
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/voice" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/voice" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -324,7 +324,7 @@ Aggiorna il framework di voice del brand (sempre in modalità `manual` dopo l'up
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/voice/update" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/voice/update" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"mood":"Ispirante","avoid":["urgente"],"platform_instructions":{"instagram":"No più di 5 hashtag"}}'
 ```
@@ -374,7 +374,7 @@ Piano GTM attivo, eventuale proposta pendente, stato delle fasi e completezza de
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/gtm" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/gtm" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -411,7 +411,7 @@ Aggiorna l'obiettivo del piano GTM attivo e/o una singola fase (per indice).
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/gtm/update" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/gtm/update" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"objective":"Nuovo obiettivo","phase_index":0,"phase_name":"Lancio","pillars":["Educazione"]}'
 ```
@@ -452,7 +452,7 @@ Note: `format` ∈ `single_image`, `carousel`, `text_post`, `link_post`, `video`
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/rubrics" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/rubrics" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -496,7 +496,7 @@ Genera con AI una nuova batch di 5–8 rubriche candidate e sostituisce la batch
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/rubrics/propose" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/rubrics/propose" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"language":"Italian"}'
 ```
@@ -550,7 +550,7 @@ Approva un sottoinsieme della batch proposta: le rubriche selezionate (con event
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/rubrics/approve" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/rubrics/approve" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"picks":[{"id":"uuid","edits":{"cadence":"2/week"}}]}'
 ```
@@ -581,7 +581,7 @@ Elenca tutti i prodotti del catalogo (ordinati per data di creazione).
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/products" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/products" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -610,7 +610,7 @@ Ri-sincronizza l'intero catalogo dal sito e-commerce del brand (Shopify / WooCom
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/products" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/products" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -648,7 +648,7 @@ Aggiorna i campi di un singolo prodotto. Solo i campi presenti nel body cambiano
 **Esempio**:
 
 ```bash
-curl -s -X PUT "https://anomalia.so/api/v1/brands/mio-brand/products/PRODUCT_ID" \
+curl -s -X PUT "https://dazero.co/api/v1/brands/mio-brand/products/PRODUCT_ID" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"featured":true,"pricing":"€99"}'
 ```
@@ -675,7 +675,7 @@ Elimina un prodotto del brand. Tool MCP: `delete_product`.
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://anomalia.so/api/v1/brands/mio-brand/products/PRODUCT_ID" \
+curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/products/PRODUCT_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -693,7 +693,7 @@ Elenca le API key dell'utente che hanno accesso a questo brand (mai le chiavi ra
     {
       "id": "uuid",
       "name": "CI deploy",
-      "key_prefix": "anomalia_live_a1",
+      "key_prefix": "dazero_live_a1",
       "permissions": { "brand_ids": ["BRAND_ID"], "scopes": ["read", "write"] },
       "created_at": "2026-06-01T10:00:00Z",
       "last_used_at": "2026-08-12T09:00:00Z"
@@ -712,7 +712,7 @@ Elenca le API key dell'utente che hanno accesso a questo brand (mai le chiavi ra
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/api-keys" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/api-keys" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -736,10 +736,10 @@ Crea una nuova API key. Richiede JWT (le API key non possono crearne altre). La 
   "key": {
     "id": "uuid",
     "name": "CI deploy",
-    "key_prefix": "anomalia_live_a1",
+    "key_prefix": "dazero_live_a1",
     "permissions": { "brand_ids": ["BRAND_ID"], "scopes": ["read", "write"] },
     "created_at": "2026-08-13T10:00:00Z",
-    "raw": "anomalia_live_<48 hex>"
+    "raw": "dazero_live_<48 hex>"
   },
   "message": "Copy this key now — you will not be able to see it again."
 }
@@ -755,7 +755,7 @@ Crea una nuova API key. Richiede JWT (le API key non possono crearne altre). La 
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/api-keys" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/api-keys" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"name":"CI deploy","scopes":["read","write"]}'
 ```
@@ -782,7 +782,7 @@ Revoca una API key. La key deve appartenere all'utente autenticato ed essere sco
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://anomalia.so/api/v1/brands/mio-brand/api-keys/KEY_ID" \
+curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/api-keys/KEY_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -828,7 +828,7 @@ Il banco delle idee dirompenti del brand — quello che gli agenti salvano mentr
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/ideas?status=all&limit=20" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/ideas?status=all&limit=20" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -859,7 +859,7 @@ Richiede una key con scope `write`.
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/ideas" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/ideas" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"title":"La maglia che brucia","idea":"Brucia una maglia low-cost, marchio mai inquadrato","device":"destroy_the_alternative","who_it_annoys":"Chi vende fast fashion"}'
 ```
@@ -935,7 +935,7 @@ vuoto: è uno stato, non un errore. `teardown` è `null` finché il post non è 
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/market/field?limit=10" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/market/field?limit=10" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -1008,6 +1008,6 @@ Una fonte porta sempre `items`; `skipped` ed `error` si escludono a vicenda e sp
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/radar/diagnose" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/radar/diagnose" \
   -H "Authorization: Bearer $TOKEN"
 ```

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { homeTodos, type TodoSource } from './home-todos';
 
 const nothing: TodoSource = {
-  automations: { radarEnabled: true, radarReview: 0, leadsPending: 0 },
   setup: { socialAccounts: 1 }
 };
 
@@ -20,27 +19,9 @@ describe('le cose da fare, sotto la testa della home', () => {
    * che aspetta senza una scadenza, e che la testa non racconta.
    */
   it('non ripete la coda di approvazione, che è già la testa della pagina', () => {
-    const todos = homeTodos({
-      automations: { radarEnabled: true, radarReview: 7, leadsPending: 3 },
-      setup: { socialAccounts: 0 }
-    });
+    const todos = homeTodos({ setup: { socialAccounts: 0 } });
 
-    expect(todos.map((t) => t.key)).toEqual(['radar', 'leads', 'social']);
-  });
-
-  it('porta il conteggio, perché «7 da rivedere» dice più di «da rivedere»', () => {
-    const [radar] = homeTodos(src({ automations: { radarEnabled: true, radarReview: 7, leadsPending: 0 } }));
-
-    expect(radar.count).toBe(7);
-    expect(radar.path).toBe('/radar');
-  });
-
-  it('non offre il radar da rivedere se il radar è spento', () => {
-    const todos = homeTodos(
-      src({ automations: { radarEnabled: false, radarReview: 9, leadsPending: 0 } })
-    );
-
-    expect(todos).toEqual([]);
+    expect(todos.map((t) => t.key)).toEqual(['social']);
   });
 
   /**
@@ -56,10 +37,7 @@ describe('le cose da fare, sotto la testa della home', () => {
   });
 
   it('ogni riga sa dove porta e come si chiama, senza testo scritto dentro', () => {
-    const todos = homeTodos({
-      automations: { radarEnabled: true, radarReview: 1, leadsPending: 1 },
-      setup: { socialAccounts: 0 }
-    });
+    const todos = homeTodos({ setup: { socialAccounts: 0 } });
 
     for (const todo of todos) {
       expect(todo.labelKey, todo.key).toMatch(/^app\./);

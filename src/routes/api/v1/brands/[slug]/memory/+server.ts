@@ -13,7 +13,7 @@ import {
   MEMORY_ENTRIES_DEFAULT,
   MEMORY_ENTRIES_MAX,
   type AgentMemoryCategory
-} from '@anomalia/api-contracts';
+} from '@dazero/api-contracts';
 
 // LA MEMORIA DEL BRAND PER UN AGENTE CHE STA FUORI. `/studio/memory` resta la superficie
 // dell'OPERATORE, che dalla sua pagina può scrivere anche voice e constraint; questa è quella

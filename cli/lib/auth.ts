@@ -5,7 +5,7 @@ import { homedir } from 'os';
 import { join } from 'path';
 import { appUrl as resolveAppUrl } from './config.ts';
 
-const CONFIG_DIR = join(homedir(), '.config', 'anomalia');
+const CONFIG_DIR = join(homedir(), '.config', 'dazero');
 const SESSION_FILE = join(CONFIG_DIR, 'session.json');
 
 export type StoredSession = {
@@ -57,7 +57,7 @@ export async function loadSession(): Promise<StoredSession | null> {
 export async function requireSession(): Promise<StoredSession> {
   const s = await loadSession();
   if (!s) {
-    console.error('Sessione scaduta o non trovata. Esegui: anomalia login');
+    console.error('Sessione scaduta o non trovata. Esegui: dazero login');
     process.exit(1);
   }
   return s;

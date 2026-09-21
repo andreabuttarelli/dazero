@@ -5,14 +5,11 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { markRlsScoped } from '$lib/server/rls-client';
 import { env as publicEnv } from '$env/dynamic/public';
 import type { Handle } from '@sveltejs/kit';
-import { pickLocale } from '$lib/i18n/locale';
-import { retiredPageTarget } from '$lib/seo';
 import { withBrandContext, withToolContext } from '$lib/server/ai-log';
-import { TOOL_HEADER, toolFromHeader } from '@anomalia/api-contracts';
+import { TOOL_HEADER, toolFromHeader } from '@dazero/api-contracts';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { captureReferralCookie } from '$lib/server/referrals';
 import { isCsrfForbidden } from '$lib/server/csrf';
-import { marketingShellTarget } from '$lib/server/marketing-shell';
 import { catalogModelIds } from '$lib/server/chat-model-catalog';
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
@@ -21,6 +18,11 @@ const SESSION_COOKIE_NAME = `sb-${new URL(publicEnv.PUBLIC_SUPABASE_URL).hostnam
 const SESSION_COOKIE_PREFIX = `${SESSION_COOKIE_NAME}.`;
 const BASE64_COOKIE_PREFIX = 'base64-';
 const BASE64_URL = /^[A-Za-z0-9_-]*$/;
+
+// '/' con o senza slash finale: la homepage che non esiste più.
+export function isRootPath(pathname: string): boolean {
+  return !pathname.replace(/\/$/, '');
+}
 
 function isSessionCookie(name: string): boolean {
   return name === SESSION_COOKIE_NAME || name.startsWith(SESSION_COOKIE_PREFIX);
@@ -121,14 +123,6 @@ export const handle: Handle = sequence(csrf, Sentry.sentryHandle(), async ({ eve
   };
   event.locals.safeGetSession = () => (cachedSession ??= getSession());
 
-  // Resolve UI language: /it (or /en) URL prefix > saved cookie > Accept-Language > en.
-  // Exposed to load functions via locals and stamped into <html lang> below.
-  event.locals.locale = pickLocale(
-    event.url.pathname,
-    event.cookies.get('locale'),
-    event.request.headers.get('accept-language')
-  );
-
   // Meta click id → first-party cookies, written server-side. The browser pixel is deferred (first
   // interaction or 10s, see $lib/analytics) and consent/adblock can drop it entirely, so on an ad
   // click `_fbc` was only ever written for ~2% of visits — leaving every downstream conversion
@@ -157,47 +151,27 @@ export const handle: Handle = sequence(csrf, Sentry.sentryHandle(), async ({ eve
   }
 
   // Growth referral: `?ref=CODE` → first-party cookie (30d). Captured on marketing/app only —
-  // brand blogs stay clean; their Powered-by badge already links to anomalia.so/?ref=….
+  // brand blogs stay clean; their Powered-by badge already links to dazero.co/?ref=….
   if (!isBlogRoute) {
     captureReferralCookie(event.cookies, event.url.searchParams.get('ref'));
   }
 
-  // Pagine pubbliche ritirate: 301 verso quella che ha preso il loro posto. Si guarda il
-  // pathname e non route.id perché la rotta non esiste più — è esattamente il 404 che stiamo
-  // evitando. Prima di marketingShellTarget: su self-host il 404 non è un problema di SEO, ma
-  // mandare una vecchia URL in /app perderebbe comunque la destinazione giusta.
-  const retiredDest = retiredPageTarget(event.url.pathname, event.locals.locale);
-  if (retiredDest) {
-    throw redirect(301, retiredDest + event.url.search);
-  }
-
-  // Self-host: HIDE_MARKETING=1 manda il pitch (homepage, pricing, /start, …) in /app.
-  // Prima di reindirizzare, lo stesso safety net della load della homepage: un bounce
-  // OAuth/magic-link sul Site URL con ?code= non deve finire in /app e perdere il code.
-  const marketingDest = marketingShellTarget(event.route.id);
-  if (marketingDest) {
+  // La radice è l'app, non più un sito di marketing. Il safety net dell'OAuth viene prima:
+  // un bounce magic-link sul Site URL con ?code= deve arrivare a /auth/callback, non a /app,
+  // o il code si perde e il login fallisce in silenzio.
+  if (isRootPath(event.url.pathname)) {
     if (event.url.searchParams.has('code') || event.url.searchParams.has('error_description')) {
       throw redirect(303, `/auth/callback${event.url.search}`);
     }
-    // /it → /app terrebbe la lingua solo su QUESTA richiesta (il prefisso sta nel path).
-    // La cookie è ciò che /app leggerà al giro dopo, stessa forma del language toggle.
-    const loc = event.locals.locale;
-    if (loc && loc !== 'en' && !event.cookies.get('locale')) {
-      event.cookies.set('locale', loc, { path: '/', maxAge: 31536000, sameSite: 'lax' });
-    }
-    throw redirect(303, marketingDest);
+    throw redirect(302, '/app');
   }
 
   const doResolve = () =>
     resolve(event, {
       transformPageChunk: ({ html }) => {
-        let out = html.replace('%lang%', event.locals.locale);
+        let out = html;
         // Keep in sync with +layout.svelte — scopes landing.css away from /app on SSR too.
-        if (
-          event.url.pathname.startsWith('/app') ||
-          event.url.pathname === '/start' ||
-          event.url.pathname.startsWith('/start/')
-        ) {
+        if (event.url.pathname.startsWith('/app')) {
           out = out.replace('<html', '<html data-shell="app"');
         }
         return out;
@@ -208,7 +182,7 @@ export const handle: Handle = sequence(csrf, Sentry.sentryHandle(), async ({ eve
 
   // Brand-scoped AI credit attribution: every request under /app/[brand]/… or
   // /api/v1/brands/[slug]/… runs inside withBrandContext, so ANY AI call it triggers
-  // (chat tools, post generation, blog actions, radar, leads…) lands in ai_calls with
+  // (chat tools, post generation, blog actions…) lands in ai_calls with
   // brand_id and bills the right brand — no per-route wrapping needed.
   const slug = event.params.brand ?? event.params.slug;
 

@@ -43,7 +43,7 @@ function fakeSupabase(tables: Record<string, Row[]> = {}) {
 }
 
 function call(query: Record<string, string>, slug = 'demo') {
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/creation-kit`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/creation-kit`);
   for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
   return (GET as (event: unknown) => Promise<Response>)({
     request: new Request(url),

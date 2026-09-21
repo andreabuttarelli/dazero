@@ -25,7 +25,7 @@ describe('mcp HTTP transport', () => {
 
   test('the vercel route advertises the same authorization server', async () => {
     const res = await routeMcpHttp(
-      new Request('https://mcp.anomalia.so/.well-known/oauth-protected-resource'),
+      new Request('https://mcp.dazero.co/.well-known/oauth-protected-resource'),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -54,7 +54,7 @@ describe('mcp HTTP transport', () => {
     );
     expect(initRes.status).toBe(200);
     const initBody = await initRes.json();
-    expect(initBody.result?.serverInfo?.name).toBe('anomalia');
+    expect(initBody.result?.serverInfo?.name).toBe('dazero');
     // La mappa del server viaggia nel handshake, prima di qualunque descrizione: se non arriva
     // qui, il client non la vede mai e la superficie che decide per prima resta muta.
     expect(initBody.result?.instructions).toBe(MCP_INSTRUCTIONS);
@@ -118,7 +118,7 @@ describe('mcp HTTP transport', () => {
 
   /** Tolto il tool, il modo di autenticarsi deve restare scritto dove si legge per primo. */
   test('le istruzioni dicono come si entra, ora che non c’e’ un tool', () => {
-    expect(MCP_INSTRUCTIONS).toContain('anomalia login');
+    expect(MCP_INSTRUCTIONS).toContain('dazero login');
     expect(MCP_INSTRUCTIONS).toMatch(/Bearer/);
     expect(MCP_INSTRUCTIONS).not.toMatch(/`login`/);
   });

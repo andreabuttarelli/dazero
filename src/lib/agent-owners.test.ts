@@ -18,12 +18,11 @@ describe('agent-owners', () => {
 
   it('JOB_OWNERS è totale: ogni routine del roster appartiene a un agente della squadra', () => {
     expect(Object.keys(JOB_OWNERS).sort()).toEqual([...ROSTER_JOB_KEYS].sort());
-    // La mappa concordata: content produce, analyst legge e dirige, web presidia il sito.
-    expect(JOB_OWNERS.autopilot).toBe('content');
-    for (const k of ['analytics_review', 'weekly_recap', 'radar_recap', 'market_refs', 'strategy_review'] as const) {
+    // La mappa concordata: analyst legge e dirige, web presidia il sito.
+    for (const k of ['analytics_review', 'weekly_recap', 'market_refs', 'strategy_review'] as const) {
       expect(JOB_OWNERS[k], k).toBe('analyst');
     }
-    for (const k of ['seo', 'geo', 'library'] as const) {
+    for (const k of ['library'] as const) {
       expect(JOB_OWNERS[k], k).toBe('web');
     }
   });
@@ -112,7 +111,7 @@ describe('agentForTask', () => {
     expect(agentForTask('Controlla i listini dei concessionari convenzionati')).toBeNull();
     expect(agentForTask('')).toBeNull();
     // Pareggio: meglio far scegliere il modello che spingere sul mestiere sbagliato.
-    expect(agentForTask('post e seo')).toBeNull();
+    expect(agentForTask('post e blog')).toBeNull();
   });
 
 });

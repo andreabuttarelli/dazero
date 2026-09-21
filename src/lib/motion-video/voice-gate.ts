@@ -1,7 +1,7 @@
 /**
  * IL GATE ARITMETICO SULLA VOCE — la parte pura, senza rete.
  *
- * Il caso che l'ha reso necessario è del 21/8/2026, brand `anomalia`, 21:23: uno script di 6
+ * Il caso che l'ha reso necessario è del 21/8/2026, brand `dazero`, 21:23: uno script di 6
  * battute, un take TTS con solo 3 pause, il modello che taglia 4 pezzi indovinando — i beat 4 e 5
  * muti, il pezzo 3 troncato a metà parola (misurato: −10,8 dB negli ultimi 300 ms), 6,28 s di
  * voce su 22,5 s di video che finisce a metà frase ("…e il team"). Nessuna review l'ha mai

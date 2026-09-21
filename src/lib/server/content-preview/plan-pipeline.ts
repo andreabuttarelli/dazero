@@ -97,7 +97,7 @@ export async function planStrategy(
   rubrics: Rubric[] = [],
   // Weekly market format/hook brief (formatMarketBrief). Empty when no refresh yet.
   marketBrief = '',
-  // Radar / brand_news_sources kind=subreddit — inject into Reddit seed guidance.
+  // brand_news_sources kind=subreddit — inject into Reddit seed guidance.
   knownSubreddits: string[] = [],
   // Quali angoli si sono guadagnati la spesa di produzione, dallo storico del brand.
   ladder?: LadderContext
@@ -212,7 +212,7 @@ SCRIPT CRAFT (Hook → Problem → Demo → Proof → CTA):
   - ugc_ad false/omit (organic, DEFAULT for most seeds): ≤15s, ~40–48 spoken words TOTAL.
   - ugc_ad true (paid ad creatives only, few per batch): 22s on Seedance 2.5, ~55–66 spoken words — more room for DEMO mechanic + PROOF. Set ugc_ad true only when the seed is clearly meant as an ad/boost creative.
 - CONCISE but personal/emotional — one tight spoken beat per stage. Direct, first-person, imperfect. Not a rant, not a telegram slogan.
-- FULL SPOKEN SENTENCES only. Never fragments like "Calendar chaos? Resolve it. Try Anomalia."
+- FULL SPOKEN SENTENCES only. Never fragments like "Calendar chaos? Resolve it. Try dazero."
 - Hook (~8–14 words): pain moment mid-conversation (label / yes-question / if-then / ridiculous result). GOOD: "I was still writing captions at midnight and nothing had posted."
 - Body: cost of the pain, THEN give away the mechanic out loud, THEN one proof. Organic ~18–28 words; ads ~28–42 words.
 - CTA (~6–12 words): qualify + soft action. GOOD: "Anyway if you're done guessing, try it and tell me I'm wrong."

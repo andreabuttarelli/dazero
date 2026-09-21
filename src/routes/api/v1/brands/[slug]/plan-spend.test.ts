@@ -20,7 +20,6 @@ const planWeekStrategy = vi.fn();
 
 class CreditsExhaustedError extends Error {}
 
-vi.mock('$lib/server/access', () => ({ userCanEnter: async () => true }));
 vi.mock('@supabase/ssr', () => ({ createServerClient: () => ({}) }));
 vi.mock('$lib/server/credits', () => ({
   gateCredits: (...args: unknown[]) => gateCredits(...args),
@@ -88,7 +87,7 @@ function call(route: (typeof ROUTES)[number], apiKey?: ApiKeyInfo) {
   } as never);
   vi.mocked(loadBrandForUser).mockResolvedValue({ brand: BRAND, error: null } as never);
 
-  const url = new URL(`https://anomalia.test/api/v1/brands/demo/${route.name}`);
+  const url = new URL(`https://dazero.test/api/v1/brands/demo/${route.name}`);
   return route
     .handler({
       request: new Request(url, { method: 'POST', body: JSON.stringify(route.body) }),

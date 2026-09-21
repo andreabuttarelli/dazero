@@ -40,7 +40,7 @@
     <h1>{$_('approve.fail.title')}</h1>
     <p>{data.reason}</p>
   {/if}
-  <a class="home" href="/">← Anomalia</a>
+  <a class="home" href="/">← dazero</a>
 </main>
 
 <style>

@@ -2,10 +2,9 @@ import type { RequestHandler } from './$types';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { cronAuthorized } from '$lib/server/cron-auth';
 import { isPaidPlan, PAID_PLAN_IDS } from '$lib/plans';
-import { recordLoopTick, type LoopSkipReason } from '$lib/server/loop-ticks';
-import { analyticsReviewAgentEnabled } from '$lib/server/analytics-review-agent';
+import { recordLoopTick, nextRunBudgetMs, type LoopSkipReason } from '$lib/server/loop-ticks';
+import { analyticsReviewAgentEnabled, runAnalyticsReviewAgent } from '$lib/server/analytics-review-agent';
 import { jobEnabledForBrand } from '$lib/server/job-roster';
-import { enqueueAgentJobTurn } from '$lib/server/agent-turns';
 
 // Agente di review analytics. Gira ogni giorno; è il gate di freschezza qui sotto a renderlo
 // settimanale per brand.
@@ -81,6 +80,12 @@ async function run(request: Request): Promise<Response> {
   };
 
   for (const brand of brands ?? []) {
+    const budgetMs = nextRunBudgetMs({ elapsedMs: Date.now() - t0 });
+    if (budgetMs === null) {
+      skip(brand.id, 'no_budget');
+      break;
+    }
+
     // Il claim va PRIMA dei gate: se un `continue` salta il bump del cursore, con nullsFirst gli
     // stessi brand non eleggibili si tengono tutti gli slot a ogni giro.
     await admin.from('brands').update({ last_review_at: new Date().toISOString() }).eq('id', brand.id);
@@ -120,39 +125,33 @@ async function run(request: Request): Promise<Response> {
       }
     }
 
-    const brief = `## SCHEDULED PERFORMANCE REVIEW (server-side brief)
-You are this brand's performance analyst on your recurring unattended review, in your own persistent thread. Nobody is present this turn: work autonomously and post ONE short, concrete report here (what the numbers say, what you changed, why).
-
-Read this week's real performance (published posts and their metrics — post/analytics history tools, or run_analytics_review which also applies GTM/editorial proposals and pending-content edits in one pass). Diagnose what worked and what did not, apply what your tools reach, and keep the report tight. Use notify_user only for what the owner must act on. Never invent numbers; if the signal is too thin, say so and stop.`;
-
     const runStart = Date.now();
-    const turn = await enqueueAgentJobTurn(admin, {
-      brandId: brand.id,
-      jobKey: 'analytics_review',
-      brief,
-      visible: { it: 'Revisione settimanale delle performance', en: 'Weekly performance review' },
-      origin: url.origin,
-      // Il turno pieno non scrive per forza in agent_runs: il dedupe guarda i turni schedulati
-      // del SUO thread.
-      minIntervalMs: force ? 0 : FRESH_DAYS * 24 * 60 * 60 * 1000
+    const result = await runAnalyticsReviewAgent({
+      supabase: admin,
+      brand,
+      mode: 'weekly',
+      deadlineMs: budgetMs
+    }).catch((e) => {
+      console.error('[analytics-review] run failed', e);
+      return null;
     });
     const durationMs = Date.now() - runStart;
-    if (turn.ok) {
+
+    if (result) {
       reviewed++;
       recordLoopTick({ loop: 'analytics_review', brandId: brand.id, outcome: 'ok', durationMs });
-    } else if (turn.reason === 'fresh' || turn.reason === 'thread_busy') {
-      skip(brand.id, 'fresh');
-    } else {
-      failed++;
-      reasons[turn.reason] = (reasons[turn.reason] ?? 0) + 1;
-      recordLoopTick({
-        loop: 'analytics_review',
-        brandId: brand.id,
-        outcome: 'failed',
-        reason: turn.reason,
-        durationMs
-      });
+      continue;
     }
+
+    failed++;
+    reasons.run_failed = (reasons.run_failed ?? 0) + 1;
+    recordLoopTick({
+      loop: 'analytics_review',
+      brandId: brand.id,
+      outcome: 'failed',
+      reason: 'run_failed',
+      durationMs
+    });
   }
 
   return new Response(

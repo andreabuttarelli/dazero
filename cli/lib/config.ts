@@ -1,11 +1,11 @@
 /**
- * Configuration for the Anomalia CLI.
+ * Configuration for the dazero CLI.
  * All values are public (no secrets) — hardcoded for zero-config installation.
  *
  * The CLI auto-detects if a local dev server is running on localhost:5174.
  * If yes, uses it. Otherwise, uses the production URL.
  *
- * Override with: PUBLIC_APP_URL=http://my-server:3000 anomalia brands
+ * Override with: PUBLIC_APP_URL=http://my-server:3000 dazero brands
  */
 
 const LOCAL_URL = 'http://localhost:5173';
@@ -13,7 +13,7 @@ const LOCAL_URL = 'http://localhost:5173';
 /**
  * Canonical production origin — **www, not the apex**.
  *
- * `https://anomalia.so` 308-redirects to `https://www.anomalia.so`, which is a *cross-origin*
+ * `https://dazero.co` 308-redirects to `https://www.dazero.co`, which is a *cross-origin*
  * redirect, and fetch drops the `Authorization` header across origins. Every API call made
  * against the apex therefore arrives unauthenticated and the server answers
  * `401 {"error":"Missing or invalid Authorization header"}` — which reads like a broken login
@@ -22,7 +22,7 @@ const LOCAL_URL = 'http://localhost:5173';
  * Single source of truth on purpose: this literal used to be copy-pasted into api.ts, auth.ts,
  * health.ts and the MCP HTTP layer, so the bug had to be fixed in six places or none.
  */
-export const PRODUCTION_URL = 'https://www.anomalia.so';
+export const PRODUCTION_URL = 'https://www.dazero.co';
 
 /** Resolved API/base origin: explicit override, else auto-detected dev server, else production. */
 export function appUrl(): string {

@@ -1,5 +1,4 @@
 import { json } from '@sveltejs/kit';
-import { canEnter } from '$lib/server/access';
 import { remaining } from '$lib/server/usage';
 import { youtubeTitleFrom } from '$lib/platform-limits';
 import {
@@ -24,7 +23,6 @@ const POST_COLS = 'id, brand_id, caption, title, video_thumbnail_url, youtube_th
 export const POST: RequestHandler = async ({ request, params, locals: { supabase, safeGetSession } }) => {
 	const { session, user } = await safeGetSession();
 	if (!session || !user) return new Response('Unauthorized', { status: 401 });
-	if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
 
 	const { data: brand } = await supabase
 		.from('brands')

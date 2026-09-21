@@ -152,7 +152,7 @@ export function assertRedditCraft(
   return { ok: true };
 }
 
-/** Radar / brand kit known subs for planner seed guidance. */
+/** Brand kit known subs for planner seed guidance. */
 export async function loadKnownSubreddits(
   supabase: SupabaseClient,
   brandId: string
@@ -180,7 +180,7 @@ export async function loadKnownSubreddits(
 
 export function knownSubredditsBlock(subs: string[]): string {
   if (!subs.length) return '';
-  return `KNOWN SUBREDDITS (prefer these for Reddit seeds — real brand radar sources; pick the one that fits the post's substance, or another real on-topic sub and justify):\n${subs.map((s) => `- r/${s}`).join('\n')}\n`;
+  return `KNOWN SUBREDDITS (prefer these for Reddit seeds — real brand sources; pick the one that fits the post's substance, or another real on-topic sub and justify):\n${subs.map((s) => `- r/${s}`).join('\n')}\n`;
 }
 
 /** Fixed WINNING PATTERNS block for produce / caption pass 2. */

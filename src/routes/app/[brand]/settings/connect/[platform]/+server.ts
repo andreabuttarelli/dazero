@@ -1,5 +1,4 @@
 import { redirect, error } from '@sveltejs/kit';
-import { canEnter } from '$lib/server/access';
 import type { RequestHandler } from './$types';
 import { ensureBrandProfile, getConnectUrl } from '$lib/server/zernio';
 import { accountLimit, canConnectSocials } from '$lib/server/plans';
@@ -10,8 +9,6 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase, saf
   const { session } = await safeGetSession();
   if (!session) throw redirect(303, '/login');
 
-  if (!(await canEnter(supabase))) throw redirect(303, '/waitlist');
-
   const { data: brand } = await supabase
     .from('brands')
     .select('id, name, plan, status, zernio_profile_id')
@@ -21,7 +18,7 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase, saf
 
   // Free / trial / canceled / paused: Zernio slots are paid+active only — send them to activate.
   if (!canConnectSocials(brand.plan, brand.status)) {
-    throw redirect(303, `/app/${params.brand}/activate`);
+    throw redirect(303, '/app/billing');
   }
 
   // Plan cap: block if the brand is already at its connected-account limit.

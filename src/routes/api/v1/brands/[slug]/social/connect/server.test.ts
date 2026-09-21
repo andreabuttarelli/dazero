@@ -6,7 +6,7 @@ vi.mock('$lib/server/cli-auth', () => ({
   loadBrandForUser: vi.fn(),
   checkApiKeyWriteAccess: vi.fn(() => undefined)
 }));
-vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://anomalia.test' }));
+vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://dazero.test' }));
 
 import { POST } from './+server';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
@@ -33,7 +33,7 @@ const IG = {
   connected_at: '2026-08-01T10:00:00.000Z'
 };
 
-const url = 'https://anomalia.test/api/v1/brands/demo/social/connect';
+const url = 'https://dazero.test/api/v1/brands/demo/social/connect';
 
 const mint = (body: unknown, accounts: Row[] = [], brand: Row = BRAND) => {
   vi.mocked(authenticate).mockResolvedValue({
@@ -62,7 +62,7 @@ describe('POST /api/v1/brands/:slug/social/connect', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('location')).toBeNull();
     expect(body.ok).toBe(true);
-    expect(body.url).toBe('https://anomalia.test/app/demo/settings/connect/instagram');
+    expect(body.url).toBe('https://dazero.test/app/demo/settings/connect/instagram');
     expect(body.already_connected).toBe(false);
   });
 
@@ -98,7 +98,7 @@ describe('POST /api/v1/brands/:slug/social/connect', () => {
 
     expect(res.status).toBe(409);
     expect(body.error).toBe('plan_cannot_connect');
-    expect(body.activate_url).toBe('https://anomalia.test/app/demo/activate');
+    expect(body.activate_url).toBe('https://dazero.test/app/billing');
   });
 
   it('rifiuta quando i posti del piano sono finiti, che è un altro rimedio', async () => {
@@ -109,7 +109,7 @@ describe('POST /api/v1/brands/:slug/social/connect', () => {
     expect(res.status).toBe(409);
     expect(body.error).toBe('account_limit');
     expect(body.slots.used).toBeGreaterThanOrEqual(body.slots.limit);
-    expect(body.manage_url).toBe('https://anomalia.test/app/demo/settings/connected-accounts');
+    expect(body.manage_url).toBe('https://dazero.test/app/demo/settings/connected-accounts');
   });
 
   it('una chiave di sola lettura non conia niente', async () => {
@@ -134,7 +134,7 @@ describe('POST /api/v1/brands/:slug/social/connect', () => {
   });
 
   it('risponde esattamente quello che il contratto dichiara, niente di più', async () => {
-    const { SOCIAL_CONNECT_LINK } = await import('@anomalia/api-contracts');
+    const { SOCIAL_CONNECT_LINK } = await import('@dazero/api-contracts');
     const { body } = await mint({ platform: 'linkedin' });
 
     expect(SOCIAL_CONNECT_LINK.output.strict().safeParse(body).success).toBe(true);

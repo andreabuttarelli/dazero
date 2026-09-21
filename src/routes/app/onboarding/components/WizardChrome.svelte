@@ -24,7 +24,7 @@
 
 <div class="ob-shell">
   <aside class="ob-sidebar">
-    <a class="ob-logo" href="/app" aria-label="Anomalia"><BrandMark size={40} /></a>
+    <a class="ob-logo" href="/app" aria-label="dazero"><BrandMark size={40} /></a>
     <ol class="ob-timeline">
       {#each TIMELINE_STEPS as label, i (label)}
         {@const n = i + 1}
@@ -37,7 +37,7 @@
   </aside>
 
   <nav class="ob-navbar">
-    <a class="ob-logo" href="/app" aria-label="Anomalia"><BrandMark size={32} /></a>
+    <a class="ob-logo" href="/app" aria-label="dazero"><BrandMark size={32} /></a>
   </nav>
 
   <div class="ob-main">

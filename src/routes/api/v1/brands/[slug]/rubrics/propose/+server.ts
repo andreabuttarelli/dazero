@@ -6,7 +6,7 @@ import { withBrandContext } from '$lib/server/ai-log';
 import { plannerProfile, planEvidence } from '$lib/server/planner-inputs';
 import { activeGtmBrief } from '$lib/server/gtm';
 import { proposeRubrics, saveProposedRubrics } from '$lib/server/rubrics';
-import { localeLanguageName } from '$lib/i18n/locale';
+import { OUTPUT_LANGUAGE } from '$lib/i18n/locale';
 
 // One Gemini call (~20-30s) grounded in the stored strategy evidence.
 // Tetto condiviso, non budget: il lavoro vero di questa rotta sta in ~120s. Su Vercel ogni
@@ -32,7 +32,7 @@ export const POST: RequestHandler = async ({ request, params }) => {
   const body = await request.json().catch(() => ({}));
   // Output language: explicit body param wins (the web page passes the UI locale); default Italian
   // (the product's primary audience) rather than English so a client-facing document reads native.
-  const outputLanguage = String(body?.language ?? '') || localeLanguageName('it');
+  const outputLanguage = String(body?.language ?? '') || OUTPUT_LANGUAGE;
 
   try {
     const saved = await withBrandContext(brand.id, async () => {

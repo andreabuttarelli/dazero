@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildAssignmentLines,
 	buildUgcBatchPlanPrompt,
-	distributeProducts,
 	distributeSlots,
 	resolveUgcSeedanceMaterials
 } from './ugc-batch';
@@ -45,12 +44,6 @@ describe('distributeSlots', () => {
 
 	it('spreads items when there are more items than clips', () => {
 		expect(distributeSlots(2, ['a', 'b', 'c', 'd'])).toEqual(['a', 'c']);
-	});
-});
-
-describe('distributeProducts', () => {
-	it('aliases distributeSlots', () => {
-		expect(distributeProducts(4, ['a', 'b'])).toEqual(distributeSlots(4, ['a', 'b']));
 	});
 });
 
@@ -115,7 +108,7 @@ describe('buildAssignmentLines', () => {
 			3,
 			[null, null, null],
 			[null, null, null],
-			'Anomalia',
+			'dazero',
 			rotateUgcFormats(3)
 		).split('\n');
 		expect(lines.length).toBe(3);
@@ -125,13 +118,13 @@ describe('buildAssignmentLines', () => {
 	});
 
 	it('stays as it was when no rotation is passed (seed path, single clip)', () => {
-		expect(buildAssignmentLines(1, [null], [null], 'Anomalia')).toBe(
-			'#1: feature Anomalia (no specific product pick); speaker: the SAME single person in every clip of this batch (one cast portrait is rendered once and reused) — never describe a different look per clip'
+		expect(buildAssignmentLines(1, [null], [null], 'dazero')).toBe(
+			'#1: feature dazero (no specific product pick); speaker: the SAME single person in every clip of this batch (one cast portrait is rendered once and reused) — never describe a different look per clip'
 		);
 	});
 
 	it('asks for one shared speaker instead of a look invented slot by slot', () => {
-		const lines = buildAssignmentLines(3, [null, null, null], [null, null, null], 'Anomalia').split(
+		const lines = buildAssignmentLines(3, [null, null, null], [null, null, null], 'dazero').split(
 			'\n'
 		);
 		const speakers = lines.map((l) => l.split('; ')[1]);
@@ -142,7 +135,7 @@ describe('buildAssignmentLines', () => {
 
 describe('buildUgcBatchPlanPrompt', () => {
 	const brand = {
-		name: 'Anomalia',
+		name: 'dazero',
 		about: '',
 		category: '',
 		audience: '',

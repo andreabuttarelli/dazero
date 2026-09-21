@@ -109,7 +109,7 @@
       </div>
     {:else}
       <p class="muted small">
-        Anomalia pianifica un mese di argomenti dal tuo piano editoriale, con una data di uscita ciascuno, e li
+        dazero pianifica un mese di argomenti dal tuo piano editoriale, con una data di uscita ciascuno, e li
         scrive tutti. Ogni articolo riceve:
       </p>
       <ul class="deliverables">

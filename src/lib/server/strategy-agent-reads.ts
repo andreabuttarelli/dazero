@@ -304,63 +304,12 @@ export async function readMediaForAgent(
   };
 }
 
-export type LeadsLoadStatus = 'suggested' | 'done' | 'dismissed' | 'all';
-
 function platformFromLeadUrl(url: string): string | null {
   const u = url.toLowerCase();
   if (u.includes('reddit.com')) return 'reddit';
   if (u.includes('threads.net')) return 'threads';
   if (u.includes('x.com') || u.includes('twitter.com')) return 'x';
   return null;
-}
-
-/** Online conversations (Reddit/Threads/X) with AI-drafted comment/DM suggestions — the /leads page. */
-export async function readLeadsForAgent(
-  supabase: SupabaseClient,
-  brandId: string,
-  opts?: { status?: LeadsLoadStatus; limit?: number }
-) {
-  const limit = Math.min(Math.max(opts?.limit ?? 25, 1), 80);
-  const status = opts?.status ?? 'all';
-  let query = supabase
-    .from('brand_news_items')
-    .select('id, title, url, source_name, snippet, status, relevance, suggestion, dm_draft, dm_target, created_at')
-    .eq('brand_id', brandId)
-    .not('suggestion', 'is', null)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (status === 'all') {
-    query = query.in('status', ['suggested', 'done', 'dismissed']);
-  } else {
-    query = query.eq('status', status);
-  }
-
-  const { data } = await query;
-  const leads = (data ?? []).map((l) => ({
-    id: l.id,
-    platform: platformFromLeadUrl(String(l.url ?? '')),
-    title: l.title,
-    url: l.url,
-    source: l.source_name,
-    /** What people are discussing in the thread — use for editorial angles and objections. */
-    discussion: clip(l.snippet, 1400),
-    status: l.status,
-    relevance: l.relevance,
-    drafted_comment: clip(l.suggestion, 700),
-    drafted_dm: clip(l.dm_draft, 500),
-    dm_target: l.dm_target,
-    created_at: l.created_at
-  }));
-
-  return {
-    leads,
-    count: leads.length,
-    open_count: leads.filter((l) => l.status === 'suggested').length,
-    note:
-      leads.length > 0
-        ? 'Real online threads where the product/category is being discussed. Mine objections, questions and language for editorial plans and weekly content — align posts with what the audience is actually asking.'
-        : 'No leads stored yet — Radar has not surfaced comment opportunities with drafted replies for this brand.'
-  };
 }
 
 /** Compact block for system-prompt preload (grow/publish hubs). */

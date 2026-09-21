@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, gateAiAction } from '$lib/server/cli-auth';
 import { cadenceAllowed, loadActivePlan, replanWeek } from '$lib/server/editorial-plan';
-import { localeLanguageName } from '$lib/i18n/locale';
+import { OUTPUT_LANGUAGE } from '$lib/i18n/locale';
 import { plannerProfile, planEvidence } from '$lib/server/planner-inputs';
 
 export const POST: RequestHandler = async ({ request, params }) => {
@@ -31,7 +31,7 @@ export const POST: RequestHandler = async ({ request, params }) => {
       planEvidence(supabase, brand.id)
     ]);
 
-    const week = await replanWeek(plan, week_index, brief, profile, localeLanguageName(null), {
+    const week = await replanWeek(plan, week_index, brief, profile, OUTPUT_LANGUAGE, {
       platforms: Array.isArray(brand.target_platforms) ? (brand.target_platforms as string[]) : [],
       allowedCadences: cadenceAllowed(brand.plan),
       benchmark: evidence.benchmark,

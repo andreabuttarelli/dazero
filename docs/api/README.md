@@ -1,7 +1,7 @@
-# Anomalia — API Reference (pubblica)
+# dazero — API Reference (pubblica)
 
-Reference completa della REST API pubblica di Anomalia, **generata dal codice** il 13/08/2026
-(`src/routes/api/v1/`). Copre tutti gli endpoint consumati dalla CLI (`anomalia-cli`) e dalle
+Reference completa della REST API pubblica di dazero, **generata dal codice** il 13/08/2026
+(`src/routes/api/v1/`). Copre tutti gli endpoint consumati dalla CLI (`dazero-cli`) e dalle
 integrazioni esterne via API key — request, response, query params, body, errori e snippet curl.
 
 ## Indice

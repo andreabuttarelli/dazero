@@ -1,13 +1,13 @@
-# Anomalia con agenti esterni
+# dazero con agenti esterni
 
 Status: proposed
 Last updated: 2026-09-03
 
 ## Outcome
 
-Anomalia becomes the persistent control plane for external AI clients. Claude,
+dazero becomes the persistent control plane for external AI clients. Claude,
 Cursor, ChatGPT, and compatible clients do the reasoning and text authoring with
-the user's own model account. Anomalia stores brand knowledge and artifacts,
+the user's own model account. dazero stores brand knowledge and artifacts,
 connects services, enforces review, publishes, measures results, and presents
 work to the agency and its clients.
 
@@ -20,7 +20,7 @@ External AI reads the brand
 External AI writes the plan and posts
             |
             v
-Anomalia stores dated pending posts
+dazero stores dated pending posts
             |
             v
 Operator reviews and publishes
@@ -34,23 +34,23 @@ Client sees a public calendar or report
 | Responsibility | Owner |
 | --- | --- |
 | Reasoning, copy, plans, revisions in the external workflow | User's external AI client |
-| Managed auto-blog, SEO/GEO, and social autopilot | Anomalia |
-| Brand memory, posts, calendar, assets | Anomalia |
-| Conversion from creative direction to publishable social assets | Anomalia |
-| Connectors, publishing, analytics | Anomalia |
-| Review and approval | Operator in Anomalia or through a confirmed MCP action |
-| Client presentation | Public Anomalia views |
+| Managed auto-blog, SEO/GEO, and social autopilot | dazero |
+| Brand memory, posts, calendar, assets | dazero |
+| Conversion from creative direction to publishable social assets | dazero |
+| Connectors, publishing, analytics | dazero |
+| Review and approval | Operator in dazero or through a confirmed MCP action |
+| Client presentation | Public dazero views |
 
-Anomalia does not ask for the user's Claude, OpenAI, or Cursor API key. The user
-pays their AI provider through their existing account and authorizes Anomalia
+dazero does not ask for the user's Claude, OpenAI, or Cursor API key. The user
+pays their AI provider through their existing account and authorizes dazero
 separately through MCP OAuth.
 
-Text generation inside Anomalia becomes an optional managed service rather than
+Text generation inside dazero becomes an optional managed service rather than
 the only path. Three managed engines remain first-class because they already
 produce useful work: auto-blog, SEO/GEO with citation research, and social
 autopilot. The external agent can use their output, revise it, or create social
 content independently. Image generation, video generation, rendering, audits,
-and other model-backed operations remain explicit paid Anomalia capabilities.
+and other model-backed operations remain explicit paid dazero capabilities.
 
 ## Actors
 
@@ -64,10 +64,10 @@ and other model-backed operations remain explicit paid Anomalia capabilities.
 cannot operate the brand.
 
 **External agent**: an AI client authorized by an operator and powered by the
-operator's own model account. It acts outside Anomalia's own agent team.
+operator's own model account. It acts outside dazero's own agent team.
 
 **Managed AI**: an explicit model-backed operation executed and billed by
-Anomalia.
+dazero.
 
 An Agency operator and an Owner operator receive the same brand capabilities.
 Their use cases differ; the product does not fork.
@@ -79,7 +79,7 @@ Their use cases differ; the product does not fork.
 ```mermaid
 flowchart LR
     O["Operatore"] --> AI["Claude / Cursor / ChatGPT"]
-    AI -->|"MCP + OAuth"| A["Anomalia"]
+    AI -->|"MCP + OAuth"| A["dazero"]
     A --> D["Brand e memoria"]
     A --> C["Contenuti e calendario"]
     A --> P["Pubblicazione"]
@@ -87,13 +87,13 @@ flowchart LR
     A --> V["Link per il cliente"]
 ```
 
-L'AI pensa e scrive. Anomalia conserva, controlla, pubblica e misura.
+L'AI pensa e scrive. dazero conserva, controlla, pubblica e misura.
 
 ### I due percorsi
 
 ```mermaid
 flowchart TB
-    A["Anomalia"] --> AG["Agenzia / freelance"]
+    A["dazero"] --> AG["Agenzia / freelance"]
     A --> OW["Brand proprio"]
 
     AG --> MB["Più brand"]
@@ -114,7 +114,7 @@ Stesse capacità. L'agenzia consegna a terzi; l'Owner operator lavora per sé.
 
 ```mermaid
 flowchart TB
-    MCP["Anomalia MCP"] --> B["Conoscere il brand"]
+    MCP["dazero MCP"] --> B["Conoscere il brand"]
     MCP --> S["Pianificare"]
     MCP --> C["Creare contenuti"]
     MCP --> O["Operare"]
@@ -141,7 +141,7 @@ flowchart LR
     PU --> AN["Risultati"]
     AN --> RP["Report"]
 
-    AI -.->|"opzionale"| MG["Media Anomalia"]
+    AI -.->|"opzionale"| MG["Media dazero"]
     MG -.-> PO
 ```
 
@@ -152,7 +152,7 @@ Creazione e data non autorizzano la distribuzione. Con il contratto attuale,
 
 ```mermaid
 flowchart TB
-    A["Anomalia Managed AI"] --> B["Auto-blog"]
+    A["dazero Managed AI"] --> B["Auto-blog"]
     A --> G["SEO · GEO · Citations"]
     A --> S["Social autopilot"]
 
@@ -170,14 +170,14 @@ flowchart TB
     R --> P["Pubblicazione"]
 ```
 
-Anomalia può produrre. L'AI dell'utente può partire da quel lavoro o sostituirlo.
+dazero può produrre. L'AI dell'utente può partire da quel lavoro o sostituirlo.
 I dati grezzi di audit e citation restano prove, non testo modificabile.
 
 ### Social: tre modalità
 
 ```mermaid
 flowchart LR
-    U["Operatore"] --> A["Autopilot Anomalia"]
+    U["Operatore"] --> A["Autopilot dazero"]
     U --> E["AI esterna"]
     U --> M["Modalità mista"]
 
@@ -196,7 +196,7 @@ Sono tre percorsi combinabili, non un interruttore globale del brand.
 flowchart LR
     B["Brand · obiettivo · dati"] --> AI["AI dell'utente"]
     AI --> SP["Spec del contenuto"]
-    SP --> PR["Produzione Anomalia"]
+    SP --> PR["Produzione dazero"]
 
     PR --> TX["Testo validato"]
     PR --> IM["Immagine · carousel"]
@@ -212,11 +212,11 @@ flowchart LR
     DA --> AI
 ```
 
-### Come Anomalia migliora l'AI esterna
+### Come dazero migliora l'AI esterna
 
 ```mermaid
 flowchart LR
-    AI["AI dell'utente"] --> K["Kit creativo Anomalia"]
+    AI["AI dell'utente"] --> K["Kit creativo dazero"]
 
     K --> B["Brand e voce"]
     K --> T["Template e guide"]
@@ -230,12 +230,12 @@ flowchart LR
     W --> S
     P --> S
 
-    S --> C["Controlli Anomalia"]
+    S --> C["Controlli dazero"]
     C -->|"da correggere"| AI
     C -->|"pronto"| A["Content artifact"]
 ```
 
-Anomalia non sostituisce il modello: gli consegna contesto selezionato e verifica
+dazero non sostituisce il modello: gli consegna contesto selezionato e verifica
 il risultato prima che entri nel calendario.
 
 ### Cosa resta da chiudere
@@ -258,7 +258,7 @@ flowchart LR
 flowchart TB
     O["Solo organizzazione"] --> OR["Sostituibile da calendar e scheduler"]
     C["Solo caption AI"] --> CR["Sostituibile da un LLM"]
-    P["Produzione + distribuzione + dati"] --> A["Ruolo di Anomalia"]
+    P["Produzione + distribuzione + dati"] --> A["Ruolo di dazero"]
 ```
 
 ### Focus
@@ -277,7 +277,7 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    APP["Anomalia"] --> PF["Portfolio / brand"]
+    APP["dazero"] --> PF["Portfolio / brand"]
     PF --> OV["Overview"]
     PF --> CA["Calendario"]
     PF --> BL["Blog"]
@@ -312,7 +312,7 @@ flowchart LR
     S --> H
     H --> I["Scegli il primo risultato"]
     I --> L["Auto-blog · Social · SEO/GEO"]
-    L --> R["Rivedi in Anomalia"]
+    L --> R["Rivedi in dazero"]
 ```
 
 L'identità OAuth esistente viene verificata, non ricostruita. Il trasporto segue
@@ -386,7 +386,7 @@ escaped by the public renderer, so safe video blocks require a new capability.
 
 `GET` and `DELETE /api/v1/brands/:slug/posts` exist. `POST` does not. Creation
 through `plan_week`, `produce_week`, `generate_article`, and `chat` still invokes
-Anomalia-managed AI in relevant paths. That is intentional for auto-blog,
+dazero-managed AI in relevant paths. That is intentional for auto-blog,
 SEO/GEO, citations, and social autopilot. Deterministic external-authoring paths
 must coexist with them.
 
@@ -421,8 +421,8 @@ permission to publish it.
 ### External media
 
 - Agents can discover and reuse the brand's media library.
-- A public HTTPS image or video can be imported into Anomalia before use.
-- Imported media is validated, size-limited, copied to Anomalia storage, and
+- A public HTTPS image or video can be imported into dazero before use.
+- Imported media is validated, size-limited, copied to dazero storage, and
   recorded with its origin.
 - URL import blocks private networks, redirects to private networks, invalid
   MIME types, and oversized responses.
@@ -440,15 +440,15 @@ permission to publish it.
   approval-only state is not introduced in version one.
 - Version one relies on explicit operator intent and the external client's
   confirmation UI. The authenticated server call then executes immediately.
-- Anomalia enforces identity, brand scope, state, and validation, but does not
+- dazero enforces identity, brand scope, state, and validation, but does not
   claim cryptographic proof of a human click.
 - A server-held approval policy or one-time action token is later work if client
   confirmation proves inconsistent.
 
 ### Managed engines
 
-- Auto-blog remains an Anomalia product, not a migration fallback.
-- SEO/GEO reports, audits, artifacts, and citation collection remain Anomalia
+- Auto-blog remains an dazero product, not a migration fallback.
+- SEO/GEO reports, audits, artifacts, and citation collection remain dazero
   capabilities.
 - Social supports `autopilot`, `external`, and `mixed` modes over the same posts
   and calendar.
@@ -459,7 +459,7 @@ permission to publish it.
 
 ### Social production boundary
 
-Anomalia helps create social content, not only organize it. Its core job is to
+dazero helps create social content, not only organize it. Its core job is to
 turn a creative direction into a validated, reviewable, publishable artifact.
 
 The external agent owns by default:
@@ -468,7 +468,7 @@ The external agent owns by default:
 - selection of objective, audience, format, platforms, and calendar intent;
 - interpretation of performance and the next creative hypothesis.
 
-Anomalia owns:
+dazero owns:
 
 - brand context, products, people, approved assets, and past performance;
 - structured post state and platform-specific validation;
@@ -479,16 +479,16 @@ Anomalia owns:
 
 Social autopilot may perform both sides as an explicit managed workflow. In the
 external and mixed workflows, text reasoning stays with the user's model while
-Anomalia supplies the production and operational layer. Users may import their
-own finished media instead of buying an Anomalia render.
+dazero supplies the production and operational layer. Users may import their
+own finished media instead of buying an dazero render.
 
-The social unit passed from the external agent to Anomalia is a **content spec**:
+The social unit passed from the external agent to dazero is a **content spec**:
 copy, platforms, format, media direction or asset references, optional variants,
 and calendar intent. The stored result is a **content artifact** ready for review.
 
 ### Creative intelligence layer
 
-Anomalia improves the user's model before and after creation.
+dazero improves the user's model before and after creation.
 
 Before creation, one **creation kit** returns only the context relevant to the
 requested goal, platform, and format:
@@ -499,7 +499,7 @@ requested goal, platform, and format:
 - relevant past winners, weak patterns, and operator before/after edits;
 - occupied calendar slots and current campaign context.
 
-After creation, Anomalia checks the returned content spec:
+After creation, dazero checks the returned content spec:
 
 - deterministic platform limits, required fields, media compatibility, and
   scheduling conflicts;
@@ -537,8 +537,8 @@ motion-frame review remain separate capabilities.
 - The external agent can read the complete article in every status.
 - It can edit title, body, SEO fields, cover, in-body images, video blocks,
   language, translation, category, tags, author, and schedule.
-- It can reuse or import media without asking Anomalia to generate it.
-- Anomalia generation, optimization, covers, and in-body images remain optional
+- It can reuse or import media without asking dazero to generate it.
+- dazero generation, optimization, covers, and in-body images remain optional
   managed actions.
 - Editing one field never regenerates another.
 - Changes to a published article create a revision; making that revision live is
@@ -575,10 +575,10 @@ motion-frame review remain separate capabilities.
 | State | Meaning |
 | --- | --- |
 | Available | Exposed through MCP now |
-| Bridge | Exists in Anomalia REST or web UI and needs MCP exposure |
+| Bridge | Exists in dazero REST or web UI and needs MCP exposure |
 | Internal | Tested server behavior or reference material without a public application seam |
 | Build | Requires a new product capability |
-| Managed | Invokes Anomalia-managed AI |
+| Managed | Invokes dazero-managed AI |
 
 `Managed` may coexist with another state. It identifies who performs the model
 work, not whether the capability exists.
@@ -587,7 +587,7 @@ work, not whether the capability exists.
 
 | Capability | State | External-agent possibility |
 | --- | --- | --- |
-| OAuth login and logout | Available | Authorize Anomalia without sharing a static key |
+| OAuth login and logout | Available | Authorize dazero without sharing a static key |
 | Identify the current account | Available | Verify which operator is acting |
 | List accessible brands | Available | Discover a personal or agency portfolio |
 | Read dashboard and status | Available | Find pending work, recent runs, and account readiness |
@@ -613,7 +613,7 @@ span brands; one tool call never silently does.
 | Edit people | Bridge | Keep roles, descriptions, and attributes current |
 | Add and remove competitors | Available | Maintain the competitive set |
 | Edit competitors | Bridge | Correct websites and rationale |
-| Research competitors | Available, Managed | Ask Anomalia to research and store findings |
+| Research competitors | Available, Managed | Ask dazero to research and store findings |
 | Sync social history | Available | Import past posts and performance context |
 | Read and update public bio | Bridge | Keep the outward brand description current |
 
@@ -637,12 +637,12 @@ and inspect completion; it cannot consent for the operator.
 | Capability | State | External-agent possibility |
 | --- | --- | --- |
 | Read editorial plan | Available | Understand cadence, themes, weeks, and pending proposals |
-| Generate or revise a proposal | Available, Managed | Ask Anomalia AI for a plan |
+| Generate or revise a proposal | Available, Managed | Ask dazero AI for a plan |
 | Approve or discard a proposal | Available | Move an existing proposal through review |
 | Save weekly briefs | Available | Add operator direction and featured products |
-| Replan a week | Available, Managed | Ask Anomalia AI to revise one week |
+| Replan a week | Available, Managed | Ask dazero AI to revise one week |
 | Read weekly seeds and posts | Available | Inspect what a week contains |
-| Generate or produce a week | Available, Managed | Ask Anomalia AI to create seeds or posts |
+| Generate or produce a week | Available, Managed | Ask dazero AI to create seeds or posts |
 | Save an externally authored plan | Build | Persist a plan written by the external agent |
 | Save externally authored seeds | Bridge | Persist structured weekly ideas without generation |
 | Read GTM roadmap | Available | Ground content in the current commercial phase |
@@ -667,7 +667,7 @@ and inspect completion; it cannot consent for the operator.
 | Revoke scheduled publication | Bridge, consequential | Pull a post back from its external scheduler |
 | Create an externally authored post | Build | Store external copy as a dated pending post |
 | Create several posts in one operation | Build | Persist a complete external calendar efficiently |
-| Run social autopilot | Available, Managed | Let Anomalia keep producing posts automatically |
+| Run social autopilot | Available, Managed | Let dazero keep producing posts automatically |
 | Mix managed and external posts | Bridge | Edit, replace, or extend autopilot work in one calendar |
 | Submit a complete content spec | Build | Turn external direction into one validated post artifact |
 | Validate platform readiness | Bridge | Catch missing media, limits, and incompatible formats before approval |
@@ -681,13 +681,13 @@ and inspect completion; it cannot consent for the operator.
 | Prepare a video review packet | Build | Return frames, transcript, metadata, and audio facts to the user's model |
 | Review a finished video | Build, Managed | Restore perceptual review only after real-video evaluation passes |
 | Learn from winners and operator edits | Internal | Ground the next brief in brand-specific evidence rather than generic tips |
-| Reuse Anomalia media | Build for MCP | Select existing assets without regenerating them |
-| Import external media by URL | Build | Persist media produced outside Anomalia |
+| Reuse dazero media | Build for MCP | Select existing assets without regenerating them |
+| Import external media by URL | Build | Persist media produced outside dazero |
 | Upload a device-only file | Web available | Use the web app when MCP cannot transport the file |
-| Render a missing image | Available, Managed | Buy an optional Anomalia render |
+| Render a missing image | Available, Managed | Buy an optional dazero render |
 | Regenerate post media or one slide | Available, Managed | Refine a visual while preserving the post |
 | Reorder carousel slides | Available | Change structure without a render |
-| Turn a post into video | Available, Managed | Buy an optional Anomalia video operation |
+| Turn a post into video | Available, Managed | Buy an optional dazero video operation |
 
 Creation and calendar placement are reversible. Approval authorizes and attempts
 scheduled distribution under the current contract. `publish_post` is the
@@ -698,9 +698,9 @@ separate immediate-publication path.
 | Capability | State | External-agent possibility |
 | --- | --- | --- |
 | Read SEO overview | Available | Inspect technical score, search performance, and initiatives |
-| Run SEO reports and actions | Available, partly Managed | Keep Anomalia audits, plans, initiatives, and assets |
+| Run SEO reports and actions | Available, partly Managed | Keep dazero audits, plans, initiatives, and assets |
 | Read GEO visibility | Available | Inspect citations, share of voice, and fixes |
-| Run GEO reports and fixes | Available, Managed | Keep Anomalia visibility measurement and corrective artifacts |
+| Run GEO reports and fixes | Available, Managed | Keep dazero visibility measurement and corrective artifacts |
 | Read citation evidence | Available | Ground decisions in URLs, dates, and measured visibility |
 | Refresh citations | Available, Managed | Collect a new evidence snapshot without rewriting the previous one |
 | Annotate SEO/GEO findings | Build | Add operator or external-agent interpretation beside raw evidence |
@@ -712,10 +712,10 @@ separate immediate-publication path.
 | Scan the content library | Bridge | Reconcile published content with the library |
 | List articles | Available | Inspect drafts, scheduled articles, and published work |
 | Read a complete article in any state | Bridge | Load copy, SEO, media, taxonomy, author, language, and schedule |
-| Auto-generate an article | Available, Managed | Keep Anomalia auto-blog as a primary production path |
+| Auto-generate an article | Available, Managed | Keep dazero auto-blog as a primary production path |
 | Optimize an article | Available, Managed | Improve sources, structure, internal links, SEO, and images |
 | Publish, unpublish, or delete an article | Available, consequential | Control article lifecycle |
-| Create an externally authored article | Build | Save complete external copy without Anomalia AI |
+| Create an externally authored article | Build | Save complete external copy without dazero AI |
 | Edit article text and SEO | Bridge | Revise title, body, meta title, and description without a model call |
 | Edit article cover and images | Bridge | Reuse, import, replace, remove, or reorder visual media |
 | Add or edit article video | Build | Use safe stored videos or allowlisted provider embeds |
@@ -723,7 +723,7 @@ separate immediate-publication path.
 | Edit language and translations | Build for MCP | Maintain every locale from the external agent |
 | Schedule or revise an article | Bridge, consequential | Keep drafting separate from making a version live |
 | Revise a published article safely | Build | Prepare a new version before explicitly making it live |
-| Manage hosted site pages | Web available | Build and publish owned pages in Anomalia |
+| Manage hosted site pages | Web available | Build and publish owned pages in dazero |
 
 ### Paid campaigns
 
@@ -731,7 +731,7 @@ separate immediate-publication path.
 | --- | --- | --- |
 | Read campaigns, candidates, metrics, and accounts | Available | Understand paid activity |
 | Sync accounts and metrics | Available | Refresh external state |
-| Propose campaigns | Available, Managed | Ask Anomalia to identify candidates |
+| Propose campaigns | Available, Managed | Ask dazero to identify candidates |
 | Create a supplied campaign | Available, consequential | Persist supplied campaign inputs |
 | Approve, reject, pause, resume, duplicate, or delete | Available, consequential | Operate campaign lifecycle with review |
 | Remix ads | Bridge, Managed | Produce channel variants from existing material |
@@ -749,7 +749,7 @@ campaign content.
 | Create a public calendar | Build | Deliver selected calendar data to a client viewer |
 | Create a public report or proposal | Build | Deliver an immutable client-facing snapshot |
 | Revoke or expire a public view | Build | End access without changing brand membership |
-| Export a public view to PDF | Build | Send the same artifact outside Anomalia |
+| Export a public view to PDF | Build | Send the same artifact outside dazero |
 | Collect client comments or approval | Later | Add feedback if snapshot sharing proves demand |
 
 ### Automation and observability
@@ -763,7 +763,7 @@ campaign content.
 | Run unattended cross-client automations | Later | Add after authorization and durability are proven |
 
 MCP is an interaction protocol, not a scheduler. Recurring execution belongs to
-a client that supports schedules or to an explicit Anomalia automation.
+a client that supports schedules or to an explicit dazero automation.
 
 </details>
 
@@ -810,7 +810,7 @@ portfolio summary retains the source brand for each claim.
 | OO-09 | Promote a winner | Turn a strong organic post into a reviewed campaign | Campaign | Available |
 | OO-10 | Connect daily tools | Authorize sources and use their knowledge | Connected workspace | Bridge |
 | OO-11 | Share progress | Publish a scoped calendar or report for colleagues | Public link/PDF | Build |
-| OO-12 | Automate a routine | Use client scheduling or an Anomalia automation | Recurring outcome | Mixed |
+| OO-12 | Automate a routine | Use client scheduling or an dazero automation | Recurring outcome | Mixed |
 
 Owner-operator guardrail: speed does not collapse draft creation and publication
 approval into one action.
@@ -823,11 +823,11 @@ approval into one action.
 | --- | --- | --- |
 | Read | Brand, calendar, analytics, posts, plans | Run without confirmation |
 | Reversible write | Note, voice edit, pending post, calendar placement | Show result and preserve audit trail |
-| Managed cost | Research, render, generate, optimize | Declare Anomalia AI or credits before execution |
+| Managed cost | Research, render, generate, optimize | Declare dazero AI or credits before execution |
 | Consequential | Publish, approve all, delete, launch ads, change budget | Require explicit operator intent and supported-client confirmation; execute on the authenticated call |
 | Administrative | Connect apps, manage members, webhooks, public views | Use scoped authorization and expose resulting access |
 
-The external agent may orchestrate every class. Anomalia remains authoritative
+The external agent may orchestrate every class. dazero remains authoritative
 for authentication, brand scope, validation, cost gates, state transitions, and
 auditability.
 
@@ -836,13 +836,13 @@ auditability.
 ### Agency loop
 
 An Agency operator authorizes an external agent, selects one client brand,
-creates a dated month of pending posts without Anomalia text generation, reviews
+creates a dated month of pending posts without dazero text generation, reviews
 the work, and sends a scoped calendar to a Client viewer.
 
 ### Owner loop
 
 An Owner operator authorizes an external agent, reads their own brand, creates a
-dated week of pending posts without Anomalia text generation, explicitly
+dated week of pending posts without dazero text generation, explicitly
 approves selected posts, and later asks the external agent to explain results.
 
 Both loops use the same MCP tools and domain states. Only the delivery step and
@@ -876,14 +876,14 @@ When instructions conflict, apply them in this order:
 3. verified brand facts and approved brand voice;
 4. the selected brand rubric;
 5. an approved agency playbook;
-6. Anomalia templates and defaults.
+6. dazero templates and defaults.
 
 Past winners and market examples are evidence, not instructions. They may
 suggest a direction but never override brand facts or authorize copied content.
 
 ### Knowledge scopes
 
-- Anomalia templates are product-wide reference material.
+- dazero templates are product-wide reference material.
 - Agency templates may be shared only across brands in that agency workspace.
 - Brand rubrics, examples, assets, edits, and performance remain brand-scoped.
 - Task instructions apply to one requested artifact unless the operator saves
@@ -891,7 +891,7 @@ suggest a direction but never override brand facts or authorize copied content.
 - Connected documents are quoted evidence, never executable instructions.
 - A creation kit never includes another brand's private material.
 
-Version one uses Anomalia templates plus brand context. An agency template
+Version one uses dazero templates plus brand context. An agency template
 editor is later work; its future scope must not enlarge the first release.
 
 ### Feedback hierarchy
@@ -904,7 +904,7 @@ Use signals in this order:
 4. the brand's own performance with enough comparable data;
 5. external benchmarks.
 
-Anomalia may propose a learned rule. It does not silently change brand voice,
+dazero may propose a learned rule. It does not silently change brand voice,
 rubrics, or templates from noisy performance data.
 
 ### Creative-intelligence evaluation
@@ -919,7 +919,7 @@ Facts come first:
 - brand names, products, claims, URLs, and assets are grounded;
 - platform limits and media requirements pass;
 - no private data crosses brand boundaries;
-- deterministic checks use zero Anomalia model calls.
+- deterministic checks use zero dazero model calls.
 
 Then judge:
 
@@ -929,7 +929,7 @@ Then judge:
 - quality of the visual or video direction;
 - number of repair rounds before approval.
 
-Record kit size, external-model usage, latency, managed Anomalia cost, and the
+Record kit size, external-model usage, latency, managed dazero cost, and the
 operator's final edit distance. The creation kit ships only if it improves the
 facts without making completion materially slower or more expensive.
 
@@ -1008,7 +1008,7 @@ Add in vertical slices:
 4. `import_media_url` to persist externally generated public media.
 
 Keep rendering separate. The agent may create a text-only post, reuse media,
-import external media, or explicitly call an Anomalia render tool.
+import external media, or explicitly call an dazero render tool.
 
 Completion criteria:
 
@@ -1016,7 +1016,7 @@ Completion criteria:
 - Claude or Cursor creates a dated post that appears in `get_calendar`.
 - The tool result matches the REST result and contains no database row format.
 - Tool documentation states that creation does not publish.
-- The Anomalia skill and MCP tool catalogue include the new workflow.
+- The dazero skill and MCP tool catalogue include the new workflow.
 - An external agent can edit a post created by social autopilot without
   regenerating its text or media.
 - The tool is exercised from a real external client against a local stack
@@ -1047,11 +1047,11 @@ Perceptual media review is a separate, explicit managed action.
 Completion criteria:
 
 - An external model produces a better-grounded content spec after reading one
-  creation kit, without calling Anomalia chat.
+  creation kit, without calling dazero chat.
 - The kit contains only context relevant to the requested job and stays within
   a measured size budget.
 - Known bad captions fail the same deterministic checks already used by
-  Anomalia; valid captions pass.
+  dazero; valid captions pass.
 - Platform, rubric, asset, and calendar failures identify the exact field to
   repair.
 - Every result includes the versions of the rules used.
@@ -1074,15 +1074,15 @@ external model can also create or revise the same artifacts:
 
 Existing managed tools such as `propose_plan`, `plan_week`, `produce_week`,
 `generate_article`, and `optimize_article` remain permanent options. They are
-labelled as Anomalia AI operations with explicit cost.
+labelled as dazero AI operations with explicit cost.
 
 Completion criteria:
 
 - An external client can build a month of content without a text-model call from
-  Anomalia.
+  dazero.
 - An auto-generated article remains fully editable through MCP without
   regenerating it.
-- Direct article edits cause no Anomalia model call or text-AI debit.
+- Direct article edits cause no dazero model call or text-AI debit.
 - Cover, in-body image, and video changes are independently addressable.
 - Raw HTML remains escaped; video blocks render only validated media.
 - Updating a published article does not silently change the live version.
@@ -1091,7 +1091,7 @@ Completion criteria:
 
 ### SEO/GEO evidence and reports
 
-Keep Anomalia's report, audit, artifact, and citation generation. Expose enough
+Keep dazero's report, audit, artifact, and citation generation. Expose enough
 detail for the external agent to use the results without recreating the
 research:
 
@@ -1213,9 +1213,9 @@ Completion criteria:
 
 The product setup flow has one completion criterion: the chosen external client
 reads the brand and creates or uses one artifact that the operator can review in
-Anomalia.
+dazero.
 
-1. Create or select an Anomalia brand.
+1. Create or select an dazero brand.
 2. Add the website or minimum brand facts and verify the Studio summary.
 3. Connect knowledge sources and publishing channels needed for the first job.
 4. Choose an external AI client.
@@ -1224,7 +1224,7 @@ Anomalia.
 6. Verify the connection by listing brands and reading the selected brand.
 7. Choose the first outcome: auto-blog, social calendar, or SEO/GEO report.
 8. Run a short client-specific starter request.
-9. Open the resulting artifact in Anomalia and review it.
+9. Open the resulting artifact in dazero and review it.
 
 Claude is the primary non-technical agency experience. Cursor is supported for
 technical users. ChatGPT support is released according to its current MCP plan,
@@ -1242,13 +1242,13 @@ An agency or freelancer can:
 - use the model subscription, context, memory, and connected apps they already
   have;
 - turn one client brief into persisted plans and dated posts;
-- coordinate Anomalia with email, Notion, Drive, Calendar, or other tools in the
+- coordinate dazero with email, Notion, Drive, Calendar, or other tools in the
   same external-agent session;
 - review every consequential action in one operational UI;
 - send a clean calendar or report to a client without giving account access;
 - change AI provider without migrating brand data or publishing workflows.
 
-Anomalia's differentiator becomes durable brand state, production primitives,
+dazero's differentiator becomes durable brand state, production primitives,
 multimodal production, workflow, distribution, evidence, and client presentation
 rather than a proprietary chat interface or a content calendar alone.
 
@@ -1263,7 +1263,7 @@ rather than a proprietary chat interface or a content calendar alone.
 | Public links leak brand data | Snapshot allowlists, token hashing, revocation tests |
 | Managed AI remains the hidden default | Label every model-backed tool and measure its calls |
 | Guidance overwhelms or anchors the external model | Select one focused creation kit instead of dumping the library |
-| Quality rules drift between Anomalia and MCP | One shared scorer and versioned rule identifiers |
+| Quality rules drift between dazero and MCP | One shared scorer and versioned rule identifiers |
 | A media reviewer claims to inspect unsupported input | Real image/MP4 acceptance eval before exposure; report unrun honestly |
 | UI rewrite expands again | Ship only the control-plane surfaces listed above |
 
@@ -1294,7 +1294,7 @@ The first change ends when this scenario passes:
 
 > Given an authenticated external agent and an existing brand, when the agent
 > submits original copy for a text-capable platform and a future calendar time,
-> Anomalia creates one `pending_user` post at that time without a text-model,
+> dazero creates one `pending_user` post at that time without a text-model,
 > media, or external-scheduler call; the post is returned by both `list_posts`
 > and that month's `get_calendar`. Calling `approve_post` is outside this tracer
 > and remains the action that authorizes distribution.
@@ -1311,7 +1311,7 @@ tracer.
 - MCP: `cli/mcp/tools/`.
 - REST: `src/routes/api/v1/` and `docs/api/`.
 - Web app: `src/routes/app/[brand]/`.
-- Tool catalogue: `cli/skills/anomalia/references/tools.md`.
+- Tool catalogue: `cli/skills/dazero/references/tools.md`.
 
 Before implementing a capability, check its source again. This plan records
 intent and availability; code decides the current contract.

@@ -76,7 +76,7 @@ export async function logOnboardingError(
 
     await sendEmail({
       to: opsEmail(),
-      subject: `[Anomalia] Onboarding error: ${step}`,
+      subject: `[dazero] Onboarding error: ${step}`,
       text: lines.join('\n'),
       html: `<pre style="font:13px/1.45 ui-monospace,monospace;white-space:pre-wrap">${lines
         .join('\n')

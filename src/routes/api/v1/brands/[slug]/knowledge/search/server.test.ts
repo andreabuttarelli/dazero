@@ -8,7 +8,7 @@ vi.mock('$lib/server/cli-auth', () => ({
 import { GET } from './+server';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
 import { COLLECTIONS } from '$lib/server/knowledge';
-import { KNOWLEDGE_COLLECTIONS, KNOWLEDGE_EXCERPT_CHARS, KNOWLEDGE_HITS_MAX } from '@anomalia/api-contracts';
+import { KNOWLEDGE_COLLECTIONS, KNOWLEDGE_EXCERPT_CHARS, KNOWLEDGE_HITS_MAX } from '@dazero/api-contracts';
 
 type Chunk = {
   id: string;
@@ -91,7 +91,7 @@ function signedIn(chunks: Chunk[] = [OWN, FOREIGN]) {
 }
 
 function call(query: Record<string, string>, slug = 'demo') {
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/knowledge/search`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/knowledge/search`);
   for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
   return (GET as (event: unknown) => Promise<Response>)({
     request: new Request(url),

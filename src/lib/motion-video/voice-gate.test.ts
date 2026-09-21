@@ -51,7 +51,7 @@ describe('findVoiceAudioRefs — solo la voce, mai la musica', () => {
 });
 
 /**
- * IL CASO GUIDA (anomalia, 21/8/2026 21:23): 6 beat, voce solo nei primi 3, video da 675 frame
+ * IL CASO GUIDA (dazero, 21/8/2026 21:23): 6 beat, voce solo nei primi 3, video da 675 frame
  * (22,5s a 30fps). La violazione di piazzamento qui è il pezzo che eccede il suo beat; i beat muti
  * li nomina beatsWithoutVoice.
  */

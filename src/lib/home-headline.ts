@@ -10,8 +10,7 @@
  * risultato prima di vuoto**. Sparpagliarli nel componente vorrebbe dire tre `if` che al prossimo
  * stato diventano quattro, in file diversi.
  *
- * Puro, perché è l'unica parte che si può mettere sotto test senza un browser — come `home-todos`
- * e `home-gauges` accanto.
+" * Puro, perché è l'unica parte che si può mettere sotto test senza un browser — come `home-todos` accanto."
  */
 export type HeadlinePost = {
   id: string;

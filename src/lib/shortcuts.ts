@@ -19,17 +19,14 @@ export const SEQUENCE_TIMEOUT_MS = 1200;
  * Le destinazioni di `g` + lettera. I `path` NON sono scritti a mano: vengono dalla nav
  * (NAV_TEAM_SPACES / NAV_OFF_SIDEBAR), da cui `goTargetLabelKey` prende anche l'etichetta — il test
  * fallisce se una sparisce dalla nav. La lettera è l'iniziale inglese, tranne dove collideva:
- * `d` per Leads (l è già Library).
+ * `l` è già Library.
  */
 export const GO_TARGETS: readonly { key: string; path: string }[] = [
   { key: 'c', path: '/calendar' },
   { key: 'l', path: '/media' },
   { key: 's', path: '/site' },
-  { key: 'a', path: '/analytics' },
-  { key: 'r', path: '/radar' },
-  { key: 'd', path: '/leads' },
-  { key: 'k', path: '/knowledge' },
-  { key: 't', path: '/agents' }
+  { key: 'u', path: '/studio' },
+  { key: 'e', path: '/web' }
 ];
 
 /** L'etichetta di una destinazione `g`, presa dalla nav vera. null = non è più nella nav. */

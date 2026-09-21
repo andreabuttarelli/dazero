@@ -31,7 +31,7 @@
  * `remotion` + `@remotion/cli` sono ~570 MB di `node_modules` (i compositor per piattaforma e il
  * browser che Remotion si porta dietro): decine di secondi e mezzo gigabyte, a ogni render, per
  * una VM che li ha già. La directory delle run viene cancellata da `release()`, l'ambiente della
- * macchina no — stessa ragione per cui `browse.mjs` vive in `.anomalia/`. Quindi il progetto di
+ * macchina no — stessa ragione per cui `browse.mjs` vive in `.dazero/`. Quindi il progetto di
  * render sta lì, si installa una volta per macchina, e ogni render ci riscrive dentro solo
  * `src/Video.tsx`.
  *
@@ -62,7 +62,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 const MOTION_AGENT = 'motion';
 
 /** Il progetto di render, nella home della VM: sopravvive alla run, non ai riavvii della macchina. */
-const PROJECT_DIR = '.anomalia/motion-render';
+const PROJECT_DIR = '.dazero/motion-render';
 
 /**
  * Quanto la macchina resta in piedi dopo una grafica, in attesa della prossima.
@@ -413,7 +413,7 @@ export async function renderMotionMp4(opts: {
 	// IL GATE SULLA VOCE, PRIMA DELLA VM. Qui e non nel tool: questo è l'unico posto dove un MP4
 	// nasce (tool dell'agente, chat e rotta del designer passano tutti di qui), quindi è l'unico
 	// posto dove "impossibile consegnare un video che lo viola" è vero per costruzione. Il trailer
-	// `anomalia` del 21/8 — voce troncata a metà parola, due beat muti, chiusura a metà frase — è
+	// `dazero` del 21/8 — voce troncata a metà parola, due beat muti, chiusura a metà frase — è
 	// uscito da un percorso che nessun giudice ha guardato; questo controllo è aritmetica sui
 	// frame e sui campioni, gira sempre, e fallisce prima di spendere un secondo di macchina.
 	{

@@ -467,7 +467,7 @@ export async function htmlToMarkdown(html: string): Promise<string> {
 
 async function htmlFromUrl(url: string): Promise<{ markdown: string; title?: string }> {
   const res = await fetch(url, {
-    headers: { 'user-agent': 'AnomaliaKnowledge/1.0' },
+    headers: { 'user-agent': 'dazeroKnowledge/1.0' },
     signal: AbortSignal.timeout(20_000)
   });
   if (!res.ok) throw new Error(`Failed to fetch URL (${res.status})`);

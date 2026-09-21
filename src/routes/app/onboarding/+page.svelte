@@ -74,7 +74,7 @@ import EntryInput from './components/EntryInput.svelte';
   };
 
   let url = $state('');
-  // Il post che l'ospite ha già visto su /start: si adotta al create, non si rigenera.
+  // Il post che l'ospite ha già visto prima del login: si adotta al create, non si rigenera.
   let guestPost = $state<GuestPost | null>(null);
   // Senza sito: nome + nicchia, e si sintetizza un profilo minimo perché la pipeline resti una sola.
   let noWebsite = $state(false);
@@ -536,7 +536,7 @@ import EntryInput from './components/EntryInput.svelte';
       return;
     }
 
-    // Il funnel ospite (/start) VINCE su un onboarding_draft più vecchio: chi torna per creare un
+    // Il funnel ospite VINCE su un onboarding_draft più vecchio: chi torna per creare un
     // brand NUOVO non deve finire dentro un draft stantio.
     const guest = loadGuestOnboarding();
     if (guest?.readyForAnalysis && guest) {
@@ -599,7 +599,7 @@ import EntryInput from './components/EntryInput.svelte';
 
 {#if entryMode}
   <div class="ob-entry">
-    <a class="ob-logo entry-logo" href="/app" aria-label="Anomalia"><BrandMark size={36} /></a>
+    <a class="ob-logo entry-logo" href="/app" aria-label="dazero"><BrandMark size={36} /></a>
     <div class="entry-stage">
       {#if phase === 'input'}
         <EntryInput

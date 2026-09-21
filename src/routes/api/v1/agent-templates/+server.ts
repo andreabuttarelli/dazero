@@ -8,7 +8,7 @@ import { isAgentTemplateCategory } from '$lib/agent-templates';
  * The Agent Library, for the CLI and the MCP server.
  *
  * Deliberately unauthenticated: this is the same catalogue the public /agents directory
- * renders, it holds no brand data, and `anomalia agents` should work before you log in.
+ * renders, it holds no brand data, and `dazero agents` should work before you log in.
  *
  *   GET /api/v1/agent-templates                → every published agent
  *   GET /api/v1/agent-templates?slug=queue-…   → one agent

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
-import { ADD_BLOG_TERM, statusForFailure } from '@anomalia/api-contracts';
+import { ADD_BLOG_TERM, statusForFailure } from '@dazero/api-contracts';
 import { BLOG_TERMS, blogTermSlug } from '$lib/server/blog-settings';
 import { createAdminClient } from '$lib/server/supabase-admin';
 

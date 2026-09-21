@@ -17,11 +17,11 @@ vi.mock('$lib/server/credits', () => ({
   gateCredits: (...args: unknown[]) => gateCredits(...args),
   CreditsExhaustedError: class extends Error {}
 }));
-vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://anomalia.test' }));
+vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://dazero.test' }));
 
 import { POST } from './+server';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess, gateAiAction } from '$lib/server/cli-auth';
-import { PLAN_CADENCES, PLAN_CYCLE_WEEKS } from '@anomalia/api-contracts';
+import { PLAN_CADENCES, PLAN_CYCLE_WEEKS } from '@dazero/api-contracts';
 import { CADENCES } from '$lib/server/editorial-plan';
 import { PLAN_WEEKS } from '$lib/plans';
 
@@ -91,7 +91,7 @@ function call(body: unknown, slug = 'demo', insertFails = false) {
     brand: { id: 'brand-1', slug, timezone: 'Europe/Rome', plan: 'pro' },
     error: null
   } as never);
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/editorial-plan/save`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/editorial-plan/save`);
   return (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),
     params: { slug },
@@ -114,7 +114,7 @@ describe('POST /api/v1/brands/:slug/editorial-plan/save', () => {
       plan_id: 'plan-1',
       status: 'proposed',
       weeks: PLAN_WEEKS,
-      review_url: 'https://anomalia.test/app/demo/editorial'
+      review_url: 'https://dazero.test/app/demo/calendar'
     });
     const inserted = ops.find((o) => o.kind === 'insert')!;
     expect(inserted.table).toBe('editorial_plans');
@@ -210,7 +210,7 @@ describe('POST /api/v1/brands/:slug/editorial-plan/save', () => {
 
   it('rifiuta una richiesta senza autenticazione', async () => {
     vi.mocked(authenticate).mockResolvedValue({ error: new Response('Unauthorized', { status: 401 }) } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/demo/editorial-plan/save');
+    const url = new URL('https://dazero.test/api/v1/brands/demo/editorial-plan/save');
     const res = await (POST as (event: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: '{}' }),
       params: { slug: 'demo' },
@@ -230,7 +230,7 @@ describe('POST /api/v1/brands/:slug/editorial-plan/save', () => {
     vi.mocked(loadBrandForUser).mockResolvedValue({
       error: new Response(JSON.stringify({ error: 'Brand not found' }), { status: 404 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/altrui/editorial-plan/save');
+    const url = new URL('https://dazero.test/api/v1/brands/altrui/editorial-plan/save');
     const res = await (POST as (event: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: '{}' }),
       params: { slug: 'altrui' },

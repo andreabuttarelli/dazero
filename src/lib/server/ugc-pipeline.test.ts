@@ -24,13 +24,13 @@ describe('trimScriptToBudget', () => {
     const out = trimScriptToBudget(
       {
         hook: 'I was writing captions at midnight again',
-        body: 'Burning evenings on the calendar felt embarrassing then Anomalia drafted visuals and copy for me',
+        body: 'Burning evenings on the calendar felt embarrassing then dazero drafted visuals and copy for me',
         cta: 'Anyway try it and tell me I am wrong'
       },
       10
     );
     expect(out.hook).toMatch(/captions at midnight/i);
-    expect(out.body.toLowerCase()).toMatch(/anomalia/);
+    expect(out.body.toLowerCase()).toMatch(/dazero/);
     const words = [out.hook, out.body, out.cta].join(' ').trim().split(/\s+/).filter(Boolean);
     expect(words.length).toBeLessThanOrEqual(scriptWordBudgetFor(10));
   });
@@ -54,12 +54,12 @@ describe('UgcShotBrief', () => {
     const brief = buildUgcShotBrief({
       person: 'Andrea',
       setting: 'sunlit kitchen',
-      product: 'Anomalia',
+      product: 'dazero',
       hook: 'Stai buttando soldi',
       desire: 'live comfortably',
       seconds: 15
     });
-    const text = formatUgcShotBrief(brief, { script: 'Stai buttando soldi. Anomalia fa il resto.', product: 'Anomalia' });
+    const text = formatUgcShotBrief(brief, { script: 'Stai buttando soldi. dazero fa il resto.', product: 'dazero' });
     expect(text).toMatch(/^REFERENCES:/m);
     expect(text).toMatch(/^CAMERA:/m);
     expect(text).toMatch(/^STAGES:/m);
@@ -77,7 +77,7 @@ describe('UgcShotBrief', () => {
     expect(text).toMatch(/24fps/);
     expect(text).toMatch(/hunting autofocus|micro-shakes|uneven light/i);
     expect(text).toContain('Andrea');
-    expect(text).toContain('Anomalia');
+    expect(text).toContain('dazero');
     expect(text).toMatch(/PAIN MOMENT|desire under/i);
     expect(brief.behavioralBeats.length).toBeGreaterThanOrEqual(2);
     expect(brief.behavioralBeats.length).toBeLessThanOrEqual(3);
@@ -102,7 +102,7 @@ describe('UgcShotBrief with a named format', () => {
     const brief = buildUgcShotBrief({
       person: 'Andrea',
       setting: 'a parked car',
-      product: 'Anomalia',
+      product: 'dazero',
       hook: 'Ho comprato questa cosa',
       hookVisual: 'a taped cardboard box lands on the passenger seat',
       format: 'unboxing',
@@ -117,7 +117,7 @@ describe('UgcShotBrief with a named format', () => {
     // The visual action leads the first beat — the frame has to earn the second.
     expect(brief.timeline[0]!.action).toMatch(/taped cardboard box/);
 
-    const text = formatUgcShotBrief(brief, { script: 'Ho comprato questa cosa.', product: 'Anomalia' });
+    const text = formatUgcShotBrief(brief, { script: 'Ho comprato questa cosa.', product: 'dazero' });
     expect(text).toMatch(/FORMAT unboxing/);
     // Unboxing is one of the two formats where the product IS the opening shot.
     expect(text).toMatch(/The product IS the opening shot/);
@@ -125,7 +125,7 @@ describe('UgcShotBrief with a named format', () => {
   });
 
   it('keeps the product out of the opening on every other format', () => {
-    const brief = buildUgcShotBrief({ product: 'Anomalia', format: 'comparison', seconds: 15 });
+    const brief = buildUgcShotBrief({ product: 'dazero', format: 'comparison', seconds: 15 });
     expect(brief.subject).toMatch(/later casually holding/);
     const text = formatUgcShotBrief(brief, {});
     expect(text).toMatch(/Product must NOT lead the hook/);
@@ -145,14 +145,14 @@ describe('buildUgcStoryboardFrames', () => {
     const { buildUgcStoryboardFrames } = await import('./ugc');
     const frames = buildUgcStoryboardFrames({
       person: 'Andrea',
-      product: 'Anomalia',
+      product: 'dazero',
       hook: 'Midnight captions again',
       desire: 'be liked and respected'
     });
     expect(frames.map((f) => f.beat)).toEqual(['hook', 'problem', 'demo', 'proof', 'cta']);
     expect(frames[0]!.prompt).toMatch(/Product NOT visible|NOT visible yet/i);
     expect(frames[0]!.prompt).toMatch(/desire under it/i);
-    expect(frames[2]!.prompt).toMatch(/Anomalia|DEMO/i);
+    expect(frames[2]!.prompt).toMatch(/dazero|DEMO/i);
   });
 });
 
@@ -161,7 +161,7 @@ describe('buildUgcStoryboardFrames with a format', () => {
     const { buildUgcStoryboardFrames } = await import('./ugc');
     const frames = buildUgcStoryboardFrames({
       person: 'Andrea',
-      product: 'Anomalia',
+      product: 'dazero',
       format: 'testimonial',
       seconds: 15
     });
@@ -217,9 +217,9 @@ describe('shotBriefPromptFromBreakdown', () => {
       dialogueSummary: 'original pitch',
       durationSeconds: 15
     };
-    const p = shotBriefPromptFromBreakdown(breakdown, { script: 'ciao a tutti', product: 'Anomalia' });
+    const p = shotBriefPromptFromBreakdown(breakdown, { script: 'ciao a tutti', product: 'dazero' });
     expect(p).toContain('ciao a tutti');
-    expect(p).toContain('Anomalia');
+    expect(p).toContain('dazero');
     expect(p).toMatch(/every word of the spoken line still finishes|finish every word/i);
     expect(p).toContain('subject: woman');
   });
@@ -241,7 +241,7 @@ describe('buildVideoPrompt — structured shot brief', () => {
 
 describe('shot boundaries follow the format, not a habit', () => {
 	it('numbers the shots and declares a hard cut where the scene really changes', () => {
-		const brief = buildUgcShotBrief({ format: 'unboxing', seconds: 15, product: 'Anomalia' });
+		const brief = buildUgcShotBrief({ format: 'unboxing', seconds: 15, product: 'dazero' });
 		const text = formatUgcShotBrief(brief, {});
 		expect(text).toMatch(/SHOT 1 \(0-1\.5s\)/);
 		expect(text).toContain('Hard cut.');

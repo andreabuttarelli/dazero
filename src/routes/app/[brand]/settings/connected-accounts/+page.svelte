@@ -120,7 +120,7 @@
       </div>
       <div class="nm"><div class="h">{p.label}</div><div class="s">{count ? $_('app.settings.connectedAddAnother', { values: { count } }) : $_('app.settings.connectViaOauth')}</div></div>
       {#if !canConnectSocials}
-        <a class="mini connect" href={`${base}/activate`}>{$_('app.settings.connect')}</a>
+        <a class="mini connect" href="/app/billing">{$_('app.settings.connect')}</a>
       {:else if atLimit}
         <span class="soon">{$_('app.settings.limitReached')}</span>
       {:else}

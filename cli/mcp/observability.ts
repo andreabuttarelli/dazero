@@ -38,7 +38,7 @@ function ensureSentry() {
     tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? '0.1'),
     enableLogs: false,
     initialScope: {
-      tags: { service: 'anomalia-mcp' },
+      tags: { service: 'dazero-mcp' },
     },
   });
 }

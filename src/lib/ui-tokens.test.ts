@@ -49,26 +49,17 @@ function collectDefinitions(): Set<string> {
 // uno (sostituendolo con un token vero di UI_TOKENS), togli la riga: il test fallisce
 // apposta se una voce non è più stray, così la lista non mente mai.
 const LEGACY_STRAYS = [
-  '--bg src/routes/[[lang=locale]]/tools/keyword-research/+page.svelte',
   '--bg src/routes/app/[brand]/ads/library/+page.svelte',
-  '--bg src/routes/app/[brand]/success/+page.svelte',
   '--border src/lib/components/studio/BrandMemoryPanel.svelte',
-  '--border src/routes/app/[brand]/keywords/+page.svelte',
   '--card src/lib/components/studio/FontPicker.svelte',
   '--card src/routes/app/[brand]/settings/facebook/+page.svelte',
   '--card src/routes/app/[brand]/settings/linkedin/+page.svelte',
   '--danger src/lib/components/GrowthReadiness.svelte',
-  '--danger src/lib/components/media-generator/MediaGeneratorSeedancePanel.svelte',
-  '--danger src/routes/app/[brand]/radar/+page.svelte',
   '--hover src/lib/components/studio/FontPicker.svelte',
-  '--ink-muted src/lib/components/media-generator/MediaGeneratorSeedancePanel.svelte',
   '--muted src/lib/components/AdsOverview.svelte',
   '--muted src/routes/app/[brand]/ads/google/+page.svelte',
   '--muted src/routes/app/[brand]/ads/library/+page.svelte',
   '--muted src/routes/app/[brand]/ads/social/+page.svelte',
-  '--muted src/routes/app/[brand]/radar/+page.svelte',
-  '--muted src/routes/app/[brand]/success/+page.svelte',
-  '--muted-fg src/routes/app/[brand]/success/+page.svelte',
   '--panel src/lib/components/AdsOverview.svelte',
   '--sidebar-border src/lib/components/SettingsSidebar.svelte',
   '--sidebar-border src/lib/components/ui/sidebar/sidebar-menu-button.svelte',
@@ -77,9 +68,7 @@ const LEGACY_STRAYS = [
   '--surface src/routes/cli/callback/+page.svelte',
   '--surface src/routes/login/+page.svelte',
   '--surface src/routes/oauth/authorize/+page.svelte',
-  '--warn src/lib/components/GrowthReadiness.svelte',
-  '--wash src/routes/[[lang=locale]]/tools/agent-team/+page.svelte',
-  '--wash src/routes/app/[brand]/geo/+page.svelte'
+  '--warn src/lib/components/GrowthReadiness.svelte'
 ];
 
 describe('ui-tokens', () => {

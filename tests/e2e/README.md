@@ -7,7 +7,7 @@ deterministic by construction: it boots `vite dev` with **placeholder** Supabase
 
 ## Il file che fa eccezione
 
-`onboarding.real.spec.ts` è l'unico che vuole un database vero, con l'utente `test@anomalia.so` e il
+`onboarding.real.spec.ts` è l'unico che vuole un database vero, con l'utente `test@dazero.co` e il
 brand `demo` già seminati. Gira SOLO con `E2E_REAL_STACK=1`; senza, si salta. Non si protegge con
 `PUBLIC_SUPABASE_URL`: quella la mette `playwright.config.ts` come segnaposto, c'è sempre, e una
 guardia che non può scattare è una guardia che non esiste.
@@ -16,7 +16,6 @@ guardia che non può scattare è una guardia che non esiste.
 
 | Target | Assertion style |
 | --- | --- |
-| `/` landing | 200 + structural (`h1`, `header.nav`), never marketing copy |
 | `/changelog` | 200 + entry list has items (entries are in-code) |
 | `/login` | 200 + form wiring (`action="?/login"`, named inputs, OAuth forms) |
 | unknown route | 404 status + error-page card echoes the code |
@@ -30,8 +29,7 @@ guardia che non può scattare è una guardia che non esiste.
   is integration/domain territory (see the durability scenarios in `scripts/eval/`), not a
   clone-and-run smoke tier. There is no db-free `/health` endpoint to assert either.
 - **Real authentication**: the redirect tests stop at the destination URL; nothing logs in.
-- **Copy assertions**: waitlist-flag fallback changes landing CTAs when the DB is absent;
-  headings are i18n'd. Structure only.
+- **Copy assertions**: headings are i18n'd. Structure only.
 
 ## Running
 

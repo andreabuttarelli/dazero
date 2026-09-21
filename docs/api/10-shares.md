@@ -46,7 +46,7 @@ Un campo non dichiarato fa `400 invalid_input`: il body è `.strict()`.
   "id": "9f0c…",
   "view": "calendar",
   "month": "2026-09",
-  "url": "https://anomalia.so/share/x7Qd…",
+  "url": "https://dazero.co/share/x7Qd…",
   "token": "x7Qd…",
   "expires_at": "2026-10-04T09:00:00.000Z"
 }

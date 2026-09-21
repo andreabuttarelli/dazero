@@ -1,30 +1,30 @@
-# Anomalia — Social Media AI Autopilot
+# dazero — Social Media AI Autopilot
 
 ## CLI
 
-The `anomalia` CLI lives in this repo at **`cli/`** (Apache-2.0, source of CLI + MCP server +
+The `dazero` CLI lives in this repo at **`cli/`** (Apache-2.0, source of CLI + MCP server +
 agent skills + Claude/Codex plugins). It is a thin HTTP client — it never touches the database,
 it only calls the API in `src/routes/api/v1/`. CLI, endpoints and MCP tools change in the same
 PRs here; releases are `cli-v*` tags (workflow `cli-release.yml`).
 
 ```bash
 # Install (standalone binary, no runtime needed)
-curl -sSL https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/scripts/install.sh | bash
-anomalia login
+curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash
+dazero login
 
 # Quick commands
-anomalia brands                                    # List brands
-anomalia dashboard <slug>                          # Brand overview
-anomalia content <slug> --status pending_user      # Pending posts
-anomalia approve <slug> --all                      # Approve all pending
-anomalia post <slug> <id> edit --caption "..."     # Edit post
-anomalia post <slug> <id> slide --index 1 ...      # Edit one carousel slide
-anomalia plan <slug>                               # View editorial plan
-anomalia weekly-plan <slug> produce --week 0       # Produce posts
-anomalia seo <slug>                                # SEO grade + initiatives
-anomalia geo <slug>                                # AI visibility / citations
-anomalia keywords <slug>                           # Keyword strategy
-anomalia web <slug>                                # Blog articles (drafts too)
+dazero brands                                    # List brands
+dazero dashboard <slug>                          # Brand overview
+dazero content <slug> --status pending_user      # Pending posts
+dazero approve <slug> --all                      # Approve all pending
+dazero post <slug> <id> edit --caption "..."     # Edit post
+dazero post <slug> <id> slide --index 1 ...      # Edit one carousel slide
+dazero plan <slug>                               # View editorial plan
+dazero weekly-plan <slug> produce --week 0       # Produce posts
+dazero seo <slug>                                # SEO grade + initiatives
+dazero geo <slug>                                # AI visibility / citations
+dazero keywords <slug>                           # Keyword strategy
+dazero web <slug>                                # Blog articles (drafts too)
 # Backlinks network lives at GET/POST /api/v1/brands/:slug/backlinks (CLI command TBD — see cli/)
 # Idea bank: GET/POST /api/v1/brands/:slug/ideas (disruptive ideas agents save — docs/42)
 # Field watch: GET/POST /api/v1/brands/:slug/market/field (what moves in the brand's field, taken apart)
@@ -35,8 +35,8 @@ anomalia web <slug>                                # Blog articles (drafts too)
 # Web evidence: GET /api/v1/brands/:slug/web/{audits,audits/findings,audits/citations,fixes}
 #   (audit history, what one audit observed, the citation probes behind share of voice, and the
 #   generated fixes with their body — reads only, spend nothing)
-anomalia studio <slug> add-note --text "..."       # Add knowledge
-anomalia ai <slug> --message "..."                 # AI chat (full access)
+dazero studio <slug> add-note --text "..."       # Add knowledge
+dazero ai <slug> --message "..."                 # AI chat (full access)
 ```
 
 ## Architecture (this repo — the server side of the CLI)
@@ -44,7 +44,7 @@ anomalia ai <slug> --message "..."                 # AI chat (full access)
 - **API** (`src/routes/api/v1/`) — REST endpoints the CLI calls. Adding a CLI command usually
   starts with an endpoint here.
 - **Shared queries** (`src/lib/server/cli-queries.ts`) — reusable read functions
-- **Auth** (`src/lib/server/cli-auth.ts`) — Bearer auth (Supabase JWT or `anomalia_` API key),
+- **Auth** (`src/lib/server/cli-auth.ts`) — Bearer auth (Supabase JWT or `dazero_` API key),
   `loadBrandForUser`, and `gateAiAction` (paid plan + credits) for endpoints that spend AI
 - **Login callback** (`src/routes/cli/callback/`) — the page the browser login flow posts back to
 
@@ -64,7 +64,7 @@ proxy (`composioProxy`), so no access token is ever read or logged in this repo.
 - **Knowledge ingest** `src/lib/server/knowledge-sources.ts` + `knowledge-connectors/` — Drive,
   Notion, GitHub, Gmail into `brand_documents`.
 - **Surfaces**: Settings → Connectors (browser), and `/api/v1/brands/:slug/connections*` for the
-  CLI and MCP (`anomalia connections`). Docs: [`docs/api/09-connections.md`](docs/api/09-connections.md).
+  CLI and MCP (`dazero connections`). Docs: [`docs/api/09-connections.md`](docs/api/09-connections.md).
 - **Outbound webhooks** `brand-webhooks.ts` + `brand-triggers.ts` — Composio posts every trigger
   event to one project URL (`/api/v1/composio/webhook`, `COMPOSIO_WEBHOOK_SECRET`); we fan out to
   each brand's own endpoint with our signature, retries (`/api/v1/webhooks/work`, cron) and a
@@ -245,7 +245,7 @@ about a command here is not evidence that it runs — check `package.json`.
   brands doesn't take them away.
 - Cost is read from `ai_calls` **while the brand exists**: after teardown the cascade takes it.
 - An eval run from a worktree measures a **hybrid**: `$lib` points at your copy, but
-  `@anomalia/*` resolves from the main checkout's `node_modules`. If you touched `packages/`,
+  `@dazero/*` resolves from the main checkout's `node_modules`. If you touched `packages/`,
   your eval doesn't see it.
 
 The criterion of a good scenario is one only: **if you re-ran the real failures already seen,
@@ -348,8 +348,8 @@ Prefer these skills over improvising; load them with the `skill` tool.
 The user-invoked skills (`grill-with-docs`, `to-spec`, `implement`, `wayfinder`) fire on explicit
 request; the others you load yourself when the task matches.
 
-## Tasks = Notion "Anomalia > Tasks"
+## Tasks = Notion "dazero > Tasks"
 
-When "the tasks" are mentioned, the **Anomalia > Tasks** database is meant (page "Tasks",
+When "the tasks" are mentioned, the **dazero > Tasks** database is meant (page "Tasks",
 inline database "✅ Team Tasks", data source `collection://d5551c37-1a6f-4bf2-89c8-af84a1d5dcec`).
 Don't look for other task databases.

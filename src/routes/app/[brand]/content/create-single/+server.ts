@@ -1,7 +1,6 @@
 import { swallow } from '$lib/server/swallow';
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import { canEnter } from '$lib/server/access';
 import { createSingleContent, attachBrandMoodImages, isCarouselPlatform, type ContentPrefs } from '$lib/server/content-preview';
 import { renderVideo } from '$lib/server/video';
 import { remaining, addUsage, monthKey } from '$lib/server/usage';
@@ -24,7 +23,6 @@ const MAX_REF_BYTES = 6_000_000;
 export const POST: RequestHandler = async ({ params, request, locals: { supabase, safeGetSession }, platform: vercelPlatform }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
 
   const { data: brand } = await supabase
     .from('brands')

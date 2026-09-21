@@ -1,4 +1,4 @@
-# I tool MCP di Anomalia
+# I tool MCP di dazero
 
 > Generato da `node scripts/mcp-inventory.mjs --write`, leggendo `tools/list` dal server vero.
 > Non si modifica a mano: il prossimo che rigenera cancella le correzioni.
@@ -50,12 +50,12 @@ Say yes to every post waiting for approval, in one go — they are published or 
 
 *Create post*
 
-Store copy you already wrote as one pending post for review. It does not publish and does not schedule: `scheduled_for` is the proposed calendar time, and approve_post remains the action that authorizes distribution. Text-capable platforms only — instagram and tiktok need an image, youtube needs a video. Two different media failures: `media_not_found` (400) means the id is not this brand — check it with list_media, and pass the full id, never a prefix; `media_unavailable` (502) means the id is yours and Anomalia could not attach it, so retrying other ids is wasted work — retry later or leave the media out. Free.
+Store copy you already wrote as one pending post for review. It does not publish and does not schedule: `scheduled_for` is the proposed calendar time, and approve_post remains the action that authorizes distribution. Text-capable platforms only — instagram and tiktok need an image, youtube needs a video. Two different media failures: `media_not_found` (400) means the id is not this brand — check it with list_media, and pass the full id, never a prefix; `media_unavailable` (502) means the id is yours and dazero could not attach it, so retrying other ids is wasted work — retry later or leave the media out. Free.
 
 | campo | tipo | |
 |---|---|---|
 | `platforms` | string[] | Text-capable platforms, e.g. ["linkedin","x"] |
-| `caption` | string | The copy you wrote. Anomalia stores it as-is and writes nothing itself |
+| `caption` | string | The copy you wrote. dazero stores it as-is and writes nothing itself |
 | `platform_captions`? | object | Per-platform overrides of the caption |
 | `scheduled_for`? | string | Proposed publication instant, ISO. Without an offset it is read on the brand clock. It is a calendar proposal only: nothing is scheduled or published until the post is approved |
 | `media_ids`? | string[] | Full ids from this brand media library (see list_media) — unlike a post id, a media id is never resolved from a prefix. An id that is not this brand is rejected: the post is never quietly created without it. At most 8: a ninth is refused, not dropped |
@@ -947,7 +947,7 @@ Switch one platform on or off for this brand’s Radar. Turning one off narrows 
 
 *Writing skills*
 
-READ THIS BEFORE WRITING ANY COPY FOR THE BRAND — a caption, a carousel, a script, an article, a bio. It returns the craft text Anomalia writes with: `humanizer` and `stop-slop` always, plus `social` or `seo-audit` depending on `agent`. It also returns the built-in production skills for that agent — the ones naming the gates that refuse a render — and this brand's OWN procedures, and a brand procedure overrules a product skill when they disagree. Bodies come inline; each skill lists its `references` by path without sending them, and `reference: "<skill>/<path>"` returns that one file alone. Free.
+READ THIS BEFORE WRITING ANY COPY FOR THE BRAND — a caption, a carousel, a script, an article, a bio. It returns the craft text dazero writes with: `humanizer` and `stop-slop` always, plus `social` or `seo-audit` depending on `agent`. It also returns the built-in production skills for that agent — the ones naming the gates that refuse a render — and this brand's OWN procedures, and a brand procedure overrules a product skill when they disagree. Bodies come inline; each skill lists its `references` by path without sending them, and `reference: "<skill>/<path>"` returns that one file alone. Free.
 
 | campo | tipo | |
 |---|---|---|
@@ -998,7 +998,7 @@ Ask the brand's own documents a question and get back the passages that answer i
 
 *Check content*
 
-Run the checks Anomalia runs on its own copy against a spec you wrote, before you create anything. Returns blocking errors, warnings and a 0-100 quality score per platform, each naming the field to repair. Deterministic: it writes nothing, and the same spec always returns the same verdict. Perceptual review of an image or a video is a separate, explicitly paid action — this never looks at pixels. Free.
+Run the checks dazero runs on its own copy against a spec you wrote, before you create anything. Returns blocking errors, warnings and a 0-100 quality score per platform, each naming the field to repair. Deterministic: it writes nothing, and the same spec always returns the same verdict. Perceptual review of an image or a video is a separate, explicitly paid action — this never looks at pixels. Free.
 
 | campo | tipo | |
 |---|---|---|

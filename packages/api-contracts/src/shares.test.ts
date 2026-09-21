@@ -35,7 +35,7 @@ describe('il contratto delle viste pubbliche', () => {
         id: 'share-1',
         view: 'calendar',
         month: '2026-09',
-        url: 'https://anomalia.so/share/abc',
+        url: 'https://dazero.co/share/abc',
         token: 'abc',
         expires_at: null
       }).success

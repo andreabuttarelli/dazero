@@ -27,11 +27,11 @@ const GENERATED = {
   mime: 'image/png',
   width: 1080,
   height: 1350,
-  url: 'https://anomalia.so/a/K7BX2MQ4'
+  url: 'https://dazero.co/a/K7BX2MQ4'
 };
 
 function call(body: unknown, slug = 'demo') {
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/media/generate`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/media/generate`);
 
   return (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),

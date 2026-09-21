@@ -11,11 +11,10 @@
   import { readSidebarPane, writeSidebarPane, type SidebarPane } from '$lib/shell-prefs';
   // Il menu utente è PORTALATO da bits-ui e si smonta alla selezione: per le voci che portano
   // ai settings si chiama l'API del modal invece di affidarsi al click dell'<a>.
-  import { locale, _ } from 'svelte-i18n';
+  import { _ } from 'svelte-i18n';
   import { page } from '$app/stores';
   import { goto, invalidateAll, beforeNavigate } from '$app/navigation';
   import { navigating } from '$app/state';
-  import { SUPPORTED, localePath, type Locale } from '$lib/i18n/locale';
   import { credits as creditsStore } from '$lib/stores/credits';
   import { isPaidPlan } from '$lib/plans';
   import {
@@ -92,9 +91,6 @@
     hasStrategy: boolean;
     hasEditorialPlan: boolean;
     blogEnabled: boolean;
-    radarEnabled: boolean;
-    hasGeoAudit: boolean;
-    gscConnected?: boolean;
   };
 
   let {
@@ -151,10 +147,7 @@
   const profileHref = $derived(`${settingsHref}/profile`);
   const creditsResetDate = $derived(
     credits
-      ? new Date(credits.periodEnd).toLocaleDateString(
-          $locale === 'it' ? 'it-IT' : $locale === 'es' ? 'es-ES' : $locale === 'fr' ? 'fr-FR' : 'en-US',
-          { day: 'numeric', month: 'short' }
-        )
+      ? new Date(credits.periodEnd).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
       : ''
   );
   const sidebar = useSidebar();
@@ -181,7 +174,7 @@
     'font-semibold data-[active=true]:bg-[color:var(--nav-on)] data-[active=true]:hover:bg-[color:var(--nav-on-hover)] active:bg-[var(--paper)]';
   /** Vertical spacing between sidebar nav rows. */
   const navMenuGapClass = $derived(mobile ? 'gap-1.5' : 'gap-2');
-  const activateHref = $derived(brandSlug ? `/app/${brandSlug}/activate` : '');
+  const activateHref = '/app/billing';
   /**
    * Le istruzioni per collegare il proprio agente. Stanno in fondo alla barra e non nella home
    * perché servono DUE volte: il giorno che si comincia, e il giorno che si cambia macchina o si
@@ -245,25 +238,6 @@
     theme = next;
   }
 
-  const currentLocale = $derived(($locale ?? 'en') as Locale);
-  async function chooseLocale(l: Locale) {
-    if (l === currentLocale) return;
-    document.cookie = `locale=${l};path=/;max-age=31536000;samesite=lax`;
-    locale.set(l);
-    if (typeof document !== 'undefined') document.documentElement.lang = l;
-    fetch('/api/v1/locale', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ locale: l }),
-    }).catch(() => {});
-    if ($page.route.id?.startsWith('/[[lang=locale]]')) {
-      const basePath =
-        $page.url.pathname.replace(new RegExp(`^\\/(${SUPPORTED.join('|')})(?=/|$)`), '') || '/';
-      await goto(localePath(basePath, l) + $page.url.search + $page.url.hash);
-    } else {
-      await invalidateAll();
-    }
-  }
 
   // Close the mobile sheet as soon as navigation starts — not after the new page
   // finishes loading — so the drawer doesn't sit over the loading screen.
@@ -687,17 +661,6 @@
               <Moon class="size-4" strokeWidth={1.7} />
             {/if}
           </button>
-          <div class="um-lang-switch">
-            {#each SUPPORTED as l (l)}
-              <button
-                type="button"
-                class={cn('um-lang-btn', currentLocale === l && 'on')}
-                onclick={() => chooseLocale(l)}
-              >
-                {l.toUpperCase()}
-              </button>
-            {/each}
-          </div>
         </div>
 
         <!-- Sign out -->
@@ -1059,32 +1022,6 @@
     cursor: pointer;
   }
   .um-pref-btn:hover {
-    color: var(--ink);
-  }
-  .um-lang-switch {
-    display: flex;
-    gap: 2px;
-    padding: 2px;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--ink) 6%, transparent);
-  }
-  .um-lang-btn {
-    border: none;
-    background: transparent;
-    border-radius: 6px;
-    padding: 4px 7px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    color: var(--ink-soft);
-    cursor: pointer;
-  }
-  .um-lang-btn.on {
-    background: var(--paper);
-    color: var(--ink);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  }
-  .um-lang-btn:hover:not(.on) {
     color: var(--ink);
   }
   :global(.um-danger),

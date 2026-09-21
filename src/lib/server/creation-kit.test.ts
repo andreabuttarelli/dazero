@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CONTENT_FORMATS } from '$lib/content-formats';
-import { KIT_FORMATS } from '@anomalia/api-contracts';
+import { KIT_FORMATS } from '@dazero/api-contracts';
 import { CREATION_KIT_MAX_BYTES, buildCreationKit, type KitJob } from './creation-kit';
 
 type Row = Record<string, unknown>;

@@ -416,7 +416,7 @@
   }
 </script>
 
-<svelte:head><title>Anomalia — {$_('app.home.workbench.title')}</title></svelte:head>
+<svelte:head><title>dazero — {$_('app.home.workbench.title')}</title></svelte:head>
 
 <!-- Lo scheletro resta fuori dalla tela: dentro sarebbe un nodo che compare e sparisce, e
      `fitView` inquadrerebbe due volte — una sullo scheletro, una sul recap.

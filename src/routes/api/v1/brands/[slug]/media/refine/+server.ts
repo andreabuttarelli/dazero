@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, gateAiAction } from '$lib/server/cli-auth';
 import { refineBrandMedia } from '$lib/server/media-generate';
-import { REFINE_MEDIA, statusForFailure } from '@anomalia/api-contracts';
+import { REFINE_MEDIA, statusForFailure } from '@dazero/api-contracts';
 
 export const config = { maxDuration: 300 };
 

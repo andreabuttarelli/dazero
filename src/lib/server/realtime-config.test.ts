@@ -17,6 +17,6 @@ describe('local Realtime routing', () => {
     expect(config).not.toContain('realtime-dev.supabase-realtime');
     // Il tenant arriva dall'header `Host` qui sopra, non dal nome del container: così il compose
     // non battezza i suoi servizi e due stack possono girare affiancati sulla stessa macchina.
-    expect(config).not.toContain('realtime-dev.anomalia-realtime');
+    expect(config).not.toContain('realtime-dev.dazero-realtime');
   });
 });

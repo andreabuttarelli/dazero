@@ -11,7 +11,7 @@ function anonClient() {
 }
 
 /**
- * Validate an Anomalia / Supabase access token (same JWT the CLI stores after OAuth).
+ * Validate an dazero / Supabase access token (same JWT the CLI stores after OAuth).
  * Returns undefined if missing/invalid — never accepts a static API key.
  */
 export async function verifyBearerToken(bearerToken?: string): Promise<RequestAuth | undefined> {
@@ -36,7 +36,7 @@ export function toAuthInfo(auth: RequestAuth): AuthInfo {
   return {
     token: auth.access_token,
     clientId: auth.user.id,
-    scopes: ['anomalia'],
+    scopes: ['dazero'],
     expiresAt: auth.expires_at,
     extra: { email: auth.user.email, source: auth.source },
   };

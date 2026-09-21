@@ -57,7 +57,7 @@ Note: `kit` può essere `null`; `studioPct` = % di 8 controlli di completezza su
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/studio" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/studio" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -87,7 +87,7 @@ Aggiorna i campi del brand kit (`about`, `category`, `target_audience`, `brand_s
 **Esempio**:
 
 ```bash
-curl -s -X PUT "https://anomalia.so/api/v1/brands/mio-brand/studio/kit" \
+curl -s -X PUT "https://dazero.co/api/v1/brands/mio-brand/studio/kit" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"about":"Torrefazione artigianale a Milano","category":"Caffè","target_audience":"Giovani professionisti","brand_style":"Minimal e caldo","language":"it"}'
@@ -122,7 +122,7 @@ Imposta i colori del brand (max 8 hex), salvati in `brand_kit.brand_colors`.
 **Esempio**:
 
 ```bash
-curl -s -X PUT "https://anomalia.so/api/v1/brands/mio-brand/studio/colors" \
+curl -s -X PUT "https://dazero.co/api/v1/brands/mio-brand/studio/colors" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"colors": ["#7c5cff", "#ffffff"]}'
@@ -177,7 +177,7 @@ Elenca le voci di memoria del brand (`brand_memory`). Di default esclude le voci
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/studio/memory?category=fact" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/studio/memory?category=fact" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -210,7 +210,7 @@ Scrive una voce di memoria con `source: 'user'` e `confidence: 1.0`. Se la `key`
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/studio/memory" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/studio/memory" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"key":"orario apertura","value":"Il locale apre alle 8:00","category":"fact"}'
@@ -239,7 +239,7 @@ Elimina una voce di memoria passando l'id nel body (non nel path).
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://anomalia.so/api/v1/brands/mio-brand/studio/memory" \
+curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/studio/memory" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"id":"ID"}'
@@ -270,7 +270,7 @@ Aggiorna una singola voce di memoria; il body viene passato direttamente come pa
 **Esempio**:
 
 ```bash
-curl -s -X PATCH "https://anomalia.so/api/v1/brands/mio-brand/studio/memory/ID" \
+curl -s -X PATCH "https://dazero.co/api/v1/brands/mio-brand/studio/memory/ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"pinned":true,"importance":5}'
@@ -299,7 +299,7 @@ Promuove una memoria di sessione a conoscenza di brand (layer `project`). Se esi
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/studio/memory/ID" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/studio/memory/ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"action":"promote"}'
@@ -320,7 +320,7 @@ Elimina una voce di memoria per id nel path.
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://anomalia.so/api/v1/brands/mio-brand/studio/memory/ID" \
+curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/studio/memory/ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -362,7 +362,7 @@ Aggiunge una persona allo studio: reale (`kind` omesso) o AI (`kind: 'ai'`, gene
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/studio/people" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/studio/people" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Giulia","role":"Fondatrice","kind":"ai","gender":"female","ageRange":"30s","vibe":"professionale e solare"}'
@@ -390,7 +390,7 @@ Elimina una persona dello studio e rimuove le sue immagini dallo storage (best-e
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://anomalia.so/api/v1/brands/mio-brand/studio/people/ID" \
+curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/studio/people/ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -429,7 +429,7 @@ I campi non passati non vengono scritti: restano i default del database.
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/studio/products" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/studio/products" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"title":"Blend Milano","pricing":"18,50 €","description":"Arabica lavata, tostatura chiara"}'
@@ -465,7 +465,7 @@ Aggiunge un documento/conoscenza (`brand_documents`) e ricostruisce il contesto 
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/studio/documents" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/studio/documents" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"title":"Linee guida packaging","content_text":"Utilizzare carta riciclata e inchiostri a base d'\''acqua."}'
@@ -493,7 +493,7 @@ Elimina un documento: rimuove il file dallo storage (best-effort), cancella la r
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://anomalia.so/api/v1/brands/mio-brand/studio/documents/ID" \
+curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/studio/documents/ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -523,7 +523,7 @@ Aggiunge manualmente un competitor (`source: 'user'`). Il sito viene normalizzat
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/studio/competitors" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/studio/competitors" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Caffè Rivale","website":"cafferivale.it","kind":"direct","rationale":"Stessa fascia di prezzo"}'
@@ -561,7 +561,7 @@ Aggiorna un competitor; solo i campi presenti nel body vengono modificati, gli a
 **Esempio**:
 
 ```bash
-curl -s -X PUT "https://anomalia.so/api/v1/brands/mio-brand/studio/competitors/ID" \
+curl -s -X PUT "https://dazero.co/api/v1/brands/mio-brand/studio/competitors/ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"kind":"indirect","rationale":"Risolve lo stesso bisogno con una tazzina diversa"}'
@@ -584,7 +584,7 @@ Elimina un competitor.
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://anomalia.so/api/v1/brands/mio-brand/studio/competitors/ID" \
+curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/studio/competitors/ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -611,7 +611,7 @@ Ricerca AI dei competitor reali (3–5, direct + indirect) via web search Gemini
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/studio/competitors/research" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/studio/competitors/research" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -636,7 +636,7 @@ Note: `errors` = array di `{ "platform": "instagram", "message": "…" }` per pr
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/studio/history/sync" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/studio/history/sync" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -675,7 +675,7 @@ Aggiorna una persona (percorso top-level, non sotto `/studio`). Solo i campi pre
 **Esempio**:
 
 ```bash
-curl -s -X PUT "https://anomalia.so/api/v1/brands/mio-brand/people/ID" \
+curl -s -X PUT "https://dazero.co/api/v1/brands/mio-brand/people/ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"role":"Co-fondatrice","attributes":{"gender":"female"}}'

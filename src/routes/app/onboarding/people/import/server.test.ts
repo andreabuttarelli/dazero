@@ -13,7 +13,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('$env/dynamic/private', () => ({ env: {} }));
 vi.mock('node:dns/promises', () => ({ lookup: vi.fn() }));
 vi.mock('$lib/server/supabase-admin', () => ({ createAdminClient: () => ({}) }));
-vi.mock('$lib/server/access', () => ({ canEnter: vi.fn(async () => true) }));
 vi.mock('$lib/server/onboarding-errors', () => ({ logOnboardingError: vi.fn(async () => {}) }));
 
 import { lookup } from 'node:dns/promises';
@@ -82,7 +81,7 @@ function storage() {
 
 function post(url: string, supabase: unknown) {
   return (POST as (event: unknown) => Promise<Response>)({
-    request: new Request('https://anomalia.test/app/onboarding/people/import', {
+    request: new Request('https://dazero.test/app/onboarding/people/import', {
       method: 'POST',
       body: JSON.stringify({ url })
     }),

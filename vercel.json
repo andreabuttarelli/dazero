@@ -40,10 +40,6 @@
   ],
   "crons": [
     {
-      "path": "/api/v1/agent-files",
-      "schedule": "0 3 * * *"
-    },
-    {
       "path": "/api/v1/autopilot/tick",
       "schedule": "0 6 * * *"
     },
@@ -62,18 +58,6 @@
     {
       "path": "/api/v1/ads/tick",
       "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/v1/radar/tick",
-      "schedule": "0 8,12,16,20 * * *"
-    },
-    {
-      "path": "/api/v1/radar/work",
-      "schedule": "*/2 * * * *"
-    },
-    {
-      "path": "/api/v1/radar/recap",
-      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/v1/geo/tick",
@@ -148,10 +132,6 @@
       "schedule": "*/2 * * * *"
     },
     {
-      "path": "/api/v1/chat/queue/work",
-      "schedule": "*/2 * * * *"
-    },
-    {
       "path": "/api/v1/health/costs/tick",
       "schedule": "0 4 * * *"
     },
@@ -190,14 +170,6 @@
     {
       "path": "/api/v1/memory/dream",
       "schedule": "30 4 * * *"
-    },
-    {
-      "path": "/api/v1/agents/computers/sweep",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/v1/chat/models/sync",
-      "schedule": "0 4 * * *"
     }
   ]
 }

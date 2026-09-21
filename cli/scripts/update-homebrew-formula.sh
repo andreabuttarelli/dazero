@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Fill Formula/anomalia.rb version + sha256 from dist/*.tar.gz (run after packaging).
+# Fill Formula/dazero.rb version + sha256 from dist/*.tar.gz (run after packaging).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$ROOT/dist"
-FORMULA="$ROOT/Formula/anomalia.rb"
+FORMULA="$ROOT/Formula/dazero.rb"
 
 VERSION="${1:-}"
 if [[ -z "$VERSION" ]]; then
@@ -24,16 +24,16 @@ need() {
   [[ -f "$1" ]] || { echo "Missing $1 — run release packaging first" >&2; exit 1; }
 }
 
-need "$DIST/anomalia-macos-arm64.tar.gz"
-need "$DIST/anomalia-macos-x64.tar.gz"
-need "$DIST/anomalia-linux-arm64.tar.gz"
-need "$DIST/anomalia-linux-x64.tar.gz"
+need "$DIST/dazero-macos-arm64.tar.gz"
+need "$DIST/dazero-macos-x64.tar.gz"
+need "$DIST/dazero-linux-arm64.tar.gz"
+need "$DIST/dazero-linux-x64.tar.gz"
 
 export FORMULA VERSION
-export MAC_ARM="$(sha "$DIST/anomalia-macos-arm64.tar.gz")"
-export MAC_X64="$(sha "$DIST/anomalia-macos-x64.tar.gz")"
-export LIN_ARM="$(sha "$DIST/anomalia-linux-arm64.tar.gz")"
-export LIN_X64="$(sha "$DIST/anomalia-linux-x64.tar.gz")"
+export MAC_ARM="$(sha "$DIST/dazero-macos-arm64.tar.gz")"
+export MAC_X64="$(sha "$DIST/dazero-macos-x64.tar.gz")"
+export LIN_ARM="$(sha "$DIST/dazero-linux-arm64.tar.gz")"
+export LIN_X64="$(sha "$DIST/dazero-linux-x64.tar.gz")"
 
 python3 - <<'PY'
 import os
@@ -59,10 +59,10 @@ for token, digest in replacements.items():
 
 # If tokens were already replaced in a prior release, bump sha256 next to each platform URL.
 platform_digests = [
-    ("anomalia-macos-arm64.tar.gz", os.environ["MAC_ARM"]),
-    ("anomalia-macos-x64.tar.gz", os.environ["MAC_X64"]),
-    ("anomalia-linux-arm64.tar.gz", os.environ["LIN_ARM"]),
-    ("anomalia-linux-x64.tar.gz", os.environ["LIN_X64"]),
+    ("dazero-macos-arm64.tar.gz", os.environ["MAC_ARM"]),
+    ("dazero-macos-x64.tar.gz", os.environ["MAC_X64"]),
+    ("dazero-linux-arm64.tar.gz", os.environ["LIN_ARM"]),
+    ("dazero-linux-x64.tar.gz", os.environ["LIN_X64"]),
 ]
 for artifact, digest in platform_digests:
     text = re.sub(

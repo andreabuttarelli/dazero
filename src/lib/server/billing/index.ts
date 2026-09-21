@@ -17,8 +17,8 @@ function fallBackToOpen(reason: string, err?: unknown): BillingProvider {
 }
 
 // The one place that decides which billing provider answers gate()/quota()/upgradeUrl().
-// Default: anomalia (today's product, unchanged). BILLING_PROVIDER=open forces the permissive
-// default — and so does anomalia-provider.ts not being there, which is what a self-hosted fork
+// Default: dazero (today's product, unchanged). BILLING_PROVIDER=open forces the permissive
+// default — and so does dazero-provider.ts not being there, which is what a self-hosted fork
 // looks like once it's extracted into its own (absent, private) npm package. "Not there" has two
 // shapes, and both fall back: the module throws on load, or it hands back no provider at all.
 //
@@ -27,8 +27,8 @@ function fallBackToOpen(reason: string, err?: unknown): BillingProvider {
 export async function billingProvider(): Promise<BillingProvider> {
   if (env.BILLING_PROVIDER === 'open') return openBillingProvider;
   try {
-    const { anomaliaBillingProvider } = await import('./anomalia-provider');
-    return anomaliaBillingProvider ?? fallBackToOpen('module exported no provider');
+    const { dazeroBillingProvider } = await import('./dazero-provider');
+    return dazeroBillingProvider ?? fallBackToOpen('module exported no provider');
   } catch (e) {
     return fallBackToOpen('module failed to load', e);
   }

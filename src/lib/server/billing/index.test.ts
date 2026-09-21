@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('$env/dynamic/private', () => ({ env: {} }));
 
-// Il modulo `anomalia-provider` non esiste nel build aperto: si dichiara assente lanciando. Nel
+// Il modulo `dazero-provider` non esiste nel build aperto: si dichiara assente lanciando. Nel
 // bundle esbuild del worker il corpo di un modulo gira UNA volta sola — dopo il primo throw (che
 // il catch qui sotto assorbe) ogni import successivo restituisce un namespace vuoto invece di
-// rilanciare, quindi `anomaliaBillingProvider` arriva `undefined`.
-vi.mock('./anomalia-provider', () => ({ anomaliaBillingProvider: undefined }));
+// rilanciare, quindi `dazeroBillingProvider` arriva `undefined`.
+vi.mock('./dazero-provider', () => ({ dazeroBillingProvider: undefined }));
 
 describe('billingProvider()', () => {
 	it('ricade su open quando il modulo del provider non esporta niente', async () => {
@@ -18,10 +18,10 @@ describe('billingProvider()', () => {
 	});
 });
 
-describe('billingProvider() with the real anomalia-provider present', () => {
-	it('picks the anomalia provider instead of falling back to open', async () => {
+describe('billingProvider() with the real dazero-provider present', () => {
+	it('picks the dazero provider instead of falling back to open', async () => {
 		vi.resetModules();
-		vi.doUnmock('./anomalia-provider');
+		vi.doUnmock('./dazero-provider');
 		vi.doMock('$lib/server/credits', () => ({
 			gateCreditsCore: async () => {},
 			creditQuota: () => 400
@@ -35,6 +35,6 @@ describe('billingProvider() with the real anomalia-provider present', () => {
 		const { billingProvider } = await import('./index');
 		const provider = await billingProvider();
 
-		expect(provider.kind).toBe('anomalia');
+		expect(provider.kind).toBe('dazero');
 	});
 });

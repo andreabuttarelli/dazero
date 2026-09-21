@@ -12,7 +12,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const ensureOrgForUser = vi.fn();
 const gateOrgCredits = vi.fn();
 
-vi.mock('$lib/server/access', () => ({ userCanEnter: async () => true }));
 vi.mock('$lib/server/org', () => ({ ensureOrgForUser: (...a: unknown[]) => ensureOrgForUser(...a) }));
 vi.mock('./credits', () => ({
   gateOrgCredits: (...a: unknown[]) => gateOrgCredits(...a),

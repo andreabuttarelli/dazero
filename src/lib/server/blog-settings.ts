@@ -16,7 +16,7 @@ import { storeSecrets, loadSecrets } from '$lib/server/integration-secrets';
 import { blogArticlesPerWeek, blogArticlesPerWeekMax } from '$lib/server/plans';
 import { isBlogLocale, resolveBlogLocales, type BlogLocaleConfig } from '$lib/server/blog-locales';
 import { readUploadImage } from '$lib/server/raster-image';
-import { BLOG_ANALYTICS_PROVIDERS, blogAnalyticsIdOk } from '@anomalia/api-contracts';
+import { BLOG_ANALYTICS_PROVIDERS, blogAnalyticsIdOk } from '@dazero/api-contracts';
 
 type Ev = RequestEvent;
 

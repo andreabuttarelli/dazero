@@ -1,6 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { soleTenantId } from '$lib/server/tenancy';
-import { canEnter } from '$lib/server/access';
 import type { Actions, PageServerLoad } from './$types';
 import { ensureOrgForUser } from '$lib/server/org';
 import { NON_PAYING_SLOT_LIMIT, hasUnlimitedSlots } from '$lib/server/brand-limits';
@@ -28,8 +27,6 @@ const LIST_VIEWS = new Set(['invites', 'drafts']);
 export const load: PageServerLoad = async ({ cookies, url, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) throw redirect(303, '/login');
-
-  if (!(await canEnter(supabase))) throw redirect(303, '/waitlist');
 
   // UN TENANT SOLO: qui non c'è niente da scegliere. Si va al brand e basta — la lista, gli
   // inviti e la ripresa dell'onboarding ospite esistono tutti perché i brand sono più di uno.

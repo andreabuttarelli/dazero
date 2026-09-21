@@ -18,7 +18,6 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { computeBrandWarnings, type AppWarning } from '$lib/warnings';
-import { canConnectSocials } from '$lib/plans';
 import { countCalendarConflicts } from '$lib/server/schedule';
 import { remaining } from '$lib/server/usage';
 
@@ -238,12 +237,10 @@ function gtmPhasesHaveContent(phases: unknown): boolean {
   return false;
 }
 
-const AUTOPILOT_MAX_FAILURES = 3; // rispecchia scheduler.ts MAX_CONSECUTIVE_FAILURES
-
 /**
  * La stessa lista della campanella, ricalcolata per la chat. `brand` è la riga del brand
  * (serve: id, slug, plan, status, timezone, target_platforms, content_prefs, blog_config,
- * autopilot_failure_count, onboarding_completed_at).
+ * onboarding_completed_at).
  */
 export async function loadBrandWarnings(supabase: SupabaseClient, brand: AnyRec): Promise<AppWarning[]> {
   const brandId = brand.id as string;
@@ -260,7 +257,6 @@ export async function loadBrandWarnings(supabase: SupabaseClient, brand: AnyRec)
     { count: proposedEditCount },
     { count: peopleCount },
     { count: competitorCount },
-    { count: geoAuditCount },
     { data: kit },
     { data: strategyRow },
     budget
@@ -277,7 +273,6 @@ export async function loadBrandWarnings(supabase: SupabaseClient, brand: AnyRec)
     supabase.from('editorial_plans').select('id', { count: 'exact', head: true }).eq('brand_id', brandId).eq('status', 'proposed'),
     supabase.from('people').select('id', { count: 'exact', head: true }).eq('brand_id', brandId),
     supabase.from('competitors').select('id', { count: 'exact', head: true }).eq('brand_id', brandId),
-    supabase.from('brand_geo_audits').select('id', { count: 'exact', head: true }).eq('brand_id', brandId),
     supabase.from('brand_kit').select('logos, visual_style').eq('brand_id', brandId).maybeSingle(),
     supabase.from('brand_strategy').select('report').eq('brand_id', brandId).maybeSingle(),
     remaining(supabase, brandId, brand.plan as string | null, (brand.timezone as string) || 'Europe/Rome', brand as AnyRec)
@@ -300,12 +295,9 @@ export async function loadBrandWarnings(supabase: SupabaseClient, brand: AnyRec)
 
   return computeBrandWarnings({
     base: `/app/${brand.slug}`,
-    canConnectSocials: canConnectSocials((brand.plan as string | null) ?? null, (brand.status as string) || 'trial'),
     targetPlatforms: Array.isArray(brand.target_platforms) ? (brand.target_platforms as string[]) : [],
     connectedPlatforms,
     brokenPlatforms,
-    autopilotFailureCount: (brand as { autopilot_failure_count?: number }).autopilot_failure_count ?? 0,
-    autopilotMaxFailures: AUTOPILOT_MAX_FAILURES,
     hasProposedPlan: (proposedGtmCount ?? 0) > 0 || (proposedEditCount ?? 0) > 0,
     strategyPlatforms,
     editorialPlanPlatforms,
@@ -330,8 +322,7 @@ export async function loadBrandWarnings(supabase: SupabaseClient, brand: AnyRec)
     hasHashtags: !!prefs.platformHashtags && Object.keys(prefs.platformHashtags).length > 0,
     peopleCount: peopleCount ?? 0,
     competitorCount: competitorCount ?? 0,
-    blogEnabled: (brand.blog_config as { enabled?: boolean } | null)?.enabled === true,
-    hasGeoAudit: (geoAuditCount ?? 0) > 0
+    blogEnabled: (brand.blog_config as { enabled?: boolean } | null)?.enabled === true
   });
 }
 

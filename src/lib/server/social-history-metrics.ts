@@ -1,7 +1,7 @@
 // Aggregate engagement from social_post_history.
 //
 // This module never queries the table — callers pass rows. Rows can come from scrapecreators
-// (organic scrape) and zernio (Anomalia-published analytics). The same Instagram post often exists
+// (organic scrape) and zernio (dazero-published analytics). The same Instagram post often exists
 // twice with different external_post_id values — we dedupe by platform URL shortcode (or
 // published_at+content) and prefer zernio, which carries views/impressions that scrapecreators
 // Instagram does not.

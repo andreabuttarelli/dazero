@@ -101,7 +101,7 @@ dimenticanza:
 - il blog di un brand esce da due porte — il suo dominio (albero `src/routes/_site`) e
   `/blog/<slug>`, che sta sulla **nostra origine**, la stessa di `/app` e della sessione di chi e'
   loggato;
-- uno `<script>` li' dentro girerebbe con i permessi di anomalia.so. Vale anche per un container
+- uno `<script>` li' dentro girerebbe con i permessi di dazero.co. Vale anche per un container
   GA4 o GTM, che chi lo amministra puo' riempire di JavaScript quando vuole.
 
 Da cui le due regole, tenute dal codice e non dalla convenzione:

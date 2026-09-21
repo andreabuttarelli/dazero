@@ -40,37 +40,6 @@ export function metaDescriptionFromBody(bodyMd: string, max = 160): string {
 }
 
 /** Parse "Title: … / Meta description: …" block from SEO artifacts. */
-export function parseMetaTagsBlock(content: string): { metaTitle?: string; metaDescription?: string } {
-  const title = content.match(/^Title:\s*(.+)$/im)?.[1]?.trim();
-  const desc = content.match(/^Meta description:\s*(.+)$/im)?.[1]?.trim();
-  return {
-    metaTitle: title || undefined,
-    metaDescription: desc || undefined
-  };
-}
-
-export function extractSeoMetaFromArtifact(artifact: {
-  title?: string | null;
-  body?: string | null;
-  blocks?: unknown;
-}): { metaTitle: string; metaDescription: string; bodyMd: string } {
-  const blocks = Array.isArray(artifact.blocks) ? (artifact.blocks as AnyRec[]) : [];
-  const metaBlock = blocks.find((b) => String(b.labelKey ?? '') === 'metaTags');
-  const parsed = metaBlock?.content ? parseMetaTagsBlock(String(metaBlock.content)) : {};
-  const body =
-    artifact.body ||
-    blocks
-      .filter((b) => String(b.labelKey ?? '') !== 'metaTags')
-      .map((b) => String(b.content ?? b.body ?? ''))
-      .join('\n\n');
-  const bodyMd = stripLeadingMarkdownH1(body);
-  return {
-    metaTitle: parsed.metaTitle || artifact.title || 'Untitled',
-    metaDescription: parsed.metaDescription || metaDescriptionFromBody(bodyMd),
-    bodyMd
-  };
-}
-
 export type SitePage = {
   id: string;
   kind: string;
@@ -95,45 +64,6 @@ export type UrlLiveResult = {
 };
 
 /** Create or update a draft page from an SEO initiative asset. */
-export async function upsertSitePageFromAsset(
-  admin: SupabaseClient,
-  brandId: string,
-  opts: {
-    kind: string;
-    title: string;
-    bodyMd: string;
-    targetQuery?: string | null;
-    initiativeId?: string | null;
-    slug?: string | null;
-    metaTitle?: string | null;
-    metaDescription?: string | null;
-  }
-): Promise<SitePage> {
-  const slug = slugify(opts.slug || opts.title);
-  const bodyMd = stripLeadingMarkdownH1(opts.bodyMd);
-  const metaTitle = (opts.metaTitle || opts.title || 'Untitled').slice(0, 70);
-  const metaDescription = (opts.metaDescription || metaDescriptionFromBody(bodyMd)).slice(0, 160);
-  const row = {
-    brand_id: brandId,
-    kind: opts.kind || 'landing_page',
-    slug,
-    title: opts.title,
-    body_md: bodyMd,
-    target_query: opts.targetQuery ?? null,
-    initiative_id: opts.initiativeId ?? null,
-    status: 'draft',
-    seo_meta: { meta_title: metaTitle, meta_description: metaDescription },
-    updated_at: new Date().toISOString()
-  };
-  const { data, error } = await admin
-    .from('brand_site_pages')
-    .upsert(row, { onConflict: 'brand_id,slug' })
-    .select('*')
-    .single();
-  if (error) throw new Error(error.message);
-  return data as SitePage;
-}
-
 /**
  * Absolute public URL for a hosted site page.
  * Custom domain (`brand_sites`) → `/p/{slug}`; else app host → `/blog/{blog_slug}/p/{slug}`.
@@ -191,7 +121,7 @@ export async function assertPublicUrlLive(
       method: 'GET',
       redirect: 'follow',
       signal: ctrl.signal,
-      headers: { 'user-agent': 'AnomaliaPublishVerify/1.0' }
+      headers: { 'user-agent': 'dazeroPublishVerify/1.0' }
     });
     const finalUrl = res.url || url;
     if (res.ok) {
@@ -281,13 +211,6 @@ export async function publishSitePage(
     }
   }
 
-  if (data?.target_query) {
-    try {
-      const { ensureTrackedSet } = await import('$lib/server/rank-tracker');
-      await ensureTrackedSet(admin, brand, { keywords: [data.target_query], source: 'manual' });
-    } catch (error) { swallow('track page keyword set', error); }
-  }
-
   return { ...(data as SitePage), seo_meta, publicUrl };
 }
 
@@ -328,49 +251,3 @@ export async function getPublishedSitePage(
 }
 
 /** Publish from SEO artifact body (source_finding seo:<initiativeId>). */
-export async function publishSeoAssetToSite(
-  admin: SupabaseClient,
-  brand: AnyRec,
-  initiativeId: string,
-  kind: string,
-  targetQuery?: string | null
-): Promise<PublishedSitePage> {
-  const { data: artifact } = await admin
-    .from('brand_geo_artifacts')
-    .select('title, body, blocks')
-    .eq('brand_id', brand.id)
-    .eq('source_finding', `seo:${initiativeId}`)
-    .eq('status', 'draft')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!artifact) throw new Error('No asset found for initiative');
-
-  const extracted = extractSeoMetaFromArtifact(artifact);
-
-  let query = targetQuery ?? null;
-  if (!query) {
-    const { data: plan } = await admin
-      .from('brand_seo_plans')
-      .select('initiatives')
-      .eq('brand_id', brand.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const initiatives = (plan?.initiatives as Array<AnyRec>) ?? [];
-    const init = initiatives.find((i) => String(i.id) === initiativeId);
-    query = init?.targetQuery ? String(init.targetQuery) : null;
-  }
-
-  const page = await upsertSitePageFromAsset(admin, String(brand.id), {
-    kind,
-    title: artifact.title || extracted.metaTitle || 'Untitled',
-    bodyMd: extracted.bodyMd,
-    initiativeId,
-    targetQuery: query,
-    metaTitle: extracted.metaTitle,
-    metaDescription: extracted.metaDescription
-  });
-  return publishSitePage(admin, brand, page.id);
-}

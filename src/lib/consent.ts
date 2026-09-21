@@ -1,4 +1,4 @@
-// Cookie-consent state for Anomalia.
+// Cookie-consent state for dazero.
 //
 // Consent here gates ONLY the cookie-based, full-fidelity analytics: persistent PostHog
 // (cookies) + session replay, plus Microsoft Clarity. An anonymous, cookieless PostHog tier
@@ -16,7 +16,7 @@ import { browser } from '$app/environment';
 
 export type Consent = 'granted' | 'denied' | null;
 
-const STORAGE_KEY = 'anomalia_cookie_consent_v1';
+const STORAGE_KEY = 'dazero_cookie_consent_v1';
 
 function read(): Consent {
   if (!browser) return null;

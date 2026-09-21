@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_APP_URL: 'https://anomalia.so' } }));
+vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_APP_URL: 'https://dazero.co' } }));
 
 import { mediaUrl, MEDIA_SHORT_CODE_RE } from './media-url';
 
@@ -9,7 +9,7 @@ const MIGRATION = 'supabase/migrations/20260905090000_brand_media_short_code.sql
 
 describe('mediaUrl', () => {
   it('builds the short absolute link', () => {
-    expect(mediaUrl('K7BX2MQ4')).toBe('https://anomalia.so/a/K7BX2MQ4');
+    expect(mediaUrl('K7BX2MQ4')).toBe('https://dazero.co/a/K7BX2MQ4');
   });
 
   it('has no link to give when the row has no code', () => {

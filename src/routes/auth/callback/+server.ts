@@ -1,5 +1,4 @@
 import { redirect } from '@sveltejs/kit';
-import { canEnter } from '$lib/server/access';
 import { isPlanKey, normalizeCycle } from '$lib/plans';
 import { isPlanGoEnabled } from '$lib/server/feature-flags';
 import { sanitizeWebsiteParam } from '$lib/website-param';
@@ -7,8 +6,7 @@ import { GUEST_ONBOARDING_COOKIE, hasGuestOnboardingCookie } from '$lib/guest-on
 import { takeOAuthReturn } from '$lib/server/oauth';
 import type { RequestHandler } from './$types';
 
-// Exchanges the magic-link / OAuth code for a session, then routes by role:
-// canEnter → product; else → waitlist.
+// Exchanges the magic-link / OAuth code for a session, then routes:
 // "next=onboarding" (pricing / homepage /guest funnel) or the guest-onboarding cookie
 // sends the user into new-brand onboarding instead of their last project.
 export const GET: RequestHandler = async ({ url, cookies, locals: { supabase } }) => {
@@ -25,8 +23,6 @@ export const GET: RequestHandler = async ({ url, cookies, locals: { supabase } }
       if (cliPort) {
         throw redirect(303, `/cli/callback?cli_port=${encodeURIComponent(cliPort)}&cli_state=${encodeURIComponent(cliState)}`);
       }
-
-      if (!(await canEnter(supabase))) throw redirect(303, '/waitlist');
 
       const guestPending = hasGuestOnboardingCookie(cookies.get(GUEST_ONBOARDING_COOKIE));
       if (url.searchParams.get('next') === 'onboarding' || guestPending) {

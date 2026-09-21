@@ -25,7 +25,7 @@ const C = {
 	accentWarm: '#ff5a1a',
 };
 
-const LOGO = 'https://www.anomalia.so/icon-512.png';
+const LOGO = 'https://www.dazero.co/icon-512.png';
 const UI_OVERVIEW =
 	'https://kszazivzwievqixcnanp.supabase.co/storage/v1/object/public/media/bd58d38a-b6ce-4e17-a909-1a334f8bf09f/library/c40ae95c-db64-4798-b7f9-5a4739964275.png';
 const UI_CALENDAR =
@@ -331,7 +331,7 @@ const MockupFrame: React.FC<{
 							fontWeight: 400,
 						}}
 					>
-						app.anomalia.so
+						app.dazero.co
 					</div>
 				</div>
 				<Img src={src} style={{ width: '100%', height: 'calc(100% - 48px)', objectFit: 'cover' }} />
@@ -621,7 +621,7 @@ const CtaEndCard: React.FC<{ len: number }> = ({ len }) => {
 							letterSpacing: -0.4,
 						}}
 					>
-						anomalia.so
+						dazero.co
 					</div>
 				</div>
 			</div>
@@ -631,7 +631,7 @@ const CtaEndCard: React.FC<{ len: number }> = ({ len }) => {
 
 // --- MAIN SCENE WRAPPER WITH SLIDE INERTIA & PARALLAX ---
 // wow: SLIDE_INERTIA — UI scenes push laterally with inertia and continuous movement through cuts
-export default function AnomaliaProductTrailer() {
+export default function dazeroProductTrailer() {
 	const frame = useCurrentFrame();
 
 	// Timeline markers (in absolute frames)

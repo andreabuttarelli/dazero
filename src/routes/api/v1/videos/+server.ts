@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { openOrgScope } from '$lib/server/cli-auth';
 import { generateVideoWithoutBrand, listOrgMediaJobs } from '$lib/server/media-generate';
-import { CHECK_MEDIA_JOB_READ, GENERATE_VIDEO, statusForFailure } from '@anomalia/api-contracts';
+import { CHECK_MEDIA_JOB_READ, GENERATE_VIDEO, statusForFailure } from '@dazero/api-contracts';
 
 /**
  * Dove si ritrova un clip che nessuna libreria reclama.

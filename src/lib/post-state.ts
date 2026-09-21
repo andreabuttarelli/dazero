@@ -120,7 +120,7 @@ export function distributionNote(
     return `It goes out on ${momentInZone(post.scheduled_for as string, timezone)}.`;
   }
 
-  return 'This post has no future date, so it goes out at the next slot Anomalia can use — possibly right away.';
+  return 'This post has no future date, so it goes out at the next slot dazero can use — possibly right away.';
 }
 
 export type PostDetail = {

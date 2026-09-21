@@ -18,7 +18,7 @@ const sample = parseGraphic({
 	blocks: [
 		{ type: 'kicker', text: 'Chiesto a ChatGPT' },
 		{ type: 'headline', text: 'Ti ha escluso\ndalla risposta.' },
-		{ type: 'footer', brand: 'Anomalia', note: '25€/mese' }
+		{ type: 'footer', brand: 'dazero', note: '25€/mese' }
 	]
 });
 
@@ -79,7 +79,7 @@ describe('html from blocks', () => {
 		const html = graphicToHtml(sample);
 		expect(html).toContain('data-aspect="4:5"');
 		expect(html).toContain('Ti ha escluso');
-		expect(html).toContain('Anomalia');
+		expect(html).toContain('dazero');
 		expect(html).toContain('<style>');
 	});
 });
@@ -92,7 +92,7 @@ describe('html to satori', () => {
 		expect(tree.props.style.display).toBe('flex');
 		const dumped = JSON.stringify(tree);
 		expect(dumped).toContain('Ti ha escluso');
-		expect(dumped).toContain('Anomalia');
+		expect(dumped).toContain('dazero');
 	});
 
 	it('renders a hand-written canvas with a style tag', () => {

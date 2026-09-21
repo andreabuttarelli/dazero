@@ -19,7 +19,7 @@ vi.mock('$lib/server/post-editing', () => ({
   requireZernioCancellation: vi.fn(async () => ({ undeleted: [] }))
 }));
 
-vi.mock('$lib/server/scheduler', () => ({
+vi.mock('$lib/server/brand-contacts', () => ({
   brandContacts: vi.fn(async () => [])
 }));
 

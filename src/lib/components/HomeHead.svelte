@@ -59,7 +59,8 @@
       : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
   }
 
-  const postHref = (p: HeadlinePost | null) => (p ? `${base}/posts/${p.id}` : `${base}/content`);
+  const postHref = (p: HeadlinePost | null) =>
+    p ? `${base}/calendar?post=${p.id}` : `${base}/calendar`;
 </script>
 
 <section class="hh">
@@ -86,11 +87,10 @@
             {#if head.kind === 'approve'}
               <a class="hh-btn" href={postHref(head.post)}>{$_(`${TK}.openPost`)}</a>
               {#if head.waiting > 1}
-                <a class="hh-btn ghost" href={`${base}/content`}>{$_(`${TK}.openQueue`)}</a>
+                <a class="hh-btn ghost" href={`${base}/calendar`}>{$_(`${TK}.openQueue`)}</a>
               {/if}
             {:else}
               <a class="hh-btn ghost" href={postHref(head.post)}>{$_(`${TK}.openPost2`)}</a>
-              <a class="hh-btn ghost" href={`${base}/analytics`}>{$_(`${TK}.openResults`)}</a>
             {/if}
           </div>
         </div>
@@ -107,7 +107,7 @@
   {#if tiles.length}
     <div class="hh-strip">
       {#each tiles as t (t.id)}
-        <a class="hh-tile" href={`${base}/posts/${t.id}`}>
+        <a class="hh-tile" href={`${base}/calendar?post=${t.id}`}>
           <img src={t.url} alt="" loading="lazy" decoding="async" />
           <span class="hh-pill {t.state}">{$_(`${TK}.state.${t.state}`)}</span>
           {#if dayOf(t.when)}<span class="hh-when">{dayOf(t.when)}</span>{/if}
@@ -125,7 +125,7 @@
   </div>
 
   {#if blocking > 0}
-    <a class="hh-fix" href={`${base}/plan`}>
+    <a class="hh-fix" href={`${base}/studio`}>
       <span class="hh-fix-n">{blocking}</span>
       <span>{$_(`${TK}.fixPill`)}</span>
       <span class="hh-fix-x">{$_(`${TK}.fixTail`)}</span>

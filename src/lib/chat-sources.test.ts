@@ -67,7 +67,7 @@ describe('sourcesFromSteps', () => {
       kind: 'brand',
       entity: 'competitor',
       label: '1 competitor',
-      href: '/app/acme/competitors'
+      href: '/app/acme/studio/competitors'
     });
   });
 

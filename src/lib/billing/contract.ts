@@ -34,7 +34,6 @@ export type UpgradeOption = {
   label: string;
   posts: number;
   accounts: number;
-  radarSources: number;
 };
 
 /**
@@ -61,7 +60,7 @@ export class PlanRequiredError extends Error {
 }
 
 export interface BillingProvider {
-  readonly kind: 'open' | 'anomalia';
+  readonly kind: 'open' | 'dazero';
 
   /** Throws (CreditsExhaustedError for 'credits', QuotaExceededError otherwise) when denied. */
   gate(kind: QuotaKind, ctx: BillingContext): Promise<void>;

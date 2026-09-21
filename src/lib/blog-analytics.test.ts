@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BLOG_ANALYTICS_ID_PATTERNS as CONTRACT_PATTERNS,
   BLOG_ANALYTICS_PROVIDERS as CONTRACT_PROVIDERS
-} from '@anomalia/api-contracts';
+} from '@dazero/api-contracts';
 import {
   BLOG_ANALYTICS_ID_PATTERNS,
   BLOG_ANALYTICS_PROVIDERS,

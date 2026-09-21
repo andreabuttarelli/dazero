@@ -1,9 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { canEnter } from '$lib/server/access';
 import { GRAPHIC_SOURCE_MAX_CHARS, unwrapGraphicSource } from '$lib/design/graphic-source';
 import { latestGraphic, versionSource } from '$lib/server/design-store';
-import { applyPostGraphicSource, loadEditorContext } from '$lib/agent/tools/post-editor-tools';
+import { applyPostGraphicSource, loadEditorContext } from '$lib/server/post-editor/post-editor-tools';
 import { pngToJpeg, renderGraphicSource } from '$lib/server/design-render';
 import { isVideoPostRow } from '$lib/server/media-origin';
 
@@ -45,7 +44,6 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase, saf
 export const POST: RequestHandler = async ({ params, request, locals: { supabase, safeGetSession } }) => {
 	const { session, user } = await safeGetSession();
 	if (!session || !user) return json({ error: 'Unauthorized' }, { status: 401 });
-	if (!(await canEnter(supabase))) return json({ error: 'Forbidden' }, { status: 403 });
 
 	const { data: brand } = await supabase
 		.from('brands')

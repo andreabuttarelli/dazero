@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
-import { SET_BLOG_SETTINGS, statusForFailure } from '@anomalia/api-contracts';
+import { SET_BLOG_SETTINGS, statusForFailure } from '@dazero/api-contracts';
 import { blogConfigPatch, parseBlogConfig, patchBlogConfig } from '$lib/server/blog-settings';
 import { FONT_KEYS } from '$lib/server/blog-site';
 import { BLOG_LOCALES, isBlogLocale } from '$lib/server/blog-locales';

@@ -1,11 +1,11 @@
 import type { RequestHandler } from './$types';
-import { canEnter, ownsBrand } from '$lib/server/access';
+import { ownsBrand } from '$lib/server/access';
 import { aiStructured } from '$lib/server/ai-text';
-import { localeLanguageName } from '$lib/i18n/locale';
+import { OUTPUT_LANGUAGE } from '$lib/i18n/locale';
 import { logOnboardingError } from '$lib/server/onboarding-errors';
 import { withBrandContext } from '$lib/server/ai-log';
 
-// Anomalia's publish-platform recommendation for the socials step. A light, single structured LLM read of
+// dazero's publish-platform recommendation for the socials step. A light, single structured LLM read of
 // the already-analyzed brand that returns the 2-4 platforms it should publish on (most important
 // first) + a one-line rationale in the user's language. The wizard pre-selects these and badges them
 // as "recommended" before the deep research runs. Best-effort: an empty result just means no badge.
@@ -34,18 +34,16 @@ const SCHEMA = {
   required: ['recommended', 'rationale']
 };
 
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession, locale } }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
-
   const body = await request.json().catch(() => ({}));
   const brandId = typeof body?.brandId === 'string' ? body.brandId : null;
   if (brandId && !(await ownsBrand(supabase, brandId))) return new Response('Forbidden', { status: 403 });
   if (!brandId) return new Response('Missing brandId', { status: 400 });
   return withBrandContext(brandId, async () => {
     const profile = body?.profile ?? {};
-  const outputLanguage = localeLanguageName(locale);
+  const outputLanguage = OUTPUT_LANGUAGE;
 
   try {
     const prompt = `Recommend the best social platforms for this brand to PUBLISH on, choosing ONLY from: ${ALLOWED.join(', ')}.

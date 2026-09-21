@@ -2,11 +2,10 @@
   import * as Sidebar from '$lib/components/ui/sidebar/index.js';
   import * as Collapsible from '$lib/components/ui/collapsible/index.js';
   import { cn } from '$lib/utils.js';
-  import { locale, _ } from 'svelte-i18n';
+  import { _ } from 'svelte-i18n';
   import { page } from '$app/stores';
   import { goto, invalidateAll, beforeNavigate } from '$app/navigation';
   import { untrack } from 'svelte';
-  import { SUPPORTED, localePath, type Locale } from '$lib/i18n/locale';
   import {
     ArrowLeft,
     ChevronDown,
@@ -16,7 +15,6 @@
     FolderOpen,
     Globe,
     KeyRound,
-    Languages,
     Link2,
     Moon,
     BookOpen,
@@ -31,7 +29,6 @@
     UserRound,
     Users,
     Megaphone,
-    Radar,
     Gift,
     LogIn,
   } from '@lucide/svelte';
@@ -66,18 +63,17 @@
   const adsOn = $derived(!!$page.data.flags?.ads);
   /** FEATURE_CONNECTORS kill switch (defaults on), from app/[brand]/+layout.server.ts. */
   const brandPlan = $derived(($page.data.brand?.plan as string | null | undefined) ?? null);
-  const brandSlug = $derived(($page.data.brand?.slug as string | undefined) ?? '');
   const customDomainHref = $derived(
     hasBlogCustomDomain(brandPlan)
       ? `${settingsBase}/blog-domain`
-      : `/app/${brandSlug}/activate?plan=starter`
+      : '/app/billing'
   );
   const integrationsHref = $derived(
     hasBlogIntegrations(brandPlan)
       ? `${settingsBase}/blog-integrations`
       : hasBlogCustomDomain(brandPlan)
         ? `${settingsBase}/blog-domain`
-        : `/app/${brandSlug}/activate?plan=starter`
+        : '/app/billing'
   );
   /** Full-page map instead of the closed/open Sheet dance. */
   const asMobileMap = $derived(sidebar.isMobile && forceOpenMobile);
@@ -167,12 +163,6 @@
       label: $_('app.settings.blog.integrations'),
       icon: Plug,
     },
-    {
-      id: 'search-console',
-      href: `${settingsBase}/search-console`,
-      label: $_('app.settings.blog.searchConsole'),
-      icon: Globe,
-    },
   ]);
 
   const adsItems = $derived<SettingsNavItem[]>([
@@ -226,24 +216,12 @@
           label: $_('app.settings.connectedAccounts'),
           icon: Link2,
         },
-        {
-          id: 'radar',
-          href: `${settingsBase}/radar`,
-          label: $_('app.settings.radar.nav'),
-          icon: Radar,
-        },
       ],
     },
     {
       id: 'workspace',
       label: $_('app.nav.workspace'),
       items: [
-        {
-          id: 'language',
-          href: `${settingsBase}/language`,
-          label: $_('app.settings.language'),
-          icon: Languages,
-        },
         {
           id: 'api-keys',
           href: `${settingsBase}/api-keys`,
@@ -383,25 +361,6 @@
     theme = next;
   }
 
-  const currentLocale = $derived(($locale ?? 'en') as Locale);
-  async function chooseLocale(l: Locale) {
-    if (l === currentLocale) return;
-    document.cookie = `locale=${l};path=/;max-age=31536000;samesite=lax`;
-    locale.set(l);
-    if (typeof document !== 'undefined') document.documentElement.lang = l;
-    fetch('/api/v1/locale', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ locale: l }),
-    }).catch(() => {});
-    if ($page.route.id?.startsWith('/[[lang=locale]]')) {
-      const basePath =
-        $page.url.pathname.replace(new RegExp(`^\\/(${SUPPORTED.join('|')})(?=/|$)`), '') || '/';
-      await goto(localePath(basePath, l) + $page.url.search + $page.url.hash);
-    } else {
-      await invalidateAll();
-    }
-  }
 </script>
 
 {#snippet brandHead()}
@@ -539,28 +498,6 @@
     <span>{theme === 'dark' ? $_('app.account.lightMode') : $_('app.account.darkMode')}</span>
   </button>
 
-  <div class="flex items-center justify-between gap-2 px-2.5 py-1.5">
-    <span class={cn('text-muted-foreground', large ? 'text-[14px]' : 'text-[12px]')}
-      >{$_('common.lang.switch')}</span
-    >
-    <div class="flex gap-0.5 rounded-md bg-muted p-0.5">
-      {#each SUPPORTED as l (l)}
-        <button
-          type="button"
-          class={cn(
-            'rounded px-2 py-0.5 font-semibold transition-colors cursor-pointer',
-            large ? 'text-[12px]' : 'text-[11px]',
-            currentLocale === l
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-          onclick={() => chooseLocale(l)}
-        >
-          {l.toUpperCase()}
-        </button>
-      {/each}
-    </div>
-  </div>
 {/snippet}
 
 {#if asMobileMap}

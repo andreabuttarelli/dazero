@@ -1,13 +1,10 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import { canEnter } from '$lib/server/access';
 import { createManualPost, normalizePlatforms, type ManualPostMode } from '$lib/server/manual-posting';
 
 export const POST: RequestHandler = async ({ params, request, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
-
   const { data: brand } = await supabase
     .from('brands')
     .select('id, timezone')

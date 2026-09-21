@@ -1,25 +1,25 @@
 # API Reference — Overview
 
-> Reference della REST API pubblica di Anomalia, generata dal codice (`src/routes/api/v1/`) il 13/08/2026.
-> Copre gli endpoint consumati dalla CLI (`anomalia-cli`) e dalle integrazioni esterne via API key.
+> Reference della REST API pubblica di dazero, generata dal codice (`src/routes/api/v1/`) il 13/08/2026.
+> Copre gli endpoint consumati dalla CLI (`dazero-cli`) e dalle integrazioni esterne via API key.
 
 ## Base URL
 
 | Ambiente | Base URL |
 |---|---|
-| Produzione | `https://anomalia.so/api/v1` |
+| Produzione | `https://dazero.co/api/v1` |
 | Dev locale | `http://localhost:5173/api/v1` (con `npm run dev`) |
 
 ## Autenticazione
 
 Tutti gli endpoint richiedono un header `Authorization: Bearer <token>`. Il token può essere:
 
-1. **API key** (`anomalia_live_…`) — long-lived, creata da `POST /api/v1/brands/:slug/api-keys` o dal pannello web. Hash SHA-256 nel DB, mostrata una sola volta.
-2. **Supabase JWT** — il session token ottenuto da `anomalia login` (browser OAuth).
+1. **API key** (`dazero_live_…`) — long-lived, creata da `POST /api/v1/brands/:slug/api-keys` o dal pannello web. Hash SHA-256 nel DB, mostrata una sola volta.
+2. **Supabase JWT** — il session token ottenuto da `dazero login` (browser OAuth).
 
 ```bash
 # Esempio di chiamata
-curl -s "https://anomalia.so/api/v1/brands" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands" -H "Authorization: Bearer $TOKEN"
 ```
 
 ### API key: scope e limiti

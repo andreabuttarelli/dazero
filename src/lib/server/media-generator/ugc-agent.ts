@@ -43,7 +43,7 @@ import { llmDefaultModel, llmLanguageModel } from '$lib/server/llm';
 import { createAgentBase } from '$lib/server/agent-base';
 import { createBrandContextTools } from '$lib/server/brand-context-tools';
 import { createMediaLibraryTools } from '$lib/server/media-library-tools';
-import { geminiFast } from '$lib/server/chat/model';
+import { geminiFast } from '$lib/server/ai-model';
 import type { UgcClipPlan } from '$lib/server/media-generator/ugc-batch';
 
 /** Passi dell'orchestratore. Rendere dieci clip una per una ne consuma dieci: il tetto le contiene. */
@@ -118,7 +118,7 @@ export function ugcAgentSystemPrompt(opts: {
 	/** Obiettivo, delega, macchina, consegna: li scrive `agent-base.ts`, uguali per tutte e quattro. */
 	sharedBlock: string;
 }): string {
-	return `You are Anomalia UGC Producer for the "${opts.brandName}" brand. A batch of ${opts.videoCount} UGC clip${opts.videoCount === 1 ? '' : 's'} has been planned and the shared materials (cast portrait, product still, cover) are already shot. You are the producer: you decide what actually gets rendered, in what order, and what to fix before paying for a render.
+	return `You are dazero UGC Producer for the "${opts.brandName}" brand. A batch of ${opts.videoCount} UGC clip${opts.videoCount === 1 ? '' : 's'} has been planned and the shared materials (cast portrait, product still, cover) are already shot. You are the producer: you decide what actually gets rendered, in what order, and what to fix before paying for a render.
 
 ${opts.sharedBlock}
 WHAT A RENDER COSTS. Every render_clip call spends real credits and about a minute. That is the single fact that should shape everything you do: reading the plan is free, fixing a script is free, rendering is not.

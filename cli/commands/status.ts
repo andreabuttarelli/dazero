@@ -4,15 +4,13 @@ import { section, statusBadge, formatDate, autopilotBadge, c, table, info } from
 
 export async function cmdStatus(slug: string) {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: anomalia login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
 
   const detail = await api.getBrand(session.access_token, slug);
   const brand = detail.brand;
 
   section(`${brand.name}  (${brand.slug})`);
   console.log(`  Piano:      ${c.bold(brand.plan ?? '—')}   Stato: ${statusBadge(brand.status ?? '')}`);
-  console.log(`  Autopilot:  ${autopilotBadge(brand.autopilot_enabled)}` +
-    (brand.autopilot_failure_count > 0 ? c.red(`  ⚠ ${brand.autopilot_failure_count} fallimenti consecutivi`) : ''));
   if (detail.runs[0]) {
     const runErr = detail.runs[0].status === 'failed' ? c.red(`  ✗ ${detail.runs[0].error ?? ''}`) : '';
     console.log(`  Ultimo run: ${formatDate(detail.runs[0].created_at)} — ${detail.runs[0].posts_created} post${runErr}`);

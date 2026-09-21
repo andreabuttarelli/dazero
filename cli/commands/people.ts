@@ -14,7 +14,7 @@ export async function cmdPeople(slug: string, opts: {
   id?: string;
 }) {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: anomalia login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
 
   const action = opts.action ?? 'list';
   switch (action) {
@@ -56,7 +56,7 @@ async function listPeople(token: string, slug: string) {
   const people = studio.people ?? [];
   section(`Persone (${people.length})`);
   if (!people.length) {
-    info('Nessuna persona. Aggiungine una con `anomalia people ' + slug + ' add --name "..." --gender female`.');
+    info('Nessuna persona. Aggiungine una con `dazero people ' + slug + ' add --name "..." --gender female`.');
     return;
   }
   table(

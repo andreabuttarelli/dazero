@@ -8,7 +8,6 @@ const brandContexts: string[] = [];
 
 class CreditsExhaustedError extends Error {}
 
-vi.mock('$lib/server/access', () => ({ userCanEnter: async () => true }));
 vi.mock('@supabase/ssr', () => ({ createServerClient: () => ({}) }));
 vi.mock('$lib/server/credits', () => ({
   gateCredits: (...args: unknown[]) => gateCredits(...args),
@@ -69,7 +68,7 @@ function call(apiKey?: ApiKeyInfo, prepare?: (kit: TestSupabase) => void) {
   } as never);
   vi.mocked(loadBrandForUser).mockResolvedValue({ brand: BRAND, error: null } as never);
 
-  const url = new URL('https://anomalia.test/api/v1/brands/demo/posts/post-1/render');
+  const url = new URL('https://dazero.test/api/v1/brands/demo/posts/post-1/render');
   return (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST' }),
     params: { slug: 'demo', id: 'post-1' },

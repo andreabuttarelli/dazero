@@ -125,10 +125,6 @@
   function postHref(id: string) {
     return hrefWith({ post: id });
   }
-  const fullPostHref = $derived(
-    data.selectedId ? `/app/${brand.slug}/posts/${data.selectedId}/preview` : ''
-  );
-
   let PostPanel = $state<typeof import('$lib/components/PostPanel.svelte').default | null>(null);
   $effect(() => {
     if (data.detail && !PostPanel) {
@@ -142,14 +138,10 @@
 
   // "Crea contenuto" — same single user-briefed create modal as Content.
   let createOpen = $state(false);
-  let createdFlash = $state<'' | 'photo' | 'video' | 'videoFallback' | 'team'>('');
-  function onSingleCreated(r: { kind: 'single' | 'team'; contentType: string; videoFallback: boolean }) {
-    createdFlash =
-      r.kind === 'team' ? 'team' : r.videoFallback ? 'videoFallback' : r.contentType.includes('video') ? 'video' : 'photo';
+  let createdFlash = $state<'' | 'photo' | 'video' | 'videoFallback'>('');
+  function onSingleCreated(r: { contentType: string; videoFallback: boolean }) {
+    createdFlash = r.videoFallback ? 'videoFallback' : r.contentType.includes('video') ? 'video' : 'photo';
   }
-  const founderVideos = $derived(
-    (data.founderVideos as { used: number; quota: number; remaining: number }) ?? { used: 0, quota: 0, remaining: 0 }
-  );
   const usageFull = $derived((data.usage as { postsRemaining: number }).postsRemaining <= 0);
 
   // Delete confirmation (second click confirms) + email-me-approve spinner — mirrors Content.
@@ -302,8 +294,8 @@
       a.href = url;
       a.download =
         selectedIds.length === 1
-          ? `anomalia-media-${selectedIds[0].slice(0, 8)}.zip`
-          : `anomalia-media-${selectedIds.length}-posts.zip`;
+          ? `dazero-media-${selectedIds[0].slice(0, 8)}.zip`
+          : `dazero-media-${selectedIds.length}-posts.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -410,8 +402,6 @@
   <div class="cal-chrome">
     <PageHead title={$_('app.calendar.title')}>
       {#snippet actions()}
-        <a class="cal-plan-link" href={`/app/${brand.slug}/gtm`}>{$_('app.calendar.linkStrategy')}</a>
-        <a class="cal-plan-link" href={`/app/${brand.slug}/plan`}>{$_('app.calendar.linkPlan')}</a>
         {#if counts.pending_user}
           <form method="POST" action="?/emailApprove" use:enhance={emailEnhance}>
             <button class="approve-all ghost" type="submit" disabled={emailing} aria-busy={emailing}>
@@ -430,19 +420,16 @@
       bind:open={createOpen}
       brandSlug={brand.slug}
       platforms={data.targetPlatforms ?? []}
-      {founderVideos}
       onDone={onSingleCreated}
     />
 
     {#if createdFlash}
       <div class="flash ok">
-        {createdFlash === 'team'
-          ? $_('app.content.single.requestSent')
-          : createdFlash === 'video'
-            ? $_('app.content.single.createdVideo')
-            : createdFlash === 'videoFallback'
-              ? $_('app.content.single.createdVideoFallback')
-              : $_('app.content.single.createdPhoto')}
+        {createdFlash === 'video'
+          ? $_('app.content.single.createdVideo')
+          : createdFlash === 'videoFallback'
+            ? $_('app.content.single.createdVideoFallback')
+            : $_('app.content.single.createdPhoto')}
       </div>
     {/if}
 
@@ -668,13 +655,13 @@
                       </form>
                     {/if}
                   {:else if p.status === 'failed'}
-                    <a class="mini approve" href={`/app/${brand.slug}/posts/${p.id}/edit`}>{$_('app.content.editRepublish')}</a>
+                    <a class="mini approve" href={postHref(p.id)}>{$_('app.content.editRepublish')}</a>
                     <form method="POST" action="?/repost" use:enhance>
                       <input type="hidden" name="id" value={p.id} />
                       <button class="mini" type="submit">{$_('app.content.retry')}</button>
                     </form>
                   {/if}
-                  <a class="mini edit" href={`/app/${brand.slug}/posts/${p.id}/edit`}>{$_('app.content.edit')}</a>
+                  <a class="mini edit" href={postHref(p.id)}>{$_('app.content.edit')}</a>
                   {#if confirmId === p.id}
                     <form
                       method="POST"
@@ -795,7 +782,6 @@
       id={data.selectedId}
       detail={data.detail}
       timezone={data.timezone}
-      fullHref={fullPostHref}
       {form}
       onclose={closePanel}
     />

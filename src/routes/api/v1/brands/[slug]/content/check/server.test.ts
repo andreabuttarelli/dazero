@@ -42,7 +42,7 @@ function call(body: unknown, slug = 'demo') {
     brand: { id: 'brand-1', slug, timezone: 'Europe/Rome' },
     error: null
   } as never);
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/content/check`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/content/check`);
   return (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),
     params: { slug },
@@ -82,7 +82,7 @@ describe('POST /api/v1/brands/:slug/content/check', () => {
     vi.mocked(authenticate).mockResolvedValue({
       error: new Response(JSON.stringify({ error: 'API key is read-only' }), { status: 403 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/demo/content/check');
+    const url = new URL('https://dazero.test/api/v1/brands/demo/content/check');
     const res = await (POST as (event: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: JSON.stringify({ platforms: ['linkedin'], caption: CAPTION }) }),
       params: { slug: 'demo' },
@@ -98,7 +98,7 @@ describe('POST /api/v1/brands/:slug/content/check', () => {
     vi.mocked(authenticate).mockResolvedValue({
       error: new Response('Unauthorized', { status: 401 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/demo/content/check');
+    const url = new URL('https://dazero.test/api/v1/brands/demo/content/check');
     const res = await (POST as (event: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: '{}' }),
       params: { slug: 'demo' },
@@ -118,7 +118,7 @@ describe('POST /api/v1/brands/:slug/content/check', () => {
     vi.mocked(loadBrandForUser).mockResolvedValue({
       error: new Response(JSON.stringify({ error: 'Brand not found' }), { status: 404 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/altrui/content/check');
+    const url = new URL('https://dazero.test/api/v1/brands/altrui/content/check');
     const res = await (POST as (event: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: '{}' }),
       params: { slug: 'altrui' },

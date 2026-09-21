@@ -108,7 +108,7 @@ describe('Realtime dello stack locale', () => {
 		expect(COMPOSE).toContain("command: ['node', 'build-worker/index.js']");
 		expect(COMPOSE).not.toContain('container_name:');
 		expect(KONG).toContain('url: http://realtime-dev:4000/socket');
-		expect(KONG).not.toContain('realtime-dev.anomalia-realtime');
+		expect(KONG).not.toContain('realtime-dev.dazero-realtime');
 		expect(KONG.match(/Host: realtime-dev/g) ?? []).toHaveLength(2);
 		expect(APP_DOCKERFILE).toContain('RUN npm run worker:build');
 		expect(APP_DOCKERFILE).toContain('COPY --from=builder /app/build-worker /app/build-worker');

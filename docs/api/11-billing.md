@@ -62,8 +62,8 @@ Portale di fatturazione Stripe dell'org: fatture, metodo di pagamento, cambio pi
 ```
 
 ```bash
-curl -sS -X POST https://anomalia.so/api/v1/brands/demo/billing/portal \
-  -H "Authorization: Bearer $ANOMALIA_TOKEN" \
+curl -sS -X POST https://dazero.co/api/v1/brands/demo/billing/portal \
+  -H "Authorization: Bearer $DAZERO_TOKEN" \
   -H 'content-type: application/json' -d '{}'
 ```
 
@@ -92,8 +92,8 @@ nominato qui**: la scaletta dei prezzi vive su Stripe, e l'app non cita mai un p
 mentre `FEATURE_PLAN_GO` è acceso. Serve all'agente per dire in una riga cosa vedrà la persona.
 
 ```bash
-curl -sS -X POST https://anomalia.so/api/v1/brands/demo/billing/checkout \
-  -H "Authorization: Bearer $ANOMALIA_TOKEN" \
+curl -sS -X POST https://dazero.co/api/v1/brands/demo/billing/checkout \
+  -H "Authorization: Bearer $DAZERO_TOKEN" \
   -H 'content-type: application/json' -d '{"plan":"pro"}'
 ```
 

@@ -10,7 +10,7 @@
 // così la risposta è identica e non conferma nemmeno che il brand esista.
 import { createHash, randomBytes } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { type SharedViewType } from '@anomalia/api-contracts';
+import { type SharedViewType } from '@dazero/api-contracts';
 import { getCalendar } from './cli-queries';
 import { dedupeSocialHistory, metricNum, type SocialHistoryRow } from './social-history-metrics';
 import { monthKey } from './usage';

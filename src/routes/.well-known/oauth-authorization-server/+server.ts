@@ -2,7 +2,7 @@ import { corsJson, corsPreflight, endpointsFor, issuerFor, OAUTH_SCOPE } from '$
 import { appOrigin } from '$lib/server/app-url';
 import type { RequestHandler } from './$types';
 
-// RFC 8414 discovery. mcp.anomalia.so points MCP clients here via its
+// RFC 8414 discovery. mcp.dazero.co points MCP clients here via its
 // /.well-known/oauth-protected-resource document; before this route existed they got the
 // SvelteKit 404 page and died trying to JSON.parse "<!doctype html>".
 export const GET: RequestHandler = ({ url }) =>

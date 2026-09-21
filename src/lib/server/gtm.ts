@@ -11,7 +11,7 @@ type AnyRec = Record<string, any>;
 // The GTM (go-to-market) engine — the TIME-AXIS strategy layer above the editorial plan. It
 // decides where the brand is going phase by phase: platform weights that evolve over time,
 // pillars/CTAs to anchor, and honest targets calibrated on the brand's real starting data.
-// Anomalia proposes; the user approves or redirects a phase conversationally (Anomalia replies with what
+// dazero proposes; the user approves or redirects a phase conversationally (dazero replies with what
 // it changed and why); at phase end, real KPIs are compared with targets and a course
 // correction is proposed. The ACTIVE GTM phase is injected into every planner brief
 // (gtmPhaseBrief), so the strategy actually steers production instead of living in a document.
@@ -869,7 +869,7 @@ export function phasePerformanceDigest(
   }
   const lines: string[] = [];
   if (published.length) {
-    lines.push(`Published via Anomalia: ${published.length} posts (${[...byPlatform.entries()].map(([p, n]) => `${p}: ${n}`).join(', ')}).`);
+    lines.push(`Published via dazero: ${published.length} posts (${[...byPlatform.entries()].map(([p, n]) => `${p}: ${n}`).join(', ')}).`);
   }
   for (const [p, e] of eng.entries()) {
     const extras = [

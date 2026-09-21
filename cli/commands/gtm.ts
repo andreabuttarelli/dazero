@@ -4,7 +4,7 @@ import { section, c, info } from '../lib/display.ts';
 
 export async function cmdGtm(slug: string) {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: anomalia login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
 
   const data = await api.getGtm(session.access_token, slug);
   const gtm = data.gtm as Record<string, unknown> | null;

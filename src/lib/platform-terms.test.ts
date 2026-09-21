@@ -21,7 +21,7 @@ describe('blockedPlatformForUrl', () => {
 
   it('leaves the brand’s own product alone', () => {
     expect(blockedPlatformForUrl('https://app.acme.com/login')).toBeNull();
-    expect(blockedPlatformForUrl('https://www.anomalia.so/login')).toBeNull();
+    expect(blockedPlatformForUrl('https://www.dazero.co/login')).toBeNull();
     expect(blockedPlatformForUrl(null)).toBeNull();
     expect(blockedPlatformForUrl('not a url')).toBeNull();
   });

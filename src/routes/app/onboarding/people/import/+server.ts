@@ -1,5 +1,4 @@
 import type { RequestHandler } from './$types';
-import { canEnter } from '$lib/server/access';
 import { logOnboardingError } from '$lib/server/onboarding-errors';
 import { safeFetchBytes, SafeFetchError, type SafeFetchReason, type SafeFetchBytesResult } from '$lib/server/tool-guard';
 
@@ -49,8 +48,6 @@ function sniffImageExt(buf: Buffer, contentType: string): string | null {
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
-
   const body = await request.json().catch(() => ({}));
   const raw = String(body?.url ?? '').trim();
   const host = hostOf(raw);

@@ -48,7 +48,7 @@ function call(prepare?: (kit: TestSupabase) => void) {
     error: null
   } as never);
 
-  const url = new URL('https://anomalia.test/api/v1/brands/demo/products');
+  const url = new URL('https://dazero.test/api/v1/brands/demo/products');
   return (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST' }),
     params: { slug: 'demo' },

@@ -63,7 +63,7 @@ Note: `audit`, `plan`, `assets` possono essere `null`/`{}` senza dati.
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/seo" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/seo" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -105,7 +105,7 @@ Azioni SEO/AI: audit tecnico, piano, iniziative extra, generazione asset o artic
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/seo" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/seo" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"action":"asset","initiativeId":"00000000-0000-0000-0000-000000000000"}'
 ```
@@ -146,7 +146,7 @@ Note: `audit` e `aiOverview` possono essere `null`.
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/geo" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/geo" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -180,7 +180,7 @@ Nuovo audit GEO o generazione artefatti di fix dall'ultimo audit. **Consuma cred
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/geo" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/geo" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"action":"fix"}'
 ```
@@ -245,7 +245,7 @@ Un brand senza audit risponde `{"audits":[]}`.
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/web/audits?limit=6" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/web/audits?limit=6" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -284,7 +284,7 @@ non appartiene al brand (o che non esiste) risponde `audit: null`, non un 404.
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/web/audits/findings?audit_id=33333333-3333-3333-3333-333333333333" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/web/audits/findings?audit_id=33333333-3333-3333-3333-333333333333" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -333,7 +333,7 @@ momento della raccolta. `error` valorizzato significa sonda fallita, non "non ci
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/web/audits/citations?limit=20" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/web/audits/citations?limit=20" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -379,7 +379,7 @@ danno solo l'intestazione.
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/web/fixes?status=draft" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/web/fixes?status=draft" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -421,7 +421,7 @@ Note: `strategy` può essere `null`, `citations` `[]`, `updatedAt` `null` se mai
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/keywords" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/keywords" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -443,7 +443,7 @@ Rigenera da zero la keyword strategy (force). **Consuma crediti.**
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/keywords" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/keywords" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -508,7 +508,7 @@ Riepilogo della backlink network: piazzamenti in uscita/entrata, opportunità op
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/backlinks" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/backlinks" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -534,7 +534,7 @@ Rigenera le opportunità open give/receive. **Consuma crediti**, richiede piano 
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/backlinks" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/backlinks" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -574,7 +574,7 @@ Lista articoli blog **con draft inclusi** (a differenza di `/articles`). Senza `
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/web?status=draft" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/web?status=draft" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -634,7 +634,7 @@ cancellazione un id accorciato e ambiguo colpirebbe la riga sbagliata, e non si 
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/web/generate" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/web/generate" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"topic":"come scegliere il CRM giusto"}'
 ```
@@ -755,7 +755,7 @@ Tool MCP: `update_article`.
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/web/article" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/web/article" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"id":"99999999-9999-9999-9999-999999999999","title":"Titolo mio","body_md":"# Titolo mio\n\nTesto scritto da me."}'
 ```
@@ -797,7 +797,7 @@ API headless read-only: elenca SOLO gli articoli **pubblicati** (riepilogo, senz
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/articles?limit=10" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/articles?limit=10" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -838,7 +838,7 @@ Contenuto completo di un articolo pubblicato: markdown + HTML renderizzato + Art
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/articles/mio-articolo" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/articles/mio-articolo" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -875,7 +875,7 @@ Riepilogo Google Search Console: stato connessione + metriche aggregate 28 giorn
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/gsc" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/gsc" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -905,7 +905,7 @@ Sincronizza le metriche Search Analytics degli ultimi 3 giorni dalla property GS
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/gsc" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/gsc" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -948,7 +948,7 @@ Note: `delta` positivo = miglioramento. `position`/`prevPosition`/`delta`/`url`/
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/ranks" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/ranks" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -983,7 +983,7 @@ Senza `check`, con keyword inserite:
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/ranks" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/ranks" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"keywords":["esempio keyword 1","esempio keyword 2"],"check":true}'
 ```
@@ -1007,6 +1007,6 @@ Note: `pages` è `0` se manca l'URL del sito, la sitemap è vuota o nessuna pagi
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/library/scan" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/library/scan" \
   -H "Authorization: Bearer $TOKEN"
 ```

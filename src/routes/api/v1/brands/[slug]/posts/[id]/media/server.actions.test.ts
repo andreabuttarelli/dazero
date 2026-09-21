@@ -12,7 +12,7 @@ vi.mock('$lib/server/cli-auth', () => ({ gateAiAction: async () => undefined }))
 vi.mock('$lib/server/ai-log', () => ({
   withBrandContext: (_id: string, fn: () => Promise<Response>) => fn()
 }));
-vi.mock('$lib/agent/tools/post-editor-tools', () => ({
+vi.mock('$lib/server/post-editor/post-editor-tools', () => ({
   regeneratePostImage: (...a: unknown[]) => regeneratePostImage(...(a as [])),
   editCarouselSlide: (...a: unknown[]) => editCarouselSlide(...(a as [])),
   restructureCarouselSlides: (...a: unknown[]) => restructureCarouselSlides(...(a as [])),

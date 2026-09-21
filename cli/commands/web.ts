@@ -11,7 +11,7 @@ export async function cmdWeb(slug: string, opts: Opts) {
   if (opts.action === 'list') {
     const { articles } = await api.getWeb(t, slug, opts.status);
     section(`Articoli blog${opts.status && opts.status !== 'all' ? ` — ${opts.status}` : ''}`);
-    if (!articles.length) { info(`Nessun articolo. Lancia: anomalia web ${slug} generate --topic "..."\n`); return; }
+    if (!articles.length) { info(`Nessun articolo. Lancia: dazero web ${slug} generate --topic "..."\n`); return; }
 
     table(
       ['id', 'titolo', 'status', 'meta', 'data'],
@@ -24,8 +24,8 @@ export async function cmdWeb(slug: string, opts: Opts) {
         formatDate(a.published_at ?? a.scheduled_for ?? a.created_at)
       ])
     );
-    info(`\nPubblica:  anomalia web ${slug} publish --id <id>`);
-    info(`Ottimizza: anomalia web ${slug} optimize --id <id>\n`);
+    info(`\nPubblica:  dazero web ${slug} publish --id <id>`);
+    info(`Ottimizza: dazero web ${slug} optimize --id <id>\n`);
     return;
   }
 

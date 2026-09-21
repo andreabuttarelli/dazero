@@ -3,7 +3,7 @@
 
 export const legal = {
   /** Product / service name shown to users. */
-  service: 'Anomalia',
+  service: 'dazero',
 
   /** Data controller — a sole proprietorship (ditta individuale).
    *  Under the GDPR the controller is the natural person, so the name and
@@ -12,7 +12,7 @@ export const legal = {
   vat: 'IT18500501004',
 
   // TODO: replace with the real address you want to reach you at for privacy/legal requests.
-  contactEmail: 'privacy@anomalia.so',
+  contactEmail: 'privacy@dazero.co',
 
   /** Date these documents were last revised — keep in sync when you edit them. */
   lastUpdated: '19 August 2026'

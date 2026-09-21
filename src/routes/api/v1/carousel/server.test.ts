@@ -17,7 +17,7 @@ const ORG = { id: 'org-1', name: 'Acme' };
 const SLIDE = { id: null, kind: 'image', mime: 'image/png', width: 1080, height: 1350, url: 'https://s/1' };
 
 async function make(body: unknown) {
-  const url = new URL('https://anomalia.test/api/v1/carousel');
+  const url = new URL('https://dazero.test/api/v1/carousel');
   const res = await (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),
     url

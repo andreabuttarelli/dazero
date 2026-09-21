@@ -451,7 +451,7 @@ export async function grantCredits(
 /**
  * The 29 call sites (17 direct + 12 via cli-auth.ts's gateAiAction) all call THIS function,
  * unchanged — it's the chokepoint. It delegates to the billing provider: the open provider's
- * gate() is a no-op, the anomalia provider's gate() calls gateCreditsCore below (the real,
+ * gate() is a no-op, the dazero provider's gate() calls gateCreditsCore below (the real,
  * unrewritten enforcement). Dynamic import dodges a credits↔billing↔credits init-order cycle
  * (same trick already used below for ai-log).
  */
@@ -514,7 +514,7 @@ export async function gateOrgCreditsCore(orgId: string): Promise<void> {
 }
 
 /**
- * The real enforcement, moved out of gateCredits() unchanged so the anomalia provider can call
+ * The real enforcement, moved out of gateCredits() unchanged so the dazero provider can call
  * it without gateCredits recursing back through itself. Not for direct use — call gateCredits().
  */
 export async function gateCreditsCore(brandId: string): Promise<void> {
@@ -566,7 +566,7 @@ export async function gateCreditsCore(brandId: string): Promise<void> {
 const WARNING_THRESHOLD = 80;
 
 import { env as publicEnv } from '$env/dynamic/public';
-import { brandContacts } from './scheduler';
+import { brandContacts } from './brand-contacts';
 import { creditWarningEmailSubject, creditWarningEmailHtml, creditWarningEmailText } from './email';
 
 /**

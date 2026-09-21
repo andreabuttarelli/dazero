@@ -7,12 +7,8 @@
 
 /** Chiave di un lavoro del roster (speculare a JobKey in job-roster.ts, ma client-safe). */
 export type OwnerJobKey =
-  | 'autopilot'
   | 'analytics_review'
   | 'weekly_recap'
-  | 'seo'
-  | 'geo'
-  | 'radar_recap'
   | 'market_refs'
   | 'strategy_review'
   | 'library';
@@ -21,7 +17,7 @@ export type OwnerJobKey =
 export type TeamAgentId = 'auto' | 'content' | 'ugc' | 'motion' | 'web' | 'analyst';
 
 /**
- * Ogni valore che `agent` può portare come PROPRIETARIO di una routine, Anomalia inclusa: serve a
+ * Ogni valore che `agent` può portare come PROPRIETARIO di una routine, dazero inclusa: serve a
  * `parseRoutineOwner`, che deve continuare ad accettare le righe `team:auto` già scritte.
  * Per MOSTRARE la squadra si usa TEAM_SPECIALIST_IDS.
  */
@@ -29,7 +25,7 @@ export const TEAM_AGENT_IDS: readonly TeamAgentId[] = ['content', 'analyst', 'we
 
 /**
  * La squadra come la si vede: i cinque mestieri, nell'ordine di /agents e della homepage.
- * Anomalia non c'è: non è un mestiere, ed è la strada di minor resistenza (si apre la sua chat e
+ * dazero non c'è: non è un mestiere, ed è la strada di minor resistenza (si apre la sua chat e
  * la squadra non la si incontra mai). Resta il coordinatore invisibile — identità dei thread che
  * già ce l'hanno, ripiego di `resolveAgent`, voce dello smistatore — mai una scelta offerta.
  */
@@ -113,37 +109,29 @@ export function looksLikeARole(name: string): boolean {
  * (job-roster.ts) verifica a compile-time che ogni JobKey abbia un owner qui.
  */
 export const JOB_OWNERS: Record<OwnerJobKey, TeamAgentId> = {
-  autopilot: 'content',
   analytics_review: 'analyst',
   weekly_recap: 'analyst',
-  radar_recap: 'analyst',
   market_refs: 'analyst',
   strategy_review: 'analyst',
-  seo: 'web',
-  geo: 'web',
   library: 'web'
 };
 
 /** Dove atterra il lavoro di ogni job del roster (path sotto /app/{slug}). '' = overview. */
 export const JOB_HOME: Record<OwnerJobKey, string> = {
-  autopilot: '/plan',
-  analytics_review: '/analytics',
+  analytics_review: '',
   weekly_recap: '',
-  seo: '/seo',
-  geo: '/geo',
-  radar_recap: '/leads',
-  market_refs: '/competitors',
-  strategy_review: '/gtm',
-  library: '/library'
+  market_refs: '/studio/competitors',
+  strategy_review: '/studio',
+  library: '/media'
 };
 
 /** Dove atterra il lavoro degli specialisti builtin della chat (non-roster). */
 export const AGENT_HOME: Record<string, string> = {
-  content: '/plan',
+  content: '/calendar',
   web: '/web',
-  ugc: '/ugc-creator',
-  motion: '/motion-video',
-  analyst: '/analytics',
+  ugc: '/media',
+  motion: '/media',
+  analyst: '',
   auto: ''
 };
 
@@ -176,7 +164,7 @@ const TRADE_TERMS: Record<Exclude<TeamAgentId, 'auto'>, readonly string[]> = {
   // Leggere i numeri, il mercato e la strategia.
   analyst: [
     'analytics', 'performance', 'metric', 'metrics', 'metrica', 'metriche', 'kpi', 'report',
-    'reporting', 'recap', 'insight', 'insights', 'benchmark', 'lead', 'leads', 'radar',
+    'reporting', 'recap', 'insight', 'insights', 'benchmark', 'lead', 'leads',
     'competitor', 'competitors', 'concorrenti', 'strategy', 'strategia', 'gtm', 'funnel',
     'conversion', 'conversione', 'engagement', 'numeri'
   ],

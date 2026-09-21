@@ -29,13 +29,13 @@ const DRAWN = {
   mime: 'image/png',
   width: 1080,
   height: 1350,
-  url: 'https://anomalia.so/a/K7BX2MQ4'
+  url: 'https://dazero.co/a/K7BX2MQ4'
 };
 
 type Handler = (event: unknown) => Promise<Response>;
 
 function call(handler: Handler, path: string, body: unknown, slug = 'demo') {
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/media/${path}`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/media/${path}`);
 
   return handler({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),

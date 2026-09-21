@@ -149,10 +149,9 @@ export function isMeaningfulCaptionEdit(before: string, after: string): boolean 
 }
 
 // La coppia prima→dopo finisce in content_prefs.captionEditPairs (jsonb esistente — mai una
-// tabella nuova, le migration non girano al deploy), lo stesso loop di radar.editPairs ma per le
-// caption dei post: executePlan e il produce agent la rileggono come esempio concreto
+// tabella nuova, le migration non girano al deploy), per le caption dei post: executePlan e il produce agent la rileggono come esempio concreto
 // (ownerEditPairsBlock). Best-effort: non deve mai far fallire il salvataggio dell'edit.
-// ponytail: read-modify-write senza lock, come radar — gli edit manuali sono rari, un conflitto
+// ponytail: read-modify-write senza lock — gli edit manuali sono rari, un conflitto
 // perde al massimo una coppia di learning, mai dati dell'utente.
 async function captureCaptionEditPair(brandId: string, before: string, after: string): Promise<void> {
   if (!isMeaningfulCaptionEdit(before, after)) return;

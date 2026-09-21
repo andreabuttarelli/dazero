@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { BrandEndpoint } from './index';
 
 // The deterministic half of planning: an agent that already wrote the plan or the week's rows
-// deposits them here. Anomalia stores them and calls no model. The generating endpoints
+// deposits them here. dazero stores them and calls no model. The generating endpoints
 // (propose_plan, plan_week) stay: this sits beside them, it does not replace them.
 //
 // These two constants mirror the app's PLAN_WEEKS and CADENCES, which live behind $lib and

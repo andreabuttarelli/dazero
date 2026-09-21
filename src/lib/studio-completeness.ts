@@ -1,4 +1,4 @@
-// Studio completeness — one shared score for "how much does Anomalia know about this brand".
+// Studio completeness — one shared score for "how much does dazero know about this brand".
 // The Studio page renders it as the nudge banner; strategy surfaces (GTM, plans) show it as
 // "more data = sharper plan" context next to anything generated from the Studio. Pure and
 // universal (client + server) so both sides compute the exact same number.

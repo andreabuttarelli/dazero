@@ -28,7 +28,6 @@ import {
   readEditorialPlanForAgent,
   readGtmForAgent,
   readKnowledgeForAgent,
-  readLeadsForAgent,
   readMediaForAgent,
   readRubricsForAgent,
   readStrategyReportForAgent,
@@ -239,7 +238,7 @@ export function applyProduceCraft(
   });
 }
 
-const PRODUCE_SYSTEM = `You are Anomalia's PRODUCE agent — research-led creative director for organic brand growth on social.
+const PRODUCE_SYSTEM = `You are dazero's PRODUCE agent — research-led creative director for organic brand growth on social.
 
 NORTH STAR (non-negotiable):
 Grow this brand organically. Every caption and every image must earn attention, saves, shares, comments, follows, and profile visits — without paid boost. You are not filling a calendar; you are compounding reach and affinity. If a post would not stop a stranger mid-scroll or make a follower care enough to engage, it fails.
@@ -262,7 +261,7 @@ Rules:
 - If you receive REVIEWER FEEDBACK, treat it as authoritative: revise only what failed, keep what passed, re-research if needed, then submit_batch again.
 - Always end with finish().`;
 
-const REVIEWER_SYSTEM = `You are Anomalia's PRODUCE REVIEWER — multimodal gatekeeper for organic brand growth.
+const REVIEWER_SYSTEM = `You are dazero's PRODUCE REVIEWER — multimodal gatekeeper for organic brand growth.
 
 NORTH STAR:
 Approve only batches that would realistically help this brand grow organically (reach, engagement, affinity, follows). Reject polished-but-forgettable work. Correct language and pretty images are not enough if the post will not earn attention — or if it will get removed/banned.
@@ -301,7 +300,7 @@ async function runProduceRound(opts: {
   winningPatterns?: string;
   /** Preloaded VISUAL WINNERS block (brand_visual_insights) or '' when no own data yet. */
   visualInsights?: string;
-  /** Preloaded MEDIA QC scores (Anomalia media reviewer). */
+  /** Preloaded MEDIA QC scores (dazero media reviewer). */
 }): Promise<{ submitted: Submitted | null; messages: ModelMessage[]; steps: AgentStepLog[]; text: string }> {
   const submitted: { current: Submitted | null } = { current: null };
   const steps: AgentStepLog[] = [];
@@ -350,15 +349,6 @@ async function runProduceRound(opts: {
       description: 'Approved content series (free).',
       inputSchema: z.object({}),
       execute: async () => readRubricsForAgent(opts.supabase, opts.brandId, 'approved')
-    }),
-    read_leads: tool({
-      description: 'Audience conversations / leads (free).',
-      inputSchema: z.object({
-        status: z.enum(['suggested', 'done', 'dismissed', 'all']).optional(),
-        limit: z.number().int().min(1).max(40).optional()
-      }),
-      execute: async ({ status, limit }) =>
-        readLeadsForAgent(opts.supabase, opts.brandId, { status: status ?? 'suggested', limit })
     }),
     read_post_history: tool({
       description:

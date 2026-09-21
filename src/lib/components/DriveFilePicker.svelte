@@ -38,7 +38,7 @@
 
   async function save(next: DriveFileOption[]) {
     pickerError = '';
-    const res = await fetch(`/app/${brandSlug}/knowledge/drive-picker`, {
+    const res = await fetch(`/app/${brandSlug}/studio/knowledge/drive-picker`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ files: next })
@@ -52,7 +52,7 @@
     picking = true;
     pickerError = '';
     try {
-      const res = await fetch(`/app/${brandSlug}/knowledge/drive-picker`);
+      const res = await fetch(`/app/${brandSlug}/studio/knowledge/drive-picker`);
       const json = (await res.json()) as {
         error?: string;
         message?: string;

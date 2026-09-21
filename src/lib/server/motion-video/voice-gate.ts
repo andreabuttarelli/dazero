@@ -3,7 +3,7 @@
  *
  * Sta sul punto di CONSEGNA, non di composizione: `renderMotionMp4` (render-tools.ts) lo chiama
  * prima di aprire la VM, quindi nessun percorso — tool dell'agente, chat, rotta del designer —
- * può produrre un MP4 che lo viola. Il caso guida è il trailer `anomalia` del 21/8/2026 21:23:
+ * può produrre un MP4 che lo viola. Il caso guida è il trailer `dazero` del 21/8/2026 21:23:
  * 6 battute nello script, 3 pause nel take, 4 pezzi tagliati indovinando, beat 4 e 5 muti, pezzo 3
  * troncato a metà parola, video che finisce a metà frase. Tre gate esistenti (wow, stasi,
  * legibility) guardavano la VISTA; questo è il primo che ascolta.

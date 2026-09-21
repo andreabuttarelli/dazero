@@ -73,7 +73,7 @@ if (!entry) {
 
 /** Il seme: quello che `create_motion_video` scrive quando il modello NON passa un sorgente. */
 const SEED = defaultMotionSource({
-	brandName: 'Anomalia',
+	brandName: 'dazero',
 	accent: '#c485fe',
 	colors: ['#c485fe', '#050505'],
 	displayFont: 'Inter',

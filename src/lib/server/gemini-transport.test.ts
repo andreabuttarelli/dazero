@@ -52,32 +52,15 @@ describe('le superfici sul centralino (non lo SDK Google)', () => {
     }
   });
 
-  it('3. la chat parla col centralino (llmLanguageModel / LLM_API_KEY), non con lo SDK Google', () => {
-    const chat = readFileSync(join(HERE, 'chat/model.ts'), 'utf8');
-    const llm = readFileSync(join(HERE, 'llm.ts'), 'utf8');
-    expect(chat).not.toContain('env.GEMINI_TRANSPORT');
-    expect(chat).not.toContain('makeGenaiClient');
-    expect(chat).not.toContain('createGoogleGenerativeAI');
-    expect(chat).toContain('llmLanguageModel');
-    expect(chat).toContain('llmConfigured');
-    // La chiave del loop lingua è LLM_API_KEY, letta in llm.ts.
-    expect(llm).toContain('LLM_API_KEY');
-  });
-
-  it('4. Google Search nativo solo per GEO via llmText webSearch, non in chat', () => {
-    const chat = readFileSync(join(HERE, 'chat/model.ts'), 'utf8');
+  it('3. la ricerca nativa resta sul centralino, con il suo modello dichiarato', () => {
     const research = readFileSync(join(HERE, 'research.ts'), 'utf8');
-    const geo = readFileSync(join(HERE, 'geo.ts'), 'utf8');
     const llm = readFileSync(join(HERE, 'llm.ts'), 'utf8');
-    expect(chat).not.toContain('googleSearch');
-    expect(chat).not.toContain('webSearch');
     expect(research).toContain("webSearch: 'native'");
     expect(research).toContain('llmGeminiSearchModel');
     expect(research).not.toContain('tools: [{ googleSearch');
-    // La GEO non eredita più il modello dal picker: ogni motore ha il suo id in ANSWER_ENGINES.
-    expect(geo).toContain('ANSWER_ENGINES');
-    expect(geo).toContain("search: 'native'");
     expect(llm).toContain("engine: 'native'");
+    // La chiave del loop lingua è LLM_API_KEY, letta in llm.ts.
+    expect(llm).toContain('LLM_API_KEY');
   });
 });
 

@@ -37,9 +37,9 @@ import { createHmac } from 'node:crypto';
 
 describe('validateWebhookUrl', () => {
   it('accepts a public https endpoint', async () => {
-    expect(await validateWebhookUrl(' https://hooks.acme.com/anomalia ')).toEqual({
+    expect(await validateWebhookUrl(' https://hooks.acme.com/dazero ')).toEqual({
       ok: true,
-      url: 'https://hooks.acme.com/anomalia'
+      url: 'https://hooks.acme.com/dazero'
     });
   });
 
@@ -203,7 +203,7 @@ function fakeSupabase(rows: Record<string, unknown[]>) {
 const webhookRow = (over: Partial<BrandWebhookRow> = {}): BrandWebhookRow => ({
   id: 'w1',
   brand_id: 'brand-mio',
-  url: 'https://hooks.acme.com/anomalia',
+  url: 'https://hooks.acme.com/dazero',
   secret: 'whsec_x',
   events: [],
   status: 'active',
@@ -233,7 +233,7 @@ describe('attemptDelivery', () => {
     const delivered = await attemptDelivery(
       client as never,
       deliveryRow(),
-      webhookRow({ url: 'https://hooks.acme.internal/anomalia' })
+      webhookRow({ url: 'https://hooks.acme.internal/dazero' })
     );
 
     expect(delivered).toBe(false);
@@ -253,7 +253,7 @@ describe('attemptDelivery', () => {
     const delivered = await attemptDelivery(
       client as never,
       deliveryRow(),
-      webhookRow({ url: 'https://hooks.acme.local/anomalia' })
+      webhookRow({ url: 'https://hooks.acme.local/dazero' })
     );
 
     expect(delivered).toBe(false);

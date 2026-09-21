@@ -8,18 +8,14 @@
   import CommandPalette from '$lib/components/CommandPalette.svelte';
   import House from '@lucide/svelte/icons/house';
   import Images from '@lucide/svelte/icons/images';
-  import Target from '@lucide/svelte/icons/target';
   import CalendarDays from '@lucide/svelte/icons/calendar-days';
   import Newspaper from '@lucide/svelte/icons/newspaper';
-  import BarChart3 from '@lucide/svelte/icons/chart-column';
-  import Radio from '@lucide/svelte/icons/radio';
+  import Palette from '@lucide/svelte/icons/palette';
   import { setCredits, refreshCredits } from '$lib/stores/credits';
   import WarningCenter from '$lib/components/WarningCenter.svelte';
   import WorkbenchPageShimmer from '$lib/components/WorkbenchPageShimmer.svelte';
-  import PlanSidePanel from '$lib/components/PlanSidePanel.svelte';
   import PageTopBar from '$lib/components/PageTopBar.svelte';
   import { IsMobile, SHELL_MOBILE_BREAKPOINT } from '$lib/hooks/is-mobile.svelte';
-  import { closePlanPanel } from '$lib/stores/plan-panel';
   import { NAV_TEAM_SPACES, workbenchPageHref, type NavTeamItem } from '$lib/workbench-paths';
   import {
     SHELL_LAYOUT,
@@ -39,27 +35,19 @@
 
   const base = $derived(`/app/${data.brand.slug}`);
   const isMobile = new IsMobile(SHELL_MOBILE_BREAKPOINT);
-  // Web hub + Radar/Leads sono gratis (piano Go). Ads resta solo Pro.
+  // Il Web hub e' gratis (piano Go). Ads resta solo Pro.
   const webHubEnabled = $derived(hasWebHub(data.brand?.plan));
   const adsEnabled = $derived(hasAds(data.brand?.plan));
   const path = $derived($page.url.pathname);
-  const isPostDash = $derived(/\/posts\/[^/]+\/[^/]+\/?$/.test(path));
   const isArticleEdit = $derived(path.includes('/site/edit'));
-  const isFullWidth = $derived(
-    path.includes('/success') || path.endsWith('/activate') || isPostDash || isArticleEdit
-  );
+  const isFullWidth = $derived(isArticleEdit);
   const isSettings = $derived(path.includes('/settings'));
   const isBrandRoot = $derived(path === base || path === `${base}/`);
-  const isPlanPage = $derived(/\/plans\/[^/]+\/?$/.test(path));
   const isCalendar = $derived(/\/calendar\/?$/.test(path));
   // Il workbench è una tela: prende tutta l'area contenuto, senza colonna né padding, mentre la
   // barra laterale e la topbar restano quelle di sempre. `endsWith` e non `includes` perché la
   // home del brand ci RIMANDA, e le rotte che gli stanno sotto la colonna la vogliono ancora.
   const isWorkbench = $derived(path.endsWith('/workbench'));
-  const isLeads = $derived(/\/leads\/?$/.test(path));
-  const isMediaWorkbench = $derived(
-    /\/(media-generator|ugc-creator|motion-video)\/?$/.test(path)
-  );
   // Navigazione ottimistica: shimmer al clic, non alla fine della load. Include i cambi di
   // brand — col solo `base` la pagina del brand vecchio resterebbe visibile per tutta la load.
   const navToPath = $derived(navigating.to?.url.pathname ?? null);
@@ -85,15 +73,10 @@
 
   const showPageTopBar = $derived(true);
 
-  $effect(() => {
-    if (isFullWidth || isSettings || isPlanPage) closePlanPanel();
-  });
-
   // Badge/avvisi/quota arrivano in differita (`data.deferred`). Si TIENE il valore precedente
   // mentre la promessa nuova è pendente, o a ogni clic lampeggia uno scheletro.
   type Extras = {
     pendingCount: number;
-    leadsPendingCount: number;
     socialAccountCount: number;
     credits: { used: number; quota: number; remaining: number; percent: number; periodEnd: string };
     userName: string;
@@ -104,9 +87,6 @@
     studioPct: number;
     editorialPlanWeeks: { index: number; theme?: string }[];
     warnings: AppWarning[];
-    radarEnabled: boolean;
-    hasGeoAudit: boolean;
-    gscConnected?: boolean;
   };
   let extras = $state<Extras | null>(null);
   $effect(() => {
@@ -124,7 +104,6 @@
   function resetBrandClientState() {
     extras = null;
     setCredits(null);
-    closePlanPanel();
   }
 
   // Si butta lo stato del brand appena parte il cambio, PRIMA che arrivino i dati nuovi, o
@@ -159,7 +138,7 @@
     brandChannel.setLocation(path, null);
   });
 
-  // Poll dei crediti per intercettare il lavoro in sottofondo (autopilot, cron radar).
+  // Poll dei crediti per intercettare il lavoro in sottofondo (autopilot, cron).
   $effect(() => {
     const slug = data.brand?.slug;
     if (!slug) return;
@@ -207,15 +186,10 @@
         (segment ? isSubActive(`${base}${t.path}`) : path === base) ||
         (t.also ?? []).some((p) => isSubActive(`${base}${p}`)),
       key: t.path || 'home',
-      badge:
-        t.badge === 'content'
-          ? (extras?.pendingCount ?? 0)
-          : t.badge === 'leads'
-            ? (extras?.leadsPendingCount ?? 0)
-            : undefined
+      badge: t.badge === 'content' ? (extras?.pendingCount ?? 0) : undefined
     };
   }
-  const SPACE_ICONS = [House, Images, Target, CalendarDays, Newspaper, Radio, BarChart3];
+  const SPACE_ICONS = [House, Images, CalendarDays, Palette, Newspaper];
   // Una sola sezione, senza intestazione: sei voci non hanno bisogno di essere raggruppate, e
   // «Impostazioni» non e' una riga — e' l'ingranaggio in fondo alla barra, che ha gia' il suo
   // nome accessibile (`aria-label` + `title` in DashboardSidebar).
@@ -321,10 +295,7 @@
       studioPct: extras?.studioPct ?? 0,
       hasStrategy: extras?.strategySetup?.gtm ?? false,
       hasEditorialPlan: extras?.strategySetup?.plan ?? false,
-      blogEnabled: !!(data.brand?.blog_config as { enabled?: boolean } | null)?.enabled,
-      radarEnabled: extras?.radarEnabled ?? false,
-      hasGeoAudit: extras?.hasGeoAudit ?? false,
-      gscConnected: extras?.gscConnected ?? true
+      blogEnabled: !!(data.brand?.blog_config as { enabled?: boolean } | null)?.enabled
     }}
     switcherBrands={data.switcherBrands ?? []}
   />
@@ -366,9 +337,8 @@
             <div class="wb-frame">
               <div
                 class="content-shell"
-                class:calendar-flush={isCalendar || isMediaWorkbench || isWorkbench}
+                class:calendar-flush={isCalendar || isWorkbench}
                 class:editor-wide={isArticleEdit}
-                class:leads-flush={isLeads}
               >
                 {@render children()}
               </div>
@@ -378,7 +348,6 @@
       </div>
     </Sidebar.Inset>
 </Sidebar.Provider>
-<PlanSidePanel />
 {/if}
 
 <WarningCenter warnings={extras?.warnings ?? []} brandSlug={data.brand?.slug ?? ''} />
@@ -519,9 +488,6 @@
   .content-shell.calendar-flush {
     max-width: none;
     padding: 0;
-  }
-  .content-shell.leads-flush {
-    max-width: none;
   }
   .content-shell.editor-wide {
     max-width: 1400px;

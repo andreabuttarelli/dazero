@@ -108,7 +108,7 @@ describe('produce agent', () => {
           subject: 'laptop on desk',
           setting: 'morning light',
           props: 'notebook',
-          product: 'Anomalia',
+          product: 'dazero',
           person: '',
           pillar: 'Product'
         }
@@ -130,7 +130,7 @@ describe('produce agent', () => {
     expect(post.format).toBe('single_image');
     expect(post.day).toBe('Mon');
     expect(post.time).toBe('10:00');
-    expect(post.product).toBe('Anomalia');
+    expect(post.product).toBe('dazero');
     expect(post.pillar).toBe('Product');
     expect(post.planRowId).toBe('s1');
     // No deviation declared → no note.

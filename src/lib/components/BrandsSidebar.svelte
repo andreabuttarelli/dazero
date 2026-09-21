@@ -3,10 +3,9 @@
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
   import { Button } from '$lib/components/ui/button';
   import { cn } from '$lib/utils.js';
-  import { locale, _ } from 'svelte-i18n';
+  import { _ } from 'svelte-i18n';
   import { page } from '$app/stores';
   import { goto, invalidateAll } from '$app/navigation';
-  import { SUPPORTED, localePath, type Locale } from '$lib/i18n/locale';
   import { Sun, Moon, LogOut, Key, Plus, ChevronDown, LayoutGrid, FileText, Mail } from '@lucide/svelte';
   import BrandMark from '$lib/components/BrandMark.svelte';
   import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
@@ -53,21 +52,6 @@
     theme = next;
   }
 
-  // Locale
-  const currentLocale = $derived(($locale ?? $page.data.locale ?? 'en') as Locale);
-  async function chooseLocale(l: Locale) {
-    if (l === currentLocale) return;
-    document.cookie = `locale=${l};path=/;max-age=31536000;samesite=lax`;
-    locale.set(l);
-    if (typeof document !== 'undefined') document.documentElement.lang = l;
-    fetch('/api/v1/locale', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ locale: l }) }).catch(() => {});
-    if ($page.route.id?.startsWith('/[[lang=locale]]')) {
-      const basePath = $page.url.pathname.replace(/^\/(en|it)(?=\/|$)/, '') || '/';
-      await goto(localePath(basePath, l));
-    } else {
-      await invalidateAll();
-    }
-  }
 </script>
 
 <Sidebar.Root collapsible="icon">
@@ -78,7 +62,7 @@
         <div class="flex items-center w-full group-data-[collapsible=icon]:justify-center">
           <a href="/app" class="sidebar-brand-group flex items-center gap-2 flex-1 min-w-0 group-data-[collapsible=icon]:hidden" style="color: inherit; text-decoration: none;">
             <BrandMark size={36} />
-            <span class="truncate text-sm font-semibold">Anomalia</span>
+            <span class="truncate text-sm font-semibold">dazero</span>
           </a>
           <div class="shrink-0 group-data-[collapsible=icon]:hidden">
             <Sidebar.Trigger />
@@ -204,25 +188,6 @@
               {/if}
               <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
             </DropdownMenu.Item>
-            <div class="px-2 py-1.5 flex items-center justify-between">
-              <span class="text-sm">{$_('common.lang.switch')}</span>
-              <div class="flex gap-0.5 bg-muted rounded-md p-0.5">
-                {#each SUPPORTED as l (l)}
-                  <button
-                    type="button"
-                    class={cn(
-                      'px-2 py-0.5 text-xs font-semibold rounded transition-colors',
-                      currentLocale === l
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                    onclick={() => chooseLocale(l)}
-                  >
-                    {l.toUpperCase()}
-                  </button>
-                {/each}
-              </div>
-            </div>
             <DropdownMenu.Separator />
             <DropdownMenu.Item>
               <a href="/app/api-keys" class="flex items-center w-full">

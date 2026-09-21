@@ -9,7 +9,7 @@ import { siteUrl } from '$lib/seo';
 // anyone but the account owner. Override EMAIL_FROM entirely, or just EMAIL_DOMAIN to change only
 // the domain while keeping the default local-part and display name.
 const EMAIL_DOMAIN = env.EMAIL_DOMAIN || senderEmailDomain();
-const FROM = env.EMAIL_FROM || `Anomalia <noreply@${EMAIL_DOMAIN}>`;
+const FROM = env.EMAIL_FROM || `dazero <noreply@${EMAIL_DOMAIN}>`;
 
 // Brand accent (matches --accent in app.css). Used for the wordmark's "2" in email headers.
 const ACCENT = '#7c5cff';
@@ -42,11 +42,11 @@ function esc(s: string | null | undefined): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Header: the real Anomalia mark (hosted PNG, reliable across clients) + the wordmark in the
+// Header: the real dazero mark (hosted PNG, reliable across clients) + the wordmark in the
 // current brand accent. If the image is blocked, the wordmark still reads as the brand.
 function header(origin?: string): string {
   const logo = `${siteUrl(origin)}/icon-192.png`;
-  return `<div style="font-size:20px;font-weight:600;line-height:24px;margin-bottom:6px;"><img src="${logo}" width="22" height="22" alt="" style="vertical-align:-5px;border-radius:6px;margin-right:8px;" />Anomalia</div>`;
+  return `<div style="font-size:20px;font-weight:600;line-height:24px;margin-bottom:6px;"><img src="${logo}" width="22" height="22" alt="" style="vertical-align:-5px;border-radius:6px;margin-right:8px;" />dazero</div>`;
 }
 
 function shell(origin: string | undefined, inner: string): string {
@@ -149,7 +149,7 @@ export function passwordResetEmailText(locale: Locale, resetUrl: string): string
 
 // ── Onboarding recap ───────────────────────────────────────────────────────────────────────────
 // Sent once, when the background onboarding generation finishes. Unlike the approval emails this is
-// NOT a one-tap action — there's nothing to approve yet — it just announces what Anomalia generated
+// NOT a one-tap action — there's nothing to approve yet — it just announces what dazero generated
 // (posts, competitors analysed, a multi-week editorial plan + strategy) and links to the proof page
 // where the user reviews everything and continues to activation. No token: the proof page is behind
 // the user's normal login (they created the account during onboarding).
@@ -299,7 +299,7 @@ export function calendarConflictEmailText(locale: Locale, brandName: string, cou
 
 // ── Weekly recap email ──────────────────────────────────────────────────────
 // Sent every Monday morning with the brand's weekly performance snapshot: post activity,
-// engagement metrics, trends, AI suggestions, and action items. The richest email Anomalia sends.
+// engagement metrics, trends, AI suggestions, and action items. The richest email dazero sends.
 
 export type RecapData = {
   brandName: string;
@@ -339,7 +339,6 @@ export type RecapData = {
   visualInsights?: { dimension: string; value: string; n: number; erAvg: number; delta: number }[];
   /** Web/rank KPIs (P4): tracked keywords and their movement. Optional — the section renders
    *  only when present and tracked > 0. */
-  webKpis?: { tracked: number; improved: number; worsened: number; improvedList: string[] };
 };
 
 function sectionTitle(text: string): string {
@@ -415,22 +414,6 @@ function visualInsightsSectionHtml(locale: Locale, data: RecapData): string {
     })
     .join('');
   return `${sectionTitle(tEmail(locale, 'recap_weekly.visual_insights'))}${items}`;
-}
-
-// Web/rank KPIs (P4): tracked/improved/worsened + top improved keywords. Renders nothing when
-// the brand tracks no keywords or has no rank data.
-function webKpisSectionHtml(locale: Locale, data: RecapData): string {
-  const k = data.webKpis;
-  if (!k || k.tracked <= 0) return '';
-  const top = k.improvedList.length
-    ? `<div style="margin-top:8px;">
-        <div style="font-size:11px;color:#86868b;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:4px;">${tEmail(locale, 'recap_weekly.webkpis.top_movers')}</div>
-        ${k.improvedList.map((kw) => `<div style="font-size:13px;color:#16a34a;line-height:1.5;">▲ ${esc(kw)}</div>`).join('')}
-      </div>`
-    : '';
-  return `${sectionTitle(tEmail(locale, 'recap_weekly.webkpis.title'))}
-    <div style="font-size:14px;font-weight:600;color:#1d1d1f;">${esc(tEmail(locale, 'recap_weekly.webkpis.summary', { tracked: k.tracked, improved: k.improved, worsened: k.worsened }))}</div>
-    ${top}`;
 }
 
 function growthSectionHtml(locale: Locale, data: RecapData): string {
@@ -557,7 +540,6 @@ export function weeklyRecapEmailHtml(locale: Locale, data: RecapData, origin?: s
     ${comparisonLine}
 
     ${visualInsightsSectionHtml(locale, data)}
-    ${webKpisSectionHtml(locale, data)}
 
     ${data.postsPending > 0 ? `<div style="margin-top:12px;padding:10px 14px;background:#fff8f0;border-radius:8px;border:1px solid #fde68a;font-size:13px;color:#92400e;font-weight:600;">${tEmail(locale, 'recap_weekly.pending_posts', { count: data.postsPending })}</div>` : ''}
 
@@ -637,15 +619,6 @@ export function weeklyRecapEmailText(locale: Locale, data: RecapData): string {
     for (const v of [...data.visualInsights].sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 3)) {
       const d = Math.round(v.delta);
       lines.push(`  ${v.dimension}: ${v.value} ${d > 0 ? '+' : ''}${d}% ER vs avg (n=${v.n})`);
-    }
-    lines.push('');
-  }
-
-  if (data.webKpis && data.webKpis.tracked > 0) {
-    lines.push(`— ${tEmail(locale, 'recap_weekly.webkpis.title')} —`);
-    lines.push(`  ${tEmail(locale, 'recap_weekly.webkpis.summary', { tracked: data.webKpis.tracked, improved: data.webKpis.improved, worsened: data.webKpis.worsened })}`);
-    if (data.webKpis.improvedList.length) {
-      lines.push(`  ${tEmail(locale, 'recap_weekly.webkpis.top_movers')}: ${data.webKpis.improvedList.join(', ')}`);
     }
     lines.push('');
   }
@@ -888,11 +861,9 @@ export function creditWarningEmailText(locale: Locale, opts: {
 // The 6 welcome "next steps" mirror the in-app OnboardingChecklist (sidebar progress).
 const WELCOME_STEPS: { key: string; path: string }[] = [
   { key: 'studio', path: 'studio' },
-  { key: 'strategy', path: 'gtm' },
-  { key: 'plan', path: 'plan' },
+  { key: 'plan', path: 'calendar' },
   { key: 'blog', path: 'site' },
-  { key: 'radar', path: 'radar' },
-  { key: 'seo', path: 'seo' }
+  { key: 'seo', path: 'web' }
 ];
 
 export function welcomeEmailSubject(locale: Locale, brandName: string): string {
@@ -981,37 +952,6 @@ export function day1EmailText(
     `${tEmail(locale, 'lifecycle.cta_call')} ${opts.callUrl}`,
     '',
     `${tEmail(locale, 'lifecycle.or_self')} ${selfUrl}`,
-    '',
-    tEmail(locale, 'lifecycle.footer')
-  ].join('\n');
-}
-
-/**
- * Chi si iscrive col prodotto chiuso non ha un brand, quindi il drip di lifecycle — che pende dai
- * brand — non lo vede mai. Senza questa, uno che si registra e non prenota non riceve nulla:
- * prodotto chiuso e recupero spento insieme.
- */
-export function pendingEmailSubject(locale: Locale): string {
-  return tEmail(locale, 'pending.subject');
-}
-
-export function pendingEmailHtml(locale: Locale, opts: { callUrl: string }, origin?: string): string {
-  return shell(
-    origin,
-    `
-    <h2 style="font-size:22px;letter-spacing:-0.02em;margin:14px 0 6px;">${tEmail(locale, 'pending.heading')}</h2>
-    <p style="color:#1d1d1f;line-height:1.5;margin:0 0 14px;">${tEmail(locale, 'pending.body')}</p>
-    ${cta(opts.callUrl, tEmail(locale, 'lifecycle.cta_call'))}
-    <p style="color:#86868b;font-size:12px;margin-top:22px;">${tEmail(locale, 'lifecycle.footer')}</p>`
-  );
-}
-
-export function pendingEmailText(locale: Locale, opts: { callUrl: string }): string {
-  return [
-    tEmail(locale, 'pending.heading'),
-    '',
-    tEmail(locale, 'pending.body'),
-    `${tEmail(locale, 'lifecycle.cta_call')} ${opts.callUrl}`,
     '',
     tEmail(locale, 'lifecycle.footer')
   ].join('\n');

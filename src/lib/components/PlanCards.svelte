@@ -56,9 +56,7 @@
     const postsL = $_('pricing.card.statPosts');
     const videosL = $_('pricing.card.statVideos');
     const articlesL = $_('pricing.card.statArticles');
-    const leadsL = $_('pricing.card.statLeads');
     const perMo = $_('pricing.card.perMonth');
-    const perDay = $_('pricing.card.perDay');
     const videos = videosFromCredits(p.credits);
     const prev = prevPlan(p);
 
@@ -66,8 +64,7 @@
       return [
         `~${p.postsPerMonth} ${postsL} ${perMo}`,
         `~${videos} ${videosL}`,
-        `~${p.articlesPerMonth} ${articlesL} ${perMo}`,
-        `~${p.leadsPerDay.min}–${p.leadsPerDay.max} ${leadsL} ${perDay}`
+        `~${p.articlesPerMonth} ${articlesL} ${perMo}`
       ];
     }
 

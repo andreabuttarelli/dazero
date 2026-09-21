@@ -4,7 +4,7 @@ vi.mock('$lib/server/cli-auth', () => ({
   authenticate: vi.fn(),
   loadBrandForUser: vi.fn()
 }));
-vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://anomalia.test' }));
+vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://dazero.test' }));
 
 import { GET } from './+server';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
@@ -31,7 +31,7 @@ const IG = {
   connected_at: '2026-08-01T10:00:00.000Z'
 };
 
-const url = 'https://anomalia.test/api/v1/brands/demo/social/accounts';
+const url = 'https://dazero.test/api/v1/brands/demo/social/accounts';
 
 const read = (accounts: Row[] = [IG], brand: Row = BRAND) => {
   vi.mocked(authenticate).mockResolvedValue({
@@ -104,7 +104,7 @@ describe('GET /api/v1/brands/:slug/social/accounts', () => {
 
     expect(body.platform_choices).toContain('linkedin');
     expect(body.manage_url).toBe(
-      'https://anomalia.test/app/demo/settings/connected-accounts'
+      'https://dazero.test/app/demo/settings/connected-accounts'
     );
   });
 
@@ -119,7 +119,7 @@ describe('GET /api/v1/brands/:slug/social/accounts', () => {
   });
 
   it('risponde esattamente quello che il contratto dichiara, niente di più', async () => {
-    const { LIST_SOCIAL_ACCOUNTS_READ } = await import('@anomalia/api-contracts');
+    const { LIST_SOCIAL_ACCOUNTS_READ } = await import('@dazero/api-contracts');
     const { body } = await read();
 
     expect(LIST_SOCIAL_ACCOUNTS_READ.output.strict().safeParse(body).success).toBe(true);

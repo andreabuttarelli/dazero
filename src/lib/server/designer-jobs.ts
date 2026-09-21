@@ -23,7 +23,7 @@ import {
 	CHAT_REAP_MIN_AGE_MS,
 	classifyChatJob,
 	turnTruncatedNotice
-} from '$lib/server/chat/turn-limits';
+} from '$lib/server/designer/turn-limits';
 import { DESIGNER_MAX_CONTINUATIONS } from '$lib/designer-limits';
 
 export const DESIGNER_TOOL_MOTION = 'motion_video';

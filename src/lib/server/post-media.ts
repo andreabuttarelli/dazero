@@ -1,5 +1,5 @@
 import { authenticate, loadBrandForUser, type ApiKeyInfo, type CliBrand } from '$lib/server/cli-auth';
-import { loadEditorContext, type EditorTarget } from '$lib/agent/tools/post-editor-tools';
+import { loadEditorContext, type EditorTarget } from '$lib/server/post-editor/post-editor-tools';
 
 type Target =
   | { error: Response; t?: undefined; brand?: undefined; apiKey?: undefined }

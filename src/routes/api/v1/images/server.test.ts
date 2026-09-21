@@ -33,7 +33,7 @@ const DRAWN = {
 const ORG = { id: 'org-1', name: 'Acme' };
 
 async function generate(body: unknown) {
-  const url = new URL('https://anomalia.test/api/v1/images');
+  const url = new URL('https://dazero.test/api/v1/images');
   const res = await (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),
     url

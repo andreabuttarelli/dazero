@@ -8,7 +8,7 @@ vi.mock('$lib/server/cli-auth', () => ({
 import { GET } from './+server';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
 import { DOC_STATUSES, KNOWLEDGE_FAILURES_MAX } from '$lib/server/knowledge';
-import { KNOWLEDGE_DOC_STATUSES } from '@anomalia/api-contracts';
+import { KNOWLEDGE_DOC_STATUSES } from '@dazero/api-contracts';
 
 type Row = Record<string, unknown>;
 
@@ -133,7 +133,7 @@ function signedIn(tables: Record<string, Row[]> = TABLES) {
 }
 
 function call(slug = 'demo') {
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/knowledge`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/knowledge`);
   return (GET as (event: unknown) => Promise<Response>)({
     request: new Request(url),
     params: { slug },

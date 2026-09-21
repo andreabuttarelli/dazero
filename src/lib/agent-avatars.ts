@@ -290,7 +290,7 @@ export const AVATAR_FACE_SPECS: Record<AgentAvatarFace, AvatarFaceSpec> = {
 export const THEME_AVATAR_COLOR = 'theme';
 
 /**
- * L'agente Anomalia: un avatar fisso, uguale ovunque nell'app. È la sua identità, come il marchio
+ * L'agente dazero: un avatar fisso, uguale ovunque nell'app. È la sua identità, come il marchio
  * del brand, e come quello segue il tema invece di scegliere un lato.
  */
 export const DEFAULT_CHAT_AGENT_AVATAR: { face: AgentAvatarFace; color: string } = {
@@ -302,7 +302,7 @@ export const DEFAULT_CHAT_AGENT_AVATAR: { face: AgentAvatarFace; color: string }
  * Facce degli agenti builtin, per il picker del composer. Fisse, non derivate: sono identità.
  */
 export const BUILTIN_AGENT_AVATARS: Record<string, { face: AgentAvatarFace; color: string }> = {
-  // `auto` è Anomalia: resta in tinta col tema, è l'unico neutro. Le chiavi devono essere gli id
+  // `auto` è dazero: resta in tinta col tema, è l'unico neutro. Le chiavi devono essere gli id
   // VERI degli agenti (`$lib/server/chat/agents.ts`): con chiavi vecchie ogni agente ricade
   // sull'avatar di `auto` — cinque facce identiche in tutto il prodotto.
   auto: DEFAULT_CHAT_AGENT_AVATAR,

@@ -2,14 +2,14 @@ import { PLATFORM_KEYS } from '$lib/components/platform-meta';
 import { sanitizeWebsiteParam } from '$lib/website-param';
 
 /** sessionStorage key for website + socials collected before login. */
-export const GUEST_ONBOARDING_KEY = 'anomalia_guest_onboarding';
+export const GUEST_ONBOARDING_KEY = 'dazero_guest_onboarding';
 
 /**
  * Short-lived cookie so the server can send the user to `/app/onboarding` after OAuth/login
  * even when `next=onboarding` was dropped (www/apex redirect, Site URL fallback, etc.).
  * Payload stays in sessionStorage; this is only an intent flag.
  */
-export const GUEST_ONBOARDING_COOKIE = 'anomalia_guest_ob';
+export const GUEST_ONBOARDING_COOKIE = 'dazero_guest_ob';
 export const GUEST_ONBOARDING_COOKIE_MAX_AGE = 60 * 60; // 1 hour
 
 /**
@@ -34,7 +34,7 @@ export type GuestOnboardingPending = {
   handles: Record<string, string>;
   /** User finished the guest funnel and should jump to analyze (or early create) after auth. */
   readyForAnalysis: boolean;
-  /** Present once /start/preview produced a post. Adopted by the brand at create time. */
+  /** Present once a pre-login preview produced a post. Adopted by the brand at create time. */
   post?: GuestPost;
 };
 
@@ -119,16 +119,6 @@ function writeGuestCookie(ready: boolean): void {
   }
 }
 
-export function saveGuestOnboarding(pending: GuestOnboardingPending): void {
-  if (typeof sessionStorage === 'undefined') return;
-  try {
-    sessionStorage.setItem(GUEST_ONBOARDING_KEY, JSON.stringify(pending));
-  } catch {
-    // Quota / private mode — login still carries website via query param.
-  }
-  writeGuestCookie(pending.readyForAnalysis);
-}
-
 export function loadGuestOnboarding(): GuestOnboardingPending | null {
   if (typeof sessionStorage === 'undefined') return null;
   try {
@@ -154,13 +144,6 @@ export function clearGuestOnboarding(): void {
 /** True when the guest-funnel cookie says analysis should run after auth. */
 export function hasGuestOnboardingCookie(cookieValue: string | undefined | null): boolean {
   return cookieValue === '1';
-}
-
-/** Login URL after guest website + socials. Website is also in the query for resilience. */
-export function guestOnboardingLoginHref(pending: GuestOnboardingPending): string {
-  const qs = new URLSearchParams({ next: 'onboarding', mode: 'signup' });
-  if (!pending.noWebsite && pending.url) qs.set('website', pending.url);
-  return `/login?${qs}`;
 }
 
 /**

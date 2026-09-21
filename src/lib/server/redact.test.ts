@@ -30,7 +30,7 @@ const DEVONO_SPARIRE: Array<[string, string, string]> = [
   ['installation token', 'ghs_INVENTATA0000aaaaBBBBccccDDDD2222', 'ghs_INVENTATA0000'],
   ['pat fine-grained', 'github_pat_11AINVENTATA0000_aaaaBBBBccccDDDD1111eeee', 'github_pat_11AINVENTATA'],
   ['device code json', `{"device_code":"${DEV}","interval":5}`, DEV],
-  ['nostra api key', 'anomalia_live_0123456789abcdef0123456789abcdef', 'anomalia_live_0123'],
+  ['nostra api key', 'dazero_live_0123456789abcdef0123456789abcdef', 'dazero_live_0123'],
   ['jwt', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJJTlZFTlRBVE8ifQ.SW52ZW50YXRhRmlybWFYWVo', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'],
   ['url firmata', 'https://xyz.supabase.co/storage/v1/object/sign/brand-knowledge/a.png?token=eyJhbGciOiJIUzI1NiJ9INVENTATA&download=1', 'eyJhbGciOiJIUzI1NiJ9INVENTATA'],
   ['pgpassword', 'PGPASSWORD=Inv3nt4t4! psql -h db.esempio.io -U app', 'Inv3nt4t4!'],
@@ -70,10 +70,10 @@ const DEVONO_RESTARE: Array<[string, string]> = [
   ['errore npm', 'npm error code ERESOLVE — exit code 1'],
   ['path con riga', 'src/routes/api/v1/brands/[slug]/agent-sessions/+server.ts:31'],
   ['timestamp e durata', '2026-08-22T14:03:11.482Z · durata 1832 ms'],
-  ['nome vm', 'anomalia-4f3c2b1a-9e8d-4c7b-a6f5-0d1e2f3a4b5c-compute-g2'],
+  ['nome vm', 'dazero-4f3c2b1a-9e8d-4c7b-a6f5-0d1e2f3a4b5c-compute-g2'],
   ['prosa', 'Il delegato ha aperto la VM, installato le dipendenze e prodotto il rapporto finale.'],
   ['riga modello', 'model: anthropic claude-opus-5[1m] · eventi: 47'],
-  ['url pubblica', 'https://www.anomalia.so/it/blog/come-funziona-il-piano-editoriale-settimanale'],
+  ['url pubblica', 'https://www.dazero.co/it/blog/come-funziona-il-piano-editoriale-settimanale'],
   ['import', "import { createAdminClient } from '$lib/server/supabase-admin';"]
 ];
 

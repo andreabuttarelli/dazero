@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
 import { buildCreationKit } from '$lib/server/creation-kit';
-import { GET_CREATION_KIT, statusForFailure } from '@anomalia/api-contracts';
+import { GET_CREATION_KIT, statusForFailure } from '@dazero/api-contracts';
 
 export const GET: RequestHandler = async ({ request, params, url }) => {
   const { supabase, error, apiKey } = await authenticate(request);

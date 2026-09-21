@@ -18,14 +18,14 @@ import { registerStudioTools } from './tools/studio.ts';
  * un'organizzazione vera e scrivendo nella libreria di un cliente vero.
  */
 export const MCP_INSTRUCTIONS = [
-  'Anomalia runs social brands: posts, editorial plans, media, knowledge, SEO, blog.',
+  'dazero runs social brands: posts, editorial plans, media, knowledge, SEO, blog.',
   'Most tools act on ONE brand and need its `slug`; `list_brands` is where slugs come from. When you do not know which brand, ASK — never call `list_brands` to pick one yourself: guessing spends a real organisation’s credits and writes into a real client’s library.',
   'Reads cost nothing and change nothing, and READING IS ONE TOOL: `query`. Posts, media, articles, memory, competitors, products, plans, settings, audits — every table, as the signed-in person. Name `columns` or the answer comes back short; `offset` is the next page and the reply tells you which; `count: "exact"` when the number IS the answer; `embed` brings a related table along. The skill has the query for each subject already written.',
-  'Seven other reads exist and none is a select: `diagnose_brand`, `diagnose_radar`, `search_knowledge`, `get_writing_skills`, `get_creation_kit`, `get_gsc`, `get_media_models`. Every other `get_*`/`list_*` you remember is now a `query`.',
+  'Six other reads exist and none is a select: `diagnose_brand`, `search_knowledge`, `get_writing_skills`, `get_creation_kit`, `get_gsc`, `get_media_models`. Every other `get_*`/`list_*` you remember is now a `query`.',
   'Writing is explicit and separate: generating a picture or clip creates nothing in the calendar, and nothing goes out until a post is approved. Whatever spends credits says so in its own description; everything else is free.',
   'Changing an existing asset is `refine_media` — picture or clip — not a second generation, which buys a different subject.',
   'Post and article ids accept short unambiguous prefixes — the ids `query` returns are where they come from.',
-  'Signing in is not a tool: over HTTP the host does the OAuth round and sends the Bearer; locally run `anomalia login` once — the CLI and this server share one session file. No API keys.'
+  'Signing in is not a tool: over HTTP the host does the OAuth round and sends the Bearer; locally run `dazero login` once — the CLI and this server share one session file. No API keys.'
 ].join(' ');
 
 type ListedTool = { inputSchema?: Record<string, unknown> };
@@ -124,13 +124,13 @@ function recordToolCalls(server: McpServer): void {
     }) as never)) as typeof server.registerTool;
 }
 
-export function createAnomaliaMcpServer(): McpServer {
+export function createdazeroMcpServer(): McpServer {
   const server = new McpServer(
     {
-      name: 'anomalia',
+      name: 'dazero',
       version: '0.1.0',
       description:
-        'Anomalia social media AI autopilot — manage brands, posts, plans, studio, SEO/GEO, and blog via OAuth.',
+        'dazero social media AI autopilot — manage brands, posts, plans, studio, SEO/GEO, and blog via OAuth.',
     },
     { instructions: MCP_INSTRUCTIONS },
   );

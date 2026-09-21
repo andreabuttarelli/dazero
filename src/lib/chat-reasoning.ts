@@ -36,7 +36,7 @@ export function penultimateLevel(levels: readonly ThinkingLevel[]): ThinkingLeve
   return levels[Math.max(0, levels.length - 2)];
 }
 
-export const CHAT_REASONING_KEY = 'anomalia.chatReasoning';
+export const CHAT_REASONING_KEY = 'dazero.chatReasoning';
 
 export function isChatReasoning(v: unknown): v is ChatReasoning {
   if (typeof v !== 'string') return false;

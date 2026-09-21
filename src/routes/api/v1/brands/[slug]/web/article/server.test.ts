@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { GET_ARTICLE_READ } from '@anomalia/api-contracts';
+import { GET_ARTICLE_READ } from '@dazero/api-contracts';
 
 const structured = vi.fn();
 const gateCredits = vi.fn();
@@ -127,7 +127,7 @@ function authorize(slug = BRAND.slug) {
 
 function read(id: string, slug = BRAND.slug) {
   authorize(slug);
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/web/article?id=${id}`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/web/article?id=${id}`);
   return (GET as (event: unknown) => Promise<Response>)({
     request: new Request(url),
     params: { slug },
@@ -137,7 +137,7 @@ function read(id: string, slug = BRAND.slug) {
 
 function write(body: unknown, slug = BRAND.slug) {
   authorize(slug);
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/web/article`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/web/article`);
   return (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),
     params: { slug },
@@ -208,7 +208,7 @@ describe('GET /api/v1/brands/:slug/web/article', () => {
     vi.mocked(authenticate).mockResolvedValue({
       error: new Response('Unauthorized', { status: 401 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/demo/web/article?id=art-1');
+    const url = new URL('https://dazero.test/api/v1/brands/demo/web/article?id=art-1');
     const res = await (GET as (event: unknown) => Promise<Response>)({
       request: new Request(url),
       params: { slug: 'demo' },
@@ -223,7 +223,7 @@ describe('GET /api/v1/brands/:slug/web/article', () => {
     vi.mocked(loadBrandForUser).mockResolvedValue({
       error: new Response(JSON.stringify({ error: 'Brand not found' }), { status: 404 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/altrui/web/article?id=art-1');
+    const url = new URL('https://dazero.test/api/v1/brands/altrui/web/article?id=art-1');
     const res = await (GET as (event: unknown) => Promise<Response>)({
       request: new Request(url),
       params: { slug: 'altrui' },
@@ -235,7 +235,7 @@ describe('GET /api/v1/brands/:slug/web/article', () => {
 
   it('rifiuta una richiesta senza id invece di restituire un articolo a caso', async () => {
     authorize();
-    const url = new URL('https://anomalia.test/api/v1/brands/demo/web/article');
+    const url = new URL('https://dazero.test/api/v1/brands/demo/web/article');
     const res = await (GET as (event: unknown) => Promise<Response>)({
       request: new Request(url),
       params: { slug: 'demo' },
@@ -427,7 +427,7 @@ describe('POST /api/v1/brands/:slug/web/article', () => {
     vi.mocked(authenticate).mockResolvedValue({
       error: new Response('Unauthorized', { status: 401 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/demo/web/article');
+    const url = new URL('https://dazero.test/api/v1/brands/demo/web/article');
     const res = await (POST as (event: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: '{}' }),
       params: { slug: 'demo' },
@@ -442,7 +442,7 @@ describe('POST /api/v1/brands/:slug/web/article', () => {
     vi.mocked(loadBrandForUser).mockResolvedValue({
       error: new Response(JSON.stringify({ error: 'Brand not found' }), { status: 404 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/altrui/web/article');
+    const url = new URL('https://dazero.test/api/v1/brands/altrui/web/article');
     const res = await (POST as (event: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: '{}' }),
       params: { slug: 'altrui' },

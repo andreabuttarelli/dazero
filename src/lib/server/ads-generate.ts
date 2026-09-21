@@ -171,7 +171,7 @@ Return JSON.`;
     body: String(out.body ?? '').slice(0, bodyMax),
     additionalDescriptions: strList(out.additionalDescriptions, bodyMax, 3),
     keywords: isGoogle && opts.campaignType !== 'DISPLAY' ? strList(out.keywords, 80, 15) : [],
-    // Models write "anomalia.so"; the form and the platform both want a full URL.
+    // Models write "dazero.co"; the form and the platform both want a full URL.
     landingPageUrl: normalizeUrl(opts.landingUrl || brand.website || ''),
     businessName: brand.name.slice(0, 25),
     countries: modelCountries.length ? modelCountries : countries,

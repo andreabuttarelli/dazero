@@ -1,6 +1,6 @@
 // Content Library — a persistent inventory of the brand's own site pages (blog posts, guides,
 // resources), crawled from the sitemap and AI-enriched with topics + a relevance score. Its whole
-// job: give the planner and radar REAL URLs to put in Reddit link posts, instead of the model
+// job: give the planner REAL URLs to put in Reddit link posts, instead of the model
 // guessing a link_url that may not exist. Usage is stamped via last_used_at so the same page isn't
 // re-shared in a loop.
 //

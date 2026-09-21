@@ -27,12 +27,12 @@ export const MOTION_AD_FPS = 30;
 export const MOTION_AD_DURATION = MOTION_AD_FPS * 6; // 6s
 export const MOTION_AD_SIZE = { width: 1080, height: 1080 } as const;
 
-export const defaultMotionAdProps = (brand = 'Anomalia'): MotionAdProps => ({
+export const defaultMotionAdProps = (brand = 'dazero'): MotionAdProps => ({
   brand,
   headline: 'Your marketing team.\nOn autopilot.',
   sub: 'Create posts, UGC, and SEO content from one chat.',
   promise: 'Chat once.\nShip everywhere.',
-  cta: 'Start free → anomalia.so',
+  cta: 'Start free → dazero.co',
   accent: '#c485fe',
   bg: '#050505',
   ink: '#f4f4f5',

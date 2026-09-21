@@ -24,7 +24,7 @@ import { authenticate, loadBrandForUser, gateAiAction } from '$lib/server/cli-au
 const ALL = ['instagram', 'tiktok', 'facebook', 'linkedin', 'x', 'threads', 'youtube', 'bluesky', 'reddit'];
 
 function call(body: unknown, slug = 'demo') {
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/captions/generate`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/captions/generate`);
   return (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),
     params: { slug },

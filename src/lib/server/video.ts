@@ -250,7 +250,7 @@ export function clampVideoAspectRatio(ratio: unknown, model?: string | null): st
 // L'upscale gira DENTRO il percorso di pubblicazione, con un utente che aspetta: budget molto più
 // stretto della generazione, e sforarlo costa solo la risoluzione di bozza, mai il post.
 // ponytail: bounded by wall-clock inside the request; if bulk approves with many clips start
-// timing out, move the upscale to a `videos/work` cron like radar/knowledge already use.
+// timing out, move the upscale to a `videos/work` cron like knowledge already uses.
 const UPSCALE_TIMEOUT_MS = 60000;
 
 /**
@@ -357,10 +357,10 @@ export function maxWordsForDuration(seconds: number): number {
  */
 export function brandPronunciationHints(script: string | null | undefined): string {
   const text = String(script ?? '');
-  if (!/\banomalia\b/i.test(text)) return '';
+  if (!/\bdazero\b/i.test(text)) return '';
   return [
     'PRONUNCIATION — Italian brand name, even if the rest of the line is English:',
-    '"Anomalia" = ah-no-MAH-lyah (Italian /anoˈmalja/, stress on MA, final "lia" as one soft "lyah").',
+    '"dazero" = ah-no-MAH-lyah (Italian /anoˈmalja/, stress on MA, final "lia" as one soft "lyah").',
     'NOT English "anomaly". NEVER Anomida, Anonimita, Annanomita, Anonimia, or Anomaly-uh.'
   ].join(' ');
 }

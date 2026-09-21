@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { canEnter, ownsBrand } from '$lib/server/access';
-import { localeLanguageName } from '$lib/i18n/locale';
+import { ownsBrand } from '$lib/server/access';
+import { OUTPUT_LANGUAGE } from '$lib/i18n/locale';
 import {
   startOnboardingStepJob,
   getOnboardingStepJob,
@@ -17,12 +17,10 @@ export const POST: RequestHandler = async ({
   request,
   url,
   platform,
-  locals: { supabase, safeGetSession, locale }
+  locals: { supabase, safeGetSession }
 }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
-
   const body = await request.json().catch(() => ({}));
   const brandId = typeof body?.brandId === 'string' ? body.brandId : null;
   if (brandId && !(await ownsBrand(supabase, brandId))) return new Response('Forbidden', { status: 403 });
@@ -38,7 +36,7 @@ export const POST: RequestHandler = async ({
   const additionalContext =
     typeof body?.additionalContext === 'string' ? body.additionalContext.trim() : '';
   const people = Array.isArray(body?.people) ? body.people : [];
-  const outputLanguage = localeLanguageName(locale);
+  const outputLanguage = OUTPUT_LANGUAGE;
 
   const { jobId, reused } = await startOnboardingStepJob(supabase, {
     kind: 'research',

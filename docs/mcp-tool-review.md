@@ -223,7 +223,7 @@ export const POST: RequestHandler = async ({ request, params }) => {
 
 Due conseguenze distinte. *Il saldo*: un brand senza piano a pagamento, o coi crediti finiti, li
 chiama quante volte vuole; il `402` non arriva mai. *La chiave*, più seria:
-`checkApiKeyWriteAccess` (`cli-auth.ts:217-223`) è ciò che impedisce a una chiave `anomalia_` di
+`checkApiKeyWriteAccess` (`cli-auth.ts:217-223`) è ciò che impedisce a una chiave `dazero_` di
 sola lettura di scrivere, e quattro di questi cinque non lo chiamano. **Una chiave dichiarata
 read-only può proporre un piano editoriale, pianificare una settimana, ripianificarla e
 revisionarla** — tutte operazioni che scrivono e che costano.
@@ -599,9 +599,9 @@ meno della metà:
 
 | dove | cosa contiene | conseguenza |
 |---|---|---|
-| `cli/skills/anomalia/SKILL.md` e `cli/skills/anomalia/references/tools.md` | tutti e undici i nomi ritirati | **`cli/skills/tools-coverage.test.ts` fallisce**: asserisce nei due versi che skill e tool coincidano (*«un tool che la skill nomina e non esiste lo chiama qualcuno»*) |
+| `cli/skills/dazero/SKILL.md` e `cli/skills/dazero/references/tools.md` | tutti e undici i nomi ritirati | **`cli/skills/tools-coverage.test.ts` fallisce**: asserisce nei due versi che skill e tool coincidano (*«un tool che la skill nomina e non esiste lo chiama qualcuno»*) |
 | `cli/skills/findability.test.ts` | `generate_image`, `refine_image`, `generate_video`, `whoami` | stesso effetto sulla CI |
-| `src/lib/i18n/locales/docs/{en,it,es,fr}.json`, chiave `agents.s50` | *«Verify with `whoami` / `list_brands` or `anomalia brands`»* | una pagina pubblica dice **in quattro lingue** di usare un tool che non esisterà |
+| `src/lib/i18n/locales/docs/{en,it,es,fr}.json`, chiave `agents.s50` | *«Verify with `whoami` / `list_brands` or `dazero brands`»* | una pagina pubblica dice **in quattro lingue** di usare un tool che non esisterà |
 | `cli/mcp/server.ts:22` | *«Sign in with `login`»* | è nell'handshake: la legge ogni sessione, prima di qualunque descrizione |
 
 E un riferimento **già morto oggi**, indipendente da qualunque ritiro:
@@ -715,7 +715,7 @@ Il repository lo sa già: `src/routes/api/v1/brands/[slug]/registry.test.ts` tie
 
 | gruppo | rotte | perché nessuno le chiama |
 |---|---|---|
-| **Connectors** | `connections/`, `connections/[id]/`, `connections/[id]/complete/`, `connections/catalog/` | Settings → Connectors chiama `$lib/server/composio-catalog` direttamente. **`CLAUDE.md` afferma che ci arriva la CLI con `anomalia connections`: quel comando non esiste** — `cli/commands/` non ha il file e nessun comando è registrato |
+| **Connectors** | `connections/`, `connections/[id]/`, `connections/[id]/complete/`, `connections/catalog/` | Settings → Connectors chiama `$lib/server/composio-catalog` direttamente. **`CLAUDE.md` afferma che ci arriva la CLI con `dazero connections`: quel comando non esiste** — `cli/commands/` non ha il file e nessun comando è registrato |
 | **Rubriche** | `rubrics/`, `rubrics/approve/`, `rubrics/propose/` | `/app/[brand]/rubrics` chiama `loadApprovedRubrics` / `approveRubrics` / `proposeRubrics` direttamente |
 | **Chiavi API** | `api-keys/`, `api-keys/[id]/` | il browser le gestisce con le form action di SvelteKit |
 | **Webhook di brand** | `webhook/` (GET, PUT, DELETE) | idem, su `$lib/server/brand-webhooks` |

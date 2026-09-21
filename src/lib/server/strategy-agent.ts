@@ -30,7 +30,6 @@ import {
   readEditorialPlanForAgent,
   readGtmForAgent,
   readKnowledgeForAgent,
-  readLeadsForAgent,
   readMediaForAgent,
   readRubricsForAgent,
   readStrategyReportForAgent
@@ -412,7 +411,7 @@ function buildSystemPrompt(mode: StrategyAgentMode, allowedCadences: string[]): 
   return `You are a strategy agent for editorial plans. ${modeLine}
 
 Workflow:
-1. read_* tools are FREE — start with read_brand_studio, read_rubrics, read_leads, read_gtm, read_editorial_plan, read_knowledge, read_media, read_post_history, read_competitors, read_radar as needed.
+1. read_* tools are FREE — start with read_brand_studio, read_rubrics, read_gtm, read_editorial_plan, read_knowledge, read_media, read_post_history, read_competitors as needed.
 2. search_web costs money (max ${MAX_STRATEGY_SEARCHES}/run) — only when DB data is insufficient.
 3. Write a clear brief, then draft_variants (max ${MAX_STRATEGY_DRAFTS}/run, n≤3).
 4. check_feasibility on the plan before finish — repair_plan or draft again if violations remain. When the brand has approved rubrics (serie ripetibili), content_mix types MUST be rubric names.
@@ -635,30 +634,6 @@ async function runStrategyAgentInner(opts: StrategyAgentOpts): Promise<StrategyA
         const benchmark = (strategy?.benchmark as Benchmark | null) ?? null;
         return { digest: benchmark ? benchmarkDigest(benchmark) : 'No benchmark stored.' };
       }
-    }),
-
-    read_radar: tool({
-      description: 'Recent radar/news signals (free).',
-      inputSchema: z.object({ limit: z.number().int().min(1).max(20).optional() }),
-      execute: async ({ limit }) => {
-        const { data: items } = await opts.supabase
-          .from('brand_news_items')
-          .select('title, url, source_name, relevance, created_at')
-          .eq('brand_id', opts.brandId)
-          .order('created_at', { ascending: false })
-          .limit(limit ?? 10);
-        return { items: items ?? [] };
-      }
-    }),
-
-    read_leads: tool({
-      description:
-        'Online conversations (Reddit/Threads/X) with drafted comment/DM suggestions — what people discuss about the product/category (free).',
-      inputSchema: z.object({
-        status: z.enum(['suggested', 'done', 'dismissed', 'all']).optional().describe('Default all'),
-        limit: z.number().int().min(1).max(50).optional()
-      }),
-      execute: async ({ status, limit }) => readLeadsForAgent(opts.supabase, opts.brandId, { status, limit })
     }),
 
     check_feasibility: tool({

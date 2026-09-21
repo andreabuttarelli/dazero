@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { env as publicEnv } from '$env/dynamic/public';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { cronAuthorized } from '$lib/server/cron-auth';
-import { brandContacts } from '$lib/server/scheduler';
+import { brandContacts } from '$lib/server/brand-contacts';
 import { generateWeeklyRecap, runWeeklyReflection, type WeeklyRecap } from '$lib/server/weekly-recap';
 import {
   weeklyRecapEmailSubject,
@@ -16,9 +16,8 @@ import {
 } from '$lib/server/email';
 import { countCalendarConflicts } from '$lib/server/schedule';
 import { emailLocale } from '$lib/server/email-i18n';
-import { localeLanguageName } from '$lib/i18n/locale';
+import { OUTPUT_LANGUAGE } from '$lib/i18n/locale';
 import { jobPausedForBrand } from '$lib/server/job-roster';
-import { reportToAgentThread } from '$lib/server/team-ignition';
 import { recordLoopTick } from '$lib/server/loop-ticks';
 
 // Weekly recap tick: runs every Monday morning (08:00 UTC) for all active brands.
@@ -108,7 +107,7 @@ async function processBrand(admin: Awaited<ReturnType<typeof createAdminClient>>
   }
 
   // Weekly reflection FIRST (even when the recap email gets skipped): distills the last two weeks'
-  // QC verdicts, Director flags, user edits and Radar signal into brand memory. Best-effort.
+  // QC verdicts, Director flags and user edits into brand memory. Best-effort.
   await runWeeklyReflection(admin, brand.id).catch(swallow('weekly reflection'));
 
   // Owner + shared-brand collaborators: everyone gets the recap, each in their own language.
@@ -119,7 +118,7 @@ async function processBrand(admin: Awaited<ReturnType<typeof createAdminClient>>
   }
 
   const ownerLocale = emailLocale(contacts[0].locale);
-  const outputLanguage = localeLanguageName(ownerLocale);
+  const outputLanguage = OUTPUT_LANGUAGE;
 
   // Calendar double-bookings: independent of the recap, so send it even if the recap gets skipped.
   // Weekly cadence is the dedup — the persistent in-app warning covers the urgent, real-time case.
@@ -173,12 +172,6 @@ async function processBrand(admin: Awaited<ReturnType<typeof createAdminClient>>
     // Il tick 'ok' che mancava: /agents legge SOLO loop_ticks, e senza questa riga un lavoro
     // che gira ogni lunedì resta "mai girato" per sempre sulla sua card.
     recordLoopTick({ loop: 'weekly_recap', brandId: brand.id, outcome: 'ok' });
-    await reportToAgentThread(admin, brand.id, {
-      job: 'weekly_recap',
-      published: recap.postsPublished,
-      pending: recap.postsPending,
-      scheduled: recap.postsScheduled
-    });
   }
 
   return { slug: brand.slug, sent: sent > 0, skipped: false };

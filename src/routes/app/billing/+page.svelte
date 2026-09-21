@@ -59,7 +59,7 @@
             <div class="fh">{$_('app.settings.billing.topPlanTitle')}</div>
             <div class="fs">{$_('app.settings.billing.topPlanDesc')}</div>
           </div>
-          <a class="bbtn primary" href={`mailto:hi@anomalia.so?subject=${encodeURIComponent('Custom plan — ' + data.org.name)}`}>{$_('app.settings.billing.talkToUs')}</a>
+          <a class="bbtn primary" href={`mailto:hi@dazero.co?subject=${encodeURIComponent('Custom plan — ' + data.org.name)}`}>{$_('app.settings.billing.talkToUs')}</a>
         </div>
       {:else}
         <div class="field">
@@ -88,7 +88,7 @@
         </div>
       </div>
     {:else}
-      <div class="field"><a class="bbtn primary" href={`/app/${data.billingBrandSlug}/activate`}>{$_('app.settings.billing.choosePlan')}</a></div>
+      <div class="field"><a class="bbtn primary" href="/pricing">{$_('app.settings.billing.choosePlan')}</a></div>
     {/if}
   {/if}
 </section>

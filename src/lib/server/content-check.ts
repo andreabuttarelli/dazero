@@ -1,5 +1,5 @@
 /**
- * Runs the checks Anomalia already runs on its own copy against a spec somebody else wrote.
+ * Runs the checks dazero already runs on its own copy against a spec somebody else wrote.
  *
  * Every rule here belongs to another module and is called, never restated: the platform
  * requirements to `platform-limits.ts`, the caption soundness to `prepublish-check.ts` and
@@ -169,7 +169,7 @@ export async function checkContent(opts: {
     errors.push({
       code: 'no_platforms',
       field: 'platforms',
-      detail: `None of ${spec.platforms.join(', ') || '(none given)'} is a platform Anomalia publishes to`
+      detail: `None of ${spec.platforms.join(', ') || '(none given)'} is a platform dazero publishes to`
     });
   }
   if (media.missing.length) {

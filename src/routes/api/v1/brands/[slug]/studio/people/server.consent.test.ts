@@ -10,7 +10,7 @@ vi.mock('$lib/server/people', () => ({
 }));
 
 import { POST } from './+server';
-import { CONSENT_NOT_ATTESTED as DECLARED } from '@anomalia/api-contracts';
+import { CONSENT_NOT_ATTESTED as DECLARED } from '@dazero/api-contracts';
 import { CONSENT_NOT_ATTESTED } from '$lib/server/people-consent';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
 

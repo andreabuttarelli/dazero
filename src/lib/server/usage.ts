@@ -117,7 +117,7 @@ export type Remaining = {
 // How much of this month's plan budget is left for a brand. Drives both the generate
 // gate/clamp and the Content-page indicator. Posts are counted from the actual posts table
 // (source of truth) rather than the brand_usage counter, which drifted whenever posts were
-// created outside the generate/scheduler/activate paths (chat, weekly-plan, onboarding, radar).
+// created outside the generate/scheduler/activate paths (chat, weekly-plan, onboarding).
 // Videos still rely on brand_usage since they're a subset not directly queryable from posts.
 // Pass `brand` (with activated_at) for accurate credit tracking; if omitted, credits fall back
 // to a minimal brand shape (the billing period is read live from stripe.subscriptions anyway).

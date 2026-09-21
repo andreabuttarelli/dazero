@@ -61,7 +61,7 @@ describe('HarnessSession transcript', () => {
 			provider: 'kie'
 		});
 		session.captureRequest({
-			system: 'You are Anomalia.',
+			system: 'You are dazero.',
 			messages: [
 				{ role: 'user', content: 'Hello' },
 				{
@@ -73,7 +73,7 @@ describe('HarnessSession transcript', () => {
 				}
 			]
 		});
-		session.capturePrepareStep({ system: 'You are Anomalia.\n[budget] remaining_sec≈12' });
+		session.capturePrepareStep({ system: 'You are dazero.\n[budget] remaining_sec≈12' });
 		session.recordToolCall('read_posts', { status: 'pending_user' });
 		session.recordToolResult('read_posts', { posts: [{ id: 'p1' }] }, 12, true);
 		session.recordStep({ text: 'looking', toolCalls: [{ toolName: 'read_posts' }] });
@@ -84,7 +84,7 @@ describe('HarnessSession transcript', () => {
 		const text = session.transcript();
 		expect(text).toContain('agent=chat');
 		expect(text).toContain('--- system ---');
-		expect(text).toContain('You are Anomalia.');
+		expect(text).toContain('You are dazero.');
 		expect(text).toContain('--- system (prepare_step) ---');
 		expect(text).toContain('[budget] remaining_sec≈12');
 		expect(text).toContain('--- user ---');

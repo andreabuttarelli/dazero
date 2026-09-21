@@ -1,5 +1,4 @@
 import type { RequestHandler } from './$types';
-import { canEnter } from '$lib/server/access';
 
 // Re-sign brand-knowledge storage paths after an onboarding resume: the signed URLs captured during
 // the original upload/import expire, so on rehydration the client asks for fresh ones to show the
@@ -7,8 +6,6 @@ import { canEnter } from '$lib/server/access';
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
-
   let body: { paths?: unknown };
   try {
     body = await request.json();

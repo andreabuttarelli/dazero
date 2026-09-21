@@ -33,14 +33,12 @@ export const SETTINGS_SECTIONS = [
   'connectors',
   'ads',
   'ads-accounts',
-  'radar',
   'video',
   'blog-appearance',
   'blog-authors',
   'blog-categories',
   'blog-domain',
   'blog-integrations',
-  'search-console',
   'language',
   'api-keys',
   'team',
@@ -64,8 +62,7 @@ export const SETTINGS_BLOG_SECTIONS = [
   'blog-authors',
   'blog-categories',
   'blog-domain',
-  'blog-integrations',
-  'search-console'
+  'blog-integrations'
 ] as const;
 
 /** Ads settings under Settings → Ads. */
@@ -105,8 +102,7 @@ export const SETTINGS_GROUPS: readonly {
       { section: 'blog-authors', labelKey: 'app.settings.blog.authors' },
       { section: 'blog-categories', labelKey: 'app.settings.blog.categories' },
       { section: 'blog-domain', labelKey: 'app.settings.blog.domain' },
-      { section: 'blog-integrations', labelKey: 'app.settings.blog.integrations' },
-      { section: 'search-console', labelKey: 'app.settings.blog.searchConsole' }
+      { section: 'blog-integrations', labelKey: 'app.settings.blog.integrations' }
     ]
   },
   {
@@ -120,7 +116,6 @@ export const SETTINGS_GROUPS: readonly {
     labelKey: 'app.nav.sectionPublishing',
     items: [
       { section: 'connected-accounts', labelKey: 'app.settings.connectedAccounts' },
-      { section: 'radar', labelKey: 'app.settings.radar.nav' },
       { section: 'video', labelKey: 'app.settings.video.title' }
     ]
   },

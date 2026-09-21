@@ -24,7 +24,7 @@ import {
   type AspectRatio
 } from '$lib/server/content-preview';
 import { createAgentBase } from '$lib/server/agent-base';
-import { geminiFast } from '$lib/server/chat/model';
+import { geminiFast } from '$lib/server/ai-model';
 import {
   brandContextPromptSection,
   createBrandContextTools
@@ -190,8 +190,8 @@ Never treat "N refs attached" alone as "make N images" — only when the brief t
     : '';
 
   const roleLine = opts.useBrandStyle
-    ? `You are Anomalia's media generator agent. You create on-brand images and short videos for a design studio grid (not social posts — no captions).`
-    : `You are Anomalia's media generator agent. You create images and short videos for a design studio grid (not social posts — no captions). Visual style is free — ignore brand identity look unless the user pasted references. Spoken scripts and product claims still follow BRAND IDENTITY below.`;
+    ? `You are dazero's media generator agent. You create on-brand images and short videos for a design studio grid (not social posts — no captions).`
+    : `You are dazero's media generator agent. You create images and short videos for a design studio grid (not social posts — no captions). Visual style is free — ignore brand identity look unless the user pasted references. Spoken scripts and product claims still follow BRAND IDENTITY below.`;
 
   const refLine = opts.refCount
     ? `The user attached ${opts.refCount} reference image(s) — you can SEE them in this message, labeled Ref 0…Ref ${opts.refCount - 1}.

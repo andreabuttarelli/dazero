@@ -62,7 +62,7 @@ export const CHECK_CONTENT = {
   tool: 'check_content',
   title: 'Check content',
   description:
-    'Run the checks Anomalia runs on its own copy against a spec you wrote, before you create ' +
+    'Run the checks dazero runs on its own copy against a spec you wrote, before you create ' +
     'anything. Returns blocking errors, warnings and a 0-100 quality score per platform, each ' +
     'naming the field to repair. Deterministic: it writes nothing, and the same spec always ' +
     'returns the same verdict. Perceptual review of an image or a video is a separate, explicitly ' +

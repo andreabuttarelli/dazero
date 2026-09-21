@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
 import { normalizeWeeklyStrategy, type WeeklyStrategy } from '$lib/server/content-preview';
 import { appOrigin } from '$lib/server/app-url';
-import { SAVE_WEEK_SEEDS, statusForFailure } from '@anomalia/api-contracts';
+import { SAVE_WEEK_SEEDS, statusForFailure } from '@dazero/api-contracts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 type DraftWritten = { ok: true; id: string; replaced: boolean } | { ok: false };
@@ -97,6 +97,6 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
     seeds_saved: strategy.seeds.length,
     editorial_plan_id: editorialPlanId,
     replaced: written.replaced,
-    review_url: `${appOrigin(url)}/app/${brand.slug}/plan`
+    review_url: `${appOrigin(url)}/app/${brand.slug}/calendar`
   });
 };

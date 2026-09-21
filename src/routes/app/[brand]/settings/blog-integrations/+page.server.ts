@@ -25,11 +25,11 @@ export const config = { maxDuration: 300 };
 
 export const load: PageServerLoad = async ({ parent, url, locals: { supabase } }) => {
   const { brand } = await parent();
-  // Free/Go = Anomalia blog hosting only — CMS sync is Starter+.
+  // Free/Go = dazero blog hosting only — CMS sync is Starter+.
   // Free without custom domain → activate; Go → domain settings (paid hosting perk).
   if (!hasBlogIntegrations(brand.plan)) {
     if (!hasBlogCustomDomain(brand.plan)) {
-      throw redirect(303, `/app/${brand.slug}/activate?plan=starter`);
+      throw redirect(303, '/app/billing');
     }
     throw redirect(303, `/app/${brand.slug}/settings/blog-domain`);
   }

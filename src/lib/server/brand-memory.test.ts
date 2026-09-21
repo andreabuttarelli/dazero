@@ -45,7 +45,7 @@ function mockSupabase(rows: any[]) {
 describe('buildMemoryContext skills', () => {
   it('injects only the trigger line and does not count a listing as usage', async () => {
     const { supabase, rpc } = mockSupabase([
-      { id: 'f1', category: 'fact', key: 'site', value: 'The site is anomalia.so', confidence: 1 },
+      { id: 'f1', category: 'fact', key: 'site', value: 'The site is dazero.co', confidence: 1 },
       {
         id: 's1',
         category: 'skill',
@@ -164,7 +164,7 @@ describe('memoria del brand vs memoria dell agente', () => {
     expect(motion).not.toContain('terza slide');
   });
 
-  it('senza agente (scheduler, radar) entra solo la memoria del brand', async () => {
+  it('senza agente (scheduler, weekly-recap) entra solo la memoria del brand', async () => {
     const { supabase } = scopedSupabase([BRAND_FACT, CONTENT_CRAFT]);
     const out = await buildMemoryContext(supabase as never, 'brand-1');
     expect(out).toContain('soluzione innovativa');

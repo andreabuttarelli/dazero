@@ -10,7 +10,7 @@ const state = vi.hoisted(() => ({
   kit: {} as Record<string, unknown>,
   written: [] as Record<string, unknown>[],
   fetched: [] as string[],
-  fetchResult: { url: 'https://cdn.anomalia.test/stored/logo.png' } as { url: string } | { error: string },
+  fetchResult: { url: 'https://cdn.dazero.test/stored/logo.png' } as { url: string } | { error: string },
   availableFonts: new Set(['Inter', 'Playfair Display']),
   updateFails: null as string | null
 }));
@@ -66,7 +66,7 @@ const call = (h: unknown, method: string, body?: unknown) =>
 
 beforeEach(() => {
   state.kit = {
-    logos: [{ url: 'https://cdn.anomalia.test/old.png', type: 'uploaded' }],
+    logos: [{ url: 'https://cdn.dazero.test/old.png', type: 'uploaded' }],
     favicon_url: null,
     brand_colors: ['#111111'],
     graphic_style: { display_font: 'Inter', body_font: 'Inter', instructions: '' },
@@ -75,7 +75,7 @@ beforeEach(() => {
   };
   state.written = [];
   state.fetched = [];
-  state.fetchResult = { url: 'https://cdn.anomalia.test/stored/logo.png' };
+  state.fetchResult = { url: 'https://cdn.dazero.test/stored/logo.png' };
   state.availableFonts = new Set(['Inter', 'Playfair Display']);
   state.updateFails = null;
   vi.mocked(authenticate).mockResolvedValue({ supabase: client, apiKey: undefined } as never);
@@ -86,7 +86,7 @@ beforeEach(() => {
 describe('GET /studio/appearance', () => {
   it('riporta il logo come una URL sola, non come l’array grezzo del database', async () => {
     const body = await (await call(GET, 'GET')).json();
-    expect(body.appearance.logo_url).toBe('https://cdn.anomalia.test/old.png');
+    expect(body.appearance.logo_url).toBe('https://cdn.dazero.test/old.png');
     expect(body.appearance).not.toHaveProperty('logos');
   });
 
@@ -115,7 +115,7 @@ describe('PUT /studio/appearance', () => {
     expect(res.status).toBe(200);
     expect(state.fetched).toEqual(['https://cdn.example.com/theirs.png']);
     const logos = state.written[0].logos as { url: string }[];
-    expect(logos[0].url).toBe('https://cdn.anomalia.test/stored/logo.png');
+    expect(logos[0].url).toBe('https://cdn.dazero.test/stored/logo.png');
   });
 
   it('un indirizzo che la guardia rifiuta non lascia niente scritto', async () => {

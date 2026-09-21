@@ -2,7 +2,7 @@ import { structured } from '$lib/server/research';
 
 // Operational-strategy engine: derives the brand's STYLE MANUAL (voice framework + per-platform
 // caption rules) from everything the Studio knows. This is what makes 'Auto' mode VISIBLE — the
-// page shows the values Anomalia actually works with instead of empty fields — and it runs as part of
+// page shows the values dazero actually works with instead of empty fields — and it runs as part of
 // the post-payment setup so every paying brand starts with a populated operational strategy.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

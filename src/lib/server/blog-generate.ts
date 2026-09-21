@@ -1,5 +1,5 @@
 // Blog article generator (Phase 0). Turns a SEO 'blog' initiative into a FULL long-form article
-// (not just the outline seo-advisor produces), grounded in the brand's voice AND its own indexed
+// grounded in the brand's voice AND its own indexed
 // pages (content library) so the article links to REAL internal URLs and never invents facts/URLs.
 // Stored as a draft in brand_articles for review + export. Publishing (hosted/CMS) comes later.
 import { swallow } from '$lib/server/swallow';
@@ -7,15 +7,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { PROOF_DISCIPLINE_RULE } from '$lib/server/proof-discipline';
 import { env as publicEnv } from '$env/dynamic/public';
 import { structured, groundedText } from './research';
-import { bestVariant } from './geo-artifacts';
+import { bestVariant } from './best-variant';
 import { getBrandPages } from './content-library';
 import { formatProductsList, getBrandProductsForAi } from './product-context';
 import { scoreArticle } from './article-score';
-import { brandContacts } from './scheduler';
+import { brandContacts } from './brand-contacts';
 import { blogStyleBlock } from './blog-style';
 import { wallClockToUtc } from './schedule';
 import { blogArticlesPerWeek, blogArticlesPerWeekMax, blogArticlesPerMonth } from './plans';
-import { ensureKeywordStrategy, keywordStrategyBlock } from './seo-keyword-strategy';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRec = Record<string, any>;
@@ -65,11 +64,6 @@ export async function publishDueArticles(admin: SupabaseClient, only?: string): 
   await Promise.allSettled(
     [...byBrandSlugs].map(([brandId, slugs]) => notifyIndexers(admin, brandId, slugs))
   );
-
-  // Semi-automatic SFB: per published article, propose a 0-credit external-listing draft
-  // (non-fatal — never blocks the publish tick). Submit stays manual: owner attestations + credits.
-  const { proposeBacklinkOrder } = await import('./backlink-external');
-  for (const a of due) await proposeBacklinkOrder(admin, a.brand_id, a.id).catch(swallow('propose backlink order'));
 
   // Internal linking: append "See also" links to freshly published articles BEFORE the CMS sync,
   // so an external CMS never receives a body without the links (non-fatal).
@@ -133,20 +127,7 @@ const ARTICLE_SCHEMA = {
   required: ['title', 'slug', 'metaTitle', 'metaDescription', 'bodyMarkdown']
 };
 
-/**
- * Generate a full article for one SEO 'blog' initiative and store it as a draft. Thin wrapper over
- * the shared core. Returns the new article id, or null on failure.
- */
-export async function generateArticle(admin: SupabaseClient, brand: AnyRec, initiativeId: string): Promise<string | null> {
-  const { data: plan } = await admin
-    .from('brand_seo_plans').select('initiatives').eq('brand_id', brand.id)
-    .order('created_at', { ascending: false }).limit(1).maybeSingle();
-  const init = ((plan?.initiatives as AnyRec[]) ?? []).find((i) => i.id === initiativeId);
-  if (!init) return null;
-  return generateAndStore(admin, brand, { title: init.title, targetQuery: init.targetQuery, rationale: init.rationale, sourceInitiativeId: initiativeId });
-}
-
-/** Generate a full article from a free-form topic the user typed (no SEO initiative needed). */
+/** Generate a full article from a free-form topic the user typed. */
 export async function generateArticleFromTopic(admin: SupabaseClient, brand: AnyRec, topic: string): Promise<string | null> {
   const t = topic.trim().slice(0, 200);
   if (!t) return null;
@@ -184,7 +165,6 @@ async function proposeBlogTopics(admin: SupabaseClient, brand: AnyRec, count: nu
     admin.from('posts').select('pillar, angle, caption').eq('brand_id', brand.id).order('created_at', { ascending: false }).limit(20)
   ]);
   const pages = await getBrandPages(admin, brand.id, 15).catch((error) => { swallow('load brand pages', error); return []; });
-  const keywordStrategy = await ensureKeywordStrategy(admin, brand).catch((error) => { swallow('ensure keyword strategy', error); return null; });
   const pillars = Array.isArray(kit?.content_pillars) ? (kit!.content_pillars as string[]).filter(Boolean) : [];
   const weekThemes = Array.isArray(plan?.weeks) ? (plan!.weeks as AnyRec[]).map((w) => w?.theme).filter(Boolean).slice(0, 4) : [];
   const existingTitles = (existing ?? []).map((a) => `- ${a.title}`).join('\n') || '(none)';
@@ -202,7 +182,6 @@ ${plan?.strategy ? `Editorial strategy (shared with social): ${String(plan.strat
 ${weekThemes.length ? `Editorial themes: ${weekThemes.join(' · ')}` : ''}
 ${socialCoverage.length ? `WHAT THE SOCIAL CONTENT IS COVERING (align to these themes, but do NOT mirror them 1:1 — the blog goes DEEPER: the definitive, evergreen, linkable long-form version a social post can point to):\n${socialCoverage.map((s) => `- ${s}`).join('\n')}` : ''}
 ${pages.length ? `Existing site pages (don't duplicate; complement them):\n${pages.slice(0, 10).map((p) => `- ${p.title || p.url}`).join('\n')}` : ''}
-${keywordStrategyBlock(keywordStrategy)}
 
 ALREADY WRITTEN (do NOT repeat these):
 ${existingTitles}
@@ -333,19 +312,6 @@ export async function generatePlannedArticle(
   return id;
 }
 
-// REACTIVE blog pass: a full article reacting to / expanding on a news item, from the brand's angle.
-// Used by the radar. `opts.skipNotify` suppresses the per-article email (the radar sends its own
-// daily recap instead). Returns the new article id, or null.
-export async function generateBlogFromNews(
-  admin: SupabaseClient,
-  brand: AnyRec,
-  item: { title: string; url?: string; context?: string },
-  opts?: { skipNotify?: boolean }
-): Promise<string | null> {
-  const rationale = `React to and expand on this current news from the brand's own expertise and stance — a timely, useful blog take (not a mere summary): "${item.title}"${item.context ? ` — ${item.context}` : ''}.${item.url ? ` Source: ${item.url}` : ''}`;
-  return generateAndStore(admin, brand, { title: item.title.slice(0, 200), targetQuery: item.title.slice(0, 200), rationale, sourceInitiativeId: null, source: 'radar', skipNotify: opts?.skipNotify });
-}
-
 type ArticleSpec = {
   title: string;
   targetQuery: string;
@@ -380,7 +346,6 @@ async function generateAndStore(admin: SupabaseClient, brand: AnyRec, spec: Arti
     ? pages.map((p) => `- ${p.title || p.url} → ${p.url}${Array.isArray(p.topics) && p.topics.length ? ` [${p.topics.slice(0, 4).join(', ')}]` : ''}`).join('\n')
     : '(no indexed pages yet — do not invent internal links)';
   const productsList = formatProductsList(products);
-  const keywordStrategy = await ensureKeywordStrategy(admin, brand).catch((error) => { swallow('ensure keyword strategy', error); return null; });
   const { loadNetworkLinksForPrompt, networkLinksBlock, recordPlacementsFromArticle } = await import(
     './backlink-network'
   );
@@ -405,13 +370,12 @@ ${pagesList}
 
 PRODUCTS & SERVICES you may link to (use EXACT product page urls only when listed — never invent a product URL; skip products marked "(no page URL)" for links):
 ${productsList}
-${keywordStrategyBlock(keywordStrategy)}
 ${networkBlock ? `\n${networkBlock}\n` : ''}
 Rules:
 - Answer the query up front, then go deep. 1200-2500 words. Concrete, useful, honest — no hype, no filler, no invented statistics.
 - Link 2-6 of the brand's own pages inline with Markdown [anchor](exact-url) where they genuinely help the reader.
 - When products are relevant to the topic, link them inline AND include one short dedicated ## section that highlights 1-3 matching products/services (name + one-line value + exact product URL). Prefer ★ featured products. You may embed a product image with ![name](img-url) ONLY when an img= URL is listed for that product.
-- Optionally weave in 0–2 Anomalia network links from the list above when they genuinely help the reader — never force them, never invent a network URL.
+- Optionally weave in 0–2 dazero network links from the list above when they genuinely help the reader — never force them, never invent a network URL.
 - Sensitive/factual topics: be accurate and measured; never state a fact you cannot support from the brand context. When unsure, frame it as such rather than asserting.
 ${PROOF_DISCIPLINE_RULE}
 - The article must genuinely target its search query and, where natural, support the SEO attack keywords — without keyword stuffing.
@@ -464,7 +428,7 @@ ${init.rationale ? `Why it matters: ${init.rationale}` : ''}`;
   // Second AI pass: push the draft toward a >90 all-green quality score.
   // the insert, so a timeout here still leaves a saved (un-optimized) draft rather than losing it.
   await optimizeArticleForScore(admin, brand, data.id, { withImages: !spec.skipImages }).catch(swallow('optimize article score'));
-  // Record any Anomalia-network URLs the model actually used (post-optimize body).
+  // Record any dazero-network URLs the model actually used (post-optimize body).
   if (networkCandidates.length) {
     try {
       const { data: latest } = await admin
@@ -481,8 +445,8 @@ ${init.rationale ? `Why it matters: ${init.rationale}` : ''}`;
       );
     } catch (error) { swallow('record network placements', error); }
   }
-  // Notify the owner that a new draft is waiting for review — unless the caller opted out (the radar
-  // sends its own daily recap instead of one email per article).
+  // Notify the owner that a new draft is waiting for review — unless the caller opted out,
+  // because it sends its own digest instead of one email per article.
   if (!spec.skipNotify) {
     await notifyArticleGenerated(admin, brand.id, data.id, String(article.title)).catch(swallow('String failed'));
   }
@@ -570,7 +534,7 @@ ${productsList}
 REAL external sources you may cite (exact URLs only — never invent a URL or a statistic):
 ${citeList}
 
-ANOMALIA NETWORK LINKS you may optionally include (0–2, exact URLs only, only where useful):
+DAZERO NETWORK LINKS you may optionally include (0–2, exact URLs only, only where useful):
 ${networkList}
 
 Research notes (facts/statistics you may use, each already tied to a source above):

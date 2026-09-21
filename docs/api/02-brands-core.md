@@ -32,7 +32,7 @@ Elenco di tutti i brand accessibili all'utente autenticato (per API key: limitat
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -89,7 +89,7 @@ Note: `plan` è `null` senza piano attivo; `kit` è `null` senza riga `brand_kit
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -137,7 +137,7 @@ Note: `platforms` è un array di coppie `[piattaforma, numero post]`; `topPosts`
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/analytics" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/analytics" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -191,7 +191,7 @@ Note: `monthLabel` segue la lingua del brand (`content_prefs.language`, fallback
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/calendar?month=2026-08" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/calendar?month=2026-08" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -213,7 +213,7 @@ Stato del "link in bio": URL corrente su `social_accounts.bio_url` dell'account 
   "bioUrl": "https://mio-brand.com/lp-offerta",
   "suggested": {
     "code": "Ab3xYz9q",
-    "url": "https://anomalia.so/l/Ab3xYz9q",
+    "url": "https://dazero.co/l/Ab3xYz9q",
     "clicks": 41,
     "targetUrl": "https://mio-brand.com/pagina-prodotto"
   }
@@ -225,7 +225,7 @@ Note: `suggested` è `null` se nessun link ha ricevuto click nella settimana; `b
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/bio?platform=instagram" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/bio?platform=instagram" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -261,7 +261,7 @@ Memorizza il link in bio sull'account attivo. Nota: l'applicazione effettiva sul
 **Esempio**:
 
 ```bash
-curl -s -X PUT "https://anomalia.so/api/v1/brands/mio-brand/bio" \
+curl -s -X PUT "https://dazero.co/api/v1/brands/mio-brand/bio" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"platform":"instagram","bio_url":"https://mio-brand.com/lp-offerta"}'
@@ -288,7 +288,7 @@ Livello di pubblicazione corrente (`brands.content_prefs.publishing.mode`) e acc
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/publishing" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/publishing" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -320,7 +320,7 @@ Imposta il livello di pubblicazione: `manual` (solo account auto-publish immedia
 **Esempio**:
 
 ```bash
-curl -s -X PUT "https://anomalia.so/api/v1/brands/mio-brand/publishing" \
+curl -s -X PUT "https://dazero.co/api/v1/brands/mio-brand/publishing" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"mode":"auto_curated"}'
@@ -358,7 +358,7 @@ Note: `skipped > 0` indica brand non "due" per cadenza o run già in corso; `err
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/tick" -H "Authorization: Bearer $TOKEN"
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/tick" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -389,7 +389,7 @@ Gli id restituiti sono quelli che `POST /posts` accetta in `media_ids`.
       "title": "Foto prodotto",
       "description": "…",
       "tags": ["prodotto"],
-      "url": "https://anomalia.so/a/K7BX2MQ4",
+      "url": "https://dazero.co/a/K7BX2MQ4",
       "created_at": "2026-08-13T10:00:00.000Z"
     }
   ]
@@ -399,7 +399,7 @@ Gli id restituiti sono quelli che `POST /posts` accetta in `media_ids`.
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/media?query=logo&limit=20" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/media?query=logo&limit=20" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -442,7 +442,7 @@ viene speso: il file viene copiato, non generato.
   "width": 1080,
   "height": 1350,
   "source_url": "https://cdn.example.com/render/final.png",
-  "url": "https://anomalia.so/a/K7BX2MQ4"
+  "url": "https://dazero.co/a/K7BX2MQ4"
 }
 ```
 
@@ -452,7 +452,7 @@ ed è il valore conservato come provenienza sulla riga di libreria.
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/media" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/media" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"url":"https://cdn.example.com/render/final.png","title":"Chiusura campagna"}'
@@ -511,7 +511,7 @@ non ce n'è.
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/doctor" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/doctor" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -586,6 +586,6 @@ della funzione.
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/goals?limit=50" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/goals?limit=50" \
   -H "Authorization: Bearer $TOKEN"
 ```

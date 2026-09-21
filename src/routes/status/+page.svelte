@@ -44,13 +44,13 @@
 </script>
 
 <svelte:head>
-  <title>Anomalia — Status</title>
+  <title>dazero — Status</title>
   <meta name="robots" content="noindex" />
 </svelte:head>
 
 <main class="status-page">
   <header>
-    <a class="logo" href="/">Anomalia</a>
+    <a class="logo" href="/">dazero</a>
     <h1>System Status</h1>
   </header>
 

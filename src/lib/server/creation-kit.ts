@@ -1,7 +1,7 @@
 /**
  * THE CREATION KIT — the brief an external model reads BEFORE it writes one post.
  *
- * The feature here is SELECTION, not retrieval. Anomalia already holds a library: nine platform
+ * The feature here is SELECTION, not retrieval. dazero already holds a library: nine platform
  * playbooks, nineteen post templates, every approved rubric, every past post. Handing all of it
  * over on every turn is the failure mode this tool exists to avoid — it floods the model's context
  * and anchors it on whatever happened to be longest. So the kit answers ONE job (a goal, some
@@ -13,7 +13,7 @@
  * rubrics, the owner's rewrites, the brand's own history, the calendar. What this file owns is
  * KIT_SECTIONS: which sections exist, in what order they yield when the budget runs out.
  */
-import type { GetCreationKitResult } from '@anomalia/api-contracts';
+import type { GetCreationKitResult } from '@dazero/api-contracts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import POST_TEMPLATES from '$lib/agent-docs/skills/social/references/post-templates.md?raw';
 import type { ContentFormat } from '$lib/content-formats';
@@ -393,7 +393,7 @@ function buildHistory({ job, sources }: KitContext) {
 
 /**
  * The sections, ordered by the plan's guidance precedence: hard platform constraints first, then
- * verified brand facts and approved voice, then the rubric, then Anomalia's own template. Evidence
+ * verified brand facts and approved voice, then the rubric, then dazero's own template. Evidence
  * comes last because the plan is explicit that past winners are evidence, not instructions — and
  * `precedence` doubles as the yield order, so what a kit loses to the budget is always the least
  * authoritative thing it was carrying. Rank 1 is never dropped.

@@ -1,6 +1,5 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { canEnter } from '$lib/server/access';
 import { ensureOrgForUser } from '$lib/server/org';
 import { canStartNewSlot } from '$lib/server/brand-limits';
 import { logOnboardingError } from '$lib/server/onboarding-errors';
@@ -13,8 +12,6 @@ import { randomUUID } from 'node:crypto';
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
-
   let body: { id?: unknown; phase?: unknown; draft?: unknown };
   try {
     body = await request.json();

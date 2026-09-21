@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
 import { cadenceAllowed, normalizePlan, saveProposedPlan } from '$lib/server/editorial-plan';
 import { appOrigin } from '$lib/server/app-url';
-import { SAVE_PLAN, statusForFailure } from '@anomalia/api-contracts';
+import { SAVE_PLAN, statusForFailure } from '@dazero/api-contracts';
 
 export const POST: RequestHandler = async ({ request, params, url }) => {
   const { supabase, error, apiKey } = await authenticate(request);
@@ -33,6 +33,6 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
     plan_id: saved.id,
     status: 'proposed',
     weeks: plan.weeks.length,
-    review_url: `${appOrigin(url)}/app/${brand.slug}/editorial`
+    review_url: `${appOrigin(url)}/app/${brand.slug}/calendar`
   });
 };

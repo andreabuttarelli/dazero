@@ -1,10 +1,10 @@
 {
   "version": 1,
   "skills": {
-    "anomalia": {
-      "source": "anomaliaso/anomalia",
+    "dazero": {
+      "source": "andreabuttarelli/dazero",
       "sourceType": "github",
-      "skillPath": "cli/skills/anomalia/SKILL.md",
+      "skillPath": "cli/skills/dazero/SKILL.md",
       "computedHash": "344d850749e5dce157c886effa52e1d2691516d8ce3ee4f0d33bf38d6fd6edf6"
     },
     "composio": {

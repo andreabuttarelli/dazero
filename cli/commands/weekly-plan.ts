@@ -8,7 +8,7 @@ export async function cmdWeeklyPlan(slug: string, opts: {
   verbose?: boolean;
 }) {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: anomalia login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
 
   const action = opts.action ?? 'show';
 
@@ -53,7 +53,7 @@ async function showWeeklyPlan(token: string, slug: string, week?: number) {
 
   if (!data.plan) {
     info('Nessun piano editoriale attivo.');
-    console.log(`\n  ${c.dim('Usa:')} anomalia plan ${slug} propose  ${c.dim('per generare il piano')}`);
+    console.log(`\n  ${c.dim('Usa:')} dazero plan ${slug} propose  ${c.dim('per generare il piano')}`);
     console.log();
     return;
   }
@@ -102,11 +102,11 @@ async function showWeeklyPlan(token: string, slug: string, week?: number) {
           String(s.angle ?? '—').slice(0, 50),
         ])
       );
-      console.log(`\n  ${c.dim('Usa:')} anomalia weekly-plan ${slug} produce --week ${weekIdx ?? 0}  ${c.dim('→ produci tutti')}`);
+      console.log(`\n  ${c.dim('Usa:')} dazero weekly-plan ${slug} produce --week ${weekIdx ?? 0}  ${c.dim('→ produci tutti')}`);
     }
   } else {
     info('\n  Nessun seed per questa settimana.');
-    console.log(`  ${c.dim('Usa:')} anomalia weekly-plan ${slug} plan --week ${weekIdx ?? 0}  ${c.dim('→ genera seeds')}`);
+    console.log(`  ${c.dim('Usa:')} dazero weekly-plan ${slug} plan --week ${weekIdx ?? 0}  ${c.dim('→ genera seeds')}`);
   }
 
   // Quota
@@ -120,7 +120,7 @@ async function planWeek(token: string, slug: string, week?: number) {
   if (week === undefined) { console.error('--week è obbligatorio (0-3)'); process.exit(1); }
   console.log(c.yellow(`Generazione seeds per settimana ${week + 1}…`));
   const result = await api.planWeek(token, slug, week);
-  ok(`Seeds generati. Usa ` + c.bold(`anomalia weekly-plan ${slug}`) + ` per vederli.`);
+  ok(`Seeds generati. Usa ` + c.bold(`dazero weekly-plan ${slug}`) + ` per vederli.`);
 }
 
 async function produceWeek(token: string, slug: string, week?: number) {

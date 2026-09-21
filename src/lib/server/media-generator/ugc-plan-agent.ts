@@ -134,7 +134,7 @@ export function buildUgcPlanAgentSystem(opts: {
         .map((f, i) => `#${i + 1} ${f}`)
         .join(', ')}.`
     : '';
-  return `You are Anomalia's UGC script planner for brand "${opts.brandName}".
+  return `You are dazero's UGC script planner for brand "${opts.brandName}".
 
 Workflow (mandatory):
 1. Call read_brand_studio FIRST — learn what the brand is, sells, and how it talks.

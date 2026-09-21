@@ -1,5 +1,4 @@
 import { swallow } from '$lib/server/swallow';
-import { bilingualNoticeLocale } from '$lib/i18n/locale';
 import { GEMINI_MAX_OUTPUT_TOKENS } from '$lib/server/ai-output-limits';
 import { tool, stepCountIs, hasToolCall, type ModelMessage, type UIMessage } from 'ai';
 import { harnessStreamText } from '$lib/server/harness';
@@ -37,7 +36,7 @@ import {
 } from '$lib/motion-video/source-ops';
 import { resolveUserTurnMediaParts, type MediaPart } from '$lib/media-parts';
 import { extractSdkUsage, logAiCall } from '$lib/server/ai-log';
-import { CHAT_USER_ERROR } from '$lib/server/chat/report-error';
+import { CHAT_USER_ERROR } from '$lib/server/designer/report-error';
 import { MOTION_ASSET_MINT_HINT } from '$lib/server/media-origin';
 import { mintStandaloneImage } from '$lib/server/mint-standalone-image';
 import { loadMediaLibraryPromptSection } from '$lib/server/brand-media';
@@ -69,13 +68,11 @@ import {
 	createMotionReferenceTools,
 	type ReferenceStudy
 } from '$lib/server/motion-video/reference-tools';
-import { pickTools } from '$lib/server/chat/agents';
-import { createChatTools } from '$lib/agent/tools/index';
 import { createAgentBase } from '$lib/server/agent-base';
 import { isSandboxConfigured } from '$lib/server/sandbox';
 import { createMotionRenderTools, readSourceMeta } from '$lib/server/motion-video/render-tools';
 import { createMotionOutputTools } from '$lib/server/motion-video/output-tools';
-import { geminiFast } from '$lib/server/chat/model';
+import { geminiFast } from '$lib/server/ai-model';
 import { motionAgentModel } from '$lib/server/motion-video/model';
 
 export type MotionPersistResult = { id: string; title: string };
@@ -142,79 +139,6 @@ async function assertImageUrlsLoad(next: string, known: string) {
 	}
 }
 
-/**
- * What the studio does NOT take from the chat's motion agent, and why each one.
- *
- * The studio agent had fifteen tools against the chat agent's sixty-three, which is why it invented
- * product UI it could have captured and wrote claims it could have read. It now takes that agent's
- * set — same specialist, same capabilities — minus three groups that are wrong HERE specifically:
- *
- *  1. The id-taking source tools. The studio's own `write_source` / `replace_source` / `set_title`
- *     are bound to the tiles selected for this turn and honour the canvas and reflow rules the
- *     picker set. `write_motion_source(video_id)` bypasses all of that and would let a turn edit a
- *     composition nobody selected.
- *  2. Chat affordances the workbench cannot draw. `ask_user_questions` renders clickable options in
- *     the chat and NOTHING here — the model would ask and the user would never see the question.
- *     A tool whose output the surface cannot render is worse than a missing one.
- *  3. The SEO research pack. Seven DataForSEO endpoints, the audits and the blog reads cannot
- *     inform a six-second kinetic ad; they are in the shared set for the chat's convenience and
- *     here they are only schema in the context window.
- */
-const MOTION_STUDIO_EXCLUDED = new Set([
-	// 1 — the studio owns these, bound to the selection
-	'create_motion_video',
-	'list_motion_videos',
-	'grep_motion_source',
-	'read_motion_source',
-	'replace_motion_source',
-	'write_motion_source',
-	// 2 — no renderer on this surface
-	'ask_user_questions',
-	'propose_open_tab',
-	'offer_upgrade',
-	'show_setup_checklist',
-	'check_job_status',
-	'set_section_status',
-	'update_demo_account',
-	// 3 — cannot inform a composition
-	// Il pacchetto dfs_* stava qui, e il 23/8/2026 ha seguito i cinque qui sotto: è uscito da
-	// SHARED_TOOL_KEYS ed è tornato a `web`. Non arriva più, quindi non c'è più niente da
-	// escludere — e nominarlo lo stesso sarebbe un'esclusione che non esclude nulla.
-	// I cinque tool di SEO/blog/sito che stavano qui sono spariti dall'elenco il 22/8/2026, e non
-	// perché servissero: perché hanno smesso di arrivare. Erano in SHARED_TOOL_KEYS — cioè in mano
-	// a ogni mestiere — e sono tornati a `web`, l'unico che li possiede. Escluderli qui adesso non
-	// escluderebbe niente, ed è esattamente ciò che il test di questo elenco impedisce.
-	// 4 — la base li monta già, e li monta GIUSTI. `chat/tools.ts` monta i goal tool senza
-	//     condizioni (anche con threadId undefined — i turni di patch della QC non ne hanno uno),
-	//     e in `attach` i tool di superficie vincono le collisioni: il set_goal senza thread della
-	//     chat scavalcava quello condizionato di `agent-base.ts` (full && threadId), che è il
-	//     pattern corretto. Esclusi qui, resta solo il mount della base.
-	'set_goal',
-	'update_goal',
-	'close_goal'
-]);
-
-/** The chat motion agent's tools, minus what does not belong on this surface. */
-function studioChatTools(
-	supabase: SupabaseClient,
-	brandId: string,
-	userId: string,
-	threadId?: string,
-	/** Dashboard locale: feeds `report_locale` of the async jobs these tools enqueue. */
-	locale?: string
-) {
-	const scoped = pickTools(
-		// Bilingual normalization here, not at each caller: an untyped/absent locale must be
-		// English — the hardcoded 'it' used to send amazon.in-style users Italian job reports.
-		createChatTools(supabase, brandId, 'Europe/Rome', userId, '', bilingualNoticeLocale(locale), threadId),
-		'motion'
-	);
-	const out: Record<string, unknown> = {};
-	for (const [key, value] of Object.entries(scoped)) {
-		if (!MOTION_STUDIO_EXCLUDED.has(key)) out[key] = value;
-	}
-	return out;
-}
 
 /**
  * The reference wall gives the model structure, never pixels. `referenceHotlink` is what makes that
@@ -491,16 +415,6 @@ Need photo assets? Call read_media first. If a library image fits, use_library_i
 
 	const mediaSection =
 		supabase && brandId ? await loadMediaLibraryPromptSection(supabase, brandId) : '';
-	// The chat specialist's capabilities, on this surface too: capture_website and
-	// harvest_product_ui (the real product UI instead of an invented mockup), the brand and post
-	// reads, the attachments, and the peer consults. (`review_video` era in questo elenco fino al
-	// 23/8/2026: smontato alla fonte in chat/agents.ts, quindi `pickTools` non lo passa più nemmeno
-	// di qua. Qui la review la fa `render_stills`.) Spread FIRST so the studio's own
-	// selection-bound source tools and its reference tools win every name collision below.
-	const chatTools =
-		supabase && brandId && userId
-			? studioChatTools(supabase, brandId, userId, opts.threadId, opts.locale)
-			: {};
 	const libraryTools =
 		supabase && brandId && userId ? createMediaLibraryTools({ supabase, brandId, userId }) : {};
 	// Palette, type and logo came from the brand kit; what the product actually IS did not. This
@@ -698,7 +612,7 @@ Need photo assets? Call read_media first. If a library image fits, use_library_i
 
 	// Hoisted so `prepareStep` can re-anchor the studied reference on top of the SAME base system
 	// (contract appended per step) — see studiedByRef sopra e reference-tools.ts, sonda 2026-08-21.
-	const system = `You are Anomalia Motion Video — a Remotion creative engineer inside a Media-Generator-style gallery.
+	const system = `You are dazero Motion Video — a Remotion creative engineer inside a Media-Generator-style gallery.
 
 ${brandBrief}
 
@@ -809,7 +723,6 @@ When the user message is ANY QC brief — MOTION CRAFT QC, REFERENCE FIDELITY FA
 			() => (opts.deadlineReached ? opts.deadlineReached() : false)
 		],
 		tools: base.attach({
-			...chatTools,
 			...libraryTools,
 			...contextTools,
 			...referenceTools,

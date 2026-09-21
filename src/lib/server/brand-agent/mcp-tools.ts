@@ -45,7 +45,7 @@ function textOf(result: unknown): string {
 
 /**
  * I tool del brand vengono dal server MCP, non da un elenco scritto qui: un tool aggiunto su
- * mcp.anomalia.so compare nella chat senza toccare questo repo. Per questo il modulo non conosce
+ * mcp.dazero.co compare nella chat senza toccare questo repo. Per questo il modulo non conosce
  * nessun nome di tool.
  *
  * Un errore torna al modello come TESTO invece di far cadere il turno: «brand not found» è

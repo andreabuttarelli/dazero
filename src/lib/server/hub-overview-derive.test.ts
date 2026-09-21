@@ -15,43 +15,17 @@ describe('derivePostCounts', () => {
       { status: 'published' },
       { status: 'published' }
     ]);
-    expect(c).toEqual({ pending: 2, scheduled: 1, published: 3, radarReview: 0 });
+    expect(c).toEqual({ pending: 2, scheduled: 1, published: 3 });
   });
 
   it('ignores statuses Overview does not show', () => {
     const c = derivePostCounts([{ status: 'failed' }, { status: 'approved' }, { status: 'draft' }]);
-    expect(c).toEqual({ pending: 0, scheduled: 0, published: 0, radarReview: 0 });
-  });
-
-  it('counts radar review as source=radar AND needs_attention AND status<>published', () => {
-    const c = derivePostCounts([
-      { status: 'pending_user', source: 'radar', needs_attention: true }, // counts
-      { status: 'scheduled', source: 'radar', needs_attention: true }, // counts
-      { status: 'published', source: 'radar', needs_attention: true }, // excluded: published
-      { status: 'pending_user', source: 'radar', needs_attention: false }, // excluded: not flagged
-      { status: 'pending_user', source: 'scheduler', needs_attention: true } // excluded: not radar
-    ]);
-    expect(c.radarReview).toBe(2);
-  });
-
-  it('treats a radar post as both pending and needing review — the two are separate figures', () => {
-    const c = derivePostCounts([{ status: 'pending_user', source: 'radar', needs_attention: true }]);
-    expect(c.pending).toBe(1);
-    expect(c.radarReview).toBe(1);
-  });
-
-  it('does not count a truthy-but-not-true needs_attention', () => {
-    // The SQL predicate is `needs_attention = true`; NULL must not pass.
-    const c = derivePostCounts([
-      { status: 'pending_user', source: 'radar', needs_attention: null },
-      { status: 'pending_user', source: 'radar' }
-    ]);
-    expect(c.radarReview).toBe(0);
+    expect(c).toEqual({ pending: 0, scheduled: 0, published: 0 });
   });
 
   it('survives null/empty input', () => {
-    expect(derivePostCounts(null)).toEqual({ pending: 0, scheduled: 0, published: 0, radarReview: 0 });
-    expect(derivePostCounts([])).toEqual({ pending: 0, scheduled: 0, published: 0, radarReview: 0 });
+    expect(derivePostCounts(null)).toEqual({ pending: 0, scheduled: 0, published: 0 });
+    expect(derivePostCounts([])).toEqual({ pending: 0, scheduled: 0, published: 0 });
   });
 });
 

@@ -1,6 +1,6 @@
 /**
- * Thin HTTP client for the Anomalia CLI.
- * No Supabase, no DB access, no secrets — just HTTP calls to the Anomalia API.
+ * Thin HTTP client for the dazero CLI.
+ * No Supabase, no DB access, no secrets — just HTTP calls to the dazero API.
  */
 
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -115,9 +115,6 @@ export type BrandSummary = {
   slug: string;
   plan: string | null;
   status: string | null;
-  autopilot_enabled: boolean;
-  autopilot_failure_count: number;
-  last_autopilot_run_at: string | null;
   timezone: string;
   pendingCount: number;
 };
@@ -236,37 +233,6 @@ export type CalendarData = {
   timezone: string;
 };
 
-export type SeoData = {
-  audit: { tech_score: number | null; tech: Record<string, unknown> | null; search: Record<string, unknown> | null; backlinks: Record<string, unknown> | null; created_at: string } | null;
-  plan: { grade: string | null; evaluation: { grade: string; summary: string; strengths: string[]; weaknesses: string[] } | null; initiatives: SeoInitiative[]; created_at: string } | null;
-  assets: Record<string, { id: string; kind: string; title: string; format: string | null; target_path: string | null }>;
-};
-
-export type SeoInitiative = {
-  id: string; type: string; title: string; targetQuery?: string;
-  impact?: string; effort?: string; rationale?: string;
-};
-
-export type GeoData = {
-  audit: { tech_score: number | null; share_of_voice: number | null; citations: GeoCitation[] | null; created_at: string } | null;
-  aiOverview: Record<string, unknown> | null;
-  trend: { techScore: number | null; shareOfVoice: number | null; at: string }[];
-  artifacts: { id: string; kind: string; title: string; format: string | null; target_path: string | null }[];
-};
-
-export type GeoCitation = { prompt?: string; surface?: string; cited?: boolean; mentioned?: boolean; competitors?: string[] };
-
-export type KeywordsData = {
-  strategy: { focusSummary: string; keywords: KeywordRow[]; competitorGaps: { competitor: string; gap: string }[] } | null;
-  citations: { uri: string; title: string }[];
-  updatedAt: string | null;
-};
-
-export type KeywordRow = {
-  keyword: string; intent?: string; volume?: number | null; difficulty?: number | null;
-  opportunity?: string; action?: string; rationale?: string;
-};
-
 export type WebArticle = {
   id: string; slug: string; title: string;
   meta_title: string | null; meta_description: string | null;
@@ -374,9 +340,6 @@ export const api = {
   approveAll: (t: string, slug: string) =>
     post<{ results: { id: string; ok: boolean; error?: string }[] }>(`/api/v1/brands/${slug}/posts/approve-all`, t),
 
-  tick: (t: string, slug: string) =>
-    post<Record<string, unknown>>(`/api/v1/brands/${slug}/tick`, t),
-
   // ── Post editing ──────────────────────────────────────────────────────
 
   updatePost: (t: string, slug: string, postId: string, data: PostPatch) =>
@@ -462,27 +425,6 @@ export const api = {
 
   updateVoice: (t: string, slug: string, data: { mood?: string; tone?: string; register?: number; emotion?: string; character?: string; syntax?: string; platform_instructions?: Record<string, string>; avoid?: string[] }) =>
     post<{ ok: boolean }>(`/api/v1/brands/${slug}/voice/update`, t, data),
-
-  // ── SEO ───────────────────────────────────────────────────────────────
-
-  getSeo: (t: string, slug: string) => get<SeoData>(`/api/v1/brands/${slug}/seo`, t),
-
-  seoAction: (t: string, slug: string, body: { action: string; initiativeId?: string; guidance?: string }) =>
-    post<{ ok?: boolean; error?: string; grade?: string; initiatives?: number; added?: number; generated?: number; articleId?: string; techScore?: number | null }>(`/api/v1/brands/${slug}/seo`, t, body),
-
-  // ── GEO ───────────────────────────────────────────────────────────────
-
-  getGeo: (t: string, slug: string) => get<GeoData>(`/api/v1/brands/${slug}/geo`, t),
-
-  geoAction: (t: string, slug: string, action: 'audit' | 'fix') =>
-    post<{ ok?: boolean; techScore?: number | null; shareOfVoice?: number; generated?: number }>(`/api/v1/brands/${slug}/geo`, t, { action }),
-
-  // ── Keywords ──────────────────────────────────────────────────────────
-
-  getKeywords: (t: string, slug: string) => get<KeywordsData>(`/api/v1/brands/${slug}/keywords`, t),
-
-  refreshKeywords: (t: string, slug: string) =>
-    post<{ ok: boolean; keywords: number }>(`/api/v1/brands/${slug}/keywords`, t),
 
   // ── Web / Blog ────────────────────────────────────────────────────────
 

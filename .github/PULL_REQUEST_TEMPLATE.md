@@ -31,7 +31,7 @@ rejected alternatives, libraries used and why. -->
 Verification architecture used:
 - Local DB: [ ]
 - Worktree app running: [ ]
-- Login: test@anomalia.so / 123456 on the demo brand -->
+- Login: test@dazero.co / 123456 on the demo brand -->
 
 ## Anything Else?
 

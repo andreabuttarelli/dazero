@@ -123,7 +123,7 @@
       </label>
       <label class="fld" class:wide={!isGoogle}>
         <span class="lb">{$_('app.ads.new.landingLabel')} <span class="opt">— {$_('app.ads.new.optional')}</span></span>
-        <input name="landingPageUrl" type="text" inputmode="url" bind:value={landingPageUrl} placeholder={brand.website ?? 'anomalia.so'} />
+        <input name="landingPageUrl" type="text" inputmode="url" bind:value={landingPageUrl} placeholder={brand.website ?? 'dazero.co'} />
       </label>
       <label class="fld wide">
         <span class="lb">{$_('app.ads.new.briefLabel')} <span class="opt">— {$_('app.ads.new.optional')}</span></span>
@@ -278,7 +278,7 @@
         </div>
         <label class="fld wide">
           <span class="lb">{$_('app.ads.landingUrl')}</span>
-          <input name="landingPageUrl" type="text" inputmode="url" bind:value={landingPageUrl} placeholder="anomalia.so" />
+          <input name="landingPageUrl" type="text" inputmode="url" bind:value={landingPageUrl} placeholder="dazero.co" />
         </label>
 
         {#if isGoogle && campaignType === 'DISPLAY'}

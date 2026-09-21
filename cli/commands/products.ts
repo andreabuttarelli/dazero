@@ -4,7 +4,7 @@ import { section, c, table, info, ok } from '../lib/display.ts';
 
 export async function cmdProducts(slug: string, opts: { action?: string }) {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: anomalia login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
 
   const action = opts.action ?? 'list';
   switch (action) {
@@ -23,7 +23,7 @@ async function listProducts(token: string, slug: string) {
   const { products } = await api.listProducts(token, slug);
   section(`Prodotti (${products.length})`);
   if (!products.length) {
-    info('Nessun prodotto. Usa `anomalia products ' + slug + ' sync` per importarli dal sito.');
+    info('Nessun prodotto. Usa `dazero products ' + slug + ' sync` per importarli dal sito.');
     return;
   }
   // Group by category for a readable overview.

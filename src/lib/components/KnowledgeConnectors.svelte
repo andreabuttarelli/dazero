@@ -24,7 +24,6 @@
     parseNotionPageSelection,
     type NotionPageOption
   } from '$lib/notion-pages';
-  import { searchConsoleSettingsHref } from '$lib/connectors';
   import ScopePicker from '$lib/components/ScopePicker.svelte';
   import DriveFilePicker from '$lib/components/DriveFilePicker.svelte';
   import { parseDriveFileSelection, parseDriveFolderSelection } from '$lib/drive-folders';
@@ -46,12 +45,6 @@
     last_error: string | null;
   };
 
-  export type GscConnectorStatus = {
-    configured: boolean;
-    connected: boolean;
-    siteUrl: string | null;
-  };
-
   let {
     brandSlug,
     sources = [],
@@ -63,7 +56,6 @@
     githubReposError = '',
     notionPages = [],
     notionPagesError = '',
-    gsc = null,
     formError = ''
   }: {
     brandSlug: string;
@@ -76,7 +68,6 @@
     githubReposError?: string;
     notionPages?: NotionPageOption[];
     notionPagesError?: string;
-    gsc?: GscConnectorStatus | null;
     formError?: string;
   } = $props();
 
@@ -105,7 +96,6 @@
   const connectionByKey = $derived(new Map(connections.map((c) => [c.toolkit_slug, c])));
   const githubSource = $derived(sourceByProvider.get('github') ?? null);
   const notionSource = $derived(sourceByProvider.get('notion') ?? null);
-  const gscHref = $derived(searchConsoleSettingsHref(brandSlug));
   const savedGithubKey = $derived(parseGithubRepoSelection(githubSource?.settings).join('\0'));
   const savedNotionKey = $derived(parseNotionPageSelection(notionSource?.settings).map((p) => p.id).join('\0'));
 
@@ -200,17 +190,12 @@
     pages = 1;
   });
   const visibleItems = $derived(ranked.slice(0, pages * PAGE_SIZE));
-  const showGsc = $derived(
-    gsc && (!needle || $_('app.settings.searchConsole.title').toLowerCase().includes(needle))
-      ? gsc
-      : null
-  );
 
   async function connectIntegration(toolkitSlug: string) {
     connecting = toolkitSlug;
     connectError = '';
     try {
-      const res = await fetch(`/app/${brandSlug}/knowledge/connect`, {
+      const res = await fetch(`/app/${brandSlug}/studio/knowledge/connect`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ action: 'session', toolkit: toolkitSlug })
@@ -231,7 +216,7 @@
       let connected = false;
       while (!connected && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, CLAIM_INTERVAL_MS));
-        const claim = await fetch(`/app/${brandSlug}/knowledge/connect`, {
+        const claim = await fetch(`/app/${brandSlug}/studio/knowledge/connect`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ action: 'claim', toolkit: toolkitSlug })
@@ -256,17 +241,6 @@
 {#if connectError}
   <p class="banner err">{connectError}</p>
 {/if}
-
-{#snippet gscLogo()}
-  <!-- Google Search Console mark: Google-blue magnifier over the red/yellow/green bars. -->
-  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-    <rect x="3" y="13" width="3" height="7" rx="1" fill="#EA4335" />
-    <rect x="8" y="9" width="3" height="11" rx="1" fill="#FBBC05" />
-    <rect x="13" y="15" width="3" height="5" rx="1" fill="#34A853" />
-    <circle cx="16" cy="8" r="4.4" fill="none" stroke="#4285F4" stroke-width="2" />
-    <path d="M19.3 11.3 L22 14" stroke="#4285F4" stroke-width="2" stroke-linecap="round" />
-  </svg>
-{/snippet}
 
 {#snippet logoFor(item: CatalogItem)}
   <span class="source-icon">
@@ -308,7 +282,7 @@
       {$_('app.settings.connectors.catalogCount', { values: { n: catalog.length } })}
     {/if}
   </p>
-  {#if ranked.length === 0 && !showGsc}
+  {#if ranked.length === 0}
     <p class="muted">
       {onlyConnected && !needle
         ? $_('app.settings.connectors.noneConnected')
@@ -416,26 +390,6 @@
       </li>
     {/each}
 
-    {#if showGsc}
-      {@const gsc = showGsc}
-      <li class="source-card" class:connected={gsc.connected}>
-        <div class="source-head">
-          <span class="source-icon">{@render gscLogo()}</span>
-          <strong>{$_('app.settings.searchConsole.title')}</strong>
-          {#if gsc.connected}
-            <span class="dot status-ready" title={$_('app.knowledge.sources.status.active')}></span>
-          {/if}
-        </div>
-        <p class="hint">{$_('app.settings.connectors.gscHint')}</p>
-        <p class="meta">{gsc.connected ? (gsc.siteUrl ?? '') : ''}</p>
-        <div class="source-actions">
-          <a class="btn primary" href={gscHref}>
-            <Plug size={14} strokeWidth={2} />
-            {gsc.connected ? $_('app.settings.connectors.gscOpen') : $_('app.settings.connectors.gscConnect')}
-          </a>
-        </div>
-      </li>
-    {/if}
   </ul>
   {#if ranked.length > visibleItems.length}
     <button class="btn soft more" type="button" onclick={() => (pages += 1)}>

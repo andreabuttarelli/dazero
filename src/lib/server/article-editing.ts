@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Article } from '@anomalia/api-contracts';
+import type { Article } from '@dazero/api-contracts';
 import { BLOG_LOCALE_LANGUAGE, isBlogLocale } from '$lib/blog-locales';
 import { resolveScheduleInput } from '$lib/server/clock';
 import { formatInZone } from '$lib/server/schedule';

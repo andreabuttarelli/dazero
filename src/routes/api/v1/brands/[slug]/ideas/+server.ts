@@ -9,7 +9,7 @@ import {
 } from '$lib/server/disruptive-ideas';
 import { isContrastDeviceId, isDisruptiveStatus } from '$lib/disruptive';
 
-// Il banco idee dalla CLI: leggerlo è il punto (`anomalia ideas <slug>`), perché la testa
+// Il banco idee dalla CLI: leggerlo è il punto (`dazero ideas <slug>`), perché la testa
 // creativa non è quasi mai davanti alla pagina quando serve. Nessuna chiamata AI qui — è lettura
 // e stato — quindi niente gateAiAction: la scrittura chiede solo che la chiave non sia read-only.
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MODEL_FAMILY_IDS } from '@anomalia/agent-contracts/contracts';
+import { MODEL_FAMILY_IDS } from '$lib/models/families';
 import {
   CHAT_CUSTOM_MODELS,
   CHAT_TIERS,

@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, gateAiAction } from '$lib/server/cli-auth';
 import { generateBrandMedia, listMediaJobs } from '$lib/server/media-generate';
-import { CHECK_MEDIA_JOB_READ, GENERATE_MEDIA, statusForFailure } from '@anomalia/api-contracts';
+import { CHECK_MEDIA_JOB_READ, GENERATE_MEDIA, statusForFailure } from '@dazero/api-contracts';
 
 // Quattro immagini di fila stanno sotto il minuto, ma non sotto il default.
 export const config = { maxDuration: 300 };

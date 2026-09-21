@@ -12,7 +12,7 @@ const sample = {
     { type: 'space' as const },
     { type: 'headline' as const, text: 'Ti ha escluso\ndalla risposta.' },
     { type: 'space' as const },
-    { type: 'footer' as const, brand: 'Anomalia', note: '25€/mese' }
+    { type: 'footer' as const, brand: 'dazero', note: '25€/mese' }
   ]
 };
 
@@ -47,7 +47,7 @@ describe('composition floor', () => {
       blocks: [
         { type: 'kicker', text: 'Etichetta' },
         { type: 'headline', text: 'Titolo' },
-        { type: 'footer', brand: 'Anomalia' }
+        { type: 'footer', brand: 'dazero' }
       ]
     });
     expect(types(g)).toEqual(['kicker', 'space', 'headline', 'space', 'footer']);
@@ -59,7 +59,7 @@ describe('composition floor', () => {
       { type: 'space' as const },
       { type: 'headline' as const, text: 'Titolo' },
       { type: 'space' as const },
-      { type: 'footer' as const, brand: 'Anomalia' }
+      { type: 'footer' as const, brand: 'dazero' }
     ];
     expect(types(parseGraphic({ blocks }))).toEqual(types({ blocks }));
   });

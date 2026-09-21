@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
 import { appOrigin } from '$lib/server/app-url';
-import { CREATE_SHARE, LIST_SHARES_READ, statusForFailure } from '@anomalia/api-contracts';
+import { CREATE_SHARE, LIST_SHARES_READ, statusForFailure } from '@dazero/api-contracts';
 import { createSharedView, currentShareMonth, listSharedViews, shareFailure } from '$lib/server/shared-views';
 
 export const GET: RequestHandler = async ({ request, params }) => {

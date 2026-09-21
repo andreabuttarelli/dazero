@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { referenceHotlink } from './source-ops';
 
-const CLEAN = `<Img src="https://storage.googleapis.com/anomalia/render_1.png" />`;
+const CLEAN = `<Img src="https://storage.googleapis.com/dazero/render_1.png" />`;
 
 describe('referenceHotlink', () => {
   it('catches the plausible reference path a model writes from the pattern', () => {

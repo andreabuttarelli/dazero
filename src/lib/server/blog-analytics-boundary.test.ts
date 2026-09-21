@@ -8,7 +8,7 @@ import { join } from 'node:path';
  * Il blog di un brand esce da due alberi di rotte: `src/routes/_site` (il dominio del brand) e
  * `src/routes/blog/[site]` (`/blog/<slug>`, che sta sulla NOSTRA origine, insieme a `/app` e alla
  * sessione di chi e' loggato). I tracker di terze parti possono girare solo sul primo: un container
- * GA4 o GTM sul secondo eseguirebbe JavaScript arbitrario con i permessi di anomalia.so, e chi lo
+ * GA4 o GTM sul secondo eseguirebbe JavaScript arbitrario con i permessi di dazero.co, e chi lo
  * amministra non siamo noi.
  *
  * `siteAnalytics` e' l'unica porta per quei tracker, e questo test dice da dove si passa. Se

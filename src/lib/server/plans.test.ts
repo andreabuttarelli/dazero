@@ -7,7 +7,7 @@ import { creditQuota } from './credits';
 // stay in sync. This is the guard: raise POST_QUOTAS (or the unit costs) past what the plan's
 // credits can pay for and it fails here, not on a customer's invoice.
 //
-// Post production is ~33% of a plan's credits in practice — the rest is blog, radar, SEO/GEO
+// Post production is ~33% of a plan's credits in practice — the rest is blog, SEO/GEO
 // audits, strategy and chat. Credits are billed at 100 = $1.
 const POST_BUDGET_SHARE = 0.33;
 const CREDITS_PER_USD = 100;

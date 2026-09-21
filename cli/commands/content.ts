@@ -4,7 +4,7 @@ import { section, statusBadge, formatDate, c, table, info, ok } from '../lib/dis
 
 export async function cmdContent(slug: string, opts: { status?: string; clear?: string }) {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: anomalia login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
 
   // Bulk-clear takes priority when requested.
   if (opts.clear) {

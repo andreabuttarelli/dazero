@@ -3,14 +3,12 @@ import { fail, redirect } from '@sveltejs/kit';
 import { isPlanKey, normalizeCycle } from '$lib/plans';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { sendEmail, passwordResetEmailSubject, passwordResetEmailHtml, passwordResetEmailText } from '$lib/server/email';
-import { canEnter } from '$lib/server/access';
 import { isPlanGoEnabled } from '$lib/server/feature-flags';
 import { emailLocale } from '$lib/server/email-i18n';
 import { sanitizeWebsiteParam } from '$lib/website-param';
 import { appOrigin } from '$lib/server/app-url';
 import { GUEST_ONBOARDING_COOKIE, hasGuestOnboardingCookie } from '$lib/guest-onboarding';
 import { takeOAuthReturn } from '$lib/server/oauth';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Cookies, RequestEvent } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -74,11 +72,10 @@ function appBase(url: URL): string {
   return appOrigin(url);
 }
 
-// After a successful sign-in/sign-up we route by role (same logic as the OAuth callback):
-// CLI login → /cli/callback; non-admins (waitlist on) → /waitlist; "next=onboarding" intent
+// After a successful sign-in/sign-up we route (same logic as the OAuth callback):
+// CLI login → /cli/callback; "next=onboarding" intent
 // or guest-funnel cookie → new-brand onboarding; everyone else → /app. Always throws.
 async function routeAfterAuth(
-  supabase: SupabaseClient,
   data: FormData,
   cliPort: string,
   cliState: string,
@@ -91,8 +88,6 @@ async function routeAfterAuth(
   if (cliPort) {
     throw redirect(303, `/cli/callback?cli_port=${encodeURIComponent(cliPort)}&cli_state=${encodeURIComponent(cliState)}`);
   }
-
-  if (!(await canEnter(supabase))) throw redirect(303, '/waitlist');
 
   if (
     String(data.get('next') ?? '') === 'onboarding' ||
@@ -123,7 +118,7 @@ export const actions: Actions = {
       return code ? fail(400, { errorCode: code, email }) : fail(400, { error: error.message, email });
     }
 
-    return routeAfterAuth(supabase, data, cliPort, cliState, cookies);
+    return routeAfterAuth(data, cliPort, cliState, cookies);
   },
 
   // Sign-up. We create an already-confirmed user via the admin API (no confirmation email — the
@@ -155,7 +150,7 @@ export const actions: Actions = {
     const { error: signErr } = await supabase.auth.signInWithPassword({ email, password });
     if (signErr) return fail(400, { error: signErr.message, email });
 
-    return routeAfterAuth(supabase, data, cliPort, cliState, cookies);
+    return routeAfterAuth(data, cliPort, cliState, cookies);
   },
 
   // Forgot-password. Generate a recovery link server-side (service role) and email it ourselves via

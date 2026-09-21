@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { ssrNoExternalForDeploy } from './ssr-no-external';
 
 describe('ssrNoExternalForDeploy', () => {
-  it('bundles @anomalia/* for node, whose Docker final stage installs without packages/', () => {
-    expect(ssrNoExternalForDeploy('node')).toContainEqual(/^@anomalia\//);
+  it('bundles @dazero/* for node, whose Docker final stage installs without packages/', () => {
+    expect(ssrNoExternalForDeploy('node')).toContainEqual(/^@dazero\//);
   });
 
   it('leaves simple-icons external for node, which ships full node_modules and needs no dead copy inlined', () => {
@@ -14,7 +14,7 @@ describe('ssrNoExternalForDeploy', () => {
     expect(ssrNoExternalForDeploy('')).toContain('simple-icons');
   });
 
-  it('does not bundle @anomalia/* for Vercel, which installs packages/ workspaces normally', () => {
-    expect(ssrNoExternalForDeploy('')).not.toContainEqual(/^@anomalia\//);
+  it('does not bundle @dazero/* for Vercel, which installs packages/ workspaces normally', () => {
+    expect(ssrNoExternalForDeploy('')).not.toContainEqual(/^@dazero\//);
   });
 });

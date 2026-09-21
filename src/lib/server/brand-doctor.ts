@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isPaidPlan } from '$lib/plans';
 import { isExportOnlyPlan } from '$lib/server/plans';
-import { PENDING_BACKLOG_AGE_MS, PENDING_BACKLOG_CAP } from '$lib/server/autopilot-thresholds';
 import { OWN_SOURCE } from '$lib/server/own-post-history';
 import { jobEnabledForBrand } from '$lib/server/job-roster';
 
@@ -13,7 +12,7 @@ import { jobEnabledForBrand } from '$lib/server/job-roster';
  * gate ha il suo `continue`, e nessuno di quei `continue` lasciava traccia. L'analytics review
  * agent è rimasto fermo per settimane senza che niente lo dicesse (docs/38-salto-di-qualita.md §1).
  *
- * Il pattern esiste già in un posto solo — `radarDiagnose`, che interroga ogni fonte dal vivo e
+ * Il pattern nasce da una diagnosi che interroga ogni fonte dal vivo e
  * dice perché una non trova niente. Qui è generalizzato: per ogni ciclo, **il primo gate che questo
  * brand non supera**, cosa serve per superarlo, e quando è girato l'ultima volta.
  *
@@ -51,9 +50,6 @@ export type DoctorLoop = {
 export type DoctorFacts = {
   now: number;
   plan: string | null;
-  autopilotEnabled: boolean;
-  autopilotFailureCount: number;
-  lastAutopilotRunAt: string | null;
   hasActiveEditorialPlan: boolean;
   connectedAccounts: number;
   /** Il piano vende zero account per progetto (Go): zero collegati è lo stato normale, non un guasto. */
@@ -67,13 +63,11 @@ export type DoctorFacts = {
   lastAnalyticsRunAt: string | null;
   /** Ultimo esito registrato per ciclo (loop_ticks), incluse le esclusioni. */
   lastTicks: Record<string, { at: string; outcome: string; reason: string | null } | undefined>;
-  /** Ultimo errore dell'autopilot, da scheduler_runs. */
-  lastSchedulerError: { at: string; error: string } | null;
 };
 
 const DAY = 24 * 60 * 60 * 1000;
-/** Deve restare allineato a MAX_CONSECUTIVE_FAILURES in scheduler.ts. */
-const AUTOPILOT_DISABLE_AFTER = 3;
+const PENDING_BACKLOG_CAP = 15;
+const PENDING_BACKLOG_AGE_MS = 7 * DAY;
 /** Deve restare allineato a FRESH_DAYS nel tick dell'analytics review. */
 const ANALYTICS_FRESH_DAYS = 6;
 
@@ -110,9 +104,8 @@ export function assessLoops(f: DoctorFacts): DoctorLoop[] {
   // ── 1. Distribuzione. Non è un cron: è la catena che rende sensato tutto il resto. Sta per
   // prima perché è il gate che, oggi, blocca la grande maggioranza dei brand.
   {
-    // I gate qui sotto sono quelli che runAutopilotForBrand applica davvero — stessa soglia,
-    // stessa finestra, stessa eccezione. Un doctor che riporta soglie sue manda l'utente a
-    // risolvere un problema che il codice non ha.
+    // Le soglie qui sotto sono quelle che la produzione applica davvero. Un doctor che riporta
+    // soglie sue manda l'utente a risolvere un problema che il codice non ha.
     const accountsBlock = f.connectedAccounts === 0 && !f.exportOnly;
     const backlogBlock = f.pendingStalePosts > PENDING_BACKLOG_CAP;
     const staleDays = Math.round(PENDING_BACKLOG_AGE_MS / (24 * 60 * 60 * 1000));
@@ -136,7 +129,7 @@ export function assessLoops(f: DoctorFacts): DoctorLoop[] {
           ? `${f.pendingStalePosts} post in attesa da più di ${staleDays} giorni (soglia: ${PENDING_BACKLOG_CAP}): la produzione è in pausa finché la coda non scende.`
           : `${f.pendingPosts} post in coda di approvazione, di cui ${f.pendingStalePosts} da più di ${staleDays} giorni (soglia: ${PENDING_BACKLOG_CAP}).`,
         ...(backlogBlock
-          ? { fix: 'Approva dalla mail (un tap), da /approvals, o con `anomalia approve <slug> --all`. Approvare o eliminare qualunque post fa ripartire la produzione.' }
+          ? { fix: 'Approva dalla mail (un tap), da /approvals, o con `dazero approve <slug> --all`. Approvare o eliminare qualunque post fa ripartire la produzione.' }
           : {})
       },
       {
@@ -164,56 +157,7 @@ export function assessLoops(f: DoctorFacts): DoctorLoop[] {
     });
   }
 
-  // ── 2. Autopilot (produzione ricorrente). Gate verificati in autopilot/tick + scheduler.ts.
-  {
-    const disabled = !f.autopilotEnabled;
-    const nearDisable = f.autopilotFailureCount > 0;
-    const gates: DoctorGate[] = [
-      {
-        id: 'autopilot_enabled',
-        status: disabled ? 'fail' : 'pass',
-        detail: disabled
-          ? f.autopilotFailureCount >= AUTOPILOT_DISABLE_AFTER
-            ? `Disattivato automaticamente dopo ${f.autopilotFailureCount} fallimenti consecutivi.`
-            : 'Autopilot spento.'
-          : 'Autopilot attivo.',
-        ...(disabled ? { fix: 'Riaccendilo dal roster su /agents (o in Impostazioni → Autopilot) dopo aver risolto la causa dei fallimenti.' } : {})
-      },
-      {
-        id: 'consecutive_failures',
-        status: nearDisable ? 'fail' : 'pass',
-        detail: nearDisable
-          ? `${f.autopilotFailureCount}/${AUTOPILOT_DISABLE_AFTER} fallimenti consecutivi${f.lastSchedulerError ? ` — ultimo: ${f.lastSchedulerError.error.slice(0, 200)}` : ''}.`
-          : 'Nessun fallimento consecutivo.',
-        ...(nearDisable ? { fix: "Guarda scheduler_runs.error: al terzo fallimento l'autopilot si spegne da solo." } : {})
-      },
-      {
-        id: 'editorial_plan',
-        // Non è bloccante: senza piano l'autopilot usa la cadenza di content_prefs. Ma cambia la
-        // finestra (≈settimanale con piano) e vale la pena dirlo.
-        status: f.hasActiveEditorialPlan ? 'pass' : 'unknown',
-        detail: f.hasActiveEditorialPlan
-          ? 'Piano editoriale attivo: una batch per settimana editoriale.'
-          : 'Nessun piano editoriale attivo: la cadenza viene da content_prefs.frequency.'
-      },
-      {
-        id: 'last_run',
-        status: f.lastAutopilotRunAt ? 'pass' : 'unknown',
-        detail: `Ultimo run riuscito: ${ago(f.lastAutopilotRunAt, f.now)}.`
-      }
-    ];
-    const v = verdict(gates);
-    loops.push({
-      loop: 'autopilot',
-      schedule: 'ogni giorno 06:00 UTC',
-      ...v,
-      status: v.status === 'blocked' && !disabled ? 'failing' : v.status,
-      gates,
-      lastRun: f.lastTicks.autopilot ?? null
-    });
-  }
-
-  // ── 3. Analytics review. Gate verificati uno per uno nel tick.
+  // ── 2. Analytics review. Gate verificati uno per uno nel tick.
   {
     const paid = isPaidPlan(f.plan);
     const ownDays = daysSince(f.ownHistoryAt, f.now);
@@ -273,14 +217,14 @@ export function doctorHeadline(loops: DoctorLoop[]): string {
 /** Tutte le letture, in parallelo dove possibile. Nessuna scrittura. */
 export async function collectDoctorFacts(
   admin: SupabaseClient,
-  brand: { id: string; plan?: string | null; autopilot_failure_count?: number | null; last_autopilot_run_at?: string | null; own_history_at?: string | null },
+  brand: { id: string; plan?: string | null; own_history_at?: string | null },
   now = Date.now()
 ): Promise<DoctorFacts> {
   const since30 = new Date(now - 30 * DAY).toISOString();
 
   const staleBefore = new Date(now - PENDING_BACKLOG_AGE_MS).toISOString();
 
-  const [accounts, plan, pending, pendingStale, published, lastAnalytics, ticks, schedErr] = await Promise.all([
+  const [accounts, plan, pending, pendingStale, published, lastAnalytics, ticks] = await Promise.all([
     admin.from('social_accounts').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).eq('status', 'active'),
     admin.from('editorial_plans').select('id').eq('brand_id', brand.id).eq('status', 'active').limit(1).maybeSingle(),
     admin.from('posts').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).eq('status', 'pending_user'),
@@ -311,15 +255,7 @@ export async function collectDoctorFacts(
       .select('loop, outcome, reason, created_at')
       .eq('brand_id', brand.id)
       .order('created_at', { ascending: false })
-      .limit(50),
-    admin
-      .from('scheduler_runs')
-      .select('created_at, error')
-      .eq('brand_id', brand.id)
-      .eq('status', 'failed')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+      .limit(50)
   ]);
 
   // Ultimo esito per ciclo: le righe arrivano già ordinate dal più recente, quindi la prima vince.
@@ -333,11 +269,6 @@ export async function collectDoctorFacts(
   return {
     now,
     plan: brand.plan ?? null,
-    // Il producer vive sul roster: acceso = nessun opt-out sulla chiave 'autopilot' (il booleano
-    // `brands.autopilot_enabled` è ritirato e non va più letto).
-    autopilotEnabled: await jobEnabledForBrand(brand.id, 'autopilot', admin),
-    autopilotFailureCount: Number(brand.autopilot_failure_count) || 0,
-    lastAutopilotRunAt: brand.last_autopilot_run_at ?? null,
     hasActiveEditorialPlan: Boolean(plan.data?.id),
     connectedAccounts: accounts.count ?? 0,
     exportOnly: isExportOnlyPlan(brand.plan),
@@ -346,16 +277,13 @@ export async function collectDoctorFacts(
     pendingStalePosts: pendingStale.count ?? 0,
     publishedLast30: published.count ?? 0,
     lastAnalyticsRunAt: lastAnalytics.data?.created_at ? String(lastAnalytics.data.created_at) : null,
-    lastTicks,
-    lastSchedulerError: schedErr.data?.error
-      ? { at: String(schedErr.data.created_at), error: String(schedErr.data.error) }
-      : null
+    lastTicks
   };
 }
 
 export async function brandDoctor(
   admin: SupabaseClient,
-  brand: { id: string; name?: string | null; slug?: string | null; plan?: string | null; autopilot_failure_count?: number | null; last_autopilot_run_at?: string | null; own_history_at?: string | null }
+  brand: { id: string; name?: string | null; slug?: string | null; plan?: string | null; own_history_at?: string | null }
 ) {
   const facts = await collectDoctorFacts(admin, brand);
   const loops = assessLoops(facts);
@@ -366,6 +294,6 @@ export async function brandDoctor(
     loops,
     // Onestà sul perimetro: questa diagnosi copre tre cicli su nove. Dire quali NON copre evita che
     // un "nessun blocco" venga letto come "tutto il prodotto sta funzionando".
-    notCovered: ['seo', 'geo', 'radar', 'field', 'blog', 'ads', 'weekly_recap']
+    notCovered: ['seo', 'geo', 'field', 'blog', 'ads', 'weekly_recap']
   };
 }

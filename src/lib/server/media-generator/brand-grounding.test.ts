@@ -6,13 +6,13 @@ import {
 } from './brand-grounding';
 import { buildAssignmentLines, buildUgcBatchPlanPrompt } from './ugc-batch';
 
-const anomalia: UgcBrandGrounding = {
-  name: 'Anomalia',
+const dazero: UgcBrandGrounding = {
+  name: 'dazero',
   about: 'Social media AI autopilot for brands — plans, produces and posts content.',
   category: 'SaaS / marketing automation',
   audience: 'Founders and marketers who hate manual posting',
   brandStyle: 'Direct, slightly irreverent, practical',
-  aiContext: 'Anomalia runs editorial plans, UGC, SEO and studio for brands.',
+  aiContext: 'dazero runs editorial plans, UGC, SEO and studio for brands.',
   offerings: [
     { title: 'Weekly plan', description: 'AI weekly content calendar', kind: 'feature' },
     { title: 'UGC Creator', description: 'Talking-head video batch', kind: 'feature' }
@@ -52,8 +52,8 @@ describe('identityFromAiContext', () => {
 
 describe('formatUgcBrandGrounding', () => {
   it('names the brand and forbids off-category life drama', () => {
-    const block = formatUgcBrandGrounding(anomalia);
-    expect(block).toMatch(/Anomalia/);
+    const block = formatUgcBrandGrounding(dazero);
+    expect(block).toMatch(/dazero/);
     expect(block).toMatch(/SaaS/);
     expect(block).toMatch(/Weekly plan/);
     expect(block).toMatch(/FORBIDDEN/);
@@ -67,13 +67,13 @@ describe('buildUgcBatchPlanPrompt', () => {
     const prompt = buildUgcBatchPlanPrompt({
       count: 2,
       prompt:
-        'fai ugc video che parli di anomalia, hai gli screenshots nei media. Illustra le features di anomalia, parlando di una feature a video',
+        'fai ugc video che parli di dazero, hai gli screenshots nei media. Illustra le features di dazero, parlando di una feature a video',
       productAssignments: [null, null],
       modelAssignments: [null, null],
-      brand: anomalia
+      brand: dazero
     });
     expect(prompt).toMatch(/BRAND IDENTITY/);
-    expect(prompt).toMatch(/Anomalia/);
+    expect(prompt).toMatch(/dazero/);
     expect(prompt).toMatch(/topic bible/i);
     expect(prompt).toMatch(/Illustra le features/);
     expect(prompt).toMatch(/Italian/);
@@ -87,7 +87,7 @@ describe('buildUgcBatchPlanPrompt', () => {
       prompt: 'Talk about the weekly plan feature',
       productAssignments: [{ id: '1', name: 'Weekly plan', urls: ['https://x.test/a.png'] }],
       modelAssignments: [{ id: 'm', name: 'Sofia', urls: ['https://x.test/f.png'] }],
-      brand: anomalia
+      brand: dazero
     });
     expect(prompt).toMatch(/product "Weekly plan"/);
     expect(prompt).toMatch(/speaker\/model "Sofia"/);
@@ -96,7 +96,7 @@ describe('buildUgcBatchPlanPrompt', () => {
 
 describe('buildAssignmentLines', () => {
   it('labels empty product slots with brand feature', () => {
-    const lines = buildAssignmentLines(2, [null, null], [null, null], 'Anomalia');
-    expect(lines).toMatch(/feature Anomalia/);
+    const lines = buildAssignmentLines(2, [null, null], [null, null], 'dazero');
+    expect(lines).toMatch(/feature dazero/);
   });
 });

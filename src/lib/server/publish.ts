@@ -241,7 +241,7 @@ export async function publishApprovedPost(
     .map((p) => (p ?? '').toLowerCase())
     .filter(Boolean);
 
-  // Backstop for rows that were saved without short-network cuts (Radar bug pre-fix, editor
+  // Backstop for rows that were saved without short-network cuts (editor
   // expanding platforms without filling overrides). Synthesise missing cuts so X/Threads don't
   // reject the full Instagram caption. Persist when we had to invent any.
   const ensuredCuts = ensureShortNetworkCuts(post.caption, targets, post.platform_captions);
@@ -667,7 +667,7 @@ export async function revokePublishedPost(
 // — in SQL `NULL >= x` is NULL, so an unstamped row is excluded forever and no insight is ever
 // produced. Every path that stamps posts.published_at must call this. Best-effort: a missing meta
 // row (or a pre-0153 DB) must never break a publish.
-export async function stampVisualMetaPublished(
+async function stampVisualMetaPublished(
   supabase: SupabaseClient,
   postId: string,
   publishedAt: string
@@ -707,174 +707,5 @@ export async function syncDuePosts(supabase: SupabaseClient, brandId: string): P
         await supabase.from('publish_logs').update({ status: 'failed', error: s.error }).eq('post_id', p.id).eq('status', 'scheduled');
       }
     } catch (error) { swallow('sync post status from zernio', error); }
-  }
-}
-
-// ── Phase 2b: DB↔Zernio divergence check ────────────────────────────────────
-
-export interface DivergentPost {
-  postId: string;
-  dbTime: string;
-  zernioTime: string;
-  zernioStatus: string;
-  zernioUrl: string | null;
-}
-
-export async function checkScheduleDivergence(
-  supabase: SupabaseClient,
-  brandId: string
-): Promise<{ divergent: DivergentPost[]; incidents: number }> {
-  // 1. All scheduled/approved posts that have been sent to Zernio
-  const { data: posts } = await supabase
-    .from('posts')
-    .select('id, scheduled_for, external_post_id')
-    .eq('brand_id', brandId)
-    .in('status', ['scheduled', 'approved'])
-    .not('external_post_id', 'is', null);
-
-  const divergent: DivergentPost[] = [];
-
-  for (const post of posts ?? []) {
-    if (!post.external_post_id || !post.scheduled_for) continue;
-    try {
-      // 2. Check Zernio's actual schedule for this post
-      const zernio = await getPostStatus(post.external_post_id);
-      if (!zernio?.scheduledFor) continue;
-
-      const dbTime = new Date(post.scheduled_for).getTime();
-      const zernioTime = new Date(zernio.scheduledFor).getTime();
-
-      // 3. If they differ by >5 min → divergence
-      if (Math.abs(dbTime - zernioTime) > 5 * 60_000) {
-        divergent.push({
-          postId: post.id,
-          dbTime: post.scheduled_for,
-          zernioTime: zernio.scheduledFor,
-          zernioStatus: zernio.status,
-          zernioUrl: zernio.url
-        });
-      }
-    } catch (error) { swallow('compare zernio schedule', error); }
-  }
-
-  // 4. If divergences found, create an incident (dedup via unique constraint)
-  let incidents = 0;
-  if (divergent.length > 0) {
-    await supabase.from('incidents').upsert({
-      brand_id: brandId,
-      kind: 'schedule_divergence',
-      severity: 'critical',
-      details: { posts: divergent, count: divergent.length },
-      detected_at: new Date().toISOString()
-    }, { onConflict: 'brand_id,kind,detected_on' });
-    incidents = divergent.length;
-  }
-
-  return { divergent, incidents };
-}
-
-// ── Phase 4: Unified reschedulePost ─────────────────────────────────────────
-
-/**
- * Re-schedule a post to a new time.
- * Guarantees 1:1 correspondence between DB and Zernio.
- *
- * Flow: cancel Zernio → update DB → re-publish to Zernio → verify time.
- * If any step fails, the error propagates (no silent swallowing).
- */
-export async function reschedulePost(
-  supabase: SupabaseClient,
-  postId: string,
-  newScheduledFor: string,
-  timezone: string
-): Promise<{ success: boolean; externalPostId?: string; error?: string }> {
-  // Import here to avoid circular dependency (post-editing imports from publish)
-  const { EDITOR_POST_COLS, requireZernioCancellation } = await import('./post-editing');
-
-  // 1. Load post
-  const { data: post, error: loadErr } = await supabase
-    .from('posts')
-    .select(EDITOR_POST_COLS)
-    .eq('id', postId)
-    .maybeSingle();
-
-  if (loadErr || !post) {
-    return { success: false, error: `Post not found: ${postId}` };
-  }
-
-  // 2. Cancel and verify every Zernio copy before changing the schedule or clearing its id.
-  try {
-    await requireZernioCancellation(supabase, postId);
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : String(e) };
-  }
-
-  // 3. Update DB (reset external IDs)
-  const { error: updateErr } = await supabase
-    .from('posts')
-    .update({
-      scheduled_for: newScheduledFor,
-      status: 'approved',
-      external_post_id: null,
-      published_url: null
-    })
-    .eq('id', postId);
-
-  if (updateErr) {
-    return { success: false, error: `DB update failed: ${updateErr.message}` };
-  }
-
-  // 4. Re-publish to Zernio with new time
-  const { data: updated } = await supabase
-    .from('posts')
-    .select(EDITOR_POST_COLS)
-    .eq('id', postId)
-    .maybeSingle();
-
-  if (!updated) {
-    return { success: false, error: 'Post disappeared after update' };
-  }
-
-  try {
-    const result = await publishApprovedPost(supabase, updated as ApprovablePost, timezone);
-
-    // 5. Read back from DB to get the external_post_id (publishApprovedPost writes it)
-    const { data: refreshed } = await supabase
-      .from('posts')
-      .select('external_post_id')
-      .eq('id', postId)
-      .maybeSingle();
-
-    const externalPostId = refreshed?.external_post_id ?? undefined;
-
-    // 6. VERIFY: read back from Zernio to confirm the time matches
-    if (externalPostId) {
-      try {
-        const zernioPost = await getPostStatus(externalPostId);
-        if (zernioPost?.scheduledFor) {
-          const diff = Math.abs(
-            new Date(newScheduledFor).getTime() - new Date(zernioPost.scheduledFor).getTime()
-          );
-          if (diff > 60_000) {
-            // Time mismatch — log incident but don't fail (the post IS scheduled, just wrong time)
-            await supabase.from('incidents').upsert({
-              brand_id: post.brand_id,
-              kind: 'reschedule_time_mismatch',
-              severity: 'warning',
-              details: {
-                postId,
-                requested: newScheduledFor,
-                actual: zernioPost.scheduledFor,
-                zernioPostId: externalPostId
-              }
-            }, { onConflict: 'brand_id,kind,detected_on' });
-          }
-        }
-      } catch (error) { swallow('verify scheduled post', error); }
-    }
-
-    return { success: true, externalPostId };
-  } catch (e) {
-    return { success: false, error: `Zernio publish failed: ${String(e)}` };
   }
 }

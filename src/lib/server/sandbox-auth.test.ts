@@ -85,7 +85,7 @@ describe('sandboxName', () => {
     expect(name).toContain(SANDBOX_GENERATION);
     // getOrCreate riprende per nome: senza la generazione nel nome, un brand con la sandbox
     // Amazon Linux continuerebbe a riprendere quella e il browser resterebbe rotto per sempre.
-    expect(name).not.toBe('anomalia-b1-research');
+    expect(name).not.toBe('dazero-b1-research');
   });
 
   // Il nome non porta più il profilo di rete (la policy si fissa alla creazione, ed è una sola):

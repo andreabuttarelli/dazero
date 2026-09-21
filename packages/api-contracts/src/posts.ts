@@ -25,7 +25,7 @@ const PostRow = z.object({
 
 const CreatePostInputSchema = z.object({
   platforms: z.array(z.string().min(1)).min(1).describe('Text-capable platforms, e.g. ["linkedin","x"]'),
-  caption: z.string().min(1).describe('The copy you wrote. Anomalia stores it as-is and writes nothing itself'),
+  caption: z.string().min(1).describe('The copy you wrote. dazero stores it as-is and writes nothing itself'),
   platform_captions: z
     .record(z.string(), z.string())
     .optional()
@@ -74,7 +74,7 @@ export const CREATE_POST = {
     'action that authorizes distribution. Text-capable platforms only — instagram and tiktok need ' +
     'an image, youtube needs a video. Two different media failures: `media_not_found` (400) means ' +
     'the id is not this brand — check it with list_media, and pass the full id, never a prefix; ' +
-    '`media_unavailable` (502) means the id is yours and Anomalia could not attach it, so ' +
+    '`media_unavailable` (502) means the id is yours and dazero could not attach it, so ' +
     'retrying other ids is wasted work — retry later or leave the media out. Free.',
   method: 'POST',
   pathUnderBrand: '/posts',

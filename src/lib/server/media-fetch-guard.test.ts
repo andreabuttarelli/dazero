@@ -233,7 +233,7 @@ describe('archiveImageToBucket', () => {
 
     expect(path).toBe('brand-1/thumb.jpg');
     expect(uploads).toHaveLength(1);
-    expect(headers[0]['user-agent']).toContain('AnomaliaArchive');
+    expect(headers[0]['user-agent']).toContain('dazeroArchive');
   });
 
   it('rifiuta un nome pubblico che il DNS risolve su un indirizzo privato', async () => {

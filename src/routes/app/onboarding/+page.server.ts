@@ -2,7 +2,6 @@ import { swallow } from '$lib/server/swallow';
 import { redirect, fail } from '@sveltejs/kit';
 import { soleTenantId } from '$lib/server/tenancy';
 import { decideOnboardingTarget } from '$lib/server/onboarding-target';
-import { canEnter } from '$lib/server/access';
 import type { Actions, PageServerLoad } from './$types';
 import { ensureOrgForUser } from '$lib/server/org';
 import { slugifyBrand, uniqueSlug } from '$lib/brand-slug';
@@ -14,9 +13,6 @@ import { normalizePlan, stampWeekStarts, CADENCES } from '$lib/server/editorial-
 import { isPlanKey, normalizeCycle } from '$lib/plans';
 import { isPlanGoEnabled } from '$lib/server/feature-flags';
 import { canStartNewSlot } from '$lib/server/brand-limits';
-import { seedSourcesForBrand } from '$lib/server/radar';
-import { localeLanguageName } from '$lib/i18n/locale';
-import { createAdminClient } from '$lib/server/supabase-admin';
 import { logOnboardingError } from '$lib/server/onboarding-errors';
 import { kickSocialHistoryWork } from '$lib/server/social-history-work';
 import { tryRedeemReferral } from '$lib/server/referrals';
@@ -101,7 +97,6 @@ async function requireAdmin(
 ) {
   const { session, user } = await safeGetSession();
   if (!session || !user) throw redirect(303, '/');
-  if (!(await canEnter(supabase))) throw redirect(303, '/waitlist');
   return user;
 }
 
@@ -149,11 +144,8 @@ async function persistBrandKit(
   supabase: SupabaseClient,
   brandId: string,
   profile: Record<string, unknown> | null,
-  website: string | null,
-  locale: App.Locals['locale'],
-  opts: { seedRadar?: boolean } = {}
+  website: string | null
 ) {
-  const seedRadar = opts.seedRadar !== false;
   if (profile) {
     await supabase.from('brand_kit').upsert(
       {
@@ -195,21 +187,6 @@ async function persistBrandKit(
           }))
         );
       }
-    }
-
-    // Early create defers radar seeding to the social-history worker (own 300s budget).
-    if (seedRadar) {
-      try {
-        const admin = createAdminClient();
-        const { data: brandPlan } = await admin.from('brands').select('plan').eq('id', brandId).maybeSingle();
-        await seedSourcesForBrand(
-          admin,
-          brandId,
-          profile as never,
-          localeLanguageName(locale),
-          brandPlan?.plan ?? null
-        );
-      } catch (error) { swallow('analyze website', error); }
     }
   } else {
     await supabase.from('brand_kit').upsert({ brand_id: brandId, source_url: website }, { onConflict: 'brand_id' });
@@ -569,9 +546,9 @@ export const load: PageServerLoad = async ({ url, locals: { supabase, safeGetSes
 
 export const actions: Actions = {
   // Required half: site + socials + analysis → create brand → dashboard. Strategy/plan/posts later.
-  // Social history (ScrapeCreators + thumbnail archive + radar seed) runs in a SEPARATE worker
+  // Social history (ScrapeCreators + thumbnail archive) runs in a SEPARATE worker
   // (/api/v1/onboarding/social-history/work, 300s) so create stays a fast DB+redirect path.
-  create: async ({ request, url, platform, cookies, locals: { supabase, safeGetSession, locale } }) => {
+  create: async ({ request, url, platform, cookies, locals: { supabase, safeGetSession } }) => {
     const user = await requireAdmin(supabase, safeGetSession);
     const data = await request.formData();
     const website = splitWebsiteOrHandle(String(data.get('website') ?? '')).website;
@@ -597,7 +574,7 @@ export const actions: Actions = {
     // L'indirizzo scritto dall'utente può non essere quello da cui il sito si legge davvero: un
     // dominio che rimanda altrove senza il certificato per sé stesso viene risolto dall'analisi
     // (brand-analysis.resolveEntryUrl). Vince quello ANALIZZATO, perché è l'unico che risponde:
-    // radar, SEO e ri-analisi ripartiranno da lì.
+    // SEO e ri-analisi ripartiranno da lì.
     const websiteNorm = (profile?.url as string) ?? website ?? null;
     // Recover from a prior attempt that inserted then timed out (client brandId may have drifted).
     if (websiteNorm) {
@@ -608,7 +585,7 @@ export const actions: Actions = {
         .eq('website', websiteNorm)
         .maybeSingle();
       if (bySite) {
-        await persistBrandKit(supabase, bySite.id, profile, website, locale, { seedRadar: false });
+        await persistBrandKit(supabase, bySite.id, profile, website);
         const scrapeTargets = scrapeTargetsFrom(data);
         await persistHandlesAndContext(supabase, bySite.id, scrapeTargets, '', '', profile, {
           syncHistory: false
@@ -699,8 +676,8 @@ export const actions: Actions = {
       brand = inserted;
     }
 
-    // Kit + handles only — radar seed and ScrapeCreators run in the social-history worker.
-    await persistBrandKit(supabase, brand.id, profile, website, locale, { seedRadar: false });
+    // Kit + handles only — ScrapeCreators runs in the social-history worker.
+    await persistBrandKit(supabase, brand.id, profile, website);
 
     const scrapeTargets = scrapeTargetsFrom(data);
     await persistHandlesAndContext(supabase, brand.id, scrapeTargets, '', '', profile, {
@@ -721,7 +698,7 @@ export const actions: Actions = {
   // Optional second half: enrich an existing brand (continue=) or legacy full submit.
   // MUST stay a named action: SvelteKit throws on any POST to a page that mixes `default` with
   // named actions, which took down BOTH this submit and `?/create` above.
-  finish: async ({ request, url, platform, cookies, locals: { supabase, safeGetSession, locale } }) => {
+  finish: async ({ request, url, platform, cookies, locals: { supabase, safeGetSession } }) => {
     const user = await requireAdmin(supabase, safeGetSession);
     const data = await request.formData();
     const website = splitWebsiteOrHandle(String(data.get('website') ?? '')).website;
@@ -814,7 +791,7 @@ export const actions: Actions = {
     );
     if (error || !brand) return fail(500, { error: error ?? 'Could not create brand', name, website });
 
-    await persistBrandKit(supabase, brand.id, profile, website, locale);
+    await persistBrandKit(supabase, brand.id, profile, website);
     const delta = await persistSecondHalf(supabase, brand, data);
     const scrapeTargets = scrapeTargetsFrom(data);
     const additionalContext = String(data.get('additional_context') ?? '').trim();

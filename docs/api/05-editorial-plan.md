@@ -58,7 +58,7 @@ Note: `plan`, `proposed`, `proposedFeedback` sono `null` se non esistono; i camp
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/editorial-plan" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/editorial-plan" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -85,7 +85,7 @@ Genera da zero la prima (o nuova) proposta di piano editoriale a 4 settimane e l
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/editorial-plan/propose" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/editorial-plan/propose" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -93,7 +93,7 @@ curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/editorial-plan/prop
 
 ## `POST /api/v1/brands/:slug/editorial-plan/save`
 
-Salva un piano **scritto fuori da Anomalia**: nessuna chiamata al modello, nessun credito. La riga
+Salva un piano **scritto fuori da dazero**: nessuna chiamata al modello, nessun credito. La riga
 prodotta è la stessa di `propose` — `status: "proposed"`, `source: "manual"` — quindi il piano si
 legge, si revisiona e si approva dalle stesse superfici. Le proposte precedenti passano a
 `rejected`; **il piano attivo non viene toccato**: resta `approve` il passo che attiva.
@@ -140,7 +140,7 @@ Obbligatori: `strategy`, `voice` (tutti e quattro i campi), `cadence` (`3/week` 
   "plan_id": "b2c3d4e5-f6a7-8901-bcde-f1234567890",
   "status": "proposed",
   "weeks": 4,
-  "review_url": "https://anomalia.so/app/mio-brand/editorial"
+  "review_url": "https://dazero.co/app/mio-brand/editorial"
 }
 ```
 
@@ -155,7 +155,7 @@ Obbligatori: `strategy`, `voice` (tutti e quattro i campi), `cadence` (`3/week` 
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/editorial-plan/save" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/editorial-plan/save" \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"strategy":"…","voice":{"mood":"…","tone":"…","goal":"…","personality":"…"},"cadence":"3/week","platform_mix":[{"platform":"instagram","share":"70%","role":"vetrina"}],"weeks":[{"theme":"…","focus":"…","content_mix":[{"type":"educational","count":3}]}]}'
 ```
@@ -184,7 +184,7 @@ Attiva la proposta più recente: diventa il piano `active` (con `week_start` cal
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/editorial-plan/approve" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/editorial-plan/approve" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -205,7 +205,7 @@ Scarta la proposta: tutte le righe `proposed` del brand passano a `rejected`.
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/editorial-plan/discard" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/editorial-plan/discard" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -264,7 +264,7 @@ Note: `weeks` contiene sempre esattamente 4 settimane; `week_start` è `null` fi
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/editorial-plan/revise" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/editorial-plan/revise" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"feedback":"Vorrei più contenuti video e meno post promozionali nella settimana 2"}'
@@ -304,7 +304,7 @@ Modifica campi del piano attivo: voice, cadence, platform_mix e/o tema+brief di 
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/editorial-plan/update" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/editorial-plan/update" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"cadence":"5/week","week_index":1,"week_theme":"Lancio prodotto X"}'
@@ -342,7 +342,7 @@ Salva sul piano attivo il brief utente (e opzionalmente i prodotti in evidenza) 
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/editorial-plan/save-brief" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/editorial-plan/save-brief" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"week_index":2,"brief":"Settimana di lancio: puntare tutto sul nuovo prodotto","products":["Kit meccanico Pro"]}'
@@ -380,7 +380,7 @@ Rigenera via AI una singola settimana del piano attivo attorno a un nuovo brief,
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/editorial-plan/replan-week" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/editorial-plan/replan-week" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"week_index":3,"brief":"Settimana Black Friday: sconti e urgenza"}'

@@ -1,6 +1,6 @@
 import { swallow } from '$lib/server/swallow';
 import type { RequestHandler } from './$types';
-import { canEnter, ownsBrand } from '$lib/server/access';
+import { ownsBrand } from '$lib/server/access';
 import { generatePreview } from '$lib/server/content-preview';
 import { scrapeForOnboarding, type ScrapeTarget } from '$lib/server/scrapecreators';
 import { synthesizeBrandContext, synthesizeVisualStyle } from '$lib/server/brand-context';
@@ -31,8 +31,6 @@ function parseHandles(raw: any): ScrapeTarget[] {
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
 
   const body = await request.json().catch(() => ({}));
   const brandId = typeof body?.brandId === 'string' ? body.brandId : null;

@@ -202,35 +202,13 @@ describe('demo account custom instructions', () => {
   });
 });
 
-describe('demo account agent tools', () => {
-  /**
-   * La proprietà è che CHI cattura la UI del prodotto ci arrivi, non che i tre nomi stiano in una
-   * lista precisa. Fino al 22/8/2026 stavano in SHARED_TOOL_KEYS, cioè li pagavano a ogni step
-   * anche i mestieri che non fanno screenshot; adesso sono di chi compone visuali (`content`,
-   * `motion`) e del `web`, che cattura una pagina per un articolo. Asserire sul risultato di
-   * `pickTools` copre il requisito vero e non si rompe la prossima volta che cambia la strada.
-   */
-  it('è in mano ai mestieri che catturano la UI del prodotto', async () => {
-    const { pickTools } = await import('$lib/server/chat/agents');
-    const { createChatTools } = await import('$lib/agent/tools/index');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const all = createChatTools({} as any, 'b1', 'Europe/Rome', 'u1');
-    for (const agent of ['content', 'motion'] as const) {
-      const keys = Object.keys(pickTools(all, agent));
-      for (const k of ['update_demo_account', 'harvest_product_ui', 'capture_website']) {
-        expect(keys, `${agent}: ${k}`).toContain(k);
-      }
-    }
-  });
-});
-
 describe('login landing detection', () => {
-  const LOGIN = 'https://www.anomalia.so/login';
+  const LOGIN = 'https://www.dazero.co/login';
 
   it('flags a capture that never left the sign-in page', () => {
     expect(isStillOnLoginPage(LOGIN, LOGIN)).toBe(true);
-    expect(isStillOnLoginPage('https://www.anomalia.so/login?next=/app', LOGIN)).toBe(true);
-    expect(isStillOnLoginPage('https://www.anomalia.so/login/', LOGIN)).toBe(true);
+    expect(isStillOnLoginPage('https://www.dazero.co/login?next=/app', LOGIN)).toBe(true);
+    expect(isStillOnLoginPage('https://www.dazero.co/login/', LOGIN)).toBe(true);
   });
 
   it('flags sign-in / sign-up routes that differ from the saved login URL', () => {
@@ -240,10 +218,10 @@ describe('login landing detection', () => {
   });
 
   it('passes a real authenticated app page', () => {
-    expect(isStillOnLoginPage('https://www.anomalia.so/app/anomalia', LOGIN)).toBe(false);
-    expect(isStillOnLoginPage('https://www.anomalia.so/app/anomalia/calendar', LOGIN)).toBe(false);
+    expect(isStillOnLoginPage('https://www.dazero.co/app/dazero', LOGIN)).toBe(false);
+    expect(isStillOnLoginPage('https://www.dazero.co/app/dazero/calendar', LOGIN)).toBe(false);
     // "login" as a substring of a longer segment is not a login route.
-    expect(isStillOnLoginPage('https://www.anomalia.so/app/logins-report', LOGIN)).toBe(false);
+    expect(isStillOnLoginPage('https://www.dazero.co/app/logins-report', LOGIN)).toBe(false);
     expect(isStillOnLoginPage(null, LOGIN)).toBe(false);
   });
 });

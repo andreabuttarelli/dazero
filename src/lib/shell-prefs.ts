@@ -1,9 +1,9 @@
 /** Persistent shell layout prefs (sidebar). Browser localStorage. */
 
 export const SHELL_PREF_KEYS = {
-  sidebarOpen: 'anomalia.sidebarOpen',
-  sidebarPanePx: 'anomalia.sidebarPanePx',
-  sidebarPane: 'anomalia.sidebarPane'
+  sidebarOpen: 'dazero.sidebarOpen',
+  sidebarPanePx: 'dazero.sidebarPanePx',
+  sidebarPane: 'dazero.sidebarPane'
 } as const;
 
 export const SIDEBAR_PANES = ['chat', 'pages', 'assets'] as const;
@@ -14,7 +14,7 @@ export const SIDEBAR_OPEN_COOKIE = 'sidebar_state';
 export const SIDEBAR_OPEN_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
 /** Last brand slug visited — used by `/app` to resume the right project after login. */
-export const LAST_BRAND_COOKIE = 'anomalia_last_brand';
+export const LAST_BRAND_COOKIE = 'dazero_last_brand';
 export const LAST_BRAND_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
 const SIDEBAR_W_DEFAULT = 280;

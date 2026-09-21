@@ -13,7 +13,7 @@ export async function getBrandsList(supabase: SupabaseClient, onlyIds: string[] 
   if (onlyIds && !onlyIds.length) return [];
   let q = supabase
     .from('brands')
-    .select('id, name, slug, plan, status, autopilot_enabled, autopilot_failure_count, last_autopilot_run_at, timezone');
+    .select('id, name, slug, plan, status, timezone');
   if (onlyIds) q = q.in('id', onlyIds);
   const { data: brands } = await q.order('name');
 
@@ -606,81 +606,7 @@ export async function approveAllPosts(supabase: SupabaseClient, brandId: string,
   return { results };
 }
 
-// ── SEO / GEO / Keywords / Web ──────────────────────────────────────────
-// Same reads the /app/[brand]/{seo,geo,keywords,web} pages do, minus the UI shaping.
-
-/** Latest audit row that actually has tech data — the newest run can be citation-only. */
-function pickAudit<T extends { tech?: unknown }>(rows: T[] | null): T | null {
-  return (rows ?? []).find((r) => r.tech != null) ?? rows?.[0] ?? null;
-}
-
-export async function getSeo(supabase: SupabaseClient, brandId: string) {
-  const [{ data: auditRows }, { data: artifacts }, { data: seoPlan }] = await Promise.all([
-    supabase.from('brand_geo_audits').select('tech_score, tech, search, backlinks, created_at')
-      .eq('brand_id', brandId).order('created_at', { ascending: false }).limit(12),
-    supabase.from('brand_geo_artifacts').select('id, kind, title, format, target_path, source_finding')
-      .eq('brand_id', brandId).eq('status', 'draft').order('created_at', { ascending: false }),
-    supabase.from('brand_seo_plans').select('grade, evaluation, initiatives, created_at')
-      .eq('brand_id', brandId).order('created_at', { ascending: false }).limit(1).maybeSingle()
-  ]);
-
-  // Assets are tagged source_finding 'seo:<initiativeId>'; keep the newest per initiative.
-  const assets: Record<string, unknown> = {};
-  for (const a of artifacts ?? []) {
-    const sf = String(a.source_finding ?? '');
-    if (sf.startsWith('seo:') && !assets[sf.slice(4)]) assets[sf.slice(4)] = a;
-  }
-
-  const { buildSeoMetrics } = await import('./seo-metrics');
-  return {
-    audit: pickAudit(auditRows),
-    plan: seoPlan ?? null,
-    assets,
-    metrics: buildSeoMetrics(auditRows ?? [])
-  };
-}
-
-export async function getGeo(supabase: SupabaseClient, brandId: string) {
-  const [{ data: auditRows }, { data: artifacts }] = await Promise.all([
-    supabase.from('brand_geo_audits')
-      .select('tech_score, tech, share_of_voice, citations, ai_overview, created_at')
-      .eq('brand_id', brandId).order('created_at', { ascending: false }).limit(8),
-    supabase.from('brand_geo_artifacts').select('id, kind, title, format, target_path, source_finding')
-      .eq('brand_id', brandId).eq('status', 'draft').order('created_at', { ascending: false })
-  ]);
-
-  const audit = pickAudit(auditRows);
-  // The citability panel lives inside the jsonb `tech` column (it landed without a migration), but
-  // a client should not have to know that: it is the number that answers "will a model cite us",
-  // where `tech_score` answers the much narrower "can a crawler reach us". See `geo-levers.ts`.
-  const citability = ((audit?.tech ?? {}) as { citability?: unknown }).citability ?? null;
-
-  return {
-    audit,
-    citability,
-    // A citation-only run has no ai_overview — falling back to `audit` would blank it.
-    aiOverview: (auditRows ?? []).find((r) => r.ai_overview != null)?.ai_overview ?? null,
-    trend: (auditRows ?? []).map((r) => ({ techScore: r.tech_score, shareOfVoice: r.share_of_voice, at: r.created_at })).reverse(),
-    artifacts: (artifacts ?? []).filter((a) => !String(a.source_finding ?? '').startsWith('seo:'))
-  };
-}
-
-export async function getKeywords(supabase: SupabaseClient, brandId: string) {
-  const { data } = await supabase.from('brand_seo_keyword_strategy')
-    .select('strategy, citations, updated_at').eq('brand_id', brandId).maybeSingle();
-  const { normalizeStrategy } = await import('./seo-keyword-strategy');
-  return {
-    strategy: normalizeStrategy(data?.strategy as never),
-    citations: data?.citations ?? [],
-    updatedAt: data?.updated_at ?? null
-  };
-}
-
-/** Anomalia network backlinks — placements + open opportunities. */
-export async function getBacklinks(supabase: SupabaseClient, brandId: string) {
-  const { loadBacklinkNetworkSummary } = await import('./backlink-network');
-  return loadBacklinkNetworkSummary(supabase, brandId);
-}
+// ── Web ────────────────────────────────────────────────────────────────
 
 /** Blog articles — drafts INCLUDED (unlike the headless /articles endpoint, which is published-only). */
 export async function getWeb(supabase: SupabaseClient, brandId: string, status?: string) {

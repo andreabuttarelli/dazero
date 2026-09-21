@@ -19,7 +19,7 @@ Strategia (piano editoriale)
 ## Visualizzare il piano
 
 ```bash
-anomalia plan my-brand
+dazero plan my-brand
 ```
 
 Mostra:
@@ -38,7 +38,7 @@ Mostra:
 Per brand senza piano attivo:
 
 ```bash
-anomalia plan my-brand propose
+dazero plan my-brand propose
 ```
 
 L'AI analizza il brand kit, i prodotti, lo storico post e i competitor per generare un piano a 4 settimane.
@@ -46,7 +46,7 @@ L'AI analizza il brand kit, i prodotti, lo storico post e i competitor per gener
 ### 2. Visualizzare e valutare
 
 ```bash
-anomalia plan my-brand
+dazero plan my-brand
 ```
 
 Se c'è un piano proposto, mostra:
@@ -58,10 +58,10 @@ Se c'è un piano proposto, mostra:
 
 ```bash
 # Approva — il piano diventa attivo
-anomalia plan my-brand approve
+dazero plan my-brand approve
 
 # Scarta — il piano viene rifiutato
-anomalia plan my-brand discard
+dazero plan my-brand discard
 ```
 
 ### 4. Richiedere una revisione
@@ -69,7 +69,7 @@ anomalia plan my-brand discard
 Se vuoi modificare il piano senza riscriverlo da zero:
 
 ```bash
-anomalia plan my-brand revise --feedback "Voglio più behind-the-scenes e meno promozionale"
+dazero plan my-brand revise --feedback "Voglio più behind-the-scenes e meno promozionale"
 ```
 
 L'AI produce un nuovo piano proposto con le modifiche. Poi approvi o scarti.
@@ -82,10 +82,10 @@ comandi.
 Ogni settimana può avere un brief utente che guida la generazione dei contenuti:
 
 ```bash
-anomalia plan my-brand save-brief --week 0 --brief "Mostra il processo creativo del brand"
-anomalia plan my-brand save-brief --week 1 --brief "Focus sui prodotti nuovi"
-anomalia plan my-brand save-brief --week 2 --brief "Behind the scenes e persone del team"
-anomalia plan my-brand save-brief --week 3 --brief "User generated content e testimonianze"
+dazero plan my-brand save-brief --week 0 --brief "Mostra il processo creativo del brand"
+dazero plan my-brand save-brief --week 1 --brief "Focus sui prodotti nuovi"
+dazero plan my-brand save-brief --week 2 --brief "Behind the scenes e persone del team"
+dazero plan my-brand save-brief --week 3 --brief "User generated content e testimonianze"
 ```
 
 Il brief viene salvato senza rigenerare nulla.
@@ -95,7 +95,7 @@ Il brief viene salvato senza rigenerare nulla.
 Se vuoi rigenerare una settimana specifica con un nuovo brief:
 
 ```bash
-anomalia plan my-brand replan --week 0 --brief "Dietro le quinte del brand"
+dazero plan my-brand replan --week 0 --brief "Dietro le quinte del brand"
 ```
 
 L'AI ricostruisce solo quella settimana, mantenendo le altre 3 invariate.
@@ -107,8 +107,8 @@ Una volta che il piano editoriale è attivo, ogni settimana ha dei "seeds" — r
 ### Visualizzare i seeds
 
 ```bash
-anomalia weekly-plan my-brand
-anomalia weekly-plan my-brand --week 2
+dazero weekly-plan my-brand
+dazero weekly-plan my-brand --week 2
 ```
 
 Mostra:
@@ -121,7 +121,7 @@ Mostra:
 ### Generare seeds per una settimana
 
 ```bash
-anomalia weekly-plan my-brand plan --week 0
+dazero weekly-plan my-brand plan --week 0
 ```
 
 L'AI genera le righe (seeds) per la settimana, basandosi su:
@@ -134,7 +134,7 @@ L'AI genera le righe (seeds) per la settimana, basandosi su:
 
 ```bash
 # Produci tutti i seeds
-anomalia weekly-plan my-brand produce --week 0
+dazero weekly-plan my-brand produce --week 0
 ```
 
 Ogni seed diventa un post reale con caption, immagine e scheduling.
@@ -181,21 +181,21 @@ via MCP.
 
 ```bash
 # 1. Configura il brand
-anomalia studio my-brand kit-update --about "..." --audience "..."
-anomalia studio my-brand add-note --text "Il nostro pubblico preferisce video brevi"
+dazero studio my-brand kit-update --about "..." --audience "..."
+dazero studio my-brand add-note --text "Il nostro pubblico preferisce video brevi"
 
 # 2. Definisci la strategia
-anomalia plan my-brand propose
-anomalia plan my-brand approve
+dazero plan my-brand propose
+dazero plan my-brand approve
 
 # 3. Genera i contenuti
-anomalia weekly-plan my-brand plan --week 0
-anomalia weekly-plan my-brand produce --week 0
+dazero weekly-plan my-brand plan --week 0
+dazero weekly-plan my-brand produce --week 0
 
 # 4. Rivedi e approva
-anomalia content my-brand --status pending_user
-anomalia approve my-brand --all
+dazero content my-brand --status pending_user
+dazero approve my-brand --all
 
 # 5. Analizza i risultati
-anomalia analytics my-brand
+dazero analytics my-brand
 ```

@@ -8,7 +8,7 @@ vi.mock('$lib/server/cli-auth', () => ({
 
 import { POST } from './+server';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
-import { MEMORY_USED_MAX } from '@anomalia/api-contracts';
+import { MEMORY_USED_MAX } from '@dazero/api-contracts';
 
 type Row = Record<string, unknown>;
 
@@ -56,7 +56,7 @@ function signedIn(rows: Row[] = [{ id: 'm1', brand_id: 'brand-1' }, { id: 'm2', 
 }
 
 function post(payload: Record<string, unknown>, slug = 'demo') {
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/memory/used`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/memory/used`);
   return (POST as (e: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(payload) }),
     params: { slug },

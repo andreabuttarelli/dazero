@@ -70,7 +70,7 @@ Note: i seed hanno campi variabili per formato (es. `slide_count` per carousel, 
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/weekly-plan" -H "Authorization: Bearer $TOKEN"
+curl -s "https://dazero.co/api/v1/brands/mio-brand/weekly-plan" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -129,7 +129,7 @@ Note: il draft viene salvato con `title: "CLI · YYYY-MM-DD"` e `editorial_week 
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/weekly-plan/plan" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/weekly-plan/plan" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"week_index":0}'
@@ -139,7 +139,7 @@ curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/weekly-plan/plan" \
 
 ## `POST /api/v1/brands/:slug/weekly-plan/seeds`
 
-Salva i seed di una settimana **scritti fuori da Anomalia**: nessuna chiamata al modello, nessun
+Salva i seed di una settimana **scritti fuori da dazero**: nessuna chiamata al modello, nessun
 credito. Le righe finiscono dove le lascia `plan` — una bozza `content_plans` con
 `status: "draft"`, `source: "manual"`, `editorial_week = week_index` — quindi la pagina piano le
 mostra, sono modificabili e `produce` (a pagamento) resta il passo che le trasforma in post.
@@ -197,7 +197,7 @@ Opzionali per seed: `platforms`, `pillar`, `format`, `media`, `slide_count`, `ar
   "seeds_saved": 3,
   "editorial_plan_id": "b2c3d4e5-f6a7-8901-bcde-f1234567890",
   "replaced": false,
-  "review_url": "https://anomalia.so/app/mio-brand/plan"
+  "review_url": "https://dazero.co/app/mio-brand/plan"
 }
 ```
 
@@ -213,7 +213,7 @@ Opzionali per seed: `platforms`, `pillar`, `format`, `media`, `slide_count`, `ar
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/weekly-plan/seeds" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/weekly-plan/seeds" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"week_index":0,"theme":"Il banco di lavoro","seeds":[{"platform":"instagram","angle":"Il primo switch che monti storto"}]}'
@@ -253,13 +253,13 @@ Trasforma i seed di una bozza in post reali (caption + prompt immagine via AI), 
 
 ```bash
 # Produce l'intera settimana
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/weekly-plan/produce" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/weekly-plan/produce" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"draft_id":"e5f6a7b8-…"}'
 
 # Produce una sola riga (seed index 2)
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/weekly-plan/produce" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/weekly-plan/produce" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"draft_id":"e5f6a7b8-…","row_index":2}'
@@ -314,7 +314,7 @@ Nessun post renderizzabile:
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/weekly-plan/render" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/weekly-plan/render" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"week_index":0}'
@@ -350,7 +350,7 @@ Sovrascrive l'intero oggetto `seeds` di una bozza `content_plans` (tipicamente i
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/weekly-plan/save" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/weekly-plan/save" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"draft_id":"e5f6a7b8-…","seeds":{"theme":"…","rationale":"…","doDont":"…","seeds":[{"platform":"instagram","platforms":["instagram"],"pillar":"CTA verso sito","format":"single_image","media":"image","day":"Lunedì","time":"10:00","product":"Nome Prodotto","person":"","angle":"…","subject":"…","setting":"…","props":"…"}]}}'

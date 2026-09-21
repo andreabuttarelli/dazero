@@ -5,7 +5,7 @@ import { ok, warn, c, table } from '../lib/display.ts';
 
 export async function cmdApprove(slug: string, opts: { all?: boolean; dry?: boolean }) {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: anomalia login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
 
   const posts = await api.getPosts(session.access_token, slug);
   const pending = posts.filter(p => p.status === 'pending_user');

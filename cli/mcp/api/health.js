@@ -21,7 +21,7 @@ export default function handler(req, res) {
   res.end(
     JSON.stringify({
       ok: true,
-      name: 'anomalia-mcp',
+      name: 'dazero-mcp',
       transport: 'streamable-http',
       mcp: '/mcp',
     }),

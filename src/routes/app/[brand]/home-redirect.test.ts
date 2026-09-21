@@ -27,7 +27,6 @@ vi.mock('@sveltejs/kit', async (orig) => ({ ...(await orig<object>()), redirect,
 // Il layout, sotto il rimando, interroga sessione, accesso e tenant. Finché il rimando stava in
 // cima nessuna di queste veniva raggiunta e il test passava con `locals: {}` — cioè non provava
 // l'ordine, che è precisamente la cosa che si è rotta.
-vi.mock('$lib/server/access', () => ({ canEnter: async () => true }));
 vi.mock('$lib/server/tenant', () => ({
 	resolveTenant: async (_c: unknown, _u: string, slug: string) => ({
 		brand: { id: 'b1', slug, brand_kit: null },
@@ -118,6 +117,6 @@ describe('/app/[brand] è una rotta, non solo un guscio', () => {
 	});
 
 	it('il controllo sa dire di no: una cartella di solo endpoint non ha pagina', () => {
-		expect(pageFilesIn('credits')).toEqual([]);
+		expect(pageFilesIn('manual-posting/generate')).toEqual([]);
 	});
 });

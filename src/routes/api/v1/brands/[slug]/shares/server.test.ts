@@ -15,7 +15,7 @@ vi.mock('$lib/server/credits', () => ({
   gateCredits: (...args: unknown[]) => gateCredits(...args),
   CreditsExhaustedError: class extends Error {}
 }));
-vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://anomalia.test' }));
+vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://dazero.test' }));
 
 import { GET, POST } from './+server';
 import { POST as REVOKE } from './revoke/+server';
@@ -69,7 +69,7 @@ function callWith(
   } as never);
   vi.mocked(loadBrandForUser).mockResolvedValue({ brand: { ...BRAND, slug }, error: null } as never);
 
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}${opts.path}`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}${opts.path}`);
   const request =
     opts.method === 'POST'
       ? new Request(url, { method: 'POST', body: JSON.stringify(opts.body ?? {}) })
@@ -123,7 +123,7 @@ describe('POST /api/v1/brands/:slug/shares', () => {
 
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
-    expect(body.url).toBe(`https://anomalia.test/share/${body.token}`);
+    expect(body.url).toBe(`https://dazero.test/share/${body.token}`);
 
     const inserted = ops.find((o) => o.method === 'insert')?.args[0] as Row;
     expect(inserted.token_hash).toBe(hashShareToken(body.token));
@@ -180,7 +180,7 @@ describe('POST /api/v1/brands/:slug/shares', () => {
 
   it('rifiuta una richiesta senza autenticazione', async () => {
     vi.mocked(authenticate).mockResolvedValue({ error: new Response('Unauthorized', { status: 401 }) } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/demo/shares');
+    const url = new URL('https://dazero.test/api/v1/brands/demo/shares');
     const res = await (POST as (e: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: '{}' }),
       params: { slug: 'demo' },
@@ -200,7 +200,7 @@ describe('POST /api/v1/brands/:slug/shares', () => {
     vi.mocked(loadBrandForUser).mockResolvedValue({
       error: new Response(JSON.stringify({ error: 'Brand not found' }), { status: 404 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/altrui/shares');
+    const url = new URL('https://dazero.test/api/v1/brands/altrui/shares');
     const res = await (POST as (e: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: JSON.stringify({ view: 'calendar' }) }),
       params: { slug: 'altrui' },

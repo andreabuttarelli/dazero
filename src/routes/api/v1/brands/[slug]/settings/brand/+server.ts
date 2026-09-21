@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
-import { SET_BRAND_SETTINGS, TARGET_PLATFORMS, statusForFailure } from '@anomalia/api-contracts';
+import { SET_BRAND_SETTINGS, TARGET_PLATFORMS, statusForFailure } from '@dazero/api-contracts';
 import { isKnownTimezone, normalizeHashtags } from '$lib/brand-fields';
 import { socialConnections } from '$lib/server/social-connections';
 

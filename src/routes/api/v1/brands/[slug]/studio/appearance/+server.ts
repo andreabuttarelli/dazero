@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
-import { SET_APPEARANCE, statusForFailure } from '@anomalia/api-contracts';
+import { SET_APPEARANCE, statusForFailure } from '@dazero/api-contracts';
 import { storeBrandLogoFromUrl } from '$lib/server/studio-actions';
 import { fontIsAvailable } from '$lib/server/design-typography';
 

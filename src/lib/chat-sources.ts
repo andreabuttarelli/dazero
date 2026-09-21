@@ -122,7 +122,7 @@ const SOURCE_MAP: Record<string, SourceMapper> = {
         kind: 'brand',
         entity: 'strategy',
         label: 'GTM strategy',
-        href: `/app/${slug}/gtm`
+        href: `/app/${slug}/studio`
       }
     ];
   },
@@ -135,7 +135,7 @@ const SOURCE_MAP: Record<string, SourceMapper> = {
         kind: 'brand',
         entity: 'plan',
         label: 'Piano editoriale',
-        href: `/app/${slug}/plan`
+        href: `/app/${slug}/calendar`
       }
     ];
   },
@@ -152,7 +152,7 @@ const SOURCE_MAP: Record<string, SourceMapper> = {
         kind: 'brand',
         entity: 'competitor',
         label: list.length ? `${list.length} competitor` : 'Competitor',
-        href: `/app/${slug}/competitors`
+        href: `/app/${slug}/studio/competitors`
       }
     ];
   },
@@ -195,7 +195,7 @@ const SOURCE_MAP: Record<string, SourceMapper> = {
         kind: 'brand',
         entity: 'seo',
         label: 'SEO plan',
-        href: `/app/${slug}/seo`
+        href: `/app/${slug}/web`
       }
     ];
   },

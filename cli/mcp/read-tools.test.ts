@@ -65,18 +65,16 @@ describe('i tool sono quello che il registry dichiara', () => {
  * Ogni lettura di tabella esce; `query` la serve. Il conteggio si misura QUI, sul transport, e non
  * sui sorgenti: contando le `registerTool` si sbaglia, ed è già successo tre volte.
  *
- * Il criterio è uno solo, e sta scritto accanto agli otto che restano: una lettura resta quando la
+ * Il criterio è uno solo, e sta scritto accanto a quelle che restano: una lettura resta quando la
  * sua risposta non si ricostruisce con `query`. Un `select` con filtri e ordinamento — anche su
  * due tabelle da unire per id — non è mai quel caso.
  */
 const RESTANO: ReadonlyArray<{ tool: string; perche: string }> = [
   { tool: 'list_brands', perche: '`query` vive sotto uno slug: senza questo non c’è il primo slug' },
   { tool: 'diagnose_brand', perche: 'nove tabelle → un verdetto per cancello, e quale blocca il ciclo' },
-  { tool: 'diagnose_radar', perche: 'interroga ogni fonte dal vivo: non è nel database' },
   { tool: 'search_knowledge', perche: 'due funzioni SQL, un embedding e la fusione dei ranghi; `query` esclude `.rpc()`' },
   { tool: 'get_writing_skills', perche: 'due sorgenti su tre sono markdown del repo e costanti di codice' },
   { tool: 'get_creation_kit', perche: 'seleziona, pesa e taglia a budget; i template stanno in un file' },
-  { tool: 'get_gsc', perche: 'somma 28 giorni di righe senza tetto e legge un segreto via rpc' },
   { tool: 'get_media_models', perche: 'il catalogo dei modelli ammessi sta nel codice, in nessuna tabella' }
 ];
 
@@ -125,7 +123,7 @@ const RITIRATE = [
 ] as const;
 
 describe('le letture le serve `query`', () => {
-  test('ne restano otto, e sono quelle dichiarate', async () => {
+  test('restano solo quelle dichiarate', async () => {
     const reads = (await tools())
       .filter((t) => t.annotations?.readOnlyHint === true)
       .map((t) => t.name)

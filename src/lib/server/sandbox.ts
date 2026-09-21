@@ -204,8 +204,8 @@ export const SANDBOX_GENERATION = env.SANDBOX_GENERATION || 'g5';
  */
 export function sandboxName(brandId: string, agentId?: string): string {
   const agent = agentId ? `-${shortAgentKey(agentId)}` : '';
-  const room = 63 - `anomalia--${SANDBOX_GENERATION}`.length - agent.length;
-  return `anomalia-${brandId.slice(0, room)}${agent}-${SANDBOX_GENERATION}`;
+  const room = 63 - `dazero--${SANDBOX_GENERATION}`.length - agent.length;
+  return `dazero-${brandId.slice(0, room)}${agent}-${SANDBOX_GENERATION}`;
 }
 
 /** 8 caratteri stabili da un id qualunque: `motion` resta leggibile, un uuid diventa un digest. */
@@ -379,12 +379,12 @@ export type SandboxHandle = {
 export const WORKSPACE_DIR = 'brand';
 
 /**
- * La cassaforte della VM: `.anomalia/` (stato del device flow GitHub, marcatore del browser,
+ * La cassaforte della VM: `.dazero/` (stato del device flow GitHub, marcatore del browser,
  * binari di Playwright) e `.github.env` (il token GitHub in chiaro). Senza questo confine un turno
  * può leggerli con `sandbox_read_file` e pubblicarli con `sandbox_save_output`. Sta qui, non nel
  * singolo tool, perché vale per chiunque prenda un path dal modello.
  */
-export const SECRET_HOME_DIR = '.anomalia';
+export const SECRET_HOME_DIR = '.dazero';
 /** Il file d'ambiente della run: dentro c'è il token GitHub in chiaro (sandbox-device-login.ts). */
 export const SECRET_ENV_FILE = '.github.env';
 
@@ -427,7 +427,7 @@ const PLAYWRIGHT_VERSION = env.SANDBOX_PLAYWRIGHT_VERSION || '1.60.0';
  * il download no, quindi un percorso che dipende da `HOME` cambia utente a metà strada e il
  * download esce 1 senza scrivere niente su stderr.
  */
-const BROWSERS_PATH = env.SANDBOX_BROWSERS_PATH || '.anomalia/browsers';
+const BROWSERS_PATH = env.SANDBOX_BROWSERS_PATH || '.dazero/browsers';
 
 /**
  * «Chromium è già pronto». Con `SANDBOX_IMAGE` i binari sono cotti nell'immagine e il marcatore sta
@@ -436,7 +436,7 @@ const BROWSERS_PATH = env.SANDBOX_BROWSERS_PATH || '.anomalia/browsers';
  */
 const READY_MARKER = env.SANDBOX_BROWSERS_PATH
   ? `${env.SANDBOX_BROWSERS_PATH.replace(/\/browsers\/?$/, '')}/browser-ready`
-  : '.anomalia/browser-ready';
+  : '.dazero/browser-ready';
 /**
  * Le Ubuntu per cui Playwright 1.60 pubblica i binari. `vercel/sandbox/ubuntu` è 26.04, che NON è
  * qui: senza override il download muore con `does not support chromium on ubuntu26.04-x64`.
@@ -584,7 +584,7 @@ export async function openBrandSandbox(opts: {
     networkPolicy: buildNetworkPolicy(UNIFIED_NETWORK_MODE, configuredExtraDomains()) as never,
     snapshotExpiration: SNAPSHOT_EXPIRATION_MS,
     keepLastSnapshots: { ...KEEP_LAST_SNAPSHOTS },
-    tags: { app: 'anomalia', brand: opts.brandId.slice(0, 40) },
+    tags: { app: 'dazero', brand: opts.brandId.slice(0, 40) },
     ...(opts.abortSignal ? { signal: opts.abortSignal } : {}),
     ...(creds ?? {})
   } as never;
@@ -867,7 +867,7 @@ async function ensureBrowser(
     };
   }
 
-  await sandbox.run('mkdir', ['-p', '.anomalia']);
+  await sandbox.run('mkdir', ['-p', '.dazero']);
   await sandbox.run('touch', [READY_MARKER]);
   log('sandbox: chromium ready');
   return { ok: true, cached: false };

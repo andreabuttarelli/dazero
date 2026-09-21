@@ -36,7 +36,7 @@ describe('parseHarnessSkillSelection', () => {
 	});
 
 	it('splits comma-separated names and honors *', () => {
-		expect(parseHarnessSkillSelection(' anomalia , composio ')).toEqual(['anomalia', 'composio']);
+		expect(parseHarnessSkillSelection(' dazero , composio ')).toEqual(['dazero', 'composio']);
 		expect(parseHarnessSkillSelection('*')).toEqual(['*']);
 	});
 });
@@ -73,7 +73,7 @@ describe('loadHarnessSkills', () => {
 	});
 
 	it('returns nothing when no skill folder exists', async () => {
-		await expect(loadHarnessSkills(['anomalia'])).resolves.toEqual([]);
+		await expect(loadHarnessSkills(['dazero'])).resolves.toEqual([]);
 	});
 
 	it('loads selected skill with textual files attached', async () => {

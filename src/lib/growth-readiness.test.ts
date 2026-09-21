@@ -47,24 +47,19 @@ describe('evaluateGrowthReadiness', () => {
     expect(r.warnings.some((w) => w.key === 'historyDepth')).toBe(true);
   });
 
-  it('warns (never blocks) when the website or GSC are missing', () => {
-    const r = evaluateGrowthReadiness(base({ hasWebsite: false, gscConnected: false }));
+  it('warns (never blocks) when the website is missing', () => {
+    const r = evaluateGrowthReadiness(base({ hasWebsite: false }));
     expect(r.ready).toBe(true);
     expect(r.blocking).toHaveLength(0);
     const web = r.checks.find((c) => c.key === 'web');
-    const gsc = r.checks.find((c) => c.key === 'gsc');
     expect(web?.ok).toBe(false);
     expect(web?.blocking).toBe(false);
     expect(web?.fix).toBe('/app/acme/site');
-    expect(gsc?.ok).toBe(false);
-    expect(gsc?.blocking).toBe(false);
-    expect(gsc?.fix).toBe('/app/acme/settings/search-console');
   });
 
-  it('treats unset web/gsc snapshot fields as ok (opt-in checks)', () => {
+  it('treats an unset web snapshot field as ok (opt-in check)', () => {
     const r = evaluateGrowthReadiness(base());
     expect(r.checks.find((c) => c.key === 'web')?.ok).toBe(true);
-    expect(r.checks.find((c) => c.key === 'gsc')?.ok).toBe(true);
   });
 
   it('warns (never blocks) when no active social account is connected', () => {

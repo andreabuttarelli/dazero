@@ -22,7 +22,7 @@ export const DEFAULT_EMAIL_SELECTOR =
 export const DEFAULT_PASSWORD_SELECTOR = 'input[type="password"]';
 // Must stay scoped to the password form. `querySelector('a, b')` matches document
 // order, so a trailing `button[type="submit"]` would click Google/GitHub OAuth on
-// pages that render those buttons above the email/password form (anomalia.so/login).
+// pages that render those buttons above the email/password form (dazero.co/login).
 export const DEFAULT_SUBMIT_SELECTOR =
   'form:has(input[type="password"]) button[type="submit"], form:has(input[type="password"]) input[type="submit"], form:has(input[type="password"]) button[name="submit"]';
 

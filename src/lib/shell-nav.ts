@@ -26,7 +26,7 @@ export function isThreadPath(pathname: string | null | undefined): boolean {
 }
 
 /** Le rotte che si aprono dentro la shell ma non ne fanno parte: nessuno scheletro sopra. */
-const PASSTHROUGH = ['/success', '/activate', '/proposal'];
+const PASSTHROUGH: string[] = [];
 
 export type ShellNavigation = {
   from: string | null | undefined;
@@ -65,6 +65,6 @@ export function shellShimmerFor(nav: ShellNavigation): ShellShimmer | null {
   // salterebbe di un padding a navigazione finita.
   if (/\/workbench\/?$/.test(to)) return 'workbench';
   if (/\/calendar\/?$/.test(to)) return 'calendar';
-  if (/\/(media-generator|ugc-creator|motion-video)\/?$/.test(to)) return 'media';
+  if (/\/media\/?$/.test(to)) return 'media';
   return 'page';
 }

@@ -5,8 +5,6 @@
   import { sanitizeWebsiteParam } from '$lib/website-param';
 
   let {
-    loggedIn = false,
-    waitlistActive = false,
     /** Footer is always dark (#111) even when the page theme is light. */
     tone = 'light',
     // Bindabile perché l'onboarding prefila l'URL da un draft ripreso; la homepage non lo passa
@@ -17,8 +15,6 @@
     // LO STESSO componente e non possono divergere visivamente.
     onsubmiturl
   }: {
-    loggedIn?: boolean;
-    waitlistActive?: boolean;
     tone?: 'light' | 'dark';
     value?: string;
     onsubmiturl?: (url: string) => void;
@@ -94,11 +90,9 @@
   });
 
   function buildHref(url: string): string {
-    if (waitlistActive) return '/waitlist';
     const qs = new URLSearchParams({ website: url });
-    // Logged in → authenticated onboarding. Guests → public website → socials funnel.
-    if (loggedIn) return `/app/onboarding?${qs}`;
-    return `/start?${qs}`;
+    // Onboarding sta dietro il login: /app/onboarding manda l'anonimo a /login e riprende di lì.
+    return `/app/onboarding?${qs}`;
   }
 
   function submit(e: Event) {

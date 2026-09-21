@@ -14,7 +14,7 @@
       <line class="b-bot" x1="3" y1="18" x2="21" y2="18" />
     </svg>
   </button>
-  <a href="/app" class="mobile-brand" aria-label="Anomalia">
+  <a href="/app" class="mobile-brand" aria-label="dazero">
     <BrandMark size={44} />
   </a>
   <div class="mobile-spacer"></div>

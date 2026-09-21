@@ -675,7 +675,7 @@ describe('chat-session — turni kit e race del client (23-24/8)', () => {
 
   it('reload di un turno kit: hydrate NON risuscita loading senza un job da pollare', () => {
     sessionStorage.setItem(
-      'anomalia:chat-stream:th-kit',
+      'dazero:chat-stream:th-kit',
       JSON.stringify({
         brandSlug: 'acme',
         threadId: 'th-kit',
@@ -702,7 +702,7 @@ describe('chat-session — turni kit e race del client (23-24/8)', () => {
 
   it('reload di un turno legacy (jobId presente): loading resta true e il poll parte', async () => {
     sessionStorage.setItem(
-      'anomalia:chat-stream:th-leg',
+      'dazero:chat-stream:th-leg',
       JSON.stringify({
         brandSlug: 'acme',
         threadId: 'th-leg',

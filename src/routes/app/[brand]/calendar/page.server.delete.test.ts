@@ -21,7 +21,6 @@ vi.mock('$lib/server/token', () => ({ signApproveToken: vi.fn() }));
 vi.mock('$lib/server/email', () => ({
   sendEmail: vi.fn(), approvalEmailHtml: vi.fn(), approvalEmailText: vi.fn(), approvalEmailSubject: vi.fn()
 }));
-vi.mock('$lib/server/video-requests', () => ({ founderVideoBudget: vi.fn(), listVideoRequests: vi.fn() }));
 vi.mock('$lib/server/supabase-admin', () => ({ createAdminClient: vi.fn() }));
 vi.mock('$lib/server/page-cache', () => ({ cachedBrandPage: vi.fn() }));
 

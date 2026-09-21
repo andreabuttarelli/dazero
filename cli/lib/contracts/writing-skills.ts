@@ -21,7 +21,7 @@ export const GET_WRITING_SKILLS = {
   title: 'Writing skills',
   description:
     'READ THIS BEFORE WRITING ANY COPY FOR THE BRAND — a caption, a carousel, a script, an ' +
-    'article, a bio. It returns the craft text Anomalia writes with: `humanizer` and `stop-slop` ' +
+    'article, a bio. It returns the craft text dazero writes with: `humanizer` and `stop-slop` ' +
     'always, plus `social` or `seo-audit` depending on `agent`. It also returns the built-in ' +
     'production skills for that agent — the ones naming the gates that refuse a render — and this ' +
     'brand\'s OWN procedures, and a brand procedure overrules a product skill when they disagree. ' +

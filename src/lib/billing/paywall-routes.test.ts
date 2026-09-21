@@ -9,8 +9,7 @@ import { describe, expect, it } from 'vitest';
  * vede un 404 — e un 404 sul percorso dei soldi non lo intercetta nessun test di unità,
  * perché il codice che ci punta compila benissimo.
  *
- *   throw redirect(303, `/app/${slug}/activate`)  ->  src/routes/app/[brand]/activate/
- *   goto(`/app/${slug}/upgrade?plan=pro`)         ->  src/routes/app/[brand]/upgrade/
+ *   throw redirect(303, '/app/billing')  ->  src/routes/app/billing/
  *
  * Le rotte sono escluse dall'export open (scripts/export-oss.mjs): questo test gira sul
  * repository commerciale, che è quello da cui si costruisce la produzione.
@@ -20,8 +19,8 @@ const REPO_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const SCANNED = ['src', 'cli'];
 const SKIPPED_DIRS = new Set(['node_modules', '.svelte-kit', 'build', 'dist']);
 
-const PAYWALL_DESTINATION = /\/app\/[^\s'"`]*?\/(activate|upgrade)\b/g;
-const ROUTE_DIR = (name: string) => join('src', 'routes', 'app', '[brand]', name);
+const PAYWALL_DESTINATION = /\/app\/(billing)\b/g;
+const ROUTE_DIR = (name: string) => join('src', 'routes', 'app', name);
 
 function sources(): string[] {
 	const found: string[] = [];
@@ -43,10 +42,7 @@ function sources(): string[] {
 }
 
 function referencesByRoute(): Map<string, string[]> {
-	const byRoute = new Map<string, string[]>([
-		['activate', []],
-		['upgrade', []]
-	]);
+	const byRoute = new Map<string, string[]>([['billing', []]]);
 
 	for (const file of sources()) {
 		const text = readFileSync(file, 'utf8');
@@ -70,12 +66,11 @@ describe('il percorso di pagamento non porta a un 404', () => {
 	const byRoute = referencesByRoute();
 
 	// Se la scansione si rompe la mappa si svuota e il test passerebbe a vuoto: questo lo impedisce.
-	it('il codice manda davvero gli utenti su activate e upgrade', () => {
-		expect(byRoute.get('activate')!.length).toBeGreaterThan(0);
-		expect(byRoute.get('upgrade')!.length).toBeGreaterThan(0);
+	it('il codice manda davvero gli utenti a pagare', () => {
+		expect(byRoute.get('billing')!.length).toBeGreaterThan(0);
 	});
 
-	it.each([...byRoute.keys()])('/app/[brand]/%s esiste su disco', (route) => {
+	it.each([...byRoute.keys()])('/app/%s esiste su disco', (route) => {
 		const referrers = byRoute.get(route)!;
 
 		expect(routeExists(route), `${ROUTE_DIR(route)} manca, ma ci puntano: ${referrers.join(', ')}`).toBe(true);

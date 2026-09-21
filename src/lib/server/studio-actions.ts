@@ -4,7 +4,7 @@ import type { Actions } from '@sveltejs/kit';
 import { rebuildBrandContext } from '$lib/server/brand-context';
 import { invalidateBrandNav } from '$lib/server/nav-cache';
 import { discoverCompetitors } from '$lib/server/research';
-import { localeLanguageName } from '$lib/i18n/locale';
+import { OUTPUT_LANGUAGE } from '$lib/i18n/locale';
 import { withBrandContext } from '$lib/server/ai-log';
 import { syncBrandPostHistoryFromSocials, type ScrapeSyncResult } from '$lib/server/scrapecreators';
 import { signKnowledgePaths, archiveImageToBucket } from '$lib/server/media-archive';
@@ -781,7 +781,7 @@ export const studioActions: Actions = {
   },
 
   // Competitors: user-managed CRUD. New rows are tagged source 'user' so they're distinguishable
-  // from the ones Anomalia discovered; the strategy/benchmark snapshots are left untouched here.
+  // from the ones dazero discovered; the strategy/benchmark snapshots are left untouched here.
   addCompetitor: async ({ request, params, locals: { supabase } }) => {
     return withBrand(supabase, params.brand, async (brand) => {
       const fd = await request.formData();
@@ -828,7 +828,7 @@ export const studioActions: Actions = {
   // brand profile from its stored kit, then inserts only competitors we don't already have —
   // deduped by name and by website host so a rerun never piles up duplicates. Also resolves
   // social handles (needed for Formati di mercato scrape + Monday cron).
-  researchCompetitors: async ({ params, locals: { supabase, locale } }) => {
+  researchCompetitors: async ({ params, locals: { supabase } }) => {
     return withBrand(supabase, params.brand, async (brand) => {
 
       const [{ data: brandRow }, { data: kit }, { data: products }, { data: existing }] = await Promise.all([
@@ -852,7 +852,7 @@ export const studioActions: Actions = {
 
       let discovered;
       try {
-        ({ competitors: discovered } = await discoverCompetitors(profile, localeLanguageName(locale)));
+        ({ competitors: discovered } = await discoverCompetitors(profile, OUTPUT_LANGUAGE));
       } catch (e) {
         return fail(400, { error: e instanceof Error ? e.message : 'Competitor research failed' });
       }
@@ -1024,28 +1024,6 @@ export const studioActions: Actions = {
         };
       } catch (e) {
         return fail(500, { error: e instanceof Error ? e.message : 'Refresh failed' });
-      }
-    });
-  },
-
-  // Field watch: scopre chi ottiene attenzione NEL CAMPO del brand, lo smonta e distilla il
-  // playbook. Non richiede competitor: è il ramo che serve proprio quando non sai chi guardare.
-  refreshField: async ({ params, locals: { supabase } }) => {
-    return withBrand(supabase, params.brand, async (brand) => {
-      try {
-        const { runFieldWatch } = await import('$lib/server/market-field');
-        const { createAdminClient } = await import('$lib/server/supabase-admin');
-        const out = await withBrandContext(brand.id, () =>
-          runFieldWatch(createAdminClient(), { id: brand.id, name: brand.name })
-        );
-        return {
-          fieldRefreshed: true,
-          linked: out.harvest.linked,
-          teardowns: out.teardowns,
-          playbook: out.playbook
-        };
-      } catch (e) {
-        return fail(500, { error: e instanceof Error ? e.message : 'Field watch failed' });
       }
     });
   }

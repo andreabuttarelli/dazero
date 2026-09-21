@@ -121,10 +121,6 @@
       [`${base}/autopilot`]: {
         title: $_('app.settings.autopilot')
       },
-      [`${base}/radar`]: {
-        title: $_('app.settings.radar.title'),
-        subtitle: $_('app.settings.radar.subtitle')
-      },
       [`${base}/timezone`]: {
         title: $_('app.settings.postingTimezone')
       },
@@ -144,9 +140,6 @@
       },
       [`${base}/blog-integrations`]: {
         title: $_('app.settings.blog.integrations')
-      },
-      [`${base}/search-console`]: {
-        title: $_('app.settings.searchConsole.title')
       },
       [`${base}/language`]: {
         title: $_('app.settings.language')

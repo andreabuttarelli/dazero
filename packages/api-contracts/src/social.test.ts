@@ -82,7 +82,7 @@ describe('nessun segreto attraversa il confine', () => {
       platform_choices: [...TARGET_PLATFORMS],
       can_connect: true,
       slots: { used: 1, limit: 3 },
-      manage_url: 'https://anomalia.so/app/demo/settings/connected-accounts'
+      manage_url: 'https://dazero.co/app/demo/settings/connected-accounts'
     });
 
     expect(leaked.success).toBe(true);

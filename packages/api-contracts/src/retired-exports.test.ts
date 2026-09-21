@@ -7,22 +7,19 @@ import * as contracts from './index';
  * Togliere un endpoint da `BRAND_ENDPOINTS` smette di esporlo come tool MCP, e basta: la rotta
  * REST resta, il CLI la chiama, e il contratto è la forma con cui la chiama. Il mio primo giro di
  * ritiri ha tolto anche gli export dal barrel, e tre rotte hanno smesso di compilare —
- * `ADD_RADAR_SOURCE`, `REMOVE_RADAR_SOURCE`, `REMOVE_BLOG_TERM` importati da moduli che non li
- * esportavano più.
+ * `REMOVE_BLOG_TERM` e gli altri, importati da moduli che non li esportavano più.
  *
  * Erano errori di TIPO, non di esecuzione: il codice girava e `svelte-check` li mostrava in mezzo
  * a trecento preesistenti. È il modo in cui un difetto introdotto passa per difetto di sempre.
  */
 const RETIRED_BUT_EXPORTED = [
   'ADD_COMPETITOR',
-  'ADD_RADAR_SOURCE',
   'DELETE_COMPETITOR',
   'DELETE_PRODUCT',
   'DISCARD_PLAN',
   'GET_ADS',
   'RECORD_MEMORY_USED',
   'REMOVE_BLOG_TERM',
-  'REMOVE_RADAR_SOURCE',
   // I sette che scrivevano testo con un modello loro. L'autopilot gira sulle stesse funzioni che
   // le loro rotte chiamano, su ogni brand con un piano attivo: la rotta deve continuare a
   // compilare e a validare, ed è questo export a tenerla in piedi.

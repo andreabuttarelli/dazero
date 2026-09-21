@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, gateAiAction } from '$lib/server/cli-auth';
 import { generateBrandCarousel } from '$lib/server/media-generate';
-import { GENERATE_CAROUSEL, statusForFailure } from '@anomalia/api-contracts';
+import { GENERATE_CAROUSEL, statusForFailure } from '@dazero/api-contracts';
 
 // Otto slide di fila sono otto render: sotto il minuto, ma non sotto il default.
 export const config = { maxDuration: 300 };

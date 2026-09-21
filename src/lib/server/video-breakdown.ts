@@ -227,6 +227,6 @@ export function shotBriefPromptFromBreakdown(
   const speech = line
     ? `\nSPOKEN LINE — the person says exactly this, and nothing else (ignore the reference dialogue): "${line}"`
     : '';
-  return `${breakdown.prompt}${product}${speech}\n\nALWAYS: keep the same face and real skin texture from the reference (no beauty filter), lips synced. Expressive PAS performance — PROBLEM = brows knit / lean in; SOLUTION = visible relief (shoulders drop, softer eyes); not deadpan the whole clip. Fast natural talk — blink every ~2–3 seconds (never a frozen stare); one micro pause / gaze break OK; CTA trails off in energy but every word of the spoken line still finishes — never cut mid-word. If the line contains "Anomalia", pronounce it Italian: ah-no-MAH-lyah (/anoˈmalja/) — never Anomida/Anonimita/anomaly. NO subtitles, captions, logos or watermarks — ever.`;
+  return `${breakdown.prompt}${product}${speech}\n\nALWAYS: keep the same face and real skin texture from the reference (no beauty filter), lips synced. Expressive PAS performance — PROBLEM = brows knit / lean in; SOLUTION = visible relief (shoulders drop, softer eyes); not deadpan the whole clip. Fast natural talk — blink every ~2–3 seconds (never a frozen stare); one micro pause / gaze break OK; CTA trails off in energy but every word of the spoken line still finishes — never cut mid-word. If the line contains "dazero", pronounce it Italian: ah-no-MAH-lyah (/anoˈmalja/) — never Anomida/Anonimita/anomaly. NO subtitles, captions, logos or watermarks — ever.`;
 }
 

@@ -1,5 +1,4 @@
 import type { RequestHandler } from './$types';
-import { canEnter } from '$lib/server/access';
 import { zipPostMedia } from '$lib/server/download-post-media';
 
 /**
@@ -9,7 +8,6 @@ import { zipPostMedia } from '$lib/server/download-post-media';
 export const POST: RequestHandler = async ({ params, request, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
 
   const { data: brand } = await supabase.from('brands').select('id, slug').eq('slug', params.brand).maybeSingle();
   if (!brand) return new Response('Brand not found', { status: 404 });

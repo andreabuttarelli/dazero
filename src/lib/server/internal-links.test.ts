@@ -234,8 +234,7 @@ describe('runInternalLinkingTick', () => {
         { id: 'b2', slug: 'b2', plan: 'pro', status: 'active' }
       ],
       brand_pages: [],
-      brand_sites: [],
-      brand_seo_keyword_strategy: []
+      brand_sites: []
     });
 
     const res = await runInternalLinkingTick(db.client as never, { maxArticles: 2 });

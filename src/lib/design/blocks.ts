@@ -290,7 +290,7 @@ const norm = (v: string) => (v.trim().startsWith('#') ? v.trim() : `#${v.trim()}
 const NEUTRAL_ACCENT = '#c485fe';
 
 /**
- * Build the palette from the brand's own colours, falling back to the Anomalia neutrals.
+ * Build the palette from the brand's own colours, falling back to the dazero neutrals.
  * The accent is the brand's FIRST colour: it's the one a brand kit puts forward, and it's the only
  * hue in the design — everything else is a neutral, so an ugly brand colour can only ever ruin one
  * element instead of the whole canvas.

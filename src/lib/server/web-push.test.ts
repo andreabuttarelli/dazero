@@ -5,7 +5,7 @@ vi.mock('$env/dynamic/private', () => ({
 }));
 
 vi.mock('$env/dynamic/public', () => ({
-	env: { PUBLIC_VAPID_KEY: '', PUBLIC_APP_URL: 'https://anomalia.so' }
+	env: { PUBLIC_VAPID_KEY: '', PUBLIC_APP_URL: 'https://dazero.co' }
 }));
 
 describe('web-push server', () => {
@@ -28,7 +28,7 @@ describe('web-push server', () => {
 			}))
 		};
 		const result = await sendPushToUser(supabase as never, 'user-1', {
-			title: 'Anomalia',
+			title: 'dazero',
 			body: 'hi'
 		});
 		expect(result).toEqual({ sent: 0, pruned: 0 });
@@ -37,7 +37,7 @@ describe('web-push server', () => {
 
 	it('absolutePushUrl prefixes PUBLIC_APP_URL when relative', async () => {
 		const { absolutePushUrl } = await import('./web-push');
-		expect(absolutePushUrl('/app/x/chat/y')).toBe('https://anomalia.so/app/x/chat/y');
-		expect(absolutePushUrl('https://anomalia.so/approve/t')).toBe('https://anomalia.so/approve/t');
+		expect(absolutePushUrl('/app/x/chat/y')).toBe('https://dazero.co/app/x/chat/y');
+		expect(absolutePushUrl('https://dazero.co/approve/t')).toBe('https://dazero.co/approve/t');
 	});
 });

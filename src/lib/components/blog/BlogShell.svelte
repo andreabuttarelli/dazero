@@ -154,18 +154,18 @@
         {#if brand.description}<p class="foot-desc">{brand.description}</p>{/if}
         <p class="foot-copy">© {new Date().getFullYear()} {brand.name}</p>
         <a
-          class="anomalia-badge"
+          class="dazero-badge"
           href={brand.referralCode
-            ? `https://anomalia.so/?ref=${encodeURIComponent(brand.referralCode)}`
-            : 'https://anomalia.so'}
+            ? `https://dazero.co/?ref=${encodeURIComponent(brand.referralCode)}`
+            : 'https://dazero.co'}
           target="_blank"
           rel="noopener"
           aria-label={$_('blog.poweredByAria')}
         >
-          <span class="anomalia-badge-mark" aria-hidden="true">0→1</span>
-          <span class="anomalia-badge-text">
-            <span class="anomalia-badge-kicker">{$_('blog.poweredBy')}</span>
-            <span class="anomalia-badge-name">Anomalia</span>
+          <span class="dazero-badge-mark" aria-hidden="true">0→1</span>
+          <span class="dazero-badge-text">
+            <span class="dazero-badge-kicker">{$_('blog.poweredBy')}</span>
+            <span class="dazero-badge-name">dazero</span>
           </span>
         </a>
       </div>
@@ -350,7 +350,7 @@
   }
   .foot-legal a:hover, .foot-legal button:hover { color: var(--accent); }
   .foot-copy { font-size: 13px; color: #999; margin: 0; }
-  .anomalia-badge {
+  .dazero-badge {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -363,11 +363,11 @@
     text-decoration: none;
     transition: border-color 0.15s ease, transform 0.15s ease;
   }
-  .anomalia-badge:hover {
+  .dazero-badge:hover {
     border-color: #ccc;
     transform: translateY(-1px);
   }
-  .anomalia-badge-mark {
+  .dazero-badge-mark {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -381,18 +381,18 @@
     letter-spacing: -0.05em;
     line-height: 1;
   }
-  .anomalia-badge-text {
+  .dazero-badge-text {
     display: flex;
     flex-direction: column;
     gap: 1px;
     line-height: 1.15;
   }
-  .anomalia-badge-kicker {
+  .dazero-badge-kicker {
     font-size: 10px;
     color: #888;
     letter-spacing: 0.01em;
   }
-  .anomalia-badge-name {
+  .dazero-badge-name {
     font-size: 13px;
     font-weight: 700;
     letter-spacing: -0.02em;
@@ -438,11 +438,11 @@
   :global(:root[data-theme="dark"]) .foot-desc { color: #999; }
   :global(:root[data-theme="dark"]) .foot-legal a, :global(:root[data-theme="dark"]) .foot-legal button { color: #999; }
   :global(:root[data-theme="dark"]) .foot-copy { color: #777; }
-  :global(:root[data-theme="dark"]) .anomalia-badge {
+  :global(:root[data-theme="dark"]) .dazero-badge {
     background: #161616;
     border-color: #2a2a2a;
     color: #f2f2f2;
   }
-  :global(:root[data-theme="dark"]) .anomalia-badge-mark { background: #f2f2f2; color: #111; }
-  :global(:root[data-theme="dark"]) .anomalia-badge-kicker { color: #888; }
+  :global(:root[data-theme="dark"]) .dazero-badge-mark { background: #f2f2f2; color: #111; }
+  :global(:root[data-theme="dark"]) .dazero-badge-kicker { color: #888; }
 </style>

@@ -1,5 +1,4 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { canEnter } from '$lib/server/access';
 import type { Actions, PageServerLoad } from './$types';
 import {
   getPendingOAuthData,
@@ -15,8 +14,6 @@ import { canConnectSocials } from '$lib/server/plans';
 // carried into the `select` action via the form, since the token can't be fetched twice.
 export const load: PageServerLoad = async ({ params, url, parent, locals: { supabase } }) => {
   await parent(); // ensures the brand layout (auth + brand resolution) has run
-  if (!(await canEnter(supabase))) throw redirect(303, '/waitlist');
-
   const dest = url.searchParams.get('return') === 'activate' ? 'activate' : 'settings';
   // Zernio appends the one-time token to our redirect URL; accept the documented name and fallbacks.
   const token =
@@ -71,7 +68,7 @@ export const actions: Actions = {
       .maybeSingle();
     if (!brand?.zernio_profile_id) return fail(404, { error: 'brand' });
     if (!canConnectSocials(brand.plan, brand.status)) {
-      throw redirect(303, `/app/${params.brand}/activate`);
+      throw redirect(303, '/app/billing');
     }
 
     let userProfile: unknown = null;

@@ -22,7 +22,7 @@ const validSeeds = () => ({
   seeds: [{ platform: 'instagram', angle: 'Il primo switch che monti storto' }]
 });
 
-describe('il contratto di un piano scritto fuori da Anomalia', () => {
+describe('il contratto di un piano scritto fuori da dazero', () => {
   it('accetta un piano completo', () => {
     expect(SAVE_PLAN.input.safeParse(validPlan()).success).toBe(true);
   });
@@ -65,7 +65,7 @@ describe('il contratto di un piano scritto fuori da Anomalia', () => {
   });
 });
 
-describe('il contratto dei seed scritti fuori da Anomalia', () => {
+describe('il contratto dei seed scritti fuori da dazero', () => {
   it('accetta una settimana di seed', () => {
     expect(SAVE_WEEK_SEEDS.input.safeParse(validSeeds()).success).toBe(true);
   });

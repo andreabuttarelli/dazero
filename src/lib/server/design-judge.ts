@@ -28,7 +28,6 @@ import { llmConfigured, llmStructured } from '$lib/server/llm';
 import { SUPPORTED, type Locale } from '$lib/i18n/locale';
 // The vocabulary is shared with the pages that render it — see the header of `$lib/wall`.
 import { DESIGN_AXES, DESIGN_TAGS, type DesignAxis, type DesignTag } from '$lib/wall';
-import type { HarvestError } from '$lib/server/market-harvest';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRec = Record<string, any>;
@@ -309,14 +308,6 @@ export async function judgeDesign(
     return null;
   }
 }
-
-export type JudgeRunResult = {
-  considered: number;
-  judged: number;
-  design: number;
-  onWall: number;
-  errors: HarvestError[];
-};
 
 /** The locales the note carries. Exported so a test fails when a new site locale is added here. */
 export const NOTE_LOCALES: readonly Locale[] = SUPPORTED;

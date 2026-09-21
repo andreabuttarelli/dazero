@@ -8,5 +8,5 @@ export async function cmdLogout() {
   }
 
   clearSession();
-  ok('Disconnesso. Esegui `anomalia` per riaccedere.');
+  ok('Disconnesso. Esegui `dazero` per riaccedere.');
 }

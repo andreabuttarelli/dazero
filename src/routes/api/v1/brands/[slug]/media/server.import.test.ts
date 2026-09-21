@@ -24,7 +24,7 @@ const IMPORTED = {
   width: 1080,
   height: 1350,
   source_url: 'https://cdn.example.com/a.png',
-  url: 'https://anomalia.so/a/K7BX2MQ4'
+  url: 'https://dazero.co/a/K7BX2MQ4'
 };
 
 function call(body: unknown, slug = 'demo') {
@@ -39,7 +39,7 @@ function call(body: unknown, slug = 'demo') {
     error: null
   } as never);
 
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/media`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/media`);
   return (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),
     params: { slug },
@@ -88,7 +88,7 @@ describe('POST /api/v1/brands/:slug/media', () => {
     vi.mocked(authenticate).mockResolvedValue({
       error: new Response('Unauthorized', { status: 401 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/demo/media');
+    const url = new URL('https://dazero.test/api/v1/brands/demo/media');
 
     const res = await (POST as (event: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: '{}' }),
@@ -110,7 +110,7 @@ describe('POST /api/v1/brands/:slug/media', () => {
     vi.mocked(loadBrandForUser).mockResolvedValue({
       error: new Response(JSON.stringify({ error: 'Brand not found' }), { status: 404 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/altrui/media');
+    const url = new URL('https://dazero.test/api/v1/brands/altrui/media');
 
     const res = await (POST as (event: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: '{}' }),

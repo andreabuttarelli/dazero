@@ -4,7 +4,7 @@ import { c, info } from '../lib/display.ts';
 
 export async function cmdUpgrade(slug: string) {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: anomalia login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
 
   const detail = await api.getBrand(session.access_token, slug);
   const brand = detail.brand;
@@ -14,7 +14,7 @@ export async function cmdUpgrade(slug: string) {
   console.log(`  Status: ${brand.status ?? '—'}`);
   console.log();
 
-  const url = `${process.env.PUBLIC_APP_URL}/app/${slug}/activate`;
+  const url = `${process.env.PUBLIC_APP_URL}/app/billing`;
   console.log(`  Apertura pagina di upgrade…`);
   console.log(`  ${c.dim(url)}`);
 

@@ -13,13 +13,12 @@
   // qualsiasi motivo non arriva, si va sulla home pubblica — mai un bottone che promette l'app
   // e sbatte sul login.
   import { page } from '$app/stores';
-  import { _, locale } from 'svelte-i18n';
+  import { _ } from 'svelte-i18n';
   import AgentAvatar from '$lib/components/AgentAvatar.svelte';
-  import { localePath, type Locale } from '$lib/i18n/locale';
 
   const status = $derived($page.status);
   const loggedIn = $derived(Boolean($page.data?.session));
-  const href = $derived(loggedIn ? '/app' : localePath('/', ($locale as Locale) ?? 'en'));
+  const href = $derived(loggedIn ? '/app' : '/');
 
   // 404 → non c'è; 401/403 → non è tua; tutto il resto → si è rotto da noi.
   // `$page.error.message` non si mostra MAI: è testo interno.
@@ -30,7 +29,7 @@
 </script>
 
 <svelte:head>
-  <title>{$_(`error.${kind}.title`)} · Anomalia</title>
+  <title>{$_(`error.${kind}.title`)} · dazero</title>
   <meta name="robots" content="noindex" />
 </svelte:head>
 

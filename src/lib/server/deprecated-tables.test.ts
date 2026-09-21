@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 /**
  * QUALI TABELLE SONO MARCATE MORTE, E IN CHE FORMA.
  *
- * Una tabella vuota non è una tabella morta: `radar_jobs` ha 530 inserimenti storici e zero righe
- * perché è una coda, e `org_usage` è vuota solo perché nessuno ha ancora sfiorato il tetto dei
- * crediti. Il criterio è un altro — esiste codice raggiungibile che ci scrive? — e la risposta,
+ * Una tabella vuota non è una tabella morta: `webhook_deliveries` è vuota perché è una coda —
+ * vuota significa «niente in attesa adesso» — e `org_usage` è vuota solo perché nessuno ha ancora
+ * sfiorato il tetto dei crediti. Il criterio è un altro — esiste codice raggiungibile che ci scrive? — e la risposta,
  * una volta pagata, va scritta dove si ritrova: nel `COMMENT ON TABLE`, che `obj_description`
  * interroga e nessun grep può perdere.
  *
@@ -14,12 +14,28 @@ import { readFileSync } from 'node:fs';
  * tabelle sono deprecate fa una query, non legge trentaquattro frasi diverse. Una deprecazione
  * tolta è una riga tolta da questo elenco, quindi si vede nel diff invece di accadere in silenzio.
  */
-const DEPRECATED = ['agent_kit_approval_requests', 'brand_design_templates'] as const;
+const DEPRECATED = [
+	'agent_kit_approval_requests',
+	'brand_design_templates',
+	'brand_field_posts',
+	'market_account_baselines',
+	'market_account_fetch_attempts',
+	'market_harvest_errors',
+	'market_harvest_runs',
+	'market_post_observations',
+	'market_posts',
+	'market_teardowns',
+	'market_video_analyses'
+] as const;
 
-const MIGRATION = readFileSync(
-	new URL('../../../supabase/migrations/20260921180000_deprecate_dead_tables.sql', import.meta.url),
-	'utf8'
-);
+const MIGRATIONS = [
+	'20260921180000_deprecate_dead_tables.sql',
+	'20260921190000_drop_market.sql'
+];
+
+const MIGRATION = MIGRATIONS.map((name) =>
+	readFileSync(new URL(`../../../supabase/migrations/${name}`, import.meta.url), 'utf8')
+).join('\n');
 
 /** `DEPRECATED <YYYY-MM-DD>: <perché>. <cosa usare al suo posto>.` — vedi la testa della migrazione. */
 const COMMENT = /comment on table public\.([a-z_]+) is\s*\n?\s*'DEPRECATED (\d{4}-\d{2}-\d{2}): ([^']+)';/g;
@@ -46,7 +62,7 @@ describe('deprecated tables', () => {
 	 */
 	it('non tocca le code né le funzionalità vive ma mai usate', () => {
 		const marked = new Set(commented().map((c) => c.table));
-		for (const alive of ['radar_jobs', 'radar_feed_cache', 'webhook_deliveries', 'org_usage', 'ad_campaigns', 'brand_webhooks']) {
+		for (const alive of ['webhook_deliveries', 'org_usage', 'ad_campaigns', 'brand_webhooks']) {
 			expect(marked.has(alive)).toBe(false);
 		}
 	});

@@ -427,11 +427,11 @@ async function notifyHeld(
       .eq('id', brandId)
       .maybeSingle();
     if (!brand?.org_id || !brand.slug) continue;
-    const { brandContacts } = await import('$lib/server/scheduler');
+    const { brandContacts } = await import('$lib/server/brand-contacts');
     const { notifyBrandContacts } = await import('$lib/server/brand-notify');
     const contacts = await brandContacts(supabase, brand.org_id, brand.id);
     if (!contacts.length) continue;
-    const url = `${appBase}/app/${brand.slug}/content`;
+    const url = `${appBase}/app/${brand.slug}/calendar`;
     await notifyBrandContacts(supabase, contacts, {
       logPrefix: '[prepublish]',
       buildEmail: (locale, to) => ({

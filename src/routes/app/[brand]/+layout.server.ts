@@ -1,19 +1,15 @@
 import { swallow } from '$lib/server/swallow';
 import { error, redirect } from '@sveltejs/kit';
-import { canEnter } from '$lib/server/access';
 import { studioCompleteness } from '$lib/studio-completeness';
 import { getOnboardingState } from '$lib/server/onboarding';
 import { computeBrandWarnings } from '$lib/warnings';
 import { agentNoticeToWarning, listAgentNotices } from '$lib/server/brand-warnings';
-import { radarPrefsOf } from '$lib/server/radar';
 import { remaining } from '$lib/server/usage';
 import { countCalendarConflicts } from '$lib/server/schedule';
-import { canConnectSocials } from '$lib/plans';
 import { env } from '$env/dynamic/private';
 import { isAdsPreviewUser } from '$lib/server/internal-users';
 import { LAST_BRAND_COOKIE, LAST_BRAND_COOKIE_MAX_AGE } from '$lib/shell-prefs';
 import { createAdminClient } from '$lib/server/supabase-admin';
-import { gscConfigured, loadGscReady } from '$lib/server/gsc';
 import {
   getBrandDeferred,
   setBrandDeferred
@@ -53,7 +49,6 @@ export const load: LayoutServerLoad = async ({ url, params, cookies, locals: { s
   // e l'altra, oltre alle query della pagina stessa.
   const cookieSessionP = supabase.auth.getSession();
   const authP = safeGetSession();
-  const enterP = canEnter(supabase);
 
   const {
     data: { session: cookieSession }
@@ -67,9 +62,8 @@ export const load: LayoutServerLoad = async ({ url, params, cookies, locals: { s
 
   const shellP = resolveTenant(supabase, userId, params.brand);
 
-  const [{ session, user }, allowed, shell] = await Promise.all([authP, enterP, shellP]);
+  const [{ session, user }, shell] = await Promise.all([authP, shellP]);
   if (!session) throw redirect(303, '/login');
-  if (!allowed) throw redirect(303, '/waitlist');
 
   const brand = shell.brand as any;
   const brandRows = shell.peers;
@@ -133,7 +127,6 @@ export const load: LayoutServerLoad = async ({ url, params, cookies, locals: { s
   async function loadDeferred() {
     const [
       { count: pendingCount },
-      { count: leadsPendingCount },
       { data: gtmPlans },
       { data: editPlans },
       { data: linkedContentPlans },
@@ -145,20 +138,15 @@ export const load: LayoutServerLoad = async ({ url, params, cookies, locals: { s
       { data: generatedPosts },
       { count: failedPostCount },
       { count: attentionPostCount },
-      { count: radarReviewCount },
       { count: peopleCount },
       { count: competitorCount },
       { count: proposedGtmCount },
       { count: proposedEditCount },
-      { count: geoAuditCount },
-      { data: gscConn },
       budget,
       { data: profile },
-      gscReady,
       { data: kitExtras }
     ] = await Promise.all([
       supabase.from('posts').select('id', { count: 'exact', head: true }).eq('brand_id', brandRow.id).eq('status', 'pending_user'),
-      supabase.from('brand_news_items').select('id', { count: 'exact', head: true }).eq('brand_id', brandRow.id).eq('status', 'suggested').not('suggestion', 'is', null),
       // Si leggono i campi di CONTENUTO, non solo l'esistenza della riga: un piano vuoto non deve
       // far passare la checklist.
       supabase.from('gtm_plans').select('id, phases').eq('brand_id', brandRow.id).eq('status', 'active'),
@@ -172,26 +160,12 @@ export const load: LayoutServerLoad = async ({ url, params, cookies, locals: { s
       supabase.from('posts').select('platform, status, scheduled_for, slot').eq('brand_id', brandRow.id).in('status', ['pending_user', 'approved', 'scheduled']),
       supabase.from('posts').select('id', { count: 'exact', head: true }).eq('brand_id', brandRow.id).eq('status', 'failed'),
       supabase.from('posts').select('id', { count: 'exact', head: true }).eq('brand_id', brandRow.id).eq('needs_attention', true).neq('status', 'published'),
-      supabase.from('posts').select('id', { count: 'exact', head: true }).eq('brand_id', brandRow.id).eq('source', 'radar').eq('needs_attention', true).neq('status', 'published'),
       supabase.from('people').select('id', { count: 'exact', head: true }).eq('brand_id', brandRow.id),
       supabase.from('competitors').select('id', { count: 'exact', head: true }).eq('brand_id', brandRow.id),
       supabase.from('gtm_plans').select('id', { count: 'exact', head: true }).eq('brand_id', brandRow.id).eq('status', 'proposed'),
       supabase.from('editorial_plans').select('id', { count: 'exact', head: true }).eq('brand_id', brandRow.id).eq('status', 'proposed'),
-      supabase.from('brand_geo_audits').select('id', { count: 'exact', head: true }).eq('brand_id', brandRow.id),
-      supabase
-        .from('brand_gsc_connections')
-        .select('site_url, active')
-        .eq('brand_id', brandRow.id)
-        .maybeSingle(),
       remaining(supabase, brandRow.id, brandRow.plan, brandRow.timezone, brandRow as any),
       supabase.from('profiles').select('full_name, email, avatar_url').eq('id', userRow.id).maybeSingle(),
-      // "GSC fatto" = pronto (sincronizzato + dati), oppure OAuth non configurato su questo ambiente.
-      gscConfigured()
-        ? Promise.resolve()
-            .then(() => loadGscReady(createAdminClient(), brandRow.id))
-            .then(({ ready }) => ready as boolean | null)
-            .catch((error) => { swallow('then failed', error); return null; })
-        : Promise.resolve(true as boolean | null),
       supabase
         .from('brand_kit')
         .select('about, target_audience, brand_style, ai_character, brand_colors, visual_style')
@@ -202,8 +176,6 @@ export const load: LayoutServerLoad = async ({ url, params, cookies, locals: { s
     const connectedPlatforms = [...new Set((connectedAccts ?? []).filter((a) => a.status === 'active').map((a) => String(a.platform ?? '').toLowerCase()).filter(Boolean))];
     // Account che esistono ma non funzionano più: "da ricollegare", non "mai collegato".
     const brokenPlatforms = [...new Set((connectedAccts ?? []).filter((a) => ['expired', 'error', 'disconnected'].includes(String(a.status ?? ''))).map((a) => String(a.platform ?? '').toLowerCase()).filter(Boolean))].filter((p) => !connectedPlatforms.includes(p));
-    const hasGeoAudit = (geoAuditCount ?? 0) > 0;
-    const gscConnected = gscReady ?? !!(gscConn?.active && gscConn?.site_url);
     const contentPlatforms = [...new Set((generatedPosts ?? []).map((p) => String(p.platform ?? '').toLowerCase()).filter(Boolean))];
     const contentCount = (generatedPosts ?? []).length;
     const calendarConflicts = countCalendarConflicts((generatedPosts ?? []) as { scheduled_for: string | null; status: string; slot: string | null }[], brandRow.timezone);
@@ -212,11 +184,7 @@ export const load: LayoutServerLoad = async ({ url, params, cookies, locals: { s
     const editorialPlanPlatforms: string[] | null = Array.isArray(planStrategy?.platform_mix)
       ? planStrategy.platform_mix.map((m: { platform?: string }) => String(m?.platform ?? '')).filter(Boolean)
       : null;
-    const radarEnabled = radarPrefsOf(brandRow.content_prefs).enabled === true;
     const socialAccountCount = (connectedAccts ?? []).length;
-    // Rispecchia MAX_CONSECUTIVE_FAILURES di scheduler.ts.
-    const AUTOPILOT_MAX_FAILURES = 3;
-    const autopilotFailureCount = (brandRow as { autopilot_failure_count?: number }).autopilot_failure_count ?? 0;
     const hasProposedPlan = (proposedGtmCount ?? 0) > 0 || (proposedEditCount ?? 0) > 0;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const strategyReport = (strategyRow?.report as any) ?? null;
@@ -258,12 +226,9 @@ export const load: LayoutServerLoad = async ({ url, params, cookies, locals: { s
 
     const warnings = computeBrandWarnings({
       base: `/app/${brandRow.slug}`,
-      canConnectSocials: canConnectSocials(brandRow.plan, brandRow.status),
       targetPlatforms: Array.isArray(brandRow.target_platforms) ? (brandRow.target_platforms as string[]) : [],
       connectedPlatforms,
       brokenPlatforms,
-      autopilotFailureCount,
-      autopilotMaxFailures: AUTOPILOT_MAX_FAILURES,
       hasProposedPlan,
       strategyPlatforms,
       editorialPlanPlatforms,
@@ -283,12 +248,11 @@ export const load: LayoutServerLoad = async ({ url, params, cookies, locals: { s
       peopleCount: peopleCount ?? 0,
       competitorCount: competitorCount ?? 0,
       calendarConflicts,
-      blogEnabled: (brandRow.blog_config as { enabled?: boolean } | null)?.enabled === true,
-      hasGeoAudit
+      blogEnabled: (brandRow.blog_config as { enabled?: boolean } | null)?.enabled === true
     });
 
     // Le notifiche scritte dagli AGENTI entrano nella stessa campanella. `incidents` è
-    // service-role, quindi admin: la membership l'ha già verificata canEnter qui sopra.
+    // service-role, quindi admin: la membership l'ha già verificata resolveTenant qui sopra.
     try {
       const notices = await listAgentNotices(createAdminClient(), brandRow.id);
       for (const n of notices) warnings.unshift(agentNoticeToWarning(n, `/app/${brandRow.slug}`));
@@ -311,8 +275,6 @@ export const load: LayoutServerLoad = async ({ url, params, cookies, locals: { s
 
     return {
       pendingCount: pendingCount ?? 0,
-      leadsPendingCount: leadsPendingCount ?? 0,
-      radarReviewCount: radarReviewCount ?? 0,
       socialAccountCount: socialAccountCount ?? 0,
       postsRemaining: budget.posts,
       postsQuota: budget.postsQuota,
@@ -331,10 +293,7 @@ export const load: LayoutServerLoad = async ({ url, params, cookies, locals: { s
       strategySetup,
       studioPct,
       editorialPlanWeeks,
-      warnings,
-      radarEnabled,
-      hasGeoAudit,
-      gscConnected
+      warnings
     };
   }
 

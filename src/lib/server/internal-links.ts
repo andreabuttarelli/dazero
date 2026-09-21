@@ -1,6 +1,6 @@
 // Internal linking autopilot: append "See also" links between a brand's own published articles
 // (interlinking, a ranking signal Google rewards — related articles reinforce the topic cluster).
-// Runs weekly via /api/v1/seo/links/tick and on publish-due (blog-generate.ts). Pure-text appends
+// Runs weekly via /api/v1/blog/links/tick and on publish-due (blog-generate.ts). Pure-text appends
 // at the END of body_md (never inside the prose), so there is zero risk of breaking the markdown;
 // the brand_internal_links table is the dedup ledger. Brands with an external CMS (Shopify/Webflow/
 // Wix) pick the updated body up at the next publish-due sync — we never push to the CMS here.
@@ -36,24 +36,9 @@ function hostnameOf(url: string): string {
   }
 }
 
-// Cheap read of the cached keyword strategy (never regenerates — the tick must not spend AI).
-async function cachedKeywordTerms(admin: SupabaseClient, brandId: string): Promise<string[]> {
-  const { data } = await admin
-    .from('brand_seo_keyword_strategy')
-    .select('strategy')
-    .eq('brand_id', brandId)
-    .maybeSingle();
-  const keywords = (((data?.strategy as AnyRec | null)?.keywords as AnyRec[] | null) ?? []) as AnyRec[];
-  return keywords
-    .map((k) => String(k.keyword ?? ''))
-    .filter(Boolean)
-    .slice(0, 12);
-}
-
 // Topics for one article, in order of trust:
 // 1. its own tags (brand_article_tags → blog_tags),
-// 2. the topics of the brand's indexed pages (brand_pages) on the same host (site/website),
-// 3. the brand's cached keyword strategy terms.
+// 2. the topics of the brand's indexed pages (brand_pages) on the same host (site/website).
 async function resolveSourceTopics(admin: SupabaseClient, brandId: string, articleId: string): Promise<string[]> {
   const { data: tags } = await admin
     .from('brand_article_tags')
@@ -77,9 +62,7 @@ async function resolveSourceTopics(admin: SupabaseClient, brandId: string, artic
     if (hosts.size && !hosts.has(hostnameOf(String(p.url ?? '')))) continue;
     for (const t of p.topics as string[]) if (t) topics.add(String(t));
   }
-  if (topics.size) return [...topics];
-
-  return cachedKeywordTerms(admin, brandId);
+  return [...topics];
 }
 
 export type RelatedArticle = { id: string; title: string; slug: string | null; score: number };

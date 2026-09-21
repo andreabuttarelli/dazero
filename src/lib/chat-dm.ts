@@ -6,7 +6,7 @@
  * solo array, quindi per tutto il codice delle room un DM "non è una stanza" senza un solo if in
  * più e senza migration nuova.
  *
- * Le chiavi membro sono quelle delle room più `anomalia`: il generalista, che nelle room non esiste
+ * Le chiavi membro sono quelle delle room più `dazero`: il generalista, che nelle room non esiste
  * ma nei DM è chi più spesso scrive agli specialisti.
  *
  * `names` è scritto UNA volta alla creazione: permette a sidebar e transcript di etichettare le

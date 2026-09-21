@@ -18,7 +18,7 @@
  * da rilanciare una quarta: si ferma e la sua ultima risposta resta, con la verità in faccia.
  */
 import { generateText } from 'ai';
-import { compactionModel } from '$lib/server/chat/model';
+import { compactionModel } from '$lib/server/ai-model';
 
 export const MAX_VERDICT_LAPS = 2;
 

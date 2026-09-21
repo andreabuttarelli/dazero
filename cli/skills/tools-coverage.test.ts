@@ -6,7 +6,7 @@ import { BRAND_ENDPOINTS, BRAND_FAMILIES, inAFamily } from '../lib/contracts/ind
 
 const CLI = fileURLToPath(new URL('../', import.meta.url));
 const MCP_TOOLS = join(CLI, 'mcp', 'tools');
-const REFERENCE = join(CLI, 'skills', 'anomalia', 'references', 'tools.md');
+const REFERENCE = join(CLI, 'skills', 'dazero', 'references', 'tools.md');
 
 const HAND_REGISTERED_BECAUSE: Record<string, string> = {
   list_brands: 'GET /api/v1/brands non sta sotto un brand, e il registry e scoped sul brand',
@@ -17,12 +17,12 @@ const HAND_REGISTERED_BECAUSE: Record<string, string> = {
   produce_week: 'legge il piano per trovare la bozza dei seed, poi la produce'
 };
 
-// Le soglie scendono con le trentatre letture ritirate dentro `query` e con i dieci tool che i
-// quattro generici rimpiazzano: restano il guardiano contro un estrattore che smette di
-// estrarre, non una misura della superficie.
-const MIN_REGISTRY_TOOLS = 60;
+// Le soglie scendono con le trentatre letture ritirate dentro `query`, con i dieci tool che i
+// quattro generici rimpiazzano, con il Radar rimosso e con SEO/GEO smontati: restano il guardiano
+// contro un estrattore che smette di estrarre, non una misura della superficie.
+const MIN_REGISTRY_TOOLS = 50;
 const MIN_HAND_REGISTERED = 6;
-const MIN_NAMED_BY_THE_SKILL = 60;
+const MIN_NAMED_BY_THE_SKILL = 50;
 
 function names(pattern: RegExp, text: string): string[] {
   return [...text.matchAll(pattern)].map((match) => match[1]);

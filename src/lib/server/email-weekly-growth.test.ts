@@ -58,22 +58,6 @@ describe('weekly recap growth section', () => {
     const html = weeklyRecapEmailHtml('en', baseRecap({ growth: null }));
     expect(html).not.toContain('Growth data readiness');
   });
-
-  it('renders Italian growth copy', () => {
-    const html = weeklyRecapEmailHtml(
-      'it',
-      baseRecap({
-        growth: {
-          ready: false,
-          blockingCount: 1,
-          warningCount: 0,
-          fixes: [{ key: 'voice', blocking: true, url: 'https://app.example/app/acme/plan' }]
-        }
-      })
-    );
-    expect(html).toContain('Dati pronti per la crescita');
-    expect(html).toContain('Definisci voce / personalità');
-  });
 });
 
 describe('weekly recap link clicks section', () => {
@@ -94,36 +78,23 @@ describe('weekly recap link clicks section', () => {
   });
 });
 
-describe('weekly recap visual insights + rank tracking sections', () => {
-  it('renders visual insights and rank tracking in html and text when data present', () => {
+describe('weekly recap visual insights section', () => {
+  it('renders visual insights in html and text when data present', () => {
     const data = baseRecap({
       visualInsights: [
         { dimension: 'genre', value: 'produced_ugc', n: 12, erAvg: 6.2, delta: 35 },
         { dimension: 'platform', value: 'tiktok', n: 8, erAvg: 5.1, delta: 18 },
         { dimension: 'genre', value: 'product_shots', n: 5, erAvg: 1.2, delta: -20 }
-      ],
-      webKpis: {
-        tracked: 42,
-        improved: 12,
-        worsened: 3,
-        improvedList: ['acme pricing', 'acme alternatives']
-      }
+      ]
     });
     const html = weeklyRecapEmailHtml('en', data);
     expect(html).toContain('Visual insights');
     expect(html).toContain('genre: produced_ugc +35% ER vs avg (n=12)');
     expect(html).toContain('genre: product_shots -20% ER vs avg (n=5)');
-    expect(html).toContain('Rank tracking');
-    expect(html).toContain('tracked: 42 · improved: 12 · worsened: 3');
-    expect(html).toContain('acme pricing');
-    expect(html).toContain('acme alternatives');
 
     const text = weeklyRecapEmailText('en', data);
     expect(text).toContain('Visual insights');
     expect(text).toContain('genre: produced_ugc +35% ER vs avg (n=12)');
-    expect(text).toContain('Rank tracking');
-    expect(text).toContain('tracked: 42 · improved: 12 · worsened: 3');
-    expect(text).toContain('acme pricing');
   });
 
   it('renders at most 3 visual insight rows', () => {
@@ -140,33 +111,11 @@ describe('weekly recap visual insights + rank tracking sections', () => {
     expect(html).not.toContain('genre: d +10% ER vs avg');
   });
 
-  it('omits the sections when there is no data', () => {
+  it('omits the section when there is no data', () => {
     const html = weeklyRecapEmailHtml('en', baseRecap());
     expect(html).not.toContain('Visual insights');
-    expect(html).not.toContain('Rank tracking');
     expect(weeklyRecapEmailText('en', baseRecap())).not.toContain('Visual insights');
-    expect(weeklyRecapEmailText('en', baseRecap())).not.toContain('Rank tracking');
   });
 
-  it('omits rank tracking when tracked is 0', () => {
-    const html = weeklyRecapEmailHtml(
-      'en',
-      baseRecap({ webKpis: { tracked: 0, improved: 0, worsened: 0, improvedList: [] } })
-    );
-    expect(html).not.toContain('Rank tracking');
-  });
-
-  it('renders Italian copy', () => {
-    const html = weeklyRecapEmailHtml(
-      'it',
-      baseRecap({
-        visualInsights: [{ dimension: 'genre', value: 'produced_ugc', n: 12, erAvg: 6.2, delta: 35 }],
-        webKpis: { tracked: 1, improved: 1, worsened: 0, improvedList: ['acme'] }
-      })
-    );
-    expect(html).toContain('Insight visivi');
-    expect(html).toContain('Monitoraggio posizioni');
-    expect(html).toContain('tracciate: 1 · migliorate: 1 · peggiorate: 0');
-  });
 });
 

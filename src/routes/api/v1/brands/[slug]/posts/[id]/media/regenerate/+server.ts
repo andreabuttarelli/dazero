@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { gateAiAction } from '$lib/server/cli-auth';
 import { withBrandContext } from '$lib/server/ai-log';
 import { postMediaTarget } from '$lib/server/post-media';
-import { regeneratePostImage } from '$lib/agent/tools/post-editor-tools';
+import { regeneratePostImage } from '$lib/server/post-editor/post-editor-tools';
 
 export const config = { maxDuration: 300 };
 

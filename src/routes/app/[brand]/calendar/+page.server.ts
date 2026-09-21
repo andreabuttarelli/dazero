@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE } from '$lib/i18n/locale';
 import { swallow } from '$lib/server/swallow';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
@@ -14,7 +15,6 @@ import {
   deletePostCancellingZernio,
   editorActions
 } from '$lib/server/post-editing';
-import { founderVideoBudget, listVideoRequests } from '$lib/server/video-requests';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { cachedBrandPage } from '$lib/server/page-cache';
 import { viewFor, type PostDetail } from '$lib/post-state';
@@ -179,9 +179,7 @@ export const load: PageServerLoad = async (event) => {
       { data: allRows },
       budget,
       { data: accts },
-      { data: brandRow },
-      founderVideos,
-      videoRequests
+      { data: brandRow }
     ] = await Promise.all([
       scheduledQ,
       draftQ,
@@ -197,9 +195,7 @@ export const load: PageServerLoad = async (event) => {
       supabase.from('posts').select('status').eq('brand_id', brand.id),
       remaining(supabase, brand.id, brand.plan, brand.timezone),
       supabase.from('social_accounts').select('platform').eq('brand_id', brand.id).eq('status', 'active'),
-      supabase.from('brands').select('target_platforms').eq('id', brand.id).maybeSingle(),
-      founderVideoBudget(supabase, brand.id, brand.plan, tz),
-      listVideoRequests(supabase, brand.id)
+      supabase.from('brands').select('target_platforms').eq('id', brand.id).maybeSingle()
     ]);
 
     if (rowsErr) console.error('[calendar] posts query failed:', rowsErr.message);
@@ -342,8 +338,6 @@ export const load: PageServerLoad = async (event) => {
       busyDays,
       connectedPlatforms,
       targetPlatforms,
-      founderVideos,
-      videoRequests,
       timezone: tz,
       todayKey,
       nowISO: now.toISOString(),
@@ -594,7 +588,7 @@ export const actions: Actions = {
     return { ok: true, noAccount };
   },
 
-  emailApprove: async ({ params, url, locals: { supabase, safeGetSession, locale } }) => {
+  emailApprove: async ({ params, url, locals: { supabase, safeGetSession } }) => {
     const { session, user } = await safeGetSession();
     if (!session || !user?.email) return fail(400, { error: 'No email on file' });
     const { data: brand } = await supabase
@@ -615,9 +609,9 @@ export const actions: Actions = {
     try {
       await sendEmail({
         to: user.email,
-        subject: approvalEmailSubject(locale, brand.name, pending.length),
-        html: approvalEmailHtml(locale, brand.name, pending.length, approveUrl, pending, url.origin),
-        text: approvalEmailText(locale, brand.name, pending.length, approveUrl, pending)
+        subject: approvalEmailSubject(DEFAULT_LOCALE, brand.name, pending.length),
+        html: approvalEmailHtml(DEFAULT_LOCALE, brand.name, pending.length, approveUrl, pending, url.origin),
+        text: approvalEmailText(DEFAULT_LOCALE, brand.name, pending.length, approveUrl, pending)
       });
     } catch (e) {
       return fail(500, { error: e instanceof Error ? e.message : 'Email failed' });

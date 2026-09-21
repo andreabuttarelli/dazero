@@ -14,15 +14,14 @@ import { BRAND_ENDPOINTS } from './index';
  */
 const RETIRED = [
   'add_competitor',
-  'add_radar_source',
   'delete_competitor',
   'delete_product',
   'remove_blog_term',
-  'remove_radar_source',
   'get_ads',
   'record_memory_used',
   'discard_plan',
-  'approve_posts'
+  'approve_posts',
+  'set_automation'
 ] as const;
 
 /**
@@ -69,7 +68,6 @@ const KEPT_ON_PURPOSE: Record<string, string> = {
   reject_post:
     'revoca la schedulazione su Zernio PRIMA di cancellare, e se la revoca fallisce non cancella: `delete_row` toglierebbe la riga lasciando viva la schedulazione — il post esce e non resta nulla che lo racconti (incidente luglio 2026)',
   make_video: 'genera e spende crediti',
-  get_gsc: 'legge Google, non una tabella nostra',
   get_creation_kit: 'compone un brief da più fonti',
   get_writing_skills: 'restituisce file del repo, non righe',
   create_article:
@@ -91,10 +89,7 @@ const KEPT_ON_PURPOSE: Record<string, string> = {
   enhance_prompt:
     'il testo che produce non lo legge una persona ma un modello di immagini, e la forma che serve a ciascuno (sezioni etichettate, paragrafo unico, comando) sta in una guida per modello che vive qui: un agente esterno non sa con quale modello stai per rendere né come vuole essere parlato. Rifiuta di suo le riscritture che inventano un soggetto, quindi non è una seconda stesura del brief',
   search_knowledge: 'cerca per embedding nei documenti del brand: legge, non scrive',
-  research_competitors: 'va a prendere il mondo fuori (crawl), non compone contenuto',
-  geo_action: 'misura la visibilità sugli assistenti leggendo le loro risposte',
-  seo_action: 'audita il sito e ne legge le metriche',
-  refresh_keywords: 'interroga le API delle keyword'
+  research_competitors: 'va a prendere il mondo fuori (crawl), non compone contenuto'
 };
 
 /**

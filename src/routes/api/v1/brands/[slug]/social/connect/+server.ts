@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { authenticate, checkApiKeyWriteAccess, loadBrandForUser } from '$lib/server/cli-auth';
 import { appOrigin } from '$lib/server/app-url';
 import { connectPath, managePath, socialConnections } from '$lib/server/social-connections';
-import { SOCIAL_CONNECT_LINK, TARGET_PLATFORMS, statusForFailure } from '@anomalia/api-contracts';
+import { SOCIAL_CONNECT_LINK, TARGET_PLATFORMS, statusForFailure } from '@dazero/api-contracts';
 
 /**
  * Conia la porta, non la attraversa.
@@ -50,7 +50,7 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
         error: 'plan_cannot_connect',
         plan: brand.plan,
         brand_status: brand.status,
-        activate_url: `${origin}/app/${encodeURIComponent(brand.slug)}/activate`
+        activate_url: `${origin}/app/billing`
       },
       { status: statusForFailure(SOCIAL_CONNECT_LINK, 'plan_cannot_connect') }
     );

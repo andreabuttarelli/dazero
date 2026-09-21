@@ -1,6 +1,5 @@
 import { redirect, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { canEnter } from '$lib/server/access';
 import { ensureBrandProfile, getAdsConnectUrl } from '$lib/server/zernio';
 import { adsAvailable, adsFeatureEnabled } from '$lib/server/ads';
 
@@ -18,7 +17,6 @@ const ADS_CONNECT_PLATFORM: Record<string, 'facebook' | 'googleads'> = {
 export const GET: RequestHandler = async ({ params, url, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session) throw redirect(303, '/login');
-  if (!(await canEnter(supabase))) throw redirect(303, '/waitlist');
   if (!adsFeatureEnabled(user?.email)) throw error(404, 'Not found');
 
   const zernioPlatform = ADS_CONNECT_PLATFORM[params.channel];

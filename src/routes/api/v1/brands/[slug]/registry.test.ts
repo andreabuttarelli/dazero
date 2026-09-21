@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { BRAND_ENDPOINTS, pathFor, pathWithoutBrand, type BrandEndpoint } from '@anomalia/api-contracts';
+import { BRAND_ENDPOINTS, pathFor, pathWithoutBrand, type BrandEndpoint } from '@dazero/api-contracts';
 
 /**
  * IL REGISTRY PROMETTE, LE ROTTE MANTENGONO. Ogni entry di BRAND_ENDPOINTS diventa da sola un
@@ -143,14 +143,13 @@ const REST_ONLY = [
   'api-keys/[id]',
   'articles',
   'articles/[id]',
-  'backlinks',
   'calendar',
   'connections',
   'connections/[id]',
   'connections/[id]/complete',
   'connections/catalog',
   // Le quattro rotte che scrivevano piano e settimana con un modello loro. Il tool esce — chi
-  // chiama Anomalia è già un agente che scrive, e `save_plan` / `save_week_seeds` depositano il
+  // chiama dazero è già un agente che scrive, e `save_plan` / `save_week_seeds` depositano il
   // testo suo — ma la rotta resta, perché l'autopilot passa da queste stesse funzioni su ogni
   // brand con un piano attivo.
   'captions/generate',
@@ -159,13 +158,11 @@ const REST_ONLY = [
   'editorial-plan/replan-week',
   'editorial-plan/revise',
   'editorial-plan/update',
-  'goals',
   'gtm',
   'gtm/update',
   'ideas',
   'knowledge',
   'library/scan',
-  'market/field',
   // `generate_media` era la porta vecchia: inoltrava a `generate_image` e `generate_video` e la
   // sua stessa descrizione diceva di preferirli. Il tool esce, la rotta resta per chi l'ha cablata.
   'media/generate',
@@ -181,7 +178,6 @@ const REST_ONLY = [
   'posts/approve-all',
   'products',
   'publishing',
-  'ranks',
   'rubrics',
   'rubrics/approve',
   'rubrics/propose',
@@ -190,11 +186,10 @@ const REST_ONLY = [
   'studio/memory',
   'studio/memory/[id]',
   'studio/products',
-  'tick',
   'voice',
   'web',
   // `generate_article` e `optimize_article` sono usciti per la stessa ragione: il markdown lo
-  // scrive chi chiama e `create_article` lo deposita. Il radar e il cron del blog continuano a
+  // scrive chi chiama e `create_article` lo deposita. Il cron del blog continua a
   // passare di qui.
   'web/article/[id]/optimize',
   'web/generate',

@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   UGC_VISUAL_STYLE,
-  UGC_COVER_MODEL,
   buildUgcCastPortraitPrompt,
   buildUgcProductStillPrompt,
   buildUgcFramePrompt,
@@ -13,12 +12,6 @@ import {
   pickUgcBehavioralBeats,
   UGC_BEHAVIORAL_BEATS
 } from './ugc';
-
-describe('UGC_COVER_MODEL', () => {
-  it('uses Nano Banana 2 Lite for UGC first frames', () => {
-    expect(UGC_COVER_MODEL).toBe('gemini-3.1-flash-lite-image');
-  });
-});
 
 describe('UGC_VISUAL_STYLE', () => {
   // MASTER UGC: shallow phone DOF + imperfect skin — never studio polish.
@@ -67,8 +60,8 @@ describe('buildUgcFramePrompt', () => {
   });
 
   it('a product is HELD casually, never presented — presenting is the advert tell', () => {
-    const p = buildUgcFramePrompt({ product: 'Anomalia' });
-    expect(p).toMatch(/holding Anomalia/);
+    const p = buildUgcFramePrompt({ product: 'dazero' });
+    expect(p).toMatch(/holding dazero/);
     expect(p).toMatch(/not presenting it to camera/i);
   });
 
@@ -121,7 +114,7 @@ describe('script budget', () => {
       looksLikeTelegramScript({
         hook: 'Calendar chaos?',
         body: 'Resolve it.',
-        cta: 'Try Anomalia.'
+        cta: 'Try dazero.'
       })
     ).toBe(true);
     expect(looksLikeTelegramScript(script)).toBe(false);
@@ -129,7 +122,7 @@ describe('script budget', () => {
 
   it('flags a script that will not fit, so the CTA is shortened while WRITING not after', () => {
     expect(scriptFits(script, 6)).toBe(false);
-    expect(scriptFits({ hook: 'Basta.', body: 'Ci pensa Anomalia.', cta: 'Provala.' }, 6)).toBe(true);
+    expect(scriptFits({ hook: 'Basta.', body: 'Ci pensa dazero.', cta: 'Provala.' }, 6)).toBe(true);
   });
 
   it('joins hook, body and cta in order into the spoken line', () => {
@@ -185,8 +178,8 @@ describe('casting prompts — la coerenza è una proprietà delle immagini, non 
 	});
 
 	it('the product still is a reference, not a packshot', () => {
-		const p = buildUgcProductStillPrompt('Anomalia Card', { setting: 'a desk' });
-		expect(p).toContain('Anomalia Card');
+		const p = buildUgcProductStillPrompt('dazero Card', { setting: 'a desk' });
+		expect(p).toContain('dazero Card');
 		expect(p).toMatch(/keep the object IDENTICAL/i);
 		expect(p).toMatch(/No hands, no person/i);
 		expect(p).toMatch(/no packshot styling/i);

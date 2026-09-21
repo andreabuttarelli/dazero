@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
-import { REVOKE_SHARE, statusForFailure } from '@anomalia/api-contracts';
+import { REVOKE_SHARE, statusForFailure } from '@dazero/api-contracts';
 import { revokeSharedView, shareFailure } from '$lib/server/shared-views';
 
 export const POST: RequestHandler = async ({ request, params }) => {

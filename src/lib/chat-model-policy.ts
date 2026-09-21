@@ -1,5 +1,6 @@
-import { AgentModelPolicy, type AgentModelPolicy as ModelPreference } from '@anomalia/agent-contracts/contracts';
+import { z } from 'zod';
 import { isGatewayModelTier, type ChatTier } from '$lib/chat-tiers';
+import { MODEL_FAMILY_IDS } from '$lib/models/families';
 import {
 	coerceThinking,
 	familyForTier,
@@ -7,6 +8,20 @@ import {
 	type ModelFamilyId,
 	type ThinkingLevel
 } from '$lib/models/catalog';
+
+/**
+ * La riga salvata su `chat_threads.model` — non un id wire grezzo, ma una famiglia del catalogo
+ * piu` la scala di ragionamento. `model` porta l'id del gateway quando l'utente ne ha scelto uno
+ * dal catalogo invece di un preset: `family` resta a dire quali gradini offrire, e le righe
+ * salvate prima che il campo esistesse continuano a valere.
+ */
+const AgentModelPolicy = z.object({
+	family: z.enum(MODEL_FAMILY_IDS),
+	thinking: z.enum(['off', 'low', 'medium', 'high', 'max']).default('medium'),
+	model: z.string().min(1).max(120).optional()
+});
+
+type ModelPreference = z.infer<typeof AgentModelPolicy>;
 
 export function turnModelFamily(
 	threadModel?: unknown,

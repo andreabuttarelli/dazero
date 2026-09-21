@@ -1,5 +1,5 @@
 /**
- * IL CASO GUIDA, RIPRODOTTO E BOCCIATO. Anomalia, 21/8/2026 21:23: script di 6 battute, take con
+ * IL CASO GUIDA, RIPRODOTTO E BOCCIATO. dazero, 21/8/2026 21:23: script di 6 battute, take con
  * 3 pause, 4 pezzi tagliati indovinando — qui il take è sintetico (Int16, 24 kHz, gli stessi
  * numeri) e il gate deve rifiutare il render PRIMA della VM. Nessuna generazione, nessuna rete
  * vera: i WAV escono da `wavFromPcm` e la fetch è finta.

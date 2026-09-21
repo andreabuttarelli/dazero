@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 /**
- * Build Node-targeted JS bundles for npm (`npm i -g anomalia-cli`).
+ * Build Node-targeted JS bundles for npm (`npm i -g dazero-cli`).
  *
  *   bun run scripts/build-npm.ts
  *
  * Output:
- *   dist-npm/cli.js        → bin `anomalia`
- *   dist-npm/mcp-stdio.js  → bin `anomalia-mcp`
+ *   dist-npm/cli.js        → bin `dazero`
+ *   dist-npm/mcp-stdio.js  → bin `dazero-mcp`
  *   dist-npm/package.json  → publishable package root (copied fields)
  */
 
@@ -65,14 +65,14 @@ const publishPkg = {
   bugs: pkg.bugs,
   type: 'module',
   bin: {
-    anomalia: './cli.js',
-    'anomalia-mcp': './mcp-stdio.js',
+    dazero: './cli.js',
+    'dazero-mcp': './mcp-stdio.js',
   },
   engines: {
     node: '>=20',
   },
   keywords: [
-    'anomalia',
+    'dazero',
     'cli',
     'social-media',
     'mcp',

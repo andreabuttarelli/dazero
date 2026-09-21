@@ -6,11 +6,10 @@ import {
   materializeBrandHistory
 } from '$lib/server/scrapecreators';
 import { rebuildBrandContext } from '$lib/server/brand-context';
-import { seedSourcesForBrand } from '$lib/server/radar';
 import { logOnboardingError } from '$lib/server/onboarding-errors';
 
 /**
- * Post-create social analysis: ScrapeCreators history + radar source seed + context rebuild.
+ * Post-create social analysis: ScrapeCreators history + context rebuild.
  * Runs in its own invocation (see /api/v1/onboarding/social-history/work) so early `?/create`
  * can redirect immediately after the brand row exists — site analysis and social analysis are
  * separate processes and do not share a 120s budget.
@@ -18,7 +17,6 @@ import { logOnboardingError } from '$lib/server/onboarding-errors';
 export async function runSocialHistoryForBrand(brandId: string): Promise<{
   synced: number;
   accounts: number;
-  seeded: number;
 }> {
   const admin = createAdminClient();
   const { data: brand } = await admin
@@ -26,41 +24,17 @@ export async function runSocialHistoryForBrand(brandId: string): Promise<{
     .select('id, name, plan, created_by, website')
     .eq('id', brandId)
     .maybeSingle();
-  if (!brand) return { synced: 0, accounts: 0, seeded: 0 };
-
-  let seeded = 0;
-  try {
-    const { data: kit } = await admin.from('brand_kit').select('*').eq('brand_id', brandId).maybeSingle();
-    if (kit) {
-      seeded = await seedSourcesForBrand(
-        admin,
-        brandId,
-        {
-          name: brand.name,
-          about: kit.about,
-          category: kit.category,
-          content_pillars: kit.content_pillars,
-          target_audience: kit.target_audience
-        } as never,
-        'Italian',
-        brand.plan ?? null
-      );
-    }
-  } catch (e) {
-    await logOnboardingError(admin, String(brand.created_by ?? ''), 'social_history_radar', e, {
-      brandId
-    });
-  }
+  if (!brand) return { synced: 0, accounts: 0 };
 
   const targets = await getBrandScrapeTargets(admin, brandId);
-  if (!targets.length) return { synced: 0, accounts: 0, seeded };
+  if (!targets.length) return { synced: 0, accounts: 0 };
 
   try {
     const res = await materializeBrandHistory(admin, brandId, targets);
     if (res.synced > 0) {
       await rebuildBrandContext(admin, brandId).catch(swallow('rebuild brand context'));
     }
-    return { synced: res.synced, accounts: res.accounts, seeded };
+    return { synced: res.synced, accounts: res.accounts };
   } catch (e) {
     await logOnboardingError(admin, String(brand.created_by ?? ''), 'social_history', e, {
       brandId,

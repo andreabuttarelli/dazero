@@ -3,8 +3,7 @@
   import { _ } from 'svelte-i18n';
 
   // Un messaggio "crediti finiti" senza uscita è peggio del silenzio: l'utente resta fermo e
-  // non sa cosa fare. Punta a settings/billing perché è l'UNICA pagina che mostra i piani —
-  // /app/{slug}/upgrade senza ?plan rimbalza su /settings, cioè su un altro vicolo cieco.
+  // non sa cosa fare. Punta a settings/billing perché è l'UNICA pagina che mostra i piani.
   let { slug = '' }: { slug?: string } = $props();
   const href = $derived(`/app/${slug || ($page.params.brand ?? '')}/settings/billing`);
 </script>

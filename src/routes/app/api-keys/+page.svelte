@@ -24,7 +24,7 @@
   }
 </script>
 
-<svelte:head><title>API Keys — Anomalia</title></svelte:head>
+<svelte:head><title>API Keys — dazero</title></svelte:head>
 
 <main class="bg-background text-foreground min-h-screen">
   <div class="mx-auto max-w-3xl px-6 py-12">

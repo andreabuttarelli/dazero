@@ -1,8 +1,8 @@
-import { isPaidPlan, PLAN_WEEKS, RADAR_SOURCE_LIMITS } from '$lib/plans';
+import { isPaidPlan, PLAN_WEEKS } from '$lib/plans';
 import { creditsForPost } from '$lib/server/content-cost';
 import { isPlanGoEnabled } from '$lib/server/feature-flags';
 
-// Free / absent plan matches Go quotas for blog + radar (capabilities parity, not credits).
+// Free / absent plan matches Go quotas for blog (capabilities parity, not credits).
 
 // Connected-account caps per plan (the Zernio cost lever). All plans get every
 // platform; the limit is on how many accounts a brand can connect.
@@ -163,21 +163,6 @@ export function blogTranslationLanguages(plan: string | null | undefined): numbe
   return BLOG_TRANSLATION_LANGUAGES[plan ?? ''] ?? 0;
 }
 
-// Founder-made video commissions per month — HUMAN-produced clips the Anomalia team crafts and
-// delivers in-app (the AI can't make these from scratch). A user-facing, plan-gated quota,
-// distinct from videoCap() (the internal AI-clip guardrail).
-export const FOUNDER_VIDEO_QUOTAS: Record<string, number> = {
-  go: 0,
-  starter: 0,
-  pro: 2
-};
-
-export function founderVideoQuota(plan: string | null | undefined): number {
-  return FOUNDER_VIDEO_QUOTAS[plan ?? ''] ?? FOUNDER_VIDEO_QUOTAS.starter;
-}
-
-// Radar source caps live in `$lib/plans` (Plan.radarSources + radarSourceLimit) so pricing
-// cards and the Settings UI share one source of truth with the server gate.
 export {
   isPaidPlan,
   canConnectSocials,
@@ -187,18 +172,9 @@ export {
   hasFullChatContext,
   CHAT_CONTEXT_CAP_TOKENS,
   hasWebHub,
-  hasLeadFinding,
-  hasProRadarLeads,
-  leadEngagePlatforms,
-  RADAR_PLATFORM_KEYS,
   hasAds,
-  hasBacklinkNetwork,
-  radarAllowedKinds,
-  isRadarKindAllowed,
-  RADAR_SOURCE_LIMITS,
-  radarSourceLimit
+  hasBacklinkNetwork
 } from '$lib/plans';
-export type { RadarPlatformKey } from '$lib/plans';
 
 // Plan ladder (cheapest → top), with display labels — used by the settings Upgrade flow.
 // Go sits at the bottom; FEATURE_PLAN_GO only gates *selling* it, not upgrades from it.
@@ -211,7 +187,6 @@ export type UpgradeOption = {
   label: string;
   posts: number;
   accounts: number;
-  radarSources: number;
 };
 
 // The plans strictly ABOVE the current one (what the user can upgrade to). Unknown/absent plan
@@ -225,8 +200,7 @@ export function plansAbove(plan: string | null | undefined): UpgradeOption[] {
       key: k,
       label: PLAN_LABELS[k],
       posts: POST_QUOTAS[k],
-      accounts: ACCOUNT_LIMITS[k],
-      radarSources: RADAR_SOURCE_LIMITS[k]
+      accounts: ACCOUNT_LIMITS[k]
     }));
 }
 

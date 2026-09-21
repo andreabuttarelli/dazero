@@ -5,8 +5,6 @@ import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { markRlsScoped } from '$lib/server/rls-client';
-import { userCanEnter } from '$lib/server/access';
-import { BOOKING_URL } from '$lib/links';
 
 export interface ApiKeyInfo {
   id: string;
@@ -19,7 +17,7 @@ export interface ApiKeyInfo {
  * Authenticate a CLI/API request via Bearer token.
  * Supports two token types:
  *   1. Supabase JWT (standard session token)
- *   2. API Key (starts with "anomalia_", long-lived, hashed in DB)
+ *   2. API Key (starts with "dazero_", long-lived, hashed in DB)
  *
  * Returns the Supabase client scoped to the user, or an error Response.
  */
@@ -27,27 +25,8 @@ type Caller =
   | { supabase: SupabaseClient; user: { id: string; email?: string }; apiKey?: ApiKeyInfo; error?: undefined }
   | { supabase?: undefined; user?: undefined; apiKey?: undefined; error: Response };
 
-/**
- * L'unica porta che CLI e MCP attraversano entrambe. Col prodotto chiuso la guardia sta qui, una
- * volta: metterla per rotta significa dimenticarla nella prossima. Il 403 porta con sé il link
- * alla call — la CLI stampa il corpo della risposta, e "Forbidden" secco a chi ha appena provato
- * a lavorare è il modo peggiore di dirgli che manca un passaggio.
- */
 export async function authenticate(request: Request): Promise<Caller> {
-  const caller = await resolveCaller(request);
-  if (caller.error) return caller;
-
-  if (await userCanEnter(caller.user.id)) return caller;
-
-  return {
-    error: json(
-      {
-        error: `Access not enabled yet — Anomalia opens after a product call. Book it: ${BOOKING_URL}`,
-        booking_url: BOOKING_URL
-      },
-      { status: 403 }
-    )
-  };
+  return resolveCaller(request);
 }
 
 async function resolveCaller(request: Request): Promise<Caller> {
@@ -58,8 +37,12 @@ async function resolveCaller(request: Request): Promise<Caller> {
   const token = auth.slice(7);
 
   // ── API Key path ──────────────────────────────────────────────
-  // legacy 021_live_* prefix migrated from the pre-renaming era
-  if (token.startsWith('anomalia_') || token.startsWith('021_live_')) {
+  // legacy 021_live_* and anomalia_* prefixes migrated from the pre-renaming eras
+  if (
+    token.startsWith('dazero_') ||
+    token.startsWith('anomalia_') ||
+    token.startsWith('021_live_')
+  ) {
     const res = await authenticateApiKey(token);
     if ('error' in res && res.error) return res;
     // Write scope, enforced once here instead of per-route: a read-only key may only ever read.
@@ -185,9 +168,9 @@ export async function generateApiKey(): Promise<{ raw: string; hash: string; pre
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
   const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
-  const raw = `anomalia_live_${hex}`;
+  const raw = `dazero_live_${hex}`;
   const hash = await hashApiKey(raw);
-  const prefix = raw.slice(0, 16); // "anomalia_live_<first 8 hex>"
+  const prefix = raw.slice(0, 16); // "dazero_live_<first 8 hex>"
   return { raw, hash, prefix };
 }
 
@@ -366,9 +349,6 @@ export type CliBrand = {
   content_prefs: Record<string, unknown> | null;
   setup_step: string | null;
   setup_completed_at: string | null;
-  autopilot_enabled: boolean | null;
-  autopilot_failure_count: number | null;
-  last_autopilot_run_at: string | null;
   zernio_profile_id: string | null;
   ads_settings: unknown;
 } & Record<string, unknown>;
@@ -392,7 +372,7 @@ export async function loadBrandForUser(
   // Never maybeSingle() here — duplicate trial rows for the same slug exist in prod.
   const { data: rows, error } = await supabase
     .from('brands')
-    .select('id, org_id, name, slug, status, plan, timezone, target_platforms, launched_at, content_prefs, setup_step, setup_completed_at, autopilot_enabled, autopilot_failure_count, last_autopilot_run_at, zernio_profile_id, ads_settings')
+    .select('id, org_id, name, slug, status, plan, timezone, target_platforms, launched_at, content_prefs, setup_step, setup_completed_at, zernio_profile_id, ads_settings')
     .eq('slug', slug);
 
   if (error || !rows?.length) {

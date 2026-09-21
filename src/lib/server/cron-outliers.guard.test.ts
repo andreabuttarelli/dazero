@@ -4,10 +4,7 @@ import { join } from 'node:path';
 
 const API_ROOT = 'src/routes/api/v1';
 
-const DECLARED_OUTLIERS = [
-  'src/routes/api/v1/agent-files/+server.ts',
-  'src/routes/api/v1/memory/dream/+server.ts'
-];
+const DECLARED_OUTLIERS = ['src/routes/api/v1/memory/dream/+server.ts'];
 
 const LOCAL_CRON_AUTH_PATTERNS = [
   /[!=]==?\s*`Bearer \$\{/,

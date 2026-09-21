@@ -11,7 +11,7 @@ describe('normalizeStore', () => {
   });
 });
 
-const conn = { store: 'shop', clientId: 'id', clientSecret: 'secret', blogId: 'gid://shopify/Blog/1', author: 'Anomalia' };
+const conn = { store: 'shop', clientId: 'id', clientSecret: 'secret', blogId: 'gid://shopify/Blog/1', author: 'dazero' };
 
 // Mock fetch: token exchange first, then the GraphQL call.
 function mockFetch(...responses: unknown[]) {
@@ -34,7 +34,7 @@ describe('publishArticle', () => {
     expect(tokenUrl).toBe('https://shop.myshopify.com/admin/oauth/access_token');
     const gqlBody = JSON.parse(fetchMock.mock.calls[1][1].body);
     expect(gqlBody.variables.article.body).toContain('<h1>Hello</h1>'); // markdown → html
-    expect(gqlBody.variables.article.author).toEqual({ name: 'Anomalia' });
+    expect(gqlBody.variables.article.author).toEqual({ name: 'dazero' });
     expect(fetchMock.mock.calls[1][1].headers['X-Shopify-Access-Token']).toBe('tok');
   });
 

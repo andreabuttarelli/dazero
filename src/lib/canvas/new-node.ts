@@ -16,7 +16,7 @@ import { genNodeSize, type GenMedium } from './gen-node';
  * `text/plain`: così un testo trascinato da fuori — una selezione, un link — non si traveste da
  * richiesta di creare un nodo.
  */
-export const CANVAS_DRAG_MEDIUM = 'application/x-anomalia-medium';
+export const CANVAS_DRAG_MEDIUM = 'application/x-dazero-medium';
 
 export type NewGenTile = {
   id: string;

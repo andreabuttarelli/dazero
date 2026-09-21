@@ -236,7 +236,7 @@ export const actions: Actions = {
     return { deletedSelectedArticles: ids.length };
   },
 
-  // Enable/disable the blog for this brand: gates whether the plan & radar include blog articles.
+  // Enable/disable the blog for this brand: gates whether the plan includes blog articles.
   // Save blog UI customization (title, accent colour, font, layout, navbar links).
   // Upload the blog icon (used as header mark + favicon). Public URL in the media bucket.
   // Upload a cover/thumbnail for one article (also used as og:image). Public URL, media bucket.

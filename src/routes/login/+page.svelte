@@ -7,7 +7,6 @@
   import { detectInAppBrowser, androidIntentUrl, type InAppBrowser } from '$lib/in-app-browser';
   import { sanitizeWebsiteParam } from '$lib/website-param';
   let { form, data } = $props();
-  const waitlistActive = $derived(data.waitlistActive);
   let loading = $state(false);
   let showPassword = $state(false);
 
@@ -85,30 +84,26 @@
   const websiteParam = $derived(sanitizeWebsiteParam($page.url.searchParams.get('website')));
   const chosenPlan = $derived(isPlanKey(planParam) ? planByKey(planParam) : null);
 
-  // CLI login: opened by the Anomalia CLI. Show a consent notice and carry the port/state through.
+  // CLI login: opened by the dazero CLI. Show a consent notice and carry the port/state through.
   const cliPort = $derived(data.cliPort ?? '');
   const cliState = $derived(data.cliState ?? '');
 </script>
 
 <svelte:head>
   <title>
-    {waitlistActive
-      ? $_('meta.login.titleWaitlist')
-      : mode === 'signup'
-        ? $_('meta.login.titleSignup')
-        : $_('meta.login.titleSignin')}
+    {mode === 'signup' ? $_('meta.login.titleSignup') : $_('meta.login.titleSignin')}
   </title>
 </svelte:head>
 
 <div class="split">
   <section class="pane form-pane">
     <div class="form-inner">
-      <a class="brand" href="/">Anomalia</a>
+      <a class="brand" href="/">dazero</a>
 
       {#if cliPort}
         <div class="cli-notice">
           <span class="cli-icon" aria-hidden="true">⌘</span>
-          <span>Anomalia CLI sta richiedendo accesso al tuo account</span>
+          <span>dazero CLI sta richiedendo accesso al tuo account</span>
         </div>
       {/if}
 
@@ -121,21 +116,18 @@
           <h1>{$_('login.forgot.title')}</h1>
           <p class="sub">{$_('login.forgot.sub')}</p>
         {:else if mode === 'signup'}
-          {#if startFlow && !waitlistActive}
+          {#if startFlow}
             <h1>{chosenPlan ? $_('login.start.titlePlan', { values: { plan: chosenPlan.name } }) : $_('login.start.title')}</h1>
             <p class="sub">
               {chosenPlan ? $_('login.start.subPlan', { values: { plan: chosenPlan.name } }) : $_('login.start.sub')}
             </p>
-          {:else if waitlistActive}
-            <h1>{$_('login.signin.titleWaitlist')}</h1>
-            <p class="sub">{$_('login.signin.subWaitlist')}</p>
           {:else}
             <h1>{$_('login.signup.title')}</h1>
             <p class="sub">{$_('login.signup.sub')}</p>
           {/if}
         {:else}
-          <h1>{waitlistActive ? $_('login.signin.titleWaitlist') : $_('login.signin.title')}</h1>
-          <p class="sub">{waitlistActive ? $_('login.signin.subWaitlist') : $_('login.signin.sub')}</p>
+          <h1>{$_('login.signin.title')}</h1>
+          <p class="sub">{$_('login.signin.sub')}</p>
         {/if}
         {#if mode !== 'forgot'}
         <form method="POST" action="?/google" class="form oauth-form" onsubmit={handleOAuthInApp}>

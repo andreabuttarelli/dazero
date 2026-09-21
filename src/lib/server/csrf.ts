@@ -4,7 +4,7 @@
 // Kit blocks every form-encoded mutating request whose `origin` header doesn't match the request
 // URL — including a *missing* origin, which is what every non-browser client sends. RFC 6749
 // requires the OAuth token endpoint to accept `application/x-www-form-urlencoded`, so
-// `opencode mcp auth anomalia` got a 403 there. That endpoint carries no ambient credentials
+// `opencode mcp auth dazero` got a 403 there. That endpoint carries no ambient credentials
 // (no cookies, no session): it needs a signed authorization code plus the matching PKCE verifier,
 // which is exactly what a cross-site page cannot produce.
 //

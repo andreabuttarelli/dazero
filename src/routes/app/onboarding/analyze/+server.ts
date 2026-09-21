@@ -1,18 +1,15 @@
 import type { RequestHandler } from './$types';
-import { canEnter } from '$lib/server/access';
 import { runBrandAnalysis } from '$lib/server/brand-analysis';
 import { logOnboardingError } from '$lib/server/onboarding-errors';
-import { localeLanguageName } from '$lib/i18n/locale';
+import { OUTPUT_LANGUAGE } from '$lib/i18n/locale';
 
 export const config = { maxDuration: 300 };
 
 // Streams NDJSON: { type:'progress', step, message } … then { type:'result', data: BrandProfile }
 // (or { type:'error', message }). Reuses dalnulla's brand analysis (incl. Shopify product import).
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession, locale } }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
 
   const body = await request.json().catch(() => ({}));
   let url = String(body?.url ?? '').trim();
@@ -49,7 +46,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
             send({ type: 'progress', step, message });
           },
           undefined,
-          localeLanguageName(locale)
+          OUTPUT_LANGUAGE
         );
         send({ type: 'result', data: profile });
       } catch (e) {

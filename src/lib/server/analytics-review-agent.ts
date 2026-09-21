@@ -27,7 +27,6 @@ import { buildClockSection, resolveScheduleInput } from '$lib/server/clock';
 import { writeMemory } from '$lib/server/brand-memory';
 import { analyzePostHistory, historyInsightsDigest, type HistoryPost } from '$lib/server/post-history-insights';
 import { OWN_SOURCE } from '$lib/server/own-post-history';
-import { buildSeoMetrics } from '$lib/server/seo-metrics';
 import {
   loadActiveGtm,
   currentPhaseIndex,
@@ -41,7 +40,7 @@ import {
 } from '$lib/server/editorial-plan';
 import { plannerProfile, planEvidence } from '$lib/server/planner-inputs';
 import { activeGtmBrief } from '$lib/server/gtm';
-import { localeLanguageName } from '$lib/i18n/locale';
+import { OUTPUT_LANGUAGE } from '$lib/i18n/locale';
 import { EDITOR_POST_COLS, requireZernioCancellation } from '$lib/server/post-editing';
 import { publishApprovedPost, type ApprovablePost } from '$lib/server/publish';
 import { assessEvidence, evidenceBlock, rankingIsSafe, sampleVerdict } from '$lib/server/evidence-quality';
@@ -50,7 +49,7 @@ import { diagnoseCreativeFunnel, funnelBrief } from '$lib/server/creative-funnel
 // ── Analytics review agent ────────────────────────────────────────────────────
 // Periodic (and on-demand) multi-step loop: read performance → adapt GTM / editorial
 // plan (as proposals) → rewrite pending/scheduled socials + draft blog → remember lessons.
-// Complements weekly-recap (email) and the SEO review agent (search/backlinks).
+// Complements weekly-recap (email).
 
 export const MAX_ANALYTICS_REVIEW_STEPS = 32;
 const STALL_STEP_THRESHOLD = 5;
@@ -98,7 +97,6 @@ export async function buildAnalyticsDigest(
     { data: hist },
     { data: posts },
     { data: articles },
-    { data: geoRows },
     { count: pendingCount },
     { count: scheduledCount }
   ] = await Promise.all([
@@ -123,12 +121,6 @@ export async function buildAnalyticsDigest(
       .eq('brand_id', brandId)
       .order('created_at', { ascending: false })
       .limit(40),
-    supabase
-      .from('brand_geo_audits')
-      .select('search, backlinks, created_at')
-      .eq('brand_id', brandId)
-      .order('created_at', { ascending: false })
-      .limit(8),
     supabase
       .from('posts')
       .select('id', { count: 'exact', head: true })
@@ -225,8 +217,6 @@ export async function buildAnalyticsDigest(
   const blogDrafts = (articles ?? []).filter((a) => a.status === 'draft' || a.status === 'approved');
   const blogViews = blogPublished.reduce((n, a) => n + (viewsByArticle.get(a.id as string) ?? 0), 0);
 
-  const seo = buildSeoMetrics(geoRows ?? []);
-
   const pending = (posts ?? []).filter((p) => p.status === 'pending_user').slice(0, 12);
   const scheduled = (posts ?? []).filter((p) => p.status === 'scheduled').slice(0, 12);
 
@@ -288,7 +278,6 @@ export async function buildAnalyticsDigest(
     insights ? `PATTERN INSIGHTS:\n${insights}` : '',
     `BLOG: ${blogPublished.length} published (views total ${blogViews}), ${blogDrafts.length} drafts.`,
     blogPublished.slice(0, 5).map((a) => `  · ${a.title} — ${viewsByArticle.get(a.id as string) ?? 0} views`).join('\n'),
-    `SEO snapshot: DR ${seo.domainRating ?? 'n/a'}, traffic ${seo.traffic ?? 'n/a'}, organic kw ${seo.organicKeywords ?? 'n/a'}, new kw ${seo.keywordsNew ?? 'n/a'}, ref domains ${seo.referringDomains ?? 'n/a'}.`,
     pending.length
       ? `PENDING posts (editable):\n${pending.map((p) => `  id=${p.id} [${p.platform}] ${(p.caption ?? '').slice(0, 80)}`).join('\n')}`
       : '',
@@ -323,9 +312,7 @@ async function runAnalyticsReviewAgentInner(
   const brandId = String(brand.id);
   const deadlineMs = opts.deadlineMs ?? 220_000;
   const t0 = Date.now();
-  const language = localeLanguageName(
-    (brand.content_prefs as AnyRec)?.language ? String((brand.content_prefs as AnyRec).language) : null
-  );
+  const language = String((brand.content_prefs as AnyRec)?.language ?? '') || OUTPUT_LANGUAGE;
 
   const digest = await buildAnalyticsDigest(admin, brandId);
   const usdBudget = Math.min(await fetchUsdBudget(brandId), 4);
@@ -346,7 +333,7 @@ async function runAnalyticsReviewAgentInner(
   const stallFingerprints: string[] = [];
   let stepNum = 0;
 
-  const baseSystem = `You are Anomalia's analytics review agent. You turn REAL performance into concrete adaptations.
+  const baseSystem = `You are dazero's analytics review agent. You turn REAL performance into concrete adaptations.
 
 Brand: ${brand.name} (${brand.slug})
 Language for all user-facing notes: ${language}

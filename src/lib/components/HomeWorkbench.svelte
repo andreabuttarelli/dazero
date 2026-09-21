@@ -5,7 +5,6 @@
   import { fmtCompactNum } from '$lib/fmt-num';
   import { homeTodos } from '$lib/home-todos';
   import { upcomingFeed } from '$lib/home-upcoming';
-  import { webGauges } from '$lib/home-gauges';
 
   let {
     brandSlug,
@@ -32,34 +31,13 @@
   );
   const scheduledPostCount = $derived(overview.queue.scheduled);
   const upcoming = $derived(upcomingFeed(overview.queue.upcoming ?? [], overview.blog.upcoming ?? []));
-  const auto = $derived(
-    overview.automations ?? {
-      radarEnabled: false,
-      radarReview: 0,
-      radarRecent: 0,
-      leadsPending: 0,
-      leadsTotal: 0
-    }
-  );
-
   // Le cose da fare in cima: la SELEZIONE e l'ORDINE stanno in `$lib/home-todos`, puro e sotto
   // test; qui si aggiunge solo ciò che quel modulo non può sapere — l'href col brand e la
   // traduzione. Ha preso il posto di tre gauge (setup, SEO, GEO) e di una coda paginata dei
   // singoli post: i primi erano ornamento, la seconda diceva la stessa cosa della riga
   // «N da approvare» con un clic in più e una paginazione da mantenere.
-  /* I due anelli della sezione Web. Le loro variabili stavano insieme ai tre gauge grandi e sono
-     sparite con quelli, ma gli anelli erano rimasti nel markup: il componente moriva a
-     `seoGauge is not defined`, il ramo che disegna la home non veniva mai creato e la pagina
-     restava sullo shimmer per sempre. Il calcolo ora sta in `$lib/home-gauges`, sotto test. */
-  const gauges = $derived(webGauges(overview.web));
-
   const todos = $derived(
     homeTodos({
-      automations: {
-        radarEnabled: auto.radarEnabled,
-        radarReview: auto.radarReview,
-        leadsPending: auto.leadsPending
-      },
       setup: { socialAccounts }
     })
   );
@@ -110,12 +88,6 @@
     return `${line} L${(w - pad).toFixed(1)},${(h - pad).toFixed(1)} L${pad},${(h - pad).toFixed(1)} Z`;
   });
 
-  const kwBarPct = $derived(
-    overview.web.keywordsTotal > 0
-      ? Math.round((overview.web.keywordsHigh / overview.web.keywordsTotal) * 100)
-      : 0
-  );
-
   function formatWhen(iso: string) {
     try {
       return new Date(iso).toLocaleString(undefined, {
@@ -143,7 +115,7 @@
   {#if !overview.paid}
     <div class="upgrade-banner">
       <p>{$_('app.home.upgrade.banner')}</p>
-      <a href={`${base}/activate?plan=starter`}>{$_('app.home.upgrade.cta')}</a>
+      <a href="/app/billing">{$_('app.home.upgrade.cta')}</a>
     </div>
   {/if}
 
@@ -212,7 +184,7 @@
     {/if}
   </section>
 
-  <!-- Web / SEO -->
+  <!-- Web -->
   <section class="ov-section">
     <div class="ov-section-head">
       <div class="ov-section-copy">
@@ -221,118 +193,6 @@
       <a class="ov-link" href={`${base}/web`}>{$_('app.home.overview.openWeb')} →</a>
     </div>
     <div class="metric-grid metric-grid-wide">
-      <a class="metric-card has-viz" href={`${base}/seo`}>
-        <div class="metric-top">
-          <div class="mini-ring" style={`--v:${gauges.seoFill}`} aria-hidden="true">
-            <span>{gauges.seoLabel}</span>
-          </div>
-          <div class="metric-text">
-            <span class="metric-l">{$_('app.home.overview.seo')}</span>
-            {#if overview.web.seoGrade && overview.web.techScore != null}
-              <span class="metric-sub">{$_('app.home.overview.grade')}: {overview.web.seoGrade}</span>
-            {/if}
-          </div>
-        </div>
-      </a>
-      <a
-        class="metric-card has-viz"
-        class:accent={overview.web.keywordsHigh > 0}
-        href={`${base}/keywords`}
-      >
-        <span class="metric-n">
-          {#if overview.web.keywordsTotal > 0}
-            <AnimatedNum value={overview.web.keywordsTotal} />
-          {:else}
-            —
-          {/if}
-        </span>
-        <span class="metric-l">{$_('app.home.overview.keywords')}</span>
-        <div class="mini-bar" aria-hidden="true">
-          <span style={`width:${kwBarPct}%`}></span>
-        </div>
-        {#if overview.web.keywordsHigh > 0}
-          <span class="metric-sub"
-            >{$_('app.home.overview.keywordsHigh', { values: { n: overview.web.keywordsHigh } })}</span
-          >
-        {:else if overview.web.keywordsTotal > 0}
-          <span class="metric-sub">{$_('app.home.overview.keywordsTracked')}</span>
-        {/if}
-      </a>
-      <a
-        class="metric-card has-viz"
-        class:accent={overview.web.citationGaps > 0}
-        href={`${base}/geo`}
-      >
-        <div class="metric-top">
-          <div class="mini-ring" style={`--v:${gauges.geoFill}`} aria-hidden="true">
-            <span>{gauges.geoLabel}</span>
-          </div>
-          <div class="metric-text">
-            <span class="metric-l">{$_('app.home.overview.geo')}</span>
-            {#if overview.web.citationsTotal > 0}
-              <span class="metric-sub"
-                >{$_('app.home.overview.geoMentioned', {
-                  values: { n: overview.web.citationsMentioned, tot: overview.web.citationsTotal }
-                })}</span
-              >
-            {:else if overview.web.shareOfVoice != null}
-              <span class="metric-sub"
-                >{$_('app.home.overview.shareOfVoice', {
-                  values: { n: overview.web.shareOfVoice }
-                })}</span
-              >
-            {/if}
-          </div>
-        </div>
-      </a>
-      <a
-        class="metric-card"
-        class:accent={auto.radarReview > 0}
-        href={`${base}/radar`}
-      >
-        <span class="metric-n">
-          {#if auto.radarEnabled}
-            <AnimatedNum value={auto.radarReview || auto.radarRecent || 0} />
-          {:else}
-            —
-          {/if}
-        </span>
-        <span class="metric-l">{$_('app.home.overview.radar')}</span>
-        {#if !auto.radarEnabled}
-          <span class="metric-sub">{$_('app.home.overview.radarOff')}</span>
-        {:else if auto.radarReview > 0}
-          <span class="metric-sub"
-            >{$_('app.home.overview.radarReview', { values: { n: auto.radarReview } })}</span
-          >
-        {:else}
-          <span class="metric-sub"
-            >{$_('app.home.overview.radarRecent', { values: { n: auto.radarRecent } })}</span
-          >
-        {/if}
-      </a>
-      <a
-        class="metric-card"
-        class:accent={auto.leadsPending > 0}
-        href={`${base}/leads`}
-      >
-        <span class="metric-n">
-          {#if auto.leadsPending > 0 || auto.leadsTotal > 0}
-            <AnimatedNum value={auto.leadsPending || auto.leadsTotal} />
-          {:else}
-            —
-          {/if}
-        </span>
-        <span class="metric-l">{$_('app.home.overview.leads')}</span>
-        {#if auto.leadsPending > 0}
-          <span class="metric-sub"
-            >{$_('app.home.overview.leadsPending', { values: { n: auto.leadsPending } })}</span
-          >
-        {:else if auto.leadsTotal > 0}
-          <span class="metric-sub"
-            >{$_('app.home.overview.leadsTotal', { values: { n: auto.leadsTotal } })}</span
-          >
-        {/if}
-      </a>
       <a class="metric-card" href={`${base}/site`}>
         <span class="metric-n"><AnimatedNum value={overview.blog.published} /></span>
         <span class="metric-l">{$_('app.home.overview.blogPublished')}</span>
@@ -358,11 +218,10 @@
           </p>
         {/if}
       </div>
-      <a class="ov-link" href={`${base}/analytics`}>{$_('app.home.overview.openAnalytics')} →</a>
     </div>
 
     <div class="perf-layout">
-      <a class="perf-spark" href={`${base}/analytics`}>
+      <div class="perf-spark">
         <div class="perf-spark-head">
           <span class="metric-l">{$_('app.home.overview.viewsSpark')}</span>
           <span class="metric-n"
@@ -378,9 +237,9 @@
             <span class:hot={v === maxViewsDay && v > 0}></span>
           {/each}
         </div>
-      </a>
+      </div>
 
-      <a class="perf-bars" href={`${base}/analytics`}>
+      <div class="perf-bars">
         <div class="perf-spark-head">
           <span class="metric-l">{$_('app.home.overview.likesBars')}</span>
           <span class="metric-n"
@@ -392,7 +251,7 @@
             <span style={`height:${Math.max(6, (v / maxLikesDay) * 100)}%`} class:hot={v === maxLikesDay && v > 0}></span>
           {/each}
         </div>
-      </a>
+      </div>
     </div>
 
   </section>
@@ -693,53 +552,6 @@
     font-size: 11.5px;
     color: var(--ink-faint);
   }
-  .metric-top {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .metric-text {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  .mini-ring {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    flex: none;
-    display: grid;
-    place-items: center;
-    background: conic-gradient(var(--accent) calc(var(--v) * 1%), color-mix(in srgb, var(--ink) 8%, transparent) 0);
-    transition: background 0.55s ease;
-  }
-  .mini-ring span {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--paper);
-    display: grid;
-    place-items: center;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-  }
-  .mini-bar {
-    height: 6px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--ink) 7%, transparent);
-    overflow: hidden;
-    margin: 6px 0 2px;
-  }
-  .mini-bar span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--accent);
-    transition: width 0.55s ease;
-  }
-
   /* ── Performance ──────────────────────────────────────────── */
   .perf-layout {
     display: grid;
@@ -835,9 +647,7 @@
     .spark-line {
       animation: none;
     }
-    .mini-bar span,
-    .likes-bars span,
-    .mini-ring {
+    .likes-bars span {
       transition: none;
     }
   }

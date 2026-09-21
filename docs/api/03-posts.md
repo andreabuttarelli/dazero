@@ -42,7 +42,7 @@ Elenca i post del brand (max 50, ordinati per `created_at` decrescente), con fil
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/posts?status=pending_user" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/posts?status=pending_user" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -83,7 +83,7 @@ Senza media valgono solo le piattaforme che reggono il testo da solo: `facebook`
   "scheduled_for": "2030-05-16T07:00:00.000Z",
   "scheduled_for_local": "2030-05-16 09:00 (Europe/Rome)",
   "slot": "Thu 09:00",
-  "review_url": "https://anomalia.so/app/mio-brand/posts/a1b2c3d4-…"
+  "review_url": "https://dazero.co/app/mio-brand/posts/a1b2c3d4-…"
 }
 ```
 
@@ -110,7 +110,7 @@ post resta una bozza senza data, fuori dal calendario ma elencata da `GET /posts
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{
@@ -124,7 +124,7 @@ curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts" \
 
 ## `POST /api/v1/brands/:slug/content/check`
 
-Fa girare su una copy che hai scritto tu **gli stessi controlli deterministici** che Anomalia fa
+Fa girare su una copy che hai scritto tu **gli stessi controlli deterministici** che dazero fa
 sulla propria: requisiti di piattaforma, tenuta della caption, punteggio di qualità, calendario.
 
 Non chiama nessun modello, non consuma crediti e **non scrive niente**: è una POST solo perché
@@ -210,7 +210,7 @@ verdetti sono confrontabili solo se coincidono.
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/content/check" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/content/check" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{
@@ -247,7 +247,7 @@ Elimina in blocco i post di uno status (default `pending_user`). Rifiuta `publis
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://anomalia.so/api/v1/brands/mio-brand/posts?status=pending_user" \
+curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/posts?status=pending_user" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -296,7 +296,7 @@ che non riconosce non ci finisce dentro. È una conferma, non l'eco della richie
 **Esempio**:
 
 ```bash
-curl -s -X PUT "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID" \
+curl -s -X PUT "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{"caption":"Nuovo caption","platforms":["instagram","x"]}'
@@ -325,7 +325,7 @@ Elimina un singolo post. Solo post in status `pending_user`.
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID" \
+curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -360,7 +360,7 @@ Senza account collegati per la piattaforma:
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID/approve" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/approve" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -388,7 +388,7 @@ Pubblica immediatamente un post già approvato tramite Zernio.
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID/publish" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/publish" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -427,7 +427,7 @@ Ri-programma un post: annulla la copia esistente su Zernio, riporta lo status ad
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID/reschedule" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/reschedule" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{"scheduled_for":"2026-08-20T18:00"}'
@@ -470,7 +470,7 @@ Post che ha già un'immagine (nessuna azione):
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID/render" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/render" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -519,7 +519,7 @@ Note: per i video compaiono anche `is_video`, `video_thumbnail_url`, `video_edit
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID/media" \
+curl -s "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/media" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -588,12 +588,12 @@ Anima la copertina in una clip. Passa dal gate crediti e fattura un render.
 **Esempi**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID/media/regenerate" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/media/regenerate" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{"instruction":"Rendi i colori più caldi"}'
 
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID/media/order" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/media/order" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{"order":[0,2,1]}'
@@ -641,17 +641,17 @@ Questa rotta faceva quattro cose a seconda di `action`. Ora ognuna ha la sua, so
 **Esempi**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID/media" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/media" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{"action":"regenerate","instruction":"Rendi i colori più caldi"}'
 
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID/media" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/media" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{"action":"restructure","order":[0,2,1]}'
 
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID/media" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/media" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{"action":"video","duration":6,"script":"…","aspectRatio":"9:16"}'
@@ -697,7 +697,7 @@ Con eliminazioni fallite:
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts/POST_ID/revoke" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/revoke" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{"reason":"Contenuto non conforme"}'
@@ -734,7 +734,7 @@ Note: i fallimenti per singolo post finiscono in `results`, non nello status HTT
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts/approve-all" \
+curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/approve-all" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -743,7 +743,7 @@ curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/posts/approve-all" 
 ## `GET /api/v1/brands/:slug/creation-kit`
 
 Il **brief minimo** da leggere *prima* di scrivere un post: vincoli di piattaforma, fatti e voce
-del brand, la rubrica che calza, **un solo** template Anomalia scelto per questo obiettivo e
+del brand, la rubrica che calza, **un solo** template dazero scelto per questo obiettivo e
 formato, le riscritture del proprietario, cosa ha funzionato su questo brand e quali minuti del
 calendario sono già occupati.
 
@@ -844,7 +844,7 @@ istruzioni.
 **Esempio**:
 
 ```bash
-curl -s -G "https://anomalia.so/api/v1/brands/mio-brand/creation-kit" \
+curl -s -G "https://dazero.co/api/v1/brands/mio-brand/creation-kit" \
   --data-urlencode "goal=launch the espresso grinder" \
   --data-urlencode "platforms=linkedin,instagram" \
   --data-urlencode "format=text_post" \

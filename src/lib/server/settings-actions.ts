@@ -52,7 +52,7 @@ export async function billingPortal({ request, params, url, locals: { supabase }
   });
   if (link.refusal === 'no_org_billing') return fail(404, { billingError: 'Brand not found' });
   if (link.refusal === 'no_customer' || link.refusal === 'no_subscription') {
-    throw redirect(303, `/app/${params.brand}/activate`);
+    throw redirect(303, '/app/billing');
   }
   if (link.refusal) return fail(500, { billingError: link.message || 'Could not open billing' });
 
@@ -77,7 +77,7 @@ export async function upgrade({ request, params, url, locals: { supabase } }: Ev
     flow: 'upgrade'
   });
   if (link.refusal === 'no_customer' || link.refusal === 'no_subscription') {
-    throw redirect(303, `/app/${params.brand}/activate?plan=${encodeURIComponent(plan)}`);
+    throw redirect(303, '/app/billing');
   }
   if (link.refusal) return fail(500, { billingError: link.message || 'Could not start the upgrade' });
 

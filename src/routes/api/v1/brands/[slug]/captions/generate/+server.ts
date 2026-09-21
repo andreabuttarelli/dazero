@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, gateAiAction } from '$lib/server/cli-auth';
 import { brandVoice, writeCaptions } from '$lib/server/caption-writer';
-import { GENERATE_CAPTIONS, TARGET_PLATFORMS, statusForFailure } from '@anomalia/api-contracts';
+import { GENERATE_CAPTIONS, TARGET_PLATFORMS, statusForFailure } from '@dazero/api-contracts';
 import { billedUsdInScope, withBrandContext } from '$lib/server/ai-log';
 
 export const POST: RequestHandler = async ({ request, params }) => {

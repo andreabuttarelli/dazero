@@ -1,5 +1,4 @@
 import type { RequestHandler } from './$types';
-import { canEnter } from '$lib/server/access';
 import { fetchSocialProfile } from '$lib/server/scrapecreators';
 import { logOnboardingError } from '$lib/server/onboarding-errors';
 
@@ -55,8 +54,6 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
-
   const body = await request.json().catch(() => ({}));
   const handles = parseHandles(body?.handles);
   if (!handles.length) {

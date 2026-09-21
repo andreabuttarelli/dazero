@@ -1,6 +1,5 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import { canEnter } from '$lib/server/access';
 import { fetchSocialVisualRefs } from '$lib/server/design-visual-refs';
 
 // Social CDNs (Instagram etc.) send Cross-Origin-Resource-Policy: same-origin, so the browser
@@ -9,7 +8,6 @@ import { fetchSocialVisualRefs } from '$lib/server/design-visual-refs';
 export const POST: RequestHandler = async ({ params, request, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
 
   const { data: brand } = await supabase.from('brands').select('id').eq('slug', params.brand).maybeSingle();
   if (!brand) return json({ error: 'brand_not_found' }, { status: 404 });

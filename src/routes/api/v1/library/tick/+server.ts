@@ -11,7 +11,6 @@ import {
 import { withBrandContext } from '$lib/server/ai-log';
 import { hasWebHub } from '$lib/server/plans';
 import { jobPausedForBrand } from '$lib/server/job-roster';
-import { reportToAgentThread } from '$lib/server/team-ignition';
 import { recordLoopTick, nextRunBudgetMs, type LoopSkipReason } from '$lib/server/loop-ticks';
 import { queueForLoop, markServed } from '$lib/server/loop-fairness';
 
@@ -113,7 +112,6 @@ async function run(request: Request): Promise<Response> {
 		// Il tick 'ok' che mancava: /agents legge SOLO loop_ticks, e senza questa riga un
 		// lavoro che gira ogni settimana resta "mai girato" per sempre sulla sua card.
 		recordLoopTick({ loop: 'library', brandId: brand.id, outcome: 'ok', durationMs: Date.now() - startedAt });
-		await reportToAgentThread(admin, brand.id, { job: 'library', pages: count });
 	}
 
 	return new Response(

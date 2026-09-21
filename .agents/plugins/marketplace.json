@@ -1,14 +1,14 @@
 {
-  "name": "anomalia",
+  "name": "dazero",
   "interface": {
-    "displayName": "Anomalia"
+    "displayName": "dazero"
   },
   "plugins": [
     {
-      "name": "anomalia",
+      "name": "dazero",
       "source": {
         "source": "local",
-        "path": "./cli/plugins/anomalia"
+        "path": "./cli/plugins/dazero"
       },
       "policy": {
         "installation": "AVAILABLE",

@@ -81,7 +81,6 @@ vi.mock('$lib/server/strategy-agent-reads', () => ({
   readEditorialPlanForAgent: async () => ({ plan: 'active' }),
   readGtmForAgent: async () => ({ gtm: 'phase 1' }),
   readKnowledgeForAgent: async () => ({ docs: [] }),
-  readLeadsForAgent: async () => ({ leads: [] }),
   readMediaForAgent: async () => ({ media: [] }),
   readRubricsForAgent: async () => ({ rubrics: [] }),
   readStrategyReportForAgent: async () => ({ report: 'none' })
@@ -310,7 +309,6 @@ describe('il tavolo dei tool offerto al modello', () => {
         'read_editorial_plan',
         'read_gtm',
         'read_knowledge',
-        'read_leads',
         'read_media',
         'read_post_history',
         'read_rubrics',

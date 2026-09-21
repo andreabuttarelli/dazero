@@ -44,7 +44,7 @@ export type ChatQuestionsProgress = {
 };
 
 const storageKey = (threadId: string, toolCallId: string) =>
-  `anomalia:chat-q:${threadId}:${toolCallId}`;
+  `dazero:chat-q:${threadId}:${toolCallId}`;
 
 export function loadQuestionsProgress(
   threadId: string,

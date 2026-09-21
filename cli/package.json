@@ -1,25 +1,25 @@
 {
-  "name": "anomalia-cli",
+  "name": "dazero-cli",
   "version": "0.1.0",
-  "description": "Command-line client for Anomalia — the social media AI autopilot.",
+  "description": "Command-line client for dazero — the social media AI autopilot.",
   "license": "Apache-2.0",
   "author": "Andrea Buttarelli",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anomaliaso/anomalia.git",
+    "url": "git+https://github.com/andreabuttarelli/dazero.git",
     "directory": "cli"
   },
-  "homepage": "https://anomalia.so",
+  "homepage": "https://dazero.co",
   "bugs": {
-    "url": "https://github.com/anomaliaso/anomalia/issues"
+    "url": "https://github.com/andreabuttarelli/dazero/issues"
   },
   "type": "module",
   "bin": {
-    "anomalia": "./cli.ts",
-    "anomalia-mcp": "./mcp/stdio.ts"
+    "dazero": "./cli.ts",
+    "dazero-mcp": "./mcp/stdio.ts"
   },
   "keywords": [
-    "anomalia",
+    "dazero",
     "cli",
     "social-media",
     "mcp",

@@ -293,7 +293,7 @@ async function markReady(admin: SupabaseClient, job: BlogMonthJob, brand: AnyRec
 }
 
 async function notifyMonthReady(admin: SupabaseClient, brand: AnyRec, articles: number, translations = 0): Promise<void> {
-  const { brandContacts } = await import('$lib/server/scheduler');
+  const { brandContacts } = await import('$lib/server/brand-contacts');
   if (!brand.org_id) return;
   const contacts = await brandContacts(admin, brand.org_id as string, brand.id as string);
   if (!contacts.length) return;

@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { openOrgScope, brandStyleRefusal } from '$lib/server/cli-auth';
 import { generateImagesWithoutBrand } from '$lib/server/media-generate';
-import { GENERATE_IMAGE, statusForFailure } from '@anomalia/api-contracts';
+import { GENERATE_IMAGE, statusForFailure } from '@dazero/api-contracts';
 
 // Lo stesso tetto della rotta sotto il brand: quattro immagini di fila stanno sotto il minuto, ma
 // non sotto il default.

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 const genMock = vi.fn();
 vi.mock('ai', async (orig) => ({ ...(await orig()) as object, generateText: (...a: unknown[]) => genMock(...a) }));
 const modelHolder: { current: unknown } = { current: { model: {} } };
-vi.mock('$lib/server/chat/model', () => ({ compactionModel: () => modelHolder.current }));
+vi.mock('$lib/server/ai-model', () => ({ compactionModel: () => modelHolder.current }));
 
 const { closeTurnVerdict, looksLikeAPromise, claimsWithoutFacts, MAX_VERDICT_LAPS } = await import('./verdict');
 

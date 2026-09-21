@@ -14,7 +14,7 @@ import { withAuth } from '../util.ts';
  * chiamata. `whoami` funzionava, ma la domanda ha gia' risposta: su HTTP e' l'host ad aver scelto
  * l'account, su stdio la sessione e' quella della CLI, e `list_brands` dice su cosa si puo' agire.
  *
- * Su stdio si entra con `anomalia login` da terminale: stesso pacchetto, stesso `session.json`.
+ * Su stdio si entra con `dazero login` da terminale: stesso pacchetto, stesso `session.json`.
  */
 export function registerAuthTools(server: McpServer) {
   // Resta a mano, ed è l'unico: `GET /api/v1/brands` non ha un brand sotto cui stare, e il

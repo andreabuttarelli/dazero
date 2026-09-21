@@ -4,12 +4,7 @@ import { readFileSync } from 'node:fs';
 import { authenticate, loadBrandForUser, type ApiKeyInfo, type CliBrand } from './cli-auth';
 import { isRlsScoped } from '$lib/server/rls-client';
 import { createTestSupabase } from '$lib/testkit/supabase';
-import { BOOKING_URL } from '$lib/links';
 
-const approved = vi.hoisted(() => ({ current: true }));
-vi.mock('$lib/server/access', () => ({
-  userCanEnter: async () => approved.current
-}));
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({
     auth: { getUser: async () => ({ data: { user: { id: 'user-1', email: 'a@b.c' } }, error: null }) }
@@ -99,43 +94,27 @@ describe('loadBrandForUser with API key', () => {
   });
 });
 
-/**
- * Chiudere il browser e lasciare aperta la API non è chiudere il prodotto: la CLI e l'MCP
- * entrano da qui, e `authenticate` è l'unico passaggio che entrambe attraversano. La guardia
- * sta lì, una volta, non in sessanta rotte.
- */
-describe('authenticate — prodotto chiuso', () => {
+describe('authenticate', () => {
   beforeEach(() => {
     vi.resetModules();
-    approved.current = true;
   });
 
-  async function callWithJwt() {
+  it('un JWT valido passa', async () => {
     const { authenticate } = await import('./cli-auth');
-    return authenticate(new Request('https://x/api/v1/brands', { headers: { authorization: 'Bearer jwt-token' } }));
-  }
-
-  it('un utente non approvato non passa', async () => {
-    approved.current = false;
-    const res = await callWithJwt();
-
-    expect(res.error?.status).toBe(403);
-    expect(res.user).toBeUndefined();
-  });
-
-  it('dice dove prenotare, invece di un 403 muto', async () => {
-    approved.current = false;
-    const res = await callWithJwt();
-    const body = await res.error!.json();
-
-    expect(JSON.stringify(body)).toContain(BOOKING_URL);
-  });
-
-  it('un utente approvato passa come prima', async () => {
-    const res = await callWithJwt();
+    const res = await authenticate(
+      new Request('https://x/api/v1/brands', { headers: { authorization: 'Bearer jwt-token' } })
+    );
 
     expect(res.error).toBeUndefined();
     expect(res.user?.id).toBe('user-1');
+  });
+
+  it('senza Authorization si prende un 401', async () => {
+    const { authenticate } = await import('./cli-auth');
+    const res = await authenticate(new Request('https://x/api/v1/brands'));
+
+    expect(res.error?.status).toBe(401);
+    expect(res.user).toBeUndefined();
   });
 });
 
@@ -146,7 +125,7 @@ describe('authenticate — prodotto chiuso', () => {
  * sparirebbe per tutte insieme. Questo test è la prova che c'è.
  */
 describe('una chiave di sola lettura', () => {
-  const RAW_KEY = 'anomalia_live_sololetturatest';
+  const RAW_KEY = 'dazero_live_sololetturatest';
 
   async function callWithKey(method: string) {
     const rows: Record<string, unknown>[] = [];
@@ -191,12 +170,51 @@ describe('una chiave di sola lettura', () => {
 });
 
 /**
+ * Il prefisso di una chiave cambia a ogni rinomina del prodotto, ma le chiavi già emesse restano
+ * in mano ai clienti: `021_live_` viene dall'era precedente, `anomalia_` da quella prima di
+ * dazero. Riconoscerli non è cortesia — è la differenza fra una rinomina e un'interruzione di
+ * servizio silenziosa per chiunque non rigeneri la chiave.
+ */
+describe('una chiave emessa prima della rinomina', () => {
+  async function callWithKey(rawKey: string) {
+    const rows: Record<string, unknown>[] = [];
+    vi.resetModules();
+    vi.doMock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'service-role' } }));
+    vi.doMock('@supabase/supabase-js', () => ({
+      createClient: () => createTestSupabase({ api_keys: rows }).client
+    }));
+
+    const { authenticate, hashApiKey } = await import('./cli-auth');
+    rows.push({
+      id: 'key-legacy',
+      user_id: 'user-1',
+      name: 'legacy',
+      key_hash: await hashApiKey(rawKey),
+      permissions: { brand_ids: '*', scopes: ['read'] }
+    });
+
+    return authenticate(
+      new Request('https://x/api/v1/brands', { headers: { authorization: `Bearer ${rawKey}` } })
+    );
+  }
+
+  it('entra ancora, qualunque sia il prefisso di quando è stata emessa', async () => {
+    for (const rawKey of ['anomalia_live_chiavevecchia', '021_live_chiaveanticha', 'dazero_live_chiavenuova']) {
+      const res = await callWithKey(rawKey);
+
+      expect(res.error, rawKey).toBeUndefined();
+      expect(res.apiKey?.id, rawKey).toBe('key-legacy');
+    }
+  });
+});
+
+/**
  * QUALE DEI DUE CLIENT ESCE DA `authenticate`. È la domanda su cui `query` decide di leggere, e
  * sbagliarla non dà un errore: dà le righe di ogni brand di ogni cliente.
  */
 describe('il marchio RLS esce solo dal percorso JWT', () => {
   const bearer = (token: string) =>
-    new Request('https://anomalia.so/api/v1/brands/acme', { headers: { Authorization: `Bearer ${token}` } });
+    new Request('https://dazero.co/api/v1/brands/acme', { headers: { Authorization: `Bearer ${token}` } });
 
   it('il JWT utente torna un client marchiato: chiave anon, policy dell utente', async () => {
     const { supabase, error } = await authenticate(bearer('a.user.jwt'));

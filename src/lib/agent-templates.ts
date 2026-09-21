@@ -55,7 +55,7 @@ export type AgentTemplate = {
   integrations: string[];
   /** What lands in the schedule prompt when the agent is installed. */
   prompt: string;
-  /** Built-in hub specialist (`publish` | `brand` | `grow` | `web`), null = Anomalia auto. */
+  /** Built-in hub specialist (`publish` | `brand` | `grow` | `web`), null = dazero auto. */
   agent: string | null;
   avatar_face: AgentAvatarFace;
   avatar_color: string;

@@ -13,7 +13,7 @@
   let copied = $state('');
   let showExample = $state(0);
 
-  const BASE = 'https://anomalia.so/api/v1';
+  const BASE = 'https://dazero.co/api/v1';
 
   function cp(text: string, id: string) {
     if (typeof navigator !== 'undefined' && navigator.clipboard) navigator.clipboard.writeText(text);

@@ -7,7 +7,7 @@ import { recordPostVerdicts } from '$lib/server/post-verdict';
 import { createManualPost } from '$lib/server/manual-posting';
 import { datetimeInputToUtc, formatInZone } from '$lib/server/schedule';
 import { appOrigin } from '$lib/server/app-url';
-import { CREATE_POST, statusForFailure } from '@anomalia/api-contracts';
+import { CREATE_POST, statusForFailure } from '@dazero/api-contracts';
 
 export const GET: RequestHandler = async ({ request, params, url }) => {
   const { supabase, error, apiKey } = await authenticate(request);
@@ -75,7 +75,7 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
     scheduled_for: scheduledFor,
     scheduled_for_local: scheduledFor ? `${formatInZone(scheduledFor, tz)} (${tz})` : null,
     slot: result.slot ?? null,
-    review_url: `${appOrigin(url)}/app/${brand.slug}/posts/${result.id}`
+    review_url: `${appOrigin(url)}/app/${brand.slug}/calendar?post=${result.id}`
   });
 };
 

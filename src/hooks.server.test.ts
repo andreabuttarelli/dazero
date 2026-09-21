@@ -98,11 +98,11 @@ describe('il tool che ha chiesto il lavoro', () => {
 	};
 
 	it('finisce sulla riga della spesa che ha causato', async () => {
-		expect((await spendUnder({ 'x-anomalia-tool': 'plan_week' })).context).toBe('tool:plan_week');
+		expect((await spendUnder({ 'x-dazero-tool': 'plan_week' })).context).toBe('tool:plan_week');
 	});
 
 	it('non scrive quello che un nome di tool non è', async () => {
-		expect((await spendUnder({ 'x-anomalia-tool': 'DROP TABLE ai_calls' })).context).toBeNull();
+		expect((await spendUnder({ 'x-dazero-tool': 'DROP TABLE ai_calls' })).context).toBeNull();
 	});
 
 	it('senza intestazione la riga resta com’era', async () => {

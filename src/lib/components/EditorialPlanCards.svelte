@@ -48,7 +48,7 @@
       {/if}
     </section>
 
-    <!-- Voice (the answers Anomalia used to ask for — now proposed, still editable) -->
+    <!-- Voice (the answers dazero used to ask for — now proposed, still editable) -->
     <section class="ep-card">
       <div class="ep-h">{$_('editorialPlan.voice')}</div>
       <div class="ep-voice-grid">

@@ -1,6 +1,6 @@
 # Durable, sequenced thread event log
 
-Context: Anomalia currently renders a thread from `chat_messages`, resumes
+Context: dazero currently renders a thread from `chat_messages`, resumes
 classic turns from `chat_jobs.partial`, resumes Agent Kit turns from
 `agent_kit_runs.partial`, and joins Kit streams through Realtime chunks with
 `ChunkPosition`. These paths have different cursors and recovery rules.

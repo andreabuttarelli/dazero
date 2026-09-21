@@ -8,7 +8,7 @@ Tutti gli endpoint sono sotto `/api/v1/` e richiedono autenticazione Bearer toke
 Authorization: Bearer <jwt_token>
 ```
 
-Il token viene ottenuto tramite il flow OAuth della CLI. Viene salvato in `~/.config/anomalia/session.json` e rinnovato automaticamente.
+Il token viene ottenuto tramite il flow OAuth della CLI. Viene salvato in `~/.config/dazero/session.json` e rinnovato automaticamente.
 
 ## Brand
 

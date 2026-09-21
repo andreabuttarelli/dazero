@@ -10,7 +10,7 @@ import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
 import { brandSkills } from '$lib/server/brand-skills';
 import { DEFAULT_SKILLS, defaultSkillsFor } from '$lib/server/default-skills';
 import { TEAM_AGENT_IDS } from '$lib/agent-owners';
-import { WRITING_DECK_AGENTS } from '@anomalia/api-contracts';
+import { WRITING_DECK_AGENTS } from '@dazero/api-contracts';
 
 type Row = Record<string, unknown>;
 
@@ -80,7 +80,7 @@ function signedIn(memory: Row[] = [OWN_SKILL, FOREIGN_SKILL, A_FACT]) {
 }
 
 function call(query: Record<string, string> = {}, slug = 'demo') {
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/writing-skills`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/writing-skills`);
   for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
   return (GET as (event: unknown) => Promise<Response>)({
     request: new Request(url),

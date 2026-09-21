@@ -148,7 +148,7 @@
   const connectHref = $derived(
     isPaidPlan(data.brand?.plan)
       ? `/app/${$page.params.brand}/settings/connected-accounts`
-      : `/app/${$page.params.brand}/activate`
+      : '/app/billing'
   );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const character = $derived((kit?.ai_character ?? {}) as any);

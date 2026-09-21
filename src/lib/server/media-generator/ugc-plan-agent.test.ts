@@ -8,7 +8,7 @@ describe('ugc plan agent prompts', () => {
   it('requires read_brand_studio before scripts and forbids off-brand drama', () => {
     const system = buildUgcPlanAgentSystem({
       count: 3,
-      brandName: 'Anomalia',
+      brandName: 'dazero',
       language: 'Italian'
     });
     expect(system).toMatch(/read_brand_studio FIRST/i);
@@ -20,11 +20,11 @@ describe('ugc plan agent prompts', () => {
 
   it('user prompt tells the agent to start with brand tools', () => {
     const prompt = buildUgcPlanAgentPrompt({
-      prompt: 'Illustra le features di Anomalia con gli screenshots nei media',
+      prompt: 'Illustra le features di dazero con gli screenshots nei media',
       count: 2,
-      assignmentLines: '#1: feature Anomalia; invent a concrete speaker look',
+      assignmentLines: '#1: feature dazero; invent a concrete speaker look',
       brand: {
-        name: 'Anomalia',
+        name: 'dazero',
         about: 'Social AI autopilot',
         category: 'SaaS',
         audience: 'Marketers',

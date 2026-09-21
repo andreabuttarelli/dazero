@@ -4,7 +4,6 @@ import { handleMcpFetch } from './http-app.ts';
 
 const SLUG = { type: 'string', minLength: 1 };
 
-const NOT_DESTRUCTIVE = { readOnlyHint: false, destructiveHint: false };
 const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true };
 const OPEN_WORLD = { readOnlyHint: false, destructiveHint: false, openWorldHint: true };
 
@@ -26,32 +25,6 @@ const MIGRATED_WRITES = [
     properties: { slug: SLUG },
     required: ['slug'],
     annotations: DESTRUCTIVE,
-  },
-  {
-    name: 'refresh_keywords',
-    title: 'Refresh keywords',
-    properties: { slug: SLUG },
-    required: ['slug'],
-    annotations: NOT_DESTRUCTIVE,
-  },
-  {
-    name: 'seo_action',
-    title: 'SEO action',
-    properties: {
-      slug: SLUG,
-      action: { type: 'string', enum: ['run', 'plan', 'more', 'asset', 'article'] },
-      initiativeId: { type: 'string' },
-      guidance: { type: 'string', description: 'Optional guidance when action=more' },
-    },
-    required: ['slug', 'action'],
-    annotations: NOT_DESTRUCTIVE,
-  },
-  {
-    name: 'geo_action',
-    title: 'GEO action',
-    properties: { slug: SLUG, action: { type: 'string', enum: ['audit', 'fix'] } },
-    required: ['slug', 'action'],
-    annotations: NOT_DESTRUCTIVE,
   },
   {
     name: 'research_competitors',

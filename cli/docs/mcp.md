@@ -1,15 +1,15 @@
-# Anomalia MCP — how to use it
+# dazero MCP — how to use it
 
-Anomalia exposes a [Model Context Protocol](https://modelcontextprotocol.io) server so coding agents
+dazero exposes a [Model Context Protocol](https://modelcontextprotocol.io) server so coding agents
 (Cursor, Claude, etc.) can manage brands, posts, plans, studio, SEO/GEO, and blog — with the **same
 OAuth login as the CLI**. There are **no static API tokens**.
 
 ```
 Your agent
-   │  stdio (local)     →  bun run mcp  /  anomalia-mcp
-   │  HTTPS (remote)    →  https://mcp.anomalia.so/mcp  + Bearer
+   │  stdio (local)     →  bun run mcp  /  dazero-mcp
+   │  HTTPS (remote)    →  https://mcp.dazero.co/mcp  + Bearer
    ▼
-Anomalia API  (/api/v1/*)
+dazero API  (/api/v1/*)
 ```
 
 ## Quick start
@@ -20,7 +20,7 @@ Anomalia API  (/api/v1/*)
 2. Authenticate once:
 
 ```bash
-anomalia login
+dazero login
 # or, after MCP is connected, call the `login` tool
 ```
 
@@ -29,9 +29,9 @@ anomalia login
 ```json
 {
   "mcpServers": {
-    "anomalia": {
+    "dazero": {
       "command": "bun",
-      "args": ["run", "/ABS/PATH/to/anomalia-cli/mcp/stdio.ts"]
+      "args": ["run", "/ABS/PATH/to/dazero-cli/mcp/stdio.ts"]
     }
   }
 }
@@ -39,32 +39,32 @@ anomalia login
 
 4. Restart Cursor / reload MCP. Call `list_brands`, then work with a brand `slug`.
 
-Session file (shared with the CLI): `~/.config/anomalia/session.json`.
+Session file (shared with the CLI): `~/.config/dazero/session.json`.
 
-### Option B — Remote HTTP (`mcp.anomalia.so`)
+### Option B — Remote HTTP (`mcp.dazero.co`)
 
 1. Confirm the server is up:
 
 ```bash
-curl -sS https://mcp.anomalia.so/health
+curl -sS https://mcp.dazero.co/health
 ```
 
-Expect: `{"ok":true,"name":"anomalia-mcp","mcp":"/mcp",...}`.
+Expect: `{"ok":true,"name":"dazero-mcp","mcp":"/mcp",...}`.
 
 2. Cursor MCP config:
 
 ```json
 {
   "mcpServers": {
-    "anomalia": {
-      "url": "https://mcp.anomalia.so/mcp"
+    "dazero": {
+      "url": "https://mcp.dazero.co/mcp"
     }
   }
 }
 ```
 
 3. The host must send **`Authorization: Bearer <access_token>`** on every request.  
-   Use the Supabase access token from Anomalia OAuth (same value the CLI stores after `anomalia login`).  
+   Use the Supabase access token from dazero OAuth (same value the CLI stores after `dazero login`).  
    Without Bearer you get **401** — that is correct, not a crash.
 
 If your client cannot attach Bearer yet, use [mcp-remote](https://www.npmjs.com/package/mcp-remote) or prefer **Option A**.
@@ -99,24 +99,24 @@ Post and article ids accept **short unambiguous prefixes** from list results (sa
 | Studio | `get_studio`, `add_note`, `research_competitors` |
 | Web | `get_seo`, `get_geo`, `generate_article`, `ads_remix`, `chat` |
 
-Full map: [`skills/anomalia/references/tools.md`](../skills/anomalia/references/tools.md).
+Full map: [`skills/dazero/references/tools.md`](../skills/dazero/references/tools.md).
 
 ## Agent skill (directories / `npx skills`)
 
 Publishable Agent Skill (agentskills.io):
 
 ```bash
-npx skills add anomaliaso/anomalia --skill anomalia
+npx skills add andreabuttarelli/dazero --skill dazero
 ```
 
-Sources: [`skills/anomalia/`](../skills/anomalia/) (`SKILL.md` + `references/`).  
-Claude/Codex marketplace plugin (skill + remote MCP): [`plugins/anomalia/`](../plugins/anomalia/) — see [`plugins.md`](plugins.md).
+Sources: [`skills/dazero/`](../skills/dazero/) (`SKILL.md` + `references/`).  
+Claude/Codex marketplace plugin (skill + remote MCP): [`plugins/dazero/`](../plugins/dazero/) — see [`plugins.md`](plugins.md).
 
 ## Auth rules (summary)
 
 | Context | How you authenticate |
 |---------|----------------------|
-| Local stdio / local HTTP | Browser `login` tool or `anomalia login` → session file |
+| Local stdio / local HTTP | Browser `login` tool or `dazero login` → session file |
 | Remote HTTP | `Authorization: Bearer <jwt>` required |
 | Static API key | **Not supported** |
 
@@ -124,7 +124,7 @@ Protected resource metadata: `GET /.well-known/oauth-protected-resource`.
 
 ## Cursor + remote HTTP OAuth
 
-Cursor’s remote MCP connector discovers Anomalia’s authorization server and runs
+Cursor’s remote MCP connector discovers dazero’s authorization server and runs
 [Dynamic Client Registration](https://datatracker.ietf.org/doc/html/rfc7591). Some Cursor
 builds still register the custom-scheme callback:
 
@@ -132,7 +132,7 @@ builds still register the custom-scheme callback:
 cursor://anysphere.cursor-mcp/oauth/callback
 ```
 
-Anomalia’s `/oauth/register` only accepts **https** or **loopback http** redirect URIs, so that
+dazero’s `/oauth/register` only accepts **https** or **loopback http** redirect URIs, so that
 registration fails with:
 
 ```text
@@ -146,25 +146,25 @@ Not an https or loopback URI: cursor://anysphere.cursor-mcp/oauth/callback
 ```json
 {
   "mcpServers": {
-    "anomalia": {
+    "dazero": {
       "command": "bun",
-      "args": ["run", "/ABS/PATH/to/anomalia-cli/mcp/stdio.ts"]
+      "args": ["run", "/ABS/PATH/to/dazero-cli/mcp/stdio.ts"]
     }
   }
 }
 ```
 
-Then call the `login` tool (or run `anomalia login` first).
+Then call the `login` tool (or run `dazero login` first).
 
 2. **Update Cursor** so MCP OAuth uses the loopback callback
-   `http://localhost:8787/callback` (RFC 8252). That URI **is** accepted by Anomalia DCR.
+   `http://localhost:8787/callback` (RFC 8252). That URI **is** accepted by dazero DCR.
 
-3. **Bearer header** — after `anomalia login`, put the access token from
-   `~/.config/anomalia/session.json` in the MCP config `headers.Authorization` (if your Cursor
+3. **Bearer header** — after `dazero login`, put the access token from
+   `~/.config/dazero/session.json` in the MCP config `headers.Authorization` (if your Cursor
    build supports headers on URL servers), or bridge with
    [mcp-remote](https://www.npmjs.com/package/mcp-remote).
 
-**Permanent fix (Anomalia app, not this repo):** allowlist Cursor’s known redirect URIs in the
+**Permanent fix (dazero app, not this repo):** allowlist Cursor’s known redirect URIs in the
 authorization server’s DCR validator (`/oauth/register`), including
 `cursor://anysphere.cursor-mcp/oauth/callback` and
 `https://www.cursor.com/agents/mcp/oauth/callback`, while keeping loopback `http://localhost`

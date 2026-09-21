@@ -41,7 +41,6 @@ export async function loadGrowthReadiness(
     { count: documentCount },
     { count: handleCount },
     { data: plan },
-    { count: gscCount },
     { count: socialCount }
   ] = await Promise.all([
     brandRow
@@ -72,10 +71,6 @@ export async function loadGrowthReadiness(
       .eq('brand_id', brandId)
       .eq('status', 'active')
       .maybeSingle(),
-    supabase
-      .from('brand_gsc_connections')
-      .select('brand_id', { count: 'exact', head: true })
-      .eq('brand_id', brandId),
     supabase
       .from('social_accounts')
       .select('id', { count: 'exact', head: true })
@@ -111,7 +106,6 @@ export async function loadGrowthReadiness(
     documentCount: documentCount ?? 0,
     hasEditorialPlan: !!plan,
     hasWebsite: !!String((brand as AnyRec | null)?.website ?? '').trim(),
-    gscConnected: (gscCount ?? 0) > 0,
     hasSocialAccounts: (socialCount ?? 0) > 0
   };
 

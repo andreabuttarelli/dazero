@@ -12,11 +12,11 @@ import { normalizeRoutineEvent } from './chat-routine-event';
 const full = {
   kind: 'created',
   id: 'r1',
-  name: 'X tech news radar',
+  name: 'X tech news watch',
   agent: 'team:web',
   owner_name: 'Web Specialist',
   self: false,
-  by: 'Anomalia',
+  by: 'dazero',
   days: [1, 4],
   times: ['09:00'],
   prompt: 'Leggi le fonti del settore e porta i tre fatti che cambiano qualcosa.',
@@ -29,7 +29,7 @@ describe('normalizeRoutineEvent', () => {
     const bare = normalizeRoutineEvent(full);
     const wrapped = normalizeRoutineEvent({ success: true, id: 'r1', routine_event: full });
     expect(bare).toEqual(wrapped);
-    expect(bare?.name).toBe('X tech news radar');
+    expect(bare?.name).toBe('X tech news watch');
     expect(bare?.ownerName).toBe('Web Specialist');
     expect(bare?.self).toBe(false);
   });

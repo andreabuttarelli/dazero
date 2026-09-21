@@ -7,7 +7,7 @@
  *
  * PERCHE' NELLA VM E NON IN LOCALE. E' lo stesso percorso di `renderMotionMp4`
  * (src/lib/server/motion-video/render-tools.ts): Vercel Sandbox persistente, progetto Remotion in
- * `.anomalia/motion-render`, le dipendenze di `MOTION_RENDER_PACKAGES`. Se una voce si cuoce qui,
+ * `.dazero/motion-render`, le dipendenze di `MOTION_RENDER_PACKAGES`. Se una voce si cuoce qui,
  * quella voce renderizza in produzione — che e' l'unica affermazione che vale.
  *
  * COMPILARE NON E' RENDERIZZARE, ed e' il motivo per cui questo script esiste. I due render
@@ -29,7 +29,7 @@ import { MOTION_RENDER_PACKAGES, MOTION_REMOTION_VERSION } from '../src/lib/moti
 
 const REPO = process.cwd();
 const LIB = join(REPO, 'src/lib/motion-video/library');
-const PROJECT_DIR = '.anomalia/motion-render';
+const PROJECT_DIR = '.dazero/motion-render';
 
 /**
  * IL MANIFESTO — si versiona la PROVA, non il payload.
@@ -161,7 +161,7 @@ const sandbox = await Sandbox.getOrCreate({
 	// LA STESSA MACCHINA DI SEMPRE, e non e' un dettaglio: `node_modules` (~570MB) e le librerie
 	// di Chrome restano in cache fra una cottura e l'altra. Sulla macchina fredda la sola
 	// installazione supera i quattro minuti.
-	name: 'anomalia-motion-library-bake',
+	name: 'dazero-motion-library-bake',
 	persistent: true,
 	timeout: 45 * 60_000,
 	resources: { vcpus: 4 },
@@ -173,7 +173,7 @@ const sandbox = await Sandbox.getOrCreate({
 	},
 	snapshotExpiration: 7 * 24 * 60 * 60_000,
 	keepLastSnapshots: { count: 2 },
-	tags: { app: 'anomalia', purpose: 'motion-library' },
+	tags: { app: 'dazero', purpose: 'motion-library' },
 	token: env.VERCEL_TOKEN,
 	teamId: env.VERCEL_TEAM_ID,
 	projectId: env.VERCEL_PROJECT_ID
@@ -209,7 +209,7 @@ if ((await run('test', ['-d', `${PROJECT_DIR}/node_modules/remotion`])).exitCode
 // VUOTO — che su una libreria di animazioni tipografiche sarebbe il guasto peggiore possibile.
 // Un pacchetto alla volta e mai fatale: i nomi cambiano fra distro (Ubuntu 24.04 ha rinominato
 // meta' libreria in `…t64`), e a decidere se e' andata bene non e' apt — e' il render.
-if ((await run('test', ['-f', '.anomalia/chrome-deps-ok'])).exitCode !== 0) {
+if ((await run('test', ['-f', '.dazero/chrome-deps-ok'])).exitCode !== 0) {
 	const APT = ['libnspr4','libnss3','libatk1.0-0t64','libatk1.0-0','libatk-bridge2.0-0t64','libatk-bridge2.0-0','libcups2t64','libcups2','libdrm2','libxcomposite1','libxdamage1','libxext6','libxfixes3','libxrandr2','libgbm1','libasound2t64','libasound2','libpango-1.0-0','libxkbcommon0','libcairo2','fontconfig','fonts-dejavu-core','fonts-liberation'];
 	const DNF = ['nss','nspr','atk','at-spi2-atk','at-spi2-core','cups-libs','libdrm','libXcomposite','libXdamage','libXext','libXfixes','libXrandr','libXi','libXtst','mesa-libgbm','alsa-lib','pango','libxkbcommon','cairo','fontconfig','dejavu-sans-fonts','liberation-sans-fonts'];
 	const script =
@@ -220,7 +220,7 @@ if ((await run('test', ['-f', '.anomalia/chrome-deps-ok'])).exitCode !== 0) {
 		' fi; fc-cache -f >/dev/null 2>&1 || true; echo DEPS_DONE';
 	const r = await run('bash', ['-lc', script], { sudo: true, timeoutMs: 600_000 });
 	if (r.exitCode !== 0) throw new Error('installazione librerie di Chrome fallita');
-	await run('touch', ['.anomalia/chrome-deps-ok']);
+	await run('touch', ['.dazero/chrome-deps-ok']);
 }
 
 const entry = 'src/index.ts';

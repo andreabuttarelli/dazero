@@ -132,7 +132,7 @@ async function brandProfile(brandId: string): Promise<BlogBrand | null> {
  * Il blog esce da due porte: il dominio del brand (albero `_site`) e `/blog/<slug>`, che sta sulla
  * NOSTRA origine, la stessa di `/app` e della sessione di chi e' loggato. Uno script di terze parti
  * caricato li' — un container GA4 o GTM, che chi lo amministra puo' riempire di JavaScript quando
- * vuole — girerebbe con i permessi di anomalia.so.
+ * vuole — girerebbe con i permessi di dazero.co.
  *
  * Quindi non arrivano col profilo: si chiedono, e li chiede solo l'albero servito sul dominio del
  * brand. Dimenticarsene significa non caricarli; il contrario non e' possibile.

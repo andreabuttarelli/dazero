@@ -19,7 +19,7 @@ import type { AddressInfo } from 'node:net';
  */
 
 const USER_ID = '3f1c9a52-0d47-4c8b-9e21-5b7d0a2f6c84';
-const USER_EMAIL = 'test@anomalia.so';
+const USER_EMAIL = 'test@dazero.co';
 const BEARER = 'access-token-for-the-test';
 
 const rows: Record<string, unknown>[] = [];
@@ -45,7 +45,7 @@ const fake: Server = createServer((req: IncomingMessage, res) => {
 
     // Le chiamate che il tool fa all'app: è lì che si vede se il nome viaggia con la richiesta.
     if (path.startsWith('/api/')) {
-      apiCalls.push({ path, tool: (req.headers['x-anomalia-tool'] as string | undefined) ?? null });
+      apiCalls.push({ path, tool: (req.headers['x-dazero-tool'] as string | undefined) ?? null });
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -63,7 +63,7 @@ process.env.PUBLIC_APP_URL = origin;
 // Nessuna sessione CLI su disco: senza bearer il tool si ferma su `requireAuth` e non parla con
 // nessuno. La riga deve esserci comunque — un tool che fallisce è quello che più di tutti si vuole
 // nei log, e prima non lasciava niente.
-process.env.HOME = mkdtempSync(join(tmpdir(), 'anomalia-mcp-'));
+process.env.HOME = mkdtempSync(join(tmpdir(), 'dazero-mcp-'));
 
 const { handleMcpFetch } = await import('./http-app.ts');
 
@@ -166,7 +166,7 @@ describe('il nome del tool viaggia con le chiamate che il tool fa', () => {
    * Il pezzo che lega `mcp_logs` a `ai_calls`: senza questa intestazione la spesa resta attribuita
    * a un'etichetta condivisa fra l'autopilot, la chat e gli agenti esterni — cioè a nessuno.
    */
-  test('la richiesta all’app porta x-anomalia-tool', async () => {
+  test('la richiesta all’app porta x-dazero-tool', async () => {
     await callTool('list_brands', {}, signedIn);
 
     expect(apiCalls).toContainEqual({ path: '/api/v1/brands', tool: 'list_brands' });

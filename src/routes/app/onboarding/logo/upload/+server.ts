@@ -1,5 +1,4 @@
 import type { RequestHandler } from './$types';
-import { canEnter } from '$lib/server/access';
 import { logOnboardingError } from '$lib/server/onboarding-errors';
 import { readUploadImage } from '$lib/server/raster-image';
 
@@ -10,8 +9,6 @@ import { readUploadImage } from '$lib/server/raster-image';
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
-
   const fd = await request.formData();
   const file = fd.get('file');
   if (!(file instanceof File) || file.size === 0) return new Response('No file', { status: 400 });

@@ -12,8 +12,8 @@
  *
  *   Nessuna LETTERA NUDA. Il registro globale usa `g` come prefisso: dopo `g`, QUALUNQUE lettera
  *   è la seconda di una sequenza (`matchShortcut` lo dice esplicitamente). Una `d` nuda qui
- *   sarebbe «duplica» e insieme la `g d` che porta ai Leads, e a decidere sarebbe l'ordine in cui
- *   due ascoltatori su `window` ricevono lo stesso evento. Un gesto, due padroni: scartata.
+ *   sarebbe «duplica» e insieme la seconda lettera di una `g d`, e a decidere sarebbe l'ordine in
+ *   cui due ascoltatori su `window` ricevono lo stesso evento. Un gesto, due padroni: scartata.
  *
  *   DUPLICARE non c'è. ⌘D è del browser (segnalibro) e il registro globale lo dichiara già preso;
  *   ⌘⇧D sarebbe libero, ma duplicare una tile vuol dire scrivere una riga nuova nel database, e

@@ -81,7 +81,6 @@ vi.mock('$lib/server/strategy-agent-reads', () => ({
   readEditorialPlanForAgent: async () => ({ plan: 'active' }),
   readGtmForAgent: async () => ({ gtm: 'phase 1' }),
   readKnowledgeForAgent: async () => ({ docs: [] }),
-  readLeadsForAgent: async () => ({ leads: [] }),
   readMediaForAgent: async () => ({ media: [] }),
   readRubricsForAgent: async () => ({ rubrics: [] }),
   readStrategyReportForAgent: async () => ({ report: 'none' }),

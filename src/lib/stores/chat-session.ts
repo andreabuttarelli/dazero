@@ -200,7 +200,7 @@ export const busyThreadIds = derived(
 );
 
 function storageKey(threadId: string) {
-  return `anomalia:chat-stream:${threadId}`;
+  return `dazero:chat-stream:${threadId}`;
 }
 
 function persistToStorage(s: ChatSessionSnapshot) {

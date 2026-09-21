@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { createArticle } from '$lib/server/article-editing';
-import { CREATE_ARTICLE, statusForFailure } from '@anomalia/api-contracts';
+import { CREATE_ARTICLE, statusForFailure } from '@dazero/api-contracts';
 
 const DEFAULT_TIMEZONE = 'Europe/Rome';
 

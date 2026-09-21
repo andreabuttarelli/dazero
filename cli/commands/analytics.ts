@@ -4,7 +4,7 @@ import { section, table, formatDate, c, info } from '../lib/display.ts';
 
 export async function cmdAnalytics(slug: string) {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: anomalia login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
 
   const data = await api.getAnalytics(session.access_token, slug);
 

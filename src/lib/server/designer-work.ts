@@ -5,7 +5,7 @@ import {
 	CHAT_PENDING_STALE_MS,
 	CHAT_TURN_ABORT_MS,
 	chatTurnDeadline
-} from '$lib/server/chat/turn-limits';
+} from '$lib/server/designer/turn-limits';
 import {
 	attachDesignerStreamMirror,
 	DESIGNER_TOOL_MOTION,
@@ -23,7 +23,6 @@ import { shouldContinueDesignerSlice, mergeDesignerSliceEnd, type DesignerSliceE
 import { runMotionVideoTurn } from '$lib/server/motion-video/run-turn';
 import { parseMotionAspectRatio, parseMotionDuration } from '$lib/motion-video/source';
 import { streamUgcBatchResponse, type UgcClipPlan } from '$lib/server/media-generator/ugc-batch';
-import { closeSurfaceTurn } from '$lib/server/chat/surface-turn';
 import { isUgcFormatId, isUgcPlatformId } from '$lib/ugc-formats';
 
 export async function drainDesignerQueue(opts: {
@@ -261,20 +260,6 @@ async function runClaimedDesignerJob(
 				}
 			}
 		});
-
-		// La risposta nel thread la scriveva SOLO la richiesta originale, dentro il suo
-		// consumeSseStream. Un batch che supera la slice viene troncato e prosegue qui, in un'altra
-		// invocazione: quella prima richiesta è già morta, quindi il thread restava col solo
-		// messaggio dell'utente e tutto il lavoro — piano, tool, rese, QC — spariva dalla chat pur
-		// essendo nel job. Ogni slice adesso scrive la propria parte.
-		const threadId = typeof params.threadId === 'string' ? params.threadId : null;
-		if (threadId) {
-			await closeSurfaceTurn(
-				admin,
-				{ id: threadId } as never,
-				{ brandId: brand.id, userId: job.user_id, state: mirror.state() }
-			);
-		}
 
 		if (!continued) {
 			await finishDesignerJob(admin, jobId, {

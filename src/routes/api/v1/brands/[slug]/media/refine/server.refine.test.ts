@@ -26,7 +26,7 @@ const DRAWN = {
   mime: 'image/png',
   width: 1080,
   height: 1350,
-  url: 'https://anomalia.so/a/K7BX2MQ4'
+  url: 'https://dazero.co/a/K7BX2MQ4'
 };
 
 const CLIP = {
@@ -35,13 +35,13 @@ const CLIP = {
   mime: 'video/mp4',
   width: null,
   height: null,
-  url: 'https://anomalia.so/a/M4NP7QRS'
+  url: 'https://dazero.co/a/M4NP7QRS'
 };
 
 type Handler = (event: unknown) => Promise<Response>;
 
 function refine(body: unknown, slug = 'demo') {
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/media/refine`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/media/refine`);
 
   return (REFINE as Handler)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),

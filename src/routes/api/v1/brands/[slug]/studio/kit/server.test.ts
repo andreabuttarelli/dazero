@@ -47,7 +47,7 @@ function signedIn() {
 
 function put(body: Row) {
   return (PUT as (event: unknown) => Promise<Response>)({
-    request: new Request('https://anomalia.test/api/v1/brands/demo/studio/kit', {
+    request: new Request('https://dazero.test/api/v1/brands/demo/studio/kit', {
       method: 'PUT',
       body: JSON.stringify(body)
     }),

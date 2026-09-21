@@ -26,7 +26,7 @@ export const indexnowKeyLocation = (host: string) => `https://${host}/${indexnow
 
 // ── URL resolution ───────────────────────────────────────────────────────────────────────────────
 
-// Full public URLs for the articles just published: the subpath blog on anomalia.so plus any
+// Full public URLs for the articles just published: the subpath blog on dazero.co plus any
 // custom domain the brand has connected (brand_sites). Translations live on the same path shapes.
 export async function articlePublicUrls(
   admin: SupabaseClient,
@@ -42,7 +42,7 @@ export async function articlePublicUrls(
   ]);
   const hosts: string[] = [];
   if (brand?.blog_slug) {
-    const appBase = (env.PUBLIC_FALLBACK_APP_URL || 'https://www.anomalia.so').replace(/\/$/, '');
+    const appBase = (env.PUBLIC_FALLBACK_APP_URL || 'https://www.dazero.co').replace(/\/$/, '');
     hosts.push(`${appBase}/blog/${brand.blog_slug}`);
   }
   for (const s of sites ?? []) hosts.push(`https://${String(s.host).toLowerCase()}`);

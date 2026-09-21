@@ -1,10 +1,10 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 
 const LOCAL_ORIGIN = 'http://localhost:5173';
-const PREVIEW_ORIGIN = 'https://anomalia-git-branch.vercel.app';
+const PREVIEW_ORIGIN = 'https://dazero-git-branch.vercel.app';
 
 const VERCEL_DOMAIN_REDIRECTS: Record<string, string> = {
-  'https://anomalia.so': 'https://www.anomalia.so'
+  'https://dazero.co': 'https://www.dazero.co'
 };
 
 type AuthorizationServer = {
@@ -55,8 +55,8 @@ describe('oauth discovery, walked the way a client walks it', () => {
   });
 
   it.each([
-    ['apex', 'https://anomalia.so'],
-    ['www', 'https://www.anomalia.so']
+    ['apex', 'https://dazero.co'],
+    ['www', 'https://www.dazero.co']
   ])(
     'advertises an identifier that serves its own metadata, PUBLIC_APP_URL=%s',
     async (_, configured) => {
@@ -70,8 +70,8 @@ describe('oauth discovery, walked the way a client walks it', () => {
   );
 
   it.each([
-    ['apex', 'https://anomalia.so'],
-    ['www', 'https://www.anomalia.so']
+    ['apex', 'https://dazero.co'],
+    ['www', 'https://www.dazero.co']
   ])('issues the identifier it advertised, PUBLIC_APP_URL=%s', async (_, configured) => {
     configureMcp(undefined);
     configureApp(configured);
@@ -83,7 +83,7 @@ describe('oauth discovery, walked the way a client walks it', () => {
 
   it('advertises endpoints on the origin it named as issuer', async () => {
     configureMcp(undefined);
-    configureApp('https://anomalia.so');
+    configureApp('https://dazero.co');
 
     const { identifier, server } = await walkDiscovery();
 
@@ -109,7 +109,7 @@ describe('oauth discovery, walked the way a client walks it', () => {
   });
 
   it('issues the preview origin to a client that discovered it there', async () => {
-    configureApp('https://www.anomalia.so');
+    configureApp('https://www.dazero.co');
 
     const server = await authorizationServerMetadata(PREVIEW_ORIGIN);
 

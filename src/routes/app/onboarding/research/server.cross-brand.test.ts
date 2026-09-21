@@ -9,10 +9,6 @@ vi.mock('$lib/server/onboarding-steps', async (orig) => ({
   startOnboardingStepJob,
   kickOnboardingStepWork: vi.fn()
 }));
-vi.mock('$lib/server/access', async (orig) => ({
-  ...(await orig<typeof import('$lib/server/access')>()),
-  canEnter: vi.fn(async () => true)
-}));
 
 import { POST } from './+server';
 import { markRlsScoped } from '$lib/server/rls-client';

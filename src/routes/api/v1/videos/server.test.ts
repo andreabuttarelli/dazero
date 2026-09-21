@@ -24,7 +24,7 @@ import { GET, POST } from './+server';
 const ORG = { id: 'org-1', name: 'Acme' };
 
 async function film(body: unknown) {
-  const url = new URL('https://anomalia.test/api/v1/videos');
+  const url = new URL('https://dazero.test/api/v1/videos');
   const res = await (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),
     url
@@ -34,7 +34,7 @@ async function film(body: unknown) {
 }
 
 async function check(query = '') {
-  const url = new URL(`https://anomalia.test/api/v1/videos${query}`);
+  const url = new URL(`https://dazero.test/api/v1/videos${query}`);
   const res = await (GET as (event: unknown) => Promise<Response>)({
     request: new Request(url),
     url

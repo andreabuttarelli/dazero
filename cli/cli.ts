@@ -10,25 +10,22 @@ const program = new Command();
 program.hook('preAction', () => assertEnv());
 
 program
-  .name('anomalia')
-  .description('CLI per gestire Anomalia — social media AI autopilot')
+  .name('dazero')
+  .description('CLI per gestire dazero — social media AI autopilot')
   .version('0.1.0')
   .addHelpText('after', `
 Esempi:
-  $ anomalia brands                   Lista tutti i brand
-  $ anomalia dashboard my-brand       Dashboard completa
-  $ anomalia approve my-brand --all   Approva tutti i post pending
-  $ anomalia seo my-brand             Grade SEO, iniziative, audit tecnico
-  $ anomalia geo my-brand             Visibilità AI, share of voice, citazioni
-  $ anomalia keywords my-brand        Keyword strategy e opportunità
-  $ anomalia web my-brand             Articoli blog (draft + pubblicati)
+  $ dazero brands                   Lista tutti i brand
+  $ dazero dashboard my-brand       Dashboard completa
+  $ dazero approve my-brand --all   Approva tutti i post pending
+  $ dazero web my-brand             Articoli blog (draft + pubblicati)
 
 Documentazione completa: cli/README.md
 `);
 
 program
   .command('login')
-  .description('Accedi a Anomalia (default: apre il browser)')
+  .description('Accedi a dazero (default: apre il browser)')
   .option('--email <email>', 'email per login non interattivo (richiede --password o --password-stdin)')
   .option('--password <password>', 'password per login non interattivo (richiede --email)')
   .option('--password-stdin', 'legge la password da stdin, fuori da history e process list')
@@ -39,7 +36,7 @@ program
 
 program
   .command('logout')
-  .description('Disconnettiti da Anomalia')
+  .description('Disconnettiti da dazero')
   .action(async () => {
     const { cmdLogout } = await import('./commands/logout.ts');
     await cmdLogout();
@@ -235,32 +232,6 @@ program
   });
 
 program
-  .command('seo <slug> [action]')
-  .description('SEO: show, run (audit tecnico), plan, more (altre iniziative), asset --id, article --id')
-  .option('--id <id>', 'ID iniziativa (anche solo il prefisso mostrato in tabella)')
-  .option('--guidance <text>', 'Indicazione per le nuove iniziative (more)')
-  .action(async (slug: string, action: string | undefined, opts: { id?: string; guidance?: string }) => {
-    const { cmdSeo } = await import('./commands/seo.ts');
-    await cmdSeo(slug, { action: action ?? 'show', ...opts });
-  });
-
-program
-  .command('geo <slug> [action]')
-  .description('GEO: show (share of voice, citazioni), run (audit), fix (genera artifact)')
-  .action(async (slug: string, action: string | undefined) => {
-    const { cmdGeo } = await import('./commands/geo.ts');
-    await cmdGeo(slug, { action: action ?? 'show' });
-  });
-
-program
-  .command('keywords <slug> [action]')
-  .description('Keyword strategy: show, refresh (rigenera la ricerca)')
-  .action(async (slug: string, action: string | undefined) => {
-    const { cmdKeywords } = await import('./commands/keywords.ts');
-    await cmdKeywords(slug, { action: action ?? 'show' });
-  });
-
-program
   .command('web <slug> [action]')
   .description('Blog: list, generate --topic, publish/unpublish/optimize/delete --id')
   .option('--status <status>', 'Filtro: all, draft, scheduled, published', 'all')
@@ -308,7 +279,7 @@ program
 
 program
   .command('update')
-  .description('Aggiorna Anomalia CLI all\'ultima versione')
+  .description('Aggiorna dazero CLI all\'ultima versione')
   .action(async () => {
     const { cmdUpdate } = await import('./commands/update.ts');
     await cmdUpdate();

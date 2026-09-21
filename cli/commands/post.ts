@@ -117,8 +117,8 @@ ${c.bold('Post')} ${c.dim(postId)}  ${c.cyan(kind)}
         (sl.image_prompt ?? '—').slice(0, 60)
       ])
     );
-    info(`\nModifica una slide: anomalia post ${slug} ${postId} slide --index 1 --instruction "..."`);
-    info(`Riordina:           anomalia post ${slug} ${postId} reorder --order "0,2,1"\n`);
+    info(`\nModifica una slide: dazero post ${slug} ${postId} slide --index 1 --instruction "..."`);
+    info(`Riordina:           dazero post ${slug} ${postId} reorder --order "0,2,1"\n`);
   }
 }
 

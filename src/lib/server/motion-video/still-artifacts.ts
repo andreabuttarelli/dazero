@@ -12,7 +12,7 @@
  * `tool_call_id` della chiamata, così la card compare nel punto giusto del turno.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { publishArtifact, type PublishedArtifact } from '$lib/server/chat/artifacts';
+import { publishArtifact, type PublishedArtifact } from '$lib/server/designer/artifacts';
 
 export async function publishMotionStillArtifacts(opts: {
 	supabase: SupabaseClient;

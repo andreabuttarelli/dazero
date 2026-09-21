@@ -174,7 +174,7 @@ describe('il registry degli endpoint di brand', () => {
       scheduled_for: '2030-05-16T07:00:00.000Z',
       scheduled_for_local: '2030-05-16 09:00 (Europe/Rome)',
       slot: 'Thu 09:00',
-      review_url: 'https://anomalia.so/app/demo/posts/post-1'
+      review_url: 'https://dazero.co/app/demo/posts/post-1'
     });
     expect(ok.success).toBe(true);
     expect(output.safeParse({ ok: true, id: 'post-1', status: 'approved' }).success).toBe(false);
@@ -377,18 +377,16 @@ describe('il nome del tool che arriva per intestazione', () => {
  * Il caso pagato: `ads_action` diceva «Read get_ads first» dopo che `get_ads` era uscito dal
  * registro, quindi ogni turno che toccava le ads mandava il modello su un tool inesistente.
  *
- * L'elenco è quello dei dieci ritirati in favore dei quattro generici, non ogni nome che somiglia
+ * L'elenco è quello dei tool ritirati in favore dei quattro generici, non ogni nome che somiglia
  * a un tool: le descrizioni citano anche colonne e rotte, e un estrattore che le confonde con i
  * tool fallisce su tutto tranne che sul difetto.
  */
-describe('nessuna descrizione manda a uno dei dieci tool ritirati', () => {
+describe('nessuna descrizione manda a un tool ritirato', () => {
   const RETIRED = [
     'add_competitor',
-    'add_radar_source',
     'delete_competitor',
     'delete_product',
     'remove_blog_term',
-    'remove_radar_source',
     'get_ads',
     'record_memory_used',
     'discard_plan',

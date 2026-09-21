@@ -26,7 +26,7 @@ it.skipIf(process.env.GRAPHIC_RENDER_LIVE !== '1')('una grafica vera, renderizza
 const Graphic = () => (
   <div style={{ width: '100%', height: '100%', background: '#F9F9F9', padding: 76,
                 display: 'grid', gridTemplateRows: 'auto 1fr auto', fontFamily: 'Helvetica, Arial, sans-serif' }}>
-    <div style={{ letterSpacing: 6, fontSize: 26, color: '#86868b' }}>ANOMALIA / LEADS</div>
+    <div style={{ letterSpacing: 6, fontSize: 26, color: '#86868b' }}>DAZERO / LEADS</div>
     <div style={{ display: 'flex', alignItems: 'center' }}>
       <div>
         <h1 style={{ fontSize: 'clamp(48px, 7vw, 96px)', lineHeight: 1.04, margin: 0,
@@ -38,7 +38,7 @@ const Graphic = () => (
         </p>
       </div>
     </div>
-    <div style={{ fontSize: 28 }}>● leads.anomalia.so</div>
+    <div style={{ fontSize: 28 }}>● leads.dazero.co</div>
   </div>
 );`;
   const t0 = Date.now();

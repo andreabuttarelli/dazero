@@ -31,7 +31,7 @@ type PlanPreviewOpts = {
   // Absent → 0 (no videos), keeping today's image/text-only behaviour for existing callers.
   maxVideos?: number;
   // Carousel guardrail: cap on how many of the planned posts may be carousels. Absent → 0, so
-  // paths that never opted in (onboarding preview, radar) can't plan multi-image posts; the
+  // paths that never opted in (onboarding preview) can't plan multi-image posts; the
   // batch paths pass carouselMaxPerBatch() (env CAROUSEL_MAX_PER_BATCH, default 1).
   maxCarousels?: number;
   // The brand's approved rubrics. Absent/empty (every brand that hasn't adopted them) → the
@@ -48,7 +48,7 @@ type PlanPreviewOpts = {
   competitorThumbUrls?: string[];
   // Weekly market format/hook catalog (loadMarketBrief) — structural inspiration, not visuals.
   marketBrief?: string;
-  // Radar subreddits (brand_news_sources). Absent → draftWeekSeeds loads when supabase+brandId set.
+  // Known subreddits (brand_news_sources). Absent → draftWeekSeeds loads when supabase+brandId set.
   knownSubreddits?: string[];
   // Pre-computed upcomingTimelyHooks() output. undefined → planStrategy computes it; a string
   // (even '' = "computed, nothing relevant") → reused as-is, avoiding a duplicate calendar call.

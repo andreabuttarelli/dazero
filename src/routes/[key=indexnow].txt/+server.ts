@@ -2,7 +2,7 @@ import type { RequestHandler } from './$types';
 import { indexnowKey } from '$lib/server/indexing';
 
 // IndexNow verification file: https://<any-host>/<key>.txt must return the key as plain text.
-// Served on every hostname routed to this app, so subpath blogs (anomalia.so) AND custom-domain
+// Served on every hostname routed to this app, so subpath blogs (dazero.co) AND custom-domain
 // blogs (_site) can both be verified with the same key.
 export const GET: RequestHandler = ({ params }) => {
   const key = indexnowKey();

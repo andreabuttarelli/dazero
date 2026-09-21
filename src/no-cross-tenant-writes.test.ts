@@ -89,8 +89,8 @@ const OWNERSHIP_CHECKED = /\bownsBrand\s*\(/;
 /**
  * Il tenant preso dal corpo e mai verificato. Non finisce in un `WHERE` da scopare: diventa il
  * `brand_id` di una riga scritta col client service role, o lo scope sotto cui gira il lavoro —
- * e da lì il costo di quel lavoro va sul conto del brand nominato. `canEnter` non lo ferma: è
- * una porta commerciale, non un confine di sicurezza, e lo dice la sua stessa fonte.
+ * e da lì il costo di quel lavoro va sul conto del brand nominato. Un controllo che guarda CHI
+ * chiama non lo ferma: la domanda è di chi è il brand nominato, e solo `ownsBrand` la pone.
  */
 function unverifiedTenantFromBody(file: string, src: string): Finding[] {
   const out: Finding[] = [];
@@ -205,7 +205,7 @@ describe('la regola riconosce il tenant preso dal corpo', () => {
   it('segnala un brandId dal corpo che nessuno verifica', () => {
     const src =
       BRAND_FROM_BODY +
-      'if (!(await canEnter(supabase))) return new Response(\'Forbidden\', { status: 403 });\n' +
+      'if (!session) return new Response(\'Forbidden\', { status: 403 });\n' +
       'await startOnboardingStepJob(supabase, { kind, userId: user.id, brandId, input });';
 
     expect(unverifiedTenantFromBody('/src/routes/app/onboarding/x/+server.ts', src)).toHaveLength(1);

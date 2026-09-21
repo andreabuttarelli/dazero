@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { isRedirect } from '@sveltejs/kit';
 import { load } from './+page.server';
 
-const ORIGIN = 'https://anomalia.so';
+const ORIGIN = 'https://dazero.co';
 const SIGNED_IN = { session: { access_token: 'jwt' }, user: { id: 'u1' } };
 
 function run(path: string) {

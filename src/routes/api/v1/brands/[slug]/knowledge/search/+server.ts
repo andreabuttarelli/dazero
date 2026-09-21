@@ -6,7 +6,7 @@ import {
   KNOWLEDGE_EXCERPT_CHARS,
   KNOWLEDGE_HITS_DEFAULT,
   KNOWLEDGE_HITS_MAX
-} from '@anomalia/api-contracts';
+} from '@dazero/api-contracts';
 
 // Interrogare la conoscenza del brand come faceva l'agente interno: la stessa `searchKnowledge`
 // (FTS, e un embedding della domanda solo quando le parole chiave non bastano), esposta a chi

@@ -247,7 +247,7 @@ export async function kickOnboardingStepWork(origin: string): Promise<void> {
  *
  * `supabase` is the caller's user-scoped client and is used for READS only (RLS scopes them to the
  * owner). Every write goes through the service role: the table has no insert/update policy, so a
- * user can't enqueue a job straight against PostgREST — bypassing the route's canEnter() gate — or
+ * user can't enqueue a job straight against PostgREST — bypassing the route's checks — or
  * flip a finished job back to `pending` to make the worker re-run the whole pipeline for free.
  */
 export async function startOnboardingStepJob(
@@ -921,7 +921,7 @@ async function notifyStrategyPlanReady(
     return;
   }
 
-  const { brandContacts } = await import('$lib/server/scheduler');
+  const { brandContacts } = await import('$lib/server/brand-contacts');
   let contacts = brand.org_id
     ? await brandContacts(admin, brand.org_id as string, brandId)
     : [];

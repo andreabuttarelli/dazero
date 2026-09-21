@@ -4,7 +4,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Actions, PageServerLoad } from './$types';
 import { isKnowledgeProvider } from '$lib/knowledge-providers';
 import { createAdminClient } from '$lib/server/supabase-admin';
-import { gscConfigured, loadGscSummary } from '$lib/server/gsc';
 import {
   kickSourceWork,
   knowledgeConnectorsEnabled,
@@ -43,9 +42,8 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     loadBrandWebhook(supabase, brand.id).catch((error) => { swallow('load brand webhook', error); return null; }),
     loadBrandTriggers(supabase, brand.id).catch((error) => { swallow('load brand triggers', error); return []; })
   ]);
-  const [sources, gsc, catalog] = await Promise.all([
+  const [sources, catalog] = await Promise.all([
     loadKnowledgeSources(supabase, brand.id).catch((error) => { swallow('load knowledge sources', error); return []; }),
-    loadGscSummary(admin, brand.id).catch((error) => { swallow('load gsc summary', error); return null; }),
     // Whatever this brand already connected stays listed, connectable-by-default or not.
     loadConnectorCatalog(connections.map((c) => c.toolkit_slug))
   ]);
@@ -75,12 +73,7 @@ export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => 
     githubRepos: githubList.repos,
     githubReposError: githubList.error,
     notionPages: notionList.pages,
-    notionPagesError: notionList.error,
-    gsc: {
-      configured: gsc?.configured ?? gscConfigured(),
-      connected: gsc?.connected ?? false,
-      siteUrl: gsc?.siteUrl ?? null
-    }
+    notionPagesError: notionList.error
   };
 };
 

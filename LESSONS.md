@@ -50,7 +50,7 @@ CI PRIMA di cancellare il test — il soggetto è vivo, è l'installazione local
 posto, e cancellarlo butta via copertura che funziona.
 
 ### Il worktree nuovo ha bisogno anche del `.env`
-Dopo il `npm ci` la suite parte ma cade su 40+ test con `SUPABASE_SERVICE_ROLE_KEY not configured`: Vitest carica l'env dal `.env` del worktree, che non c'è. Segnale: errori di env mancante in un worktree fresco, deterministici, su file che passano nel checkout principale. Mossa: `cp ../anomalia/.env .` alla creazione del worktree, accanto al `npm ci`.
+Dopo il `npm ci` la suite parte ma cade su 40+ test con `SUPABASE_SERVICE_ROLE_KEY not configured`: Vitest carica l'env dal `.env` del worktree, che non c'è. Segnale: errori di env mancante in un worktree fresco, deterministici, su file che passano nel checkout principale. Mossa: `cp ../dazero/.env .` alla creazione del worktree, accanto al `npm ci`.
 
 ### **Una regola di `.gitignore` senza `/` iniziale mangia una cartella di codice, in silenzio**
 Rotta nuova in `src/routes/api/v1/brands/[slug]/evidence/artifacts/`, 27 test verdi, `git add -A`,
@@ -68,11 +68,11 @@ worktree con `.env` copiato ma `PUBLIC_SUPABASE_URL` sul progetto remoto: il log
 ### Un test che sceglie un ramo in base all'env locale non è un test
 `queue-dm.test` girava o no il ramo kit secondo `AGENT_KIT` del `.env` locale: sul laptop di chi lo ha spento passava, su chi lo ha acceso il turno andava nel kit e `harnessCalls` restava vuoto (`expected +0 to be 1`). Segnale: un test che fallisce solo su un'altra macchina, senza cambiamento di codice. Mossa: chi fissa `$env/dynamic/private` nel test (`vi.mock('$env/dynamic/private', () => ({ env: { AGENT_KIT: 'off' } }))`), come già fa `queue-kit-heartbeat.test` — la scelta del ramo è parte del test, non del computer che lo esegue.
 
-### `@anomalia/*` si risolve dal `node_modules` del checkout principale
+### `@dazero/*` si risolve dal `node_modules` del checkout principale
 Un eval o un test lanciato da un worktree misura un ibrido: `$lib` punta alla copia del worktree, i pacchetti interni vengono dal checkout madre. Se hai toccato `packages/`, il worktree non lo vede. Per un confronto pulito: worktree di verifica con `node_modules` symlinkato a quello fresco.
 
 ### Il worktree DENTRO la repo dir: la pagina è viva ma non risponde (403 su `entry.js`)
-Un worktree creato dentro la cartella della repo (`anomalia/anomalia-wt/<slug>`) risolve `@sveltejs/kit` dal `node_modules` del checkout padre: vite lo serve via `/@fs/...` **fuori dalla root del worktree** e risponde 403 — il bundle client non parte, la hydratazione non arriva, e ogni click "riuscito" dell'automazione browser non cambia nulla (SSR morto senza errori in console). Segnale: `performance.getEntriesByType('resource')` mostra `entry.js` con `responseStatus: 403`, i click vanno a un DOM senza handler. Mossa: il worktree sta **fuori** dalla repo (`../anomalia-wt/<slug>`, come da docs/e2e-testing.md §1) con `npm ci` proprio.
+Un worktree creato dentro la cartella della repo (`dazero/dazero-wt/<slug>`) risolve `@sveltejs/kit` dal `node_modules` del checkout padre: vite lo serve via `/@fs/...` **fuori dalla root del worktree** e risponde 403 — il bundle client non parte, la hydratazione non arriva, e ogni click "riuscito" dell'automazione browser non cambia nulla (SSR morto senza errori in console). Segnale: `performance.getEntriesByType('resource')` mostra `entry.js` con `responseStatus: 403`, i click vanno a un DOM senza handler. Mossa: il worktree sta **fuori** dalla repo (`../dazero-wt/<slug>`, come da docs/e2e-testing.md §1) con `npm ci` proprio.
 
 ### Verifica il `workdir` prima di ogni Edit
 Con più worktree aperti (feature + verifica), un edit fatto nel checkout sbagliato tocca dev. È successo: `live.ts` modificato nel checkout principale per un secondo, poi `git checkout --` e riapplicato nel posto giusto. Il tool Edit non ti proteggere — proteggiti tu: guarda il percorso del file che stai per toccare, sempre.
@@ -228,7 +228,7 @@ Un giudizio LLM su un artefatto reso va provato su DUE input, o non è provato: 
 ## Testare la piattaforma nel browser: worker locale ed ambiente
 
 ### Il websocket Realtime non si collega dalla stack locale: quello che arriva per broadcast non lo verifichi qui
-Il broadcast HTTP del server risponde 202 e il container lo logga, ma il browser non apre mai il canale: `channel(...).subscribe()` non risolve, e in `read_network_requests` non c'è una sola richiesta verso `localhost:8000`. Tutto quello che il prodotto consegna via `thread-changed` / `turn-state` / `kit_stream` — il turno scritto dal worker che deve comparire da solo, il pallino in sidebar, il riaggancio a uno stream partito altrove — nella stack locale non si vede, e la tentazione è di dichiararlo rotto nel codice. Segnale: il POST `/api/broadcast/...` esce 202, i log di `realtime-dev.anomalia-realtime` non mostrano nessun join di canale, e la UI resta ferma. Mossa: verifica quel percorso dal lato che NON dipende dal socket — scrivi la riga in `chat_messages` mentre la scheda è nascosta e torna sulla scheda: se il ricontrollo al focus la porta a schermo, il difetto non è lì. E dillo nel PR invece di far passare per verificato ciò che la macchina non poteva provare.
+Il broadcast HTTP del server risponde 202 e il container lo logga, ma il browser non apre mai il canale: `channel(...).subscribe()` non risolve, e in `read_network_requests` non c'è una sola richiesta verso `localhost:8000`. Tutto quello che il prodotto consegna via `thread-changed` / `turn-state` / `kit_stream` — il turno scritto dal worker che deve comparire da solo, il pallino in sidebar, il riaggancio a uno stream partito altrove — nella stack locale non si vede, e la tentazione è di dichiararlo rotto nel codice. Segnale: il POST `/api/broadcast/...` esce 202, i log di `realtime-dev.dazero-realtime` non mostrano nessun join di canale, e la UI resta ferma. Mossa: verifica quel percorso dal lato che NON dipende dal socket — scrivi la riga in `chat_messages` mentre la scheda è nascosta e torna sulla scheda: se il ricontrollo al focus la porta a schermo, il difetto non è lì. E dillo nel PR invece di far passare per verificato ciò che la macchina non poteva provare.
 
 ### Due dev server su localhost si rubano la sessione: il 404 «Brand not found» non è un bug tuo
 Per un confronto prima/dopo viene naturale tenere due porte accese insieme (dev su 5201, branch su
@@ -242,22 +242,22 @@ volta** per qualunque verifica nel browser. Il confronto prima/dopo si fa in seq
 branch, spegni, accendi il baseline, misuri — non in parallelo.
 
 ### Il worker locale è un build vecchio che compete per la stessa coda
-La stack Docker porta un'app pronta (`anomalia-app`, immagine `anomalia-selfhost-app`) che prosciuga `chat_jobs` dallo stesso DB del dev server: il cron chiama `app:3000`, non la tua porta. Con l'immagine più vecchia del checkout, il codice nuovo **non gira mai** (il team contact post-onboarding non parte) e i due reaper si contendono i turni: `chat turn died mid-flight (heartbeat lost)` su turni vivi, `Failed to load url credits.ts` da moduli che nel checkout esistono. Segnale: `chat_jobs` failed con errori che il codice attuale non può produrre. Mossa: identificare chi prosciuga la coda prima di giudicare il flusso — `docker logs anomalia-app`, data dell'immagine (`docker images`) contro `git log -1` — e fermare o ricostruire il container stantio (ricordarsi di riaccenderlo).
+La stack Docker porta un'app pronta (`dazero-app`, immagine `dazero-selfhost-app`) che prosciuga `chat_jobs` dallo stesso DB del dev server: il cron chiama `app:3000`, non la tua porta. Con l'immagine più vecchia del checkout, il codice nuovo **non gira mai** (il team contact post-onboarding non parte) e i due reaper si contendono i turni: `chat turn died mid-flight (heartbeat lost)` su turni vivi, `Failed to load url credits.ts` da moduli che nel checkout esistono. Segnale: `chat_jobs` failed con errori che il codice attuale non può produrre. Mossa: identificare chi prosciuga la coda prima di giudicare il flusso — `docker logs dazero-app`, data dell'immagine (`docker images`) contro `git log -1` — e fermare o ricostruire il container stantio (ricordarsi di riaccenderlo).
 
 ### Le env del repo puntano all'hosted; la stack locale porta le sue chiavi in kong.yml
-Il `.env` del repo punta a un progetto Supabase hosted, mentre la compose gira da un altro checkout con le chiavi veramente valide dentro `anomalia-kong:/usr/local/kong/kong.yml`. Il seed (`scripts/db-seed.mjs`) pretende `DATABASE_URL` e fallisce con parse error leggendo `.env` a mano (contiene valori con `<...>`). Mossa: overlay env a parte — `PUBLIC_SUPABASE_URL=http://localhost:8000`, chiavi estratte da kong.yml, `DATABASE_URL` dalla compose — e avviare il dev con quello; mai puntare all'hosted "per comodità".
+Il `.env` del repo punta a un progetto Supabase hosted, mentre la compose gira da un altro checkout con le chiavi veramente valide dentro `dazero-kong:/usr/local/kong/kong.yml`. Il seed (`scripts/db-seed.mjs`) pretende `DATABASE_URL` e fallisce con parse error leggendo `.env` a mano (contiene valori con `<...>`). Mossa: overlay env a parte — `PUBLIC_SUPABASE_URL=http://localhost:8000`, chiavi estratte da kong.yml, `DATABASE_URL` dalla compose — e avviare il dev con quello; mai puntare all'hosted "per comodità".
 
 ### Misurare fuori dal percorso dell'app e concludere sull'app
 `curl` con `response_format: json_schema` strict su `z-ai/glm-5.3-flash` risponde 200 e resta aperto 180s con soli spazi di keep-alive: sembra un modello rotto. L'app però non usa quel percorso — usa `generateObject` dell'AI SDK, che negozia diversamente — e sullo stesso schema quel modello risponde in 107s (gemini in 15s). Lento, non rotto. Segnale: una conclusione su un componente tratta da una prova che quel componente non esegue mai. Mossa: misurare chiamando la FUNZIONE che il prodotto chiama (`llmStructured`), non l'endpoint a mano; e diffidare di «rotto» quando l'unico sintomo è «non è ancora tornato».
 
 ### Una colonna aggiunta a mano al DB locale non esiste per PostgREST finché non ricarichi lo schema
-`alter table ... add column` via `psql` non risveglia la cache di schema di PostgREST: ogni `.update()` che nomina la colonna nuova viene rifiutato (PGRST204), e il codice che scarta l'errore (`const { data } = await supabase...`) prosegue come se non fosse successo niente — nel caso pagato, l'approvazione di una rubrica non ha scritto la modifica e ha marcato la riga `rejected`. Segnale: una scrittura che tocca SOLO la colonna nuova non ha effetto, mentre le letture della stessa tabella funzionano. Mossa: `docker exec anomalia-db psql -U postgres -d postgres -c "notify pgrst, 'reload schema';"` subito dopo ogni migration applicata a mano, prima di aprire il browser.
+`alter table ... add column` via `psql` non risveglia la cache di schema di PostgREST: ogni `.update()` che nomina la colonna nuova viene rifiutato (PGRST204), e il codice che scarta l'errore (`const { data } = await supabase...`) prosegue come se non fosse successo niente — nel caso pagato, l'approvazione di una rubrica non ha scritto la modifica e ha marcato la riga `rejected`. Segnale: una scrittura che tocca SOLO la colonna nuova non ha effetto, mentre le letture della stessa tabella funzionano. Mossa: `docker exec dazero-db psql -U postgres -d postgres -c "notify pgrst, 'reload schema';"` subito dopo ogni migration applicata a mano, prima di aprire il browser.
 
 ### La porta 5173 può appartenere al vite di un altro worktree
 Un `vite dev` di un altro worktree risponde 404 a tutto e resta lì in ascolto; il CLI ci si punta da solo. Mossa: `lsof -nP -iTCP:5173 -sTCP:LISTEN` e `ps` sul PID prima di `npm run dev`; se occupata, porta esplicita (`npm run dev -- --port 5175`).
 
 ### Il profilo del browser di test conserva sessioni e localStorage
-`agent-browser` riutilizza cookie e localStorage tra le run: un test "guest" parte loggato, e l'onboarding di un utente nuovo legge `localStorage['anomalia:first-agent:<altro-brand>']` dell'utente prima — fetch di thread altrui (404 rumorosi ma disordini nella diagnosi). Mossa: `cookies clear` **e** `storage local clear` prima di ogni persona nuova; verificate sempre chi siete (`location.href`, sidebar) prima del primo click.
+`agent-browser` riutilizza cookie e localStorage tra le run: un test "guest" parte loggato, e l'onboarding di un utente nuovo legge `localStorage['dazero:first-agent:<altro-brand>']` dell'utente prima — fetch di thread altrui (404 rumorosi ma disordini nella diagnosi). Mossa: `cookies clear` **e** `storage local clear` prima di ogni persona nuova; verificate sempre chi siete (`location.href`, sidebar) prima del primo click.
 
 ### `agent-browser` è un daemon: path relativi e storage Puliti col suo contesto
 Il CLI parla con un daemon che gira col **suo** cwd: una screenshot con path relativo muore con `No such file or directory` anche se la cartella esiste nel caller. E `storage local clear` alza `Uncaught` se non c'è una pagina aperta. Mossa: path **assoluti** per le evidenze, e per partire puliti: open → `cookies clear` → `storage local clear` → reopen.
@@ -307,7 +307,7 @@ prima pagina a non arrivare mai e sembra un altro guasto.
 Il brief del DM lo aveva già pagato — in coda il modello salutava l'utente per nome — e per questo
 sta in testa in `live.ts` e in `queue.ts`. Il blocco del custom agent, che è la stessa cosa (una
 dichiarazione d'identità, non un compito in più), è rimasto in coda: dopo
-`You are Content Creator (…), an Anomalia agent.`, le istruzioni del mestiere, fino a 32 KB di
+`You are Content Creator (…), an dazero agent.`, le istruzioni del mestiere, fino a 32 KB di
 memoria e l'indice dei file. Segnale: un agente custom con una voce molto caratterizzata che **a
 volte** si presenta col nome dello specialista sottostante — intermittente, perché fra le due
 identità ci sono decine di migliaia di caratteri e vince chi capita. Mossa: ogni blocco che
@@ -416,7 +416,7 @@ il codice era giusto, e il colpevole era il container `rest`: PostgREST aveva la
 di PRIMA della migration, quindi per l'API `thread_events` non esisteva. `loadThreadEvents` cattura
 l'errore e torna `null`, e tutto scivola in silenzio sul fallback. Segnale: dopo una migration
 locale, un endpoint che nomina la tabella nuova risponde vuoto o 503 mentre psql la vede benissimo.
-Mossa: `notify pgrst, 'reload schema'` e, se non basta, `docker restart anomalia-rest`.
+Mossa: `notify pgrst, 'reload schema'` e, se non basta, `docker restart dazero-rest`.
 
 ### Il `catch` muto nel load nasconde proprio la causa che ti servirà
 `loadLiveRun(supabase, thread).catch(() => null)` sembrava prudenza: un caricamento pagina non deve
@@ -426,7 +426,7 @@ Mossa: il catch che protegge il caricamento LOGGA sempre prima di tornare `null`
 e ingoiare la diagnosi sono la stessa riga.
 
 ### Vite: dopo aver toccato un `package.json` di `packages/`, il browser resta su hash morti
-Aggiunta una subpath export a `@anomalia/agent-kit`, la pagina ha smesso di idratarsi con
+Aggiunta una subpath export a `@dazero/agent-kit`, la pagina ha smesso di idratarsi con
 `Failed to fetch dynamically imported module: .../nodes/150.js`. Non era il mio modulo: era
 `/node_modules/.vite/deps/@lucide_svelte.js?v=<hash>` in 404 — l'ottimizzatore aveva rigenerato le
 dipendenze con hash nuovi. Segnale: la pagina non idrata, nessun effetto gira, e in console un
@@ -491,7 +491,7 @@ sola, e il reducer sostituisce il messaggio con lo stesso id invece di accodarlo
 ## Build e bundle
 
 ### Nel bundle esbuild un modulo che lancia in cima lancia UNA volta sola
-`billingProvider()` dichiara assente il provider anomalia nel modo ESM naturale: il modulo lancia
+`billingProvider()` dichiara assente il provider dazero nel modo ESM naturale: il modulo lancia
 in valutazione, il `try/catch` assorbe e si ricade su quello aperto. In ESM standard regge per
 sempre — un modulo in errore rilancia lo stesso errore a ogni import. Nel bundle esbuild del
 worker no: `__esm` azzera il proprio flag PRIMA di eseguire il corpo, quindi dal secondo giro
@@ -680,7 +680,7 @@ Il typecheck di questo repo non è pulito — 346 errori su 171 file, tutti pre-
 in CI, dove un gate costruito sull'exit code sarebbe cieco per definizione.
 
 È già costato un difetto vero, sfuggito a una suite di 6102 test verdi. Estraendo i fetcher in
-`@anomalia/leads-core/feed` il factory era stato legato a `const sources = createSources(...)` a
+`@dazero/leads-core/feed` il factory era stato legato a `const sources = createSources(...)` a
 livello di modulo, ma `sources` è già il nome delle righe di `brand_news_sources` lette dal
 database in TRE funzioni di `radar.ts`: ognuna lo ombreggiava, e `sources.fetchSourceFeed(...)`
 risolveva sull'array del database. I test non l'hanno visto perché quei percorsi
@@ -743,14 +743,14 @@ stessa porta mostra un'altra applicazione, e `/app/...` dà 404 in browser mentr
 
 **Cosa succede.** `localhost` risolve a `::1` e `127.0.0.1` a IPv4: due processi Vite possono
 tenere la *stessa* porta, uno per stack, senza che nessuno dei due dica "porta occupata". Qui
-erano `anomalia` e `anomalia-leads`, entrambi su 5174.
+erano `dazero` e `dazero-leads`, entrambi su 5174.
 
 **La mossa.** Avvia il dev server con una porta esplicita e un host esplicito, e prima di
 crederci chiedi all'app chi è:
 
 ```bash
 npm run dev -- --port 5200 --host 127.0.0.1
-curl -s http://127.0.0.1:5200/login | grep -oE 'Anomalia|anomalia/leads' | head -1
+curl -s http://127.0.0.1:5200/login | grep -oE 'dazero|dazero/leads' | head -1
 ```
 
 Vite può comunque slittare di porta se trova occupato ("Port 5199 is in use, trying another
@@ -1029,11 +1029,11 @@ coincidenza con la data di scadenza. Fissala in un test che nomina la proprietà
 meccanismo.
 ## Il file che leggi non è sempre il file che è in produzione
 
-`https://mcp.anomalia.so/.well-known/oauth-protected-resource` annunciava
-`authorization_servers: ["https://anomalia.so"]` mentre `authServerUrl()` in `cli/lib/config.ts`
-— letto in questo repo, su `dev` e su `main` — restituisce `https://www.anomalia.so`. Nessuna
-delle due letture era sbagliata: il progetto Vercel che serve quel dominio (`anomalia-cli`) è
-agganciato al repo **pre-monorepo** `andreabuttarelli/anomalia-cli`, il cui `authServerUrl()`
+`https://mcp.dazero.co/.well-known/oauth-protected-resource` annunciava
+`authorization_servers: ["https://dazero.co"]` mentre `authServerUrl()` in `cli/lib/config.ts`
+— letto in questo repo, su `dev` e su `main` — restituisce `https://www.dazero.co`. Nessuna
+delle due letture era sbagliata: il progetto Vercel che serve quel dominio (`dazero-cli`) è
+agganciato al repo **pre-monorepo** `andreabuttarelli/dazero-cli`, il cui `authServerUrl()`
 ritorna ancora l'apex, e la cui ultima deploy di produzione è di tre settimane prima
 dell'import nel monorepo. Il codice giusto non è mai arrivato in produzione perché nessuno
 deploya quel dominio da qui.
@@ -1076,7 +1076,7 @@ colpa di chi chiama.
 `@sveltejs/kit`, non a codice tuo:
 
 ```
-Error: Not found: /app/anomalia
+Error: Not found: /app/dazero
     at resolve (node_modules/@sveltejs/kit/src/runtime/server/respond.js:711:13)
 ```
 
@@ -1764,3 +1764,30 @@ guardando il conteggio delle righe — 1 tela, 0 tile, dopo giorni di trasciname
   funzionava: il difetto stava nel fatto che nessuno la chiamava. Quando una scrittura "non
   arriva", **conta le righe** prima di leggere il codice che le scrive — è la misura che dice se
   stai cercando nel posto giusto.
+
+## Una rinomina globale spegne i valori che i clienti hanno già in mano
+
+`anomalia.so` è diventato `dazero.co` con una sostituzione a testo su 562 file. Due punti non
+erano prosa, e la sostituzione cieca li ha rotti senza che niente diventasse rosso.
+
+**Il segnale.** Un `grep` del nome vecchio torna 0 e la suite non peggiora, ma un valore che
+vive FUORI dal repo — una chiave emessa, un file in `~/.config`, un cookie, una riga già
+scritta a database — continua a portare il nome vecchio. Nessun test lo vede, perché nessun
+test possiede quel valore.
+
+**La mossa.**
+
+- **Un prefisso già emesso si aggiunge, non si sposta.** `cli-auth.ts` riconosceva `anomalia_`
+  e, di fianco, `021_live_`: il prefisso di una rinomina precedente, tenuto apposta. La
+  sostituzione ha riscritto il primo e lasciato il secondo, e ogni chiave in mano ai clienti
+  sarebbe caduta in 401 — un guasto muto, perché un 401 sembra una chiave sbagliata, non una
+  rinomina. La presenza di un prefisso legacy accanto a quello nuovo **è la prova che il
+  problema si era già presentato**: leggila come tale invece di sostituirla.
+- **Prima di sostituire, cerca i confronti su letterali**, non solo le occorrenze:
+  `grep -nE "(startsWith|includes|===)\s*\(?\s*['\"][^'\"]*<nome>"`. Un letterale dentro un
+  confronto è un valore che qualcuno possiede altrove; una stringa in prosa no.
+- **Il minuscolo del marchio vale in prosa, non dove decide la lingua.**
+  `class Anomalia < Formula` è diventato `class dazero < Formula`: Ruby vuole la costante
+  maiuscola, e la formula Homebrew non è coperta da test perché non è codice che gira qui — si
+  sarebbe rotta al primo `brew install`. Dopo una rinomina case-preserving, ricontrolla le
+  posizioni dove la maiuscola è sintassi: dichiarazioni di classe, componenti, costanti.

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { postMediaTarget } from '$lib/server/post-media';
-import { restructureCarouselSlides } from '$lib/agent/tools/post-editor-tools';
+import { restructureCarouselSlides } from '$lib/server/post-editor/post-editor-tools';
 
 // POST { order } — reorder or drop slides. Renders nothing, so no credits gate.
 export const POST: RequestHandler = async ({ request, params }) => {

@@ -26,7 +26,6 @@
     githubReposError={data.githubReposError ?? ''}
     notionPages={data.notionPages ?? []}
     notionPagesError={data.notionPagesError ?? ''}
-    gsc={data.gsc}
     formError={form?.error ?? ''}
   />
 </section>
@@ -48,7 +47,7 @@
       type="url"
       name="url"
       bind:value={url}
-      placeholder="https://esempio.com/webhooks/anomalia"
+      placeholder="https://esempio.com/webhooks/dazero"
       required
     />
     <label class="rotate">

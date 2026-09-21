@@ -83,10 +83,6 @@ async function checkZernio(): Promise<ServiceCheck> {
 export const GET: RequestHandler = async ({ url }) => {
   const origin = url.origin;
   const endpointChecks = [
-    timed('api:locale', async () => {
-      const res = await fetch(`${origin}/api/v1/locale`, { method: 'GET', signal: AbortSignal.timeout(10_000) });
-      if (res.status >= 500) throw new Error(`Returned ${res.status}`);
-    }),
     timed('api:brands', async () => {
       const res = await fetch(`${origin}/api/v1/brands`, { method: 'GET', signal: AbortSignal.timeout(10_000) });
       if (res.status >= 500) throw new Error(`Returned ${res.status}`);

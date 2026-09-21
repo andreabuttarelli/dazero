@@ -7,8 +7,8 @@ import {
 	createSessionSteward,
 	mergePipelines
 } from './steward';
-import { isHeavyProductionAsk } from '$lib/server/chat/model';
-import { controllerPipeline } from '$lib/server/chat/controller';
+import { isHeavyProductionAsk } from '$lib/server/ai-model';
+import { controllerPipeline } from './controller';
 
 /**
  * Shared agent-loop driver. Spreads every option through to the AI SDK so stopWhen, budgets,

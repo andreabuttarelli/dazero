@@ -4,7 +4,7 @@ import { authenticate, checkApiKeyWriteAccess, loadBrandForUser } from '$lib/ser
 import { billingLink } from '$lib/server/billing-links';
 import { isOrgOwner } from '$lib/server/org-billing';
 import { appOrigin } from '$lib/server/app-url';
-import { BILLING_PORTAL_LINK, statusForFailure } from '@anomalia/api-contracts';
+import { BILLING_PORTAL_LINK, statusForFailure } from '@dazero/api-contracts';
 
 /**
  * The URL is a bearer capability over the customer's billing, so it is minted, returned once and

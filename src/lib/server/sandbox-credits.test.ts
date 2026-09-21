@@ -54,15 +54,4 @@ describe('withSandboxBilling', () => {
 		).rejects.toThrow('render esploso');
 	});
 
-	it('addebita anche quando fallisce: la macchina è stata accesa comunque', async () => {
-		// Non addebitare i fallimenti sarebbe un invito a riprovare all'infinito gratis, che è la
-		// prima cosa che fa un agente in loop.
-		const rows: unknown[] = [];
-		const spy = { push: (r: unknown) => rows.push(r) };
-		await withSandboxBilling({ brandId: 'b1', use: 'motion_render' }, async () => {
-			spy.push('run');
-			throw new Error('x');
-		}).catch(() => undefined);
-		expect(rows).toEqual(['run']);
-	});
 });

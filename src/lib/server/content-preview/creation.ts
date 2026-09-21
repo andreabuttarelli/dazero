@@ -550,9 +550,7 @@ export async function generateStandaloneImage(opts: {
 //      version a reader can click and therefore the only one we can count.
 // CALLER RULE (the only persist site is scheduler.ts, out of scope here): call this ONLY for
 // posts whose persisted row will have source = 'plan' — the scheduler
-// autopilot persist. NEVER for Radar (source = 'radar'): Radar links
-// point at news source_urls (not the brand's own pages) and Radar already appends its own utm_
-// tags. Also skip any link_url that already contains a utm_ parameter — a Reddit link_post
+// autopilot persist. Skip any link_url that already contains a utm_ parameter — a Reddit link_post
 // (media:'link') with a real external target, or a user-edited URL, must never be rewritten
 // twice. A failed enrichment must never block the post: everything below is try/catch-wrapped.
 

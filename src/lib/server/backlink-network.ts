@@ -1,6 +1,6 @@
-// Cross-brand Anomalia backlink network.
+// Cross-brand dazero backlink network.
 //
-// Marketing promise: brands on Anomalia get real contextual links from other brands' articles —
+// Marketing promise: brands on dazero get real contextual links from other brands' articles —
 // not directory spam. This module:
 //   1) finds published articles from other opted-in network brands
 //   2) ranks them by topical relevance (category + token overlap)
@@ -364,7 +364,7 @@ export function networkLinksBlock(candidates: NetworkCandidate[]): string {
         `- [${c.brandName}] ${c.title} → ${c.url} (suggested anchor: "${c.suggestedAnchor}"; relevance ${c.relevance})`
     )
     .join('\n');
-  return `ANOMALIA NETWORK LINKS (optional — contextual backlinks to other Anomalia brands; use EXACT urls only; weave in 0–2 where they genuinely help the reader; never force a link; never invent a URL):
+  return `DAZERO NETWORK LINKS (optional — contextual backlinks to other dazero brands; use EXACT urls only; weave in 0–2 where they genuinely help the reader; never force a link; never invent a URL):
 ${lines}`.slice(0, 1600);
 }
 

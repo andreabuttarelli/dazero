@@ -7,7 +7,6 @@ import { checkVoicePlacement } from '$lib/motion-video/voice-gate';
 import { htmlToSatori } from '$lib/design/html-to-satori';
 import { defaultGraphicHtml } from '$lib/design/graphic-source';
 import { inspectGraphicTree, MIN_TEXT_RATIO } from '$lib/design/graphic-check';
-import { AGENT_IDS } from '$lib/server/chat/agents';
 
 /**
  * La regola di questo file: una skill vale solo se il gate che dichiara boccia davvero il caso
@@ -25,16 +24,6 @@ describe('default skills — form', () => {
 			keys.add(s.key);
 			// Il corpo si legge on demand (read_memory), ma resta un tool result: tetto largo.
 			expect(s.value.length, s.key).toBeLessThan(8000);
-		}
-	});
-
-	it('every agent a skill is scoped to actually exists', () => {
-		// Un hub rinominato (ne sono spariti tre il 22/8) lascia una skill che nessuno vede più,
-		// e non se ne accorge nessuno: il trigger semplicemente non compare mai nell'indice.
-		for (const s of DEFAULT_SKILLS) {
-			for (const agent of s.agents ?? []) {
-				expect(AGENT_IDS as readonly string[], `${s.key} is scoped to unknown agent ${agent}`).toContain(agent);
-			}
 		}
 	});
 

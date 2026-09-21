@@ -1,9 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import en from '$lib/i18n/locales/en.json';
-import it_ from '$lib/i18n/locales/it.json';
-import fr from '$lib/i18n/locales/fr.json';
-import es from '$lib/i18n/locales/es.json';
 import { ROSTER_JOBS, clearJobRosterCache, jobEnabledForBrand } from './job-roster';
 
 /**
@@ -14,12 +12,9 @@ import { ROSTER_JOBS, clearJobRosterCache, jobEnabledForBrand } from './job-rost
  *  1. il gate risponde ACCESO quando non sa (tabella `brand_job_optouts` non ancora applicata):
  *     i deploy non eseguono le migration, quindi questa è la condizione normale per qualche ora
  *     ad ogni rilascio, e se sbagliasse verso "spento" fermerebbe la strategia di tutti;
- *  2. la card ha un nome e una descrizione in tutte e quattro le lingue. Senza, a schermo finisce
- *     la chiave grezza (`app.roster.job.strategy_review.name`) e nessun test la vedrebbe.
+ *  2. la card ha un nome e una descrizione. Senza, a schermo finisce la chiave grezza
+ *     (`app.roster.job.strategy_review.name`) e nessun test la vedrebbe.
  */
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const LOCALES: Record<string, any> = { en, it: it_, fr, es };
 
 function fakeAdmin(res: { data?: { job_key: string }[]; error?: { message: string } }) {
   return {
@@ -47,7 +42,7 @@ describe('strategy_review nel roster', () => {
     const admin = fakeAdmin({ data: [{ job_key: 'strategy_review' }] });
     expect(await jobEnabledForBrand('b1', 'strategy_review', admin)).toBe(false);
     // …e spegne SOLO lui: gli altri lavori del roster restano accesi.
-    expect(await jobEnabledForBrand('b1', 'seo', admin)).toBe(true);
+    expect(await jobEnabledForBrand('b1', 'library', admin)).toBe(true);
   });
 
   it('resta acceso se la tabella non c’è ancora — i deploy non applicano le migration', async () => {
@@ -58,15 +53,13 @@ describe('strategy_review nel roster', () => {
 });
 
 describe('le stringhe della card', () => {
-  for (const lang of Object.keys(LOCALES)) {
-    it(`${lang}: ogni lavoro del roster ha nome, descrizione e cadenza`, () => {
-      const roster = LOCALES[lang]?.app?.roster;
-      expect(roster, `app.roster manca in ${lang}.json`).toBeTruthy();
-      for (const job of ROSTER_JOBS) {
-        expect(roster.job?.[job.key]?.name, `${lang} → ${job.key}.name`).toBeTruthy();
-        expect(roster.job?.[job.key]?.desc, `${lang} → ${job.key}.desc`).toBeTruthy();
-        expect(roster.cadence?.[job.cadence], `${lang} → cadence.${job.cadence}`).toBeTruthy();
-      }
-    });
-  }
+  it('ogni lavoro del roster ha nome, descrizione e cadenza', () => {
+    const roster = (en as Record<string, any>)?.app?.roster;
+    expect(roster, 'app.roster manca in en.json').toBeTruthy();
+    for (const job of ROSTER_JOBS) {
+      expect(roster.job?.[job.key]?.name, `${job.key}.name`).toBeTruthy();
+      expect(roster.job?.[job.key]?.desc, `${job.key}.desc`).toBeTruthy();
+      expect(roster.cadence?.[job.cadence], `cadence.${job.cadence}`).toBeTruthy();
+    }
+  });
 });

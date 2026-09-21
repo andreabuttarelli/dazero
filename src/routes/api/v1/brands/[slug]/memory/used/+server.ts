@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
 import { recordMemoryUsage } from '$lib/server/brand-memory';
-import { MEMORY_USED_MAX } from '@anomalia/api-contracts';
+import { MEMORY_USED_MAX } from '@dazero/api-contracts';
 
 // USARE NON È LEGGERE, ED È PER QUESTO CHE È UNA SCRITTURA. Dentro le due cose collassano — il
 // turno inietta ciò che carica — ma un agente esterno elenca quaranta voci e ne usa due: contarle

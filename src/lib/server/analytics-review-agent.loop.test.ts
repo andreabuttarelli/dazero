@@ -50,7 +50,6 @@ vi.mock('$lib/server/strategy-agent', async () => {
 
 vi.mock('$lib/server/brand-context', () => ({ genaiClient: () => ({}) }));
 
-vi.mock('$lib/server/seo-metrics', () => ({ buildSeoMetrics: async () => ({}) }));
 
 vi.mock('$lib/server/supabase-admin', () => ({
   createAdminClient: () => ({

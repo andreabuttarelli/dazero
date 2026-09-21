@@ -57,7 +57,7 @@
   {#if !data.adsEnabled}
     <div class="field">
       <div class="fs">{$_('app.settings.ads.proOnly')}</div>
-      <a class="mini connect" href={`${base}/upgrade?plan=starter`}>{$_('app.settings.ads.upgrade')}</a>
+      <a class="mini connect" href="/app/billing">{$_('app.settings.ads.upgrade')}</a>
     </div>
   {:else}
     <div class="field" style="flex-direction:column;align-items:stretch;gap:10px;">

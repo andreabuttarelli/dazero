@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, gateAiAction } from '$lib/server/cli-auth';
 import { generateBrandVideo } from '$lib/server/media-generate';
-import { GENERATE_VIDEO, statusForFailure } from '@anomalia/api-contracts';
+import { GENERATE_VIDEO, statusForFailure } from '@dazero/api-contracts';
 
 export const POST: RequestHandler = async ({ request, params }) => {
   const { supabase, user, error, apiKey } = await authenticate(request);

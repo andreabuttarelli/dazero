@@ -28,18 +28,13 @@ type ToolCap = {
 };
 
 // Worst-case daily spend is globalPerDay × costPerRun. Summed over every paid tool below that
-// is ~$25/day — the ceiling, not the expectation. Tighten globalPerDay to lower it; nothing
+// is ~$20/day — the ceiling, not the expectation. Tighten globalPerDay to lower it; nothing
 // else needs to change.
 const PARSE_ONLY: ToolCap = { perIp: 30, globalPerDay: 5000, costPerRun: 0 };
 // Gemini call with web-search grounding — the most expensive thing a free tool can do.
 const AI_BACKED: ToolCap = { perIp: 3, globalPerDay: 200, costPerRun: 0.04 };
 
 const TOOL_CAPS: Record<string, ToolCap> = {
-  // The pre-login guest preview (/start/preview): site analysis + one caption pass + one image,
-  // for anyone on the internet with no session. It is the most expensive unauthenticated call we
-  // make, and no credit gate stands behind it (renderPostImage gates on a brand context a guest
-  // does not have), so this cap IS the spending limit: 200 x $0.08 = ~$16/day worst case.
-  'guest-preview': { perIp: 3, globalPerDay: 200, costPerRun: 0.08 },
   'keyword-research': AI_BACKED,
   'geo-audit': AI_BACKED,
   // The agent-team tool is a CONVERSATION, so it is metered per MESSAGE, not per scan: a chat has
@@ -231,8 +226,8 @@ const SCHEME_REFUSAL: Record<UrlScheme, string> = {
 /**
  * Reject anything that isn't a public host on an allowed scheme. Throws with a user-safe message.
  *
- * Exported because /start/preview is the same shape of caller as the tools above — an
- * anonymous stranger's URL — and must not fall back to the hostname-pattern check.
+ * Exported because the webhook endpoints are the same shape of caller as the tools above — a
+ * URL that arrived from outside — and must not fall back to the hostname-pattern check.
  */
 export async function assertPublicUrl(url: URL, scheme: UrlScheme = 'http-or-https'): Promise<void> {
   if (!SCHEMES_ALLOWED[scheme].includes(url.protocol)) {
@@ -256,7 +251,7 @@ export async function assertPublicUrl(url: URL, scheme: UrlScheme = 'http-or-htt
  * verbatim: a CDN that starts refusing an unfamiliar agent answers 403, and a 403 here is
  * indistinguishable from the expired link this whole archive exists to beat.
  */
-export const ARCHIVE_USER_AGENT = 'Mozilla/5.0 (compatible; AnomaliaArchive/1.0)';
+export const ARCHIVE_USER_AGENT = 'Mozilla/5.0 (compatible; dazeroArchive/1.0)';
 
 export type SafeFetchResult = { url: string; status: number; ok: boolean; headers: Headers; body: string };
 
@@ -288,7 +283,7 @@ async function fetchFollowingGatedRedirects(
   const timeoutMs = opts.timeoutMs ?? 15_000;
   const maxRedirects = opts.maxRedirects ?? 4;
   const scheme = opts.scheme ?? 'http-or-https';
-  const userAgent = opts.userAgent ?? `Anomalia-Tools/1.0 (+${env.CRAWLER_CONTACT_URL || 'https://anomalia.so'})`;
+  const userAgent = opts.userAgent ?? `dazero-Tools/1.0 (+${env.CRAWLER_CONTACT_URL || 'https://dazero.co'})`;
 
   let current = new URL(/^https?:\/\//i.test(input.trim()) ? input.trim() : `https://${input.trim()}`);
   const deadline = Date.now() + timeoutMs;

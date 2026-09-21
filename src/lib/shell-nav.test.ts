@@ -65,7 +65,7 @@ describe('shellShimmerFor', () => {
 
   it('le pagine con uno scheletro loro', () => {
     expect(shellShimmerFor(nav('/app/acme', '/app/acme/calendar'))).toBe('calendar');
-    expect(shellShimmerFor(nav('/app/acme', '/app/acme/motion-video'))).toBe('media');
+    expect(shellShimmerFor(nav('/app/acme', '/app/acme/media'))).toBe('media');
     expect(shellShimmerFor(nav('/app/acme/calendar', '/app/acme/seo'))).toBe('page');
   });
 
@@ -77,7 +77,6 @@ describe('shellShimmerFor', () => {
 
   it('fuori dalla shell del brand non si disegna niente', () => {
     expect(shellShimmerFor(nav('/app/acme', '/app/onboarding'))).toBeNull();
-    expect(shellShimmerFor(nav('/app/acme', '/app/acme/success'))).toBeNull();
   });
 
   it('stessa pagina e stessa query: nessuno scheletro', () => {

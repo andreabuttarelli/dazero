@@ -42,42 +42,35 @@ describe('agent notification email', () => {
   it('renders **bold** and makes bare links clickable', () => {
     const html = agentNotifyEmailHtml('en', {
       ...base,
-      body: '**Nine posts** are live: https://www.anomalia.so/app/acme/calendar'
+      body: '**Nine posts** are live: https://www.dazero.co/app/acme/calendar'
     });
     expect(html).toContain('<strong>Nine posts</strong>');
-    expect(html).toContain('href="https://www.anomalia.so/app/acme/calendar"');
+    expect(html).toContain('href="https://www.dazero.co/app/acme/calendar"');
   });
 
   it('adds the CTA only when there is a link, with the agent’s own label', () => {
     const withCta = agentNotifyEmailHtml('en', {
       ...base,
       body: 'x',
-      ctaUrl: 'https://www.anomalia.so/app/acme',
+      ctaUrl: 'https://www.dazero.co/app/acme',
       ctaLabel: 'Review the posts →'
     });
-    expect(withCta).toContain('href="https://www.anomalia.so/app/acme"');
+    expect(withCta).toContain('href="https://www.dazero.co/app/acme"');
     expect(withCta).toContain('Review the posts');
 
     const without = agentNotifyEmailHtml('en', { ...base, body: 'x' });
-    expect(without).not.toContain('href="https://www.anomalia.so/app/acme"');
-  });
-
-  it('writes the frame in the recipient’s language', () => {
-    const it_ = agentNotifyEmailHtml('it', { ...base, body: 'x' });
-    expect(it_).toContain('Dal tuo agente AI di Acme');
-    const fr = agentNotifyEmailHtml('fr', { ...base, body: 'x' });
-    expect(fr).toContain('agent IA Acme');
+    expect(without).not.toContain('href="https://www.dazero.co/app/acme"');
   });
 
   it('always ships a plain-text alternative carrying the same words', () => {
     const text = agentNotifyEmailText('en', {
       ...base,
       body: 'Nine posts are waiting.',
-      ctaUrl: 'https://www.anomalia.so/app/acme'
+      ctaUrl: 'https://www.dazero.co/app/acme'
     });
     expect(text).toContain('Week 3 is ready');
     expect(text).toContain('Nine posts are waiting.');
-    expect(text).toContain('https://www.anomalia.so/app/acme');
+    expect(text).toContain('https://www.dazero.co/app/acme');
     expect(text).not.toContain('<');
   });
 

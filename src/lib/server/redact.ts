@@ -11,7 +11,7 @@
  *
  * Due correzioni di forma, entrambe misurate:
  *  1. il registro dei valori è PER BRAND, non per closure — la VM è del brand
- *     (`anomalia-<brandId>-<mode>`), orchestratore e delegati la condividono;
+ *     (`dazero-<brandId>-<mode>`), orchestratore e delegati la condividono;
  *  2. si redige DOVE SI SCRIVE DAVVERO. In produzione le 267 righe di `agent_sessions` hanno
  *     `system_prompt` fino a 148.295 caratteri contro un tetto dichiarato di 40.000: non passano
  *     da `saveAgentSession`, le scrive `harness/persist.ts`. Redigere solo l'altro ramo sarebbe
@@ -59,7 +59,7 @@ const SHAPES: RegExp[] = [
   /\bya29\.[0-9A-Za-z_-]{20,}/g,
   /\bGOCSPX-[0-9A-Za-z_-]{16,}/g,
   /\bsb_(?:secret|publishable)_[A-Za-z0-9_-]{12,}/g,
-  /\b(?:anomalia|021)_(?:live|test)_[A-Za-z0-9]{16,}/g,   // le NOSTRE API key (cli-auth.ts)
+  /\b(?:dazero|021)_(?:live|test)_[A-Za-z0-9]{16,}/g,   // le NOSTRE API key (cli-auth.ts)
   /\bnpm_[A-Za-z0-9]{30,}/g,
   /\bwhsec_[A-Za-z0-9_-]{16,}/g,
   /\btvly-[A-Za-z0-9_-]{16,}/g,
@@ -129,7 +129,7 @@ const ENV_SECRETS: string[] = Object.entries(env)
 
 /**
  * L1b — i valori coniati a runtime, PER BRAND e non per closure: la VM è del brand
- * (`anomalia-<brandId>-<mode>`), e orchestratore e delegati la condividono. È la sostituzione
+ * (`dazero-<brandId>-<mode>`), e orchestratore e delegati la condividono. È la sostituzione
  * minima del registro di turno: nessuna firma da cambiare in `withSandboxTools` / `runSubagentRun`.
  *
  * ponytail: Map di processo, non uno store. Il tetto è dichiarato — un'altra istanza di Function

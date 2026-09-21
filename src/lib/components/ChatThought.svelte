@@ -8,7 +8,7 @@
   /**
    * Il ragionamento di un turno, salvato o ancora in streaming.
    *
-   * Prima era un box espandibile col bordo accent, il logo Anomalia e la parola "thinking":
+   * Prima era un box espandibile col bordo accent, il logo dazero e la parola "thinking":
    * un riquadro colorato sopra ogni risposta, più vistoso del messaggio che introduceva.
    * Ora è una RIGA quieta e centrata ("Ho pensato") che al click apre il testo intero —
    * dialog su desktop, bottom sheet su mobile: la stessa grammatica di ChatToolChips e

@@ -71,7 +71,7 @@ function call(prepare?: (kit: TestSupabase) => void) {
   } as never);
   vi.mocked(loadBrandForUser).mockResolvedValue({ brand: BRAND, error: null } as never);
 
-  const url = new URL('https://anomalia.test/api/v1/brands/demo/editorial-plan/approve');
+  const url = new URL('https://dazero.test/api/v1/brands/demo/editorial-plan/approve');
   return (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST' }),
     params: { slug: 'demo' },

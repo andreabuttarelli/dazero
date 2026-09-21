@@ -33,7 +33,6 @@ import {
   readEditorialPlanForAgent,
   readGtmForAgent,
   readKnowledgeForAgent,
-  readLeadsForAgent,
   readMediaForAgent,
   readRubricsForAgent,
   readStrategyReportForAgent
@@ -192,7 +191,7 @@ async function runWeekPlannerAgentInner(opts: WeekPlannerAgentOpts): Promise<Wee
   const system = `You are a week planner agent. Produce ${opts.count} post SEEDS for one editorial week.
 
 Workflow:
-1. read_* tools are FREE — start with read_rubrics, read_leads, read_editorial_plan, read_brand_studio, read_media, read_post_history as needed.
+1. read_* tools are FREE — start with read_rubrics, read_editorial_plan, read_brand_studio, read_media, read_post_history as needed.
 2. draft_seeds (max ${MAX_WEEK_PLANNER_DRAFTS}/run) generates seeds from your brief.
 3. check_batch_feasibility before finish — repair_seeds or draft again if violations remain.
 4. When approved rubrics exist (${rubricNames}), every seed MUST carry rubric = exact series name and match the week's content_mix counts, and it inherits that series' art_direction verbatim.
@@ -348,16 +347,6 @@ ${knownSubreddits.length ? `\n${knownSubredditsBlock(knownSubreddits)}` : ''}`;
         }
         return { answer: text, sources: citations.map((c) => ({ title: c.title, url: c.uri })) };
       }
-    }),
-
-    read_leads: tool({
-      description:
-        'Online conversations with drafted replies — what the audience discusses about the product (free).',
-      inputSchema: z.object({
-        status: z.enum(['suggested', 'done', 'dismissed', 'all']).optional(),
-        limit: z.number().int().min(1).max(50).optional()
-      }),
-      execute: async ({ status, limit }) => readLeadsForAgent(opts.supabase, opts.brandId, { status, limit })
     }),
 
     check_batch_feasibility: tool({

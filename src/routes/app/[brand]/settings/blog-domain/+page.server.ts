@@ -10,9 +10,9 @@ import {
 
 export const load: PageServerLoad = async ({ parent, url, locals: { supabase } }) => {
   const { brand } = await parent();
-  // Custom domain is paid-only (any paid tier). Free keeps Anomalia hosting only.
+  // Custom domain is paid-only (any paid tier). Free keeps dazero hosting only.
   if (!hasBlogCustomDomain(brand.plan)) {
-    throw redirect(303, `/app/${brand.slug}/activate?plan=starter`);
+    throw redirect(303, '/app/billing');
   }
   return loadBlogSettingsData(brand, url, supabase);
 };

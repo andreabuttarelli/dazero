@@ -73,7 +73,7 @@ describe('renderOutcome', () => {
 });
 
 describe('il brief del produttore', () => {
-	const base = { brandName: 'Anomalia', videoCount: 6, sharedBlock: '' };
+	const base = { brandName: 'dazero', videoCount: 6, sharedBlock: '' };
 
 	it('mette il costo di una resa davanti a tutto', () => {
 		// È l'unico fatto che cambia il comportamento: leggere e patchare sono gratis, rendere no.

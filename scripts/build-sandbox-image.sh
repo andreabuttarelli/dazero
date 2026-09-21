@@ -5,7 +5,7 @@
 # aver preparato una build linux/amd64: se lo stato resta `Unoptimized`, hai costruito su arm64.
 set -euo pipefail
 
-REPO="${1:-anomalia-sandbox}"
+REPO="${1:-dazero-sandbox}"
 TAG="${2:-latest}"
 
 vercel vcr login docker
@@ -16,7 +16,7 @@ cat <<MSG
 Fatto. Ora, nelle variabili d'ambiente del progetto:
 
   SANDBOX_IMAGE=${REPO}:${TAG}
-  SANDBOX_BROWSERS_PATH=/opt/anomalia/browsers
+  SANDBOX_BROWSERS_PATH=/opt/dazero/browsers
 
 e alza SANDBOX_GENERATION, altrimenti i brand che hanno già una sandbox continuano a riprendere
 quella vecchia (getOrCreate risolve per nome).

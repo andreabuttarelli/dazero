@@ -41,7 +41,7 @@ export const GET: RequestHandler = async ({ request, params, url }) => {
     //
     // Fino al 22/8/2026 questa era `select('*')` col client ADMIN e un solo vincolo, `brand_id`:
     // restituiva `events`, `transcript`, `system_prompt` ed `error` GREZZI, di qualunque superficie,
-    // a qualunque membro del brand e a qualunque API key `anomalia_`. Le 267 righe già in
+    // a qualunque membro del brand e a qualunque API key `dazero_`. Le 267 righe già in
     // produzione — con dentro gli argv dell'orchestratore, cioè il posto dove finisce un token
     // espanso a mano — uscivano da qui senza che nessuno dovesse costruire niente.
     //

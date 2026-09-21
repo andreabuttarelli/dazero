@@ -9,9 +9,6 @@ function healthy(over: Partial<DoctorFacts> = {}): DoctorFacts {
   return {
     now: NOW,
     plan: 'pro',
-    autopilotEnabled: true,
-    autopilotFailureCount: 0,
-    lastAutopilotRunAt: daysAgo(2),
     hasActiveEditorialPlan: true,
     connectedAccounts: 2,
     exportOnly: false,
@@ -21,7 +18,6 @@ function healthy(over: Partial<DoctorFacts> = {}): DoctorFacts {
     publishedLast30: 9,
     lastAnalyticsRunAt: daysAgo(8),
     lastTicks: {},
-    lastSchedulerError: null,
     ...over
   };
 }
@@ -70,42 +66,6 @@ describe('assessLoops — publishing', () => {
   it('does not call "nothing published" a failure on an export-only plan', () => {
     const l = loop(healthy({ publishedLast30: 0, exportOnly: true, connectedAccounts: 0 }), 'publishing');
     expect(l.gates.find((g) => g.id === 'recent_publish')?.status).toBe('unknown');
-    expect(l.status).toBe('unknown');
-    expect(l.blockedBy).toBeNull();
-  });
-});
-
-describe('assessLoops — autopilot', () => {
-  it('reports the auto-disable with the reason instead of just "off"', () => {
-    const l = loop(
-      healthy({
-        autopilotEnabled: false,
-        autopilotFailureCount: 3,
-        lastSchedulerError: { at: daysAgo(1), error: 'media_mode.enum[2]: cannot be empty' }
-      }),
-      'autopilot'
-    );
-    expect(l.status).toBe('blocked');
-    expect(l.blockedBy).toBe('autopilot_enabled');
-    expect(l.gates.find((g) => g.id === 'autopilot_enabled')?.detail).toContain('3 fallimenti');
-  });
-
-  it('calls a still-enabled brand with failures "failing", not "blocked"', () => {
-    // Distinzione che conta: 2/3 fallimenti è un incendio in corso, non una porta chiusa —
-    // ed è la finestra in cui si può ancora intervenire prima dello spegnimento automatico.
-    const l = loop(
-      healthy({ autopilotFailureCount: 2, lastSchedulerError: { at: daysAgo(1), error: 'boom' } }),
-      'autopilot'
-    );
-    expect(l.status).toBe('failing');
-    expect(l.blockedBy).toBe('consecutive_failures');
-    expect(l.gates.find((g) => g.id === 'consecutive_failures')?.detail).toContain('boom');
-  });
-
-  it('treats a missing editorial plan as unknown, never as a blocker', () => {
-    // Senza piano l'autopilot gira lo stesso, sulla cadenza di content_prefs: segnalarlo come
-    // blocco manderebbe il supporto a caccia di un problema che non c'è.
-    const l = loop(healthy({ hasActiveEditorialPlan: false }), 'autopilot');
     expect(l.status).toBe('unknown');
     expect(l.blockedBy).toBeNull();
   });

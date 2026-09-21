@@ -32,7 +32,7 @@ vi.mock('$lib/server/credits', () => ({
   gateCredits: (...args: unknown[]) => gateCredits(...args),
   CreditsExhaustedError: class extends Error {}
 }));
-vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://anomalia.test' }));
+vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://dazero.test' }));
 
 import { POST } from './+server';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess, gateAiAction } from '$lib/server/cli-auth';
@@ -78,7 +78,7 @@ function call(body: unknown, slug = 'demo') {
     brand: { id: 'brand-1', slug, timezone: 'Europe/Rome' },
     error: null
   } as never);
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/posts`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/posts`);
   return (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),
     params: { slug },
@@ -108,7 +108,7 @@ describe('POST /api/v1/brands/:slug/posts', () => {
       scheduled_for: null,
       scheduled_for_local: null,
       slot: null,
-      review_url: 'https://anomalia.test/app/demo/posts/post-1'
+      review_url: 'https://dazero.test/app/demo/calendar?post=post-1'
     });
     expect(rows[0]).toMatchObject({
       brand_id: 'brand-1',
@@ -159,7 +159,7 @@ describe('POST /api/v1/brands/:slug/posts', () => {
     vi.mocked(authenticate).mockResolvedValue({
       error: new Response('Unauthorized', { status: 401 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/demo/posts');
+    const url = new URL('https://dazero.test/api/v1/brands/demo/posts');
     const res = await (POST as (event: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: '{}' }),
       params: { slug: 'demo' },
@@ -179,7 +179,7 @@ describe('POST /api/v1/brands/:slug/posts', () => {
     vi.mocked(loadBrandForUser).mockResolvedValue({
       error: new Response(JSON.stringify({ error: 'Brand not found' }), { status: 404 })
     } as never);
-    const url = new URL('https://anomalia.test/api/v1/brands/altrui/posts');
+    const url = new URL('https://dazero.test/api/v1/brands/altrui/posts');
     const res = await (POST as (event: unknown) => Promise<Response>)({
       request: new Request(url, { method: 'POST', body: '{}' }),
       params: { slug: 'altrui' },

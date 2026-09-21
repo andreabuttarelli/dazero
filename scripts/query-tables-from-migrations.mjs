@@ -109,7 +109,7 @@ function render(tables) {
     }
   }
   if (row.length) lines.push(`  '${row.join(' ')}';`);
-  else lines[lines.length - 1] = lines[lines.length - 1].replace(/ \+$/, ';').replace(/ '$/, "'");
+  else lines[lines.length - 1] = lines[lines.length - 1].replace(/ ' \+$/, "';");
 
   return `/**
  * GENERATO — non si modifica a mano: \`node scripts/query-tables-from-migrations.mjs --write\`.

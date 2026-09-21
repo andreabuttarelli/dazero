@@ -110,7 +110,7 @@ export function describeSchedule(days: number[], times: string[], lang = 'en'): 
 
 export type AgentProposalDecision = { state: 'created' | 'declined'; id?: string };
 
-const key = (threadId: string, toolCallId: string) => `anomalia:chat-agent:${threadId}:${toolCallId}`;
+const key = (threadId: string, toolCallId: string) => `dazero:chat-agent:${threadId}:${toolCallId}`;
 
 export function loadProposalDecision(threadId: string, toolCallId: string): AgentProposalDecision | null {
   if (typeof sessionStorage === 'undefined' || !threadId || !toolCallId) return null;

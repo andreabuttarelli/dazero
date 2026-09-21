@@ -165,7 +165,7 @@ describe('seedToPost (UGC script survives seed → PreviewPost)', () => {
     title: '',
     link_url: '',
     subreddit: '',
-    product: 'Anomalia',
+    product: 'dazero',
     person: 'Andrea',
     angle: 'a',
     subject: 's',
@@ -188,7 +188,7 @@ describe('seedToPost (UGC script survives seed → PreviewPost)', () => {
     expect(post.cta).toBe('CTA bait.');
     expect(post.setting).toBe('home office');
     expect(post.person).toBe('Andrea');
-    expect(post.product).toBe('Anomalia');
+    expect(post.product).toBe('dazero');
   });
 
   it('defaults ugc to true when the seed omitted the flag', () => {
@@ -1013,19 +1013,6 @@ describe('sourced_from', () => {
   it('non inventa una fonte quando non ce n\'è', () => {
     const out = normalizeWeeklyStrategy({ theme: 't', rationale: 'r', do_dont: '', seeds: [carousel()] });
     expect(out.seeds[0].sourced_from).toBeUndefined();
-  });
-});
-
-// Il tetto ai caroselli era 1 per batch, un numero d'ambiente che nessuno aveva scelto guardando
-// niente. Era anche la ragione per cui la rubrica narrativa usciva una volta ogni tanto: con il
-// budget come vincolo vero, il tetto non deve più fare la scelta editoriale al posto dell'agente.
-describe('carouselMaxPerBatch', () => {
-  it('di default non decide più il mix', () => {
-    expect(carouselMaxPerBatch()).toBeGreaterThan(1);
-  });
-
-  it('resta un freno d\'emergenza da variabile d\'ambiente', () => {
-    expect(typeof carouselMaxPerBatch()).toBe('number');
   });
 });
 

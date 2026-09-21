@@ -19,7 +19,7 @@ beforeEach(() => {
 describe('billingProvider() fallback reporting', () => {
 	it('reports when the paid provider throws on load', async () => {
 		vi.doMock('$env/dynamic/private', () => ({ env: {} }));
-		vi.doMock('./anomalia-provider', () => {
+		vi.doMock('./dazero-provider', () => {
 			throw new Error('not available in the open build');
 		});
 
@@ -33,7 +33,7 @@ describe('billingProvider() fallback reporting', () => {
 
 	it('reports when the paid provider loads but exports nothing', async () => {
 		vi.doMock('$env/dynamic/private', () => ({ env: {} }));
-		vi.doMock('./anomalia-provider', () => ({ anomaliaBillingProvider: undefined }));
+		vi.doMock('./dazero-provider', () => ({ dazeroBillingProvider: undefined }));
 
 		const { billingProvider } = await import('./index');
 		const provider = await billingProvider();
@@ -44,7 +44,7 @@ describe('billingProvider() fallback reporting', () => {
 
 	it('stays silent when BILLING_PROVIDER=open asked for it', async () => {
 		vi.doMock('$env/dynamic/private', () => ({ env: { BILLING_PROVIDER: 'open' } }));
-		vi.doMock('./anomalia-provider', () => {
+		vi.doMock('./dazero-provider', () => {
 			throw new Error('not available in the open build');
 		});
 
@@ -57,20 +57,20 @@ describe('billingProvider() fallback reporting', () => {
 
 	it('stays silent when the paid provider is there', async () => {
 		vi.doMock('$env/dynamic/private', () => ({ env: {} }));
-		vi.doMock('./anomalia-provider', () => ({
-			anomaliaBillingProvider: { kind: 'anomalia', gate: async () => {} }
+		vi.doMock('./dazero-provider', () => ({
+			dazeroBillingProvider: { kind: 'dazero', gate: async () => {} }
 		}));
 
 		const { billingProvider } = await import('./index');
 		const provider = await billingProvider();
 
-		expect(provider.kind).toBe('anomalia');
+		expect(provider.kind).toBe('dazero');
 		expect(swallowed).toEqual([]);
 	});
 
 	it('reports once, not on all 29 gate call sites', async () => {
 		vi.doMock('$env/dynamic/private', () => ({ env: {} }));
-		vi.doMock('./anomalia-provider', () => {
+		vi.doMock('./dazero-provider', () => {
 			throw new Error('not available in the open build');
 		});
 

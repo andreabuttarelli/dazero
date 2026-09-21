@@ -10,7 +10,6 @@ import { buildMemoryContext, writeMemory, type MemoryCategory } from './brand-me
 import { withBrandContext } from './ai-log';
 import { loadGrowthReadiness, type GrowthReadiness } from './growth-readiness';
 import { OWN_SOURCE } from './own-post-history';
-import { buildWebKpis, type RankSnapshot, type WebKpis } from './rank-delta';
 import type { GrowthCheckKey } from '$lib/growth-readiness';
 import { assessEvidence, evidenceBlock, sampleVerdict } from '$lib/server/evidence-quality';
 
@@ -63,9 +62,6 @@ export type WeeklyRecap = {
   // the section only when present.
   visualInsights?: VisualInsightSummary[];
 
-  // Web/rank KPIs (P4): active tracked keywords and their position movement over the window.
-  // Optional: the email renders the section only when tracked > 0.
-  webKpis?: WebKpis;
 
   // Quota
   quotaUsed: number;
@@ -341,38 +337,6 @@ async function gatherRecapData(
     console.warn('[weekly-recap] visual insights query failed:', e instanceof Error ? e.message : e);
   }
 
-  // Web/rank KPIs (P4): active tracked keywords + snapshots from the last 45 days. PostgREST
-  // has no per-group LIMIT, so fetch the whole window (max ~200 keywords × ~7 weekly rows) and
-  // aggregate in JS — computeRankDelta only needs each keyword's first & last snapshot anyway.
-  let webKpis: WebKpis | undefined;
-  try {
-    const { data: kws } = await supabase
-      .from('brand_tracked_keywords')
-      .select('id, keyword')
-      .eq('brand_id', brandId)
-      .eq('active', true);
-    if ((kws ?? []).length > 0) {
-      const since45 = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000).toISOString();
-      const { data: snaps } = await supabase
-        .from('brand_rank_snapshots')
-        .select('tracked_keyword_id, position, checked_at')
-        .eq('brand_id', brandId)
-        .gte('checked_at', since45);
-      const byKw = new Map<string, RankSnapshot[]>();
-      for (const s of snaps ?? []) {
-        byKw.set(s.tracked_keyword_id, [...(byKw.get(s.tracked_keyword_id) ?? []), s]);
-      }
-      webKpis = buildWebKpis(
-        (kws ?? []).map((k) => ({
-          tracked_keyword_id: k.id,
-          keyword: k.keyword,
-          snapshots: byKw.get(k.id) ?? []
-        }))
-      );
-    }
-  } catch (e) {
-    console.warn('[weekly-recap] rank snapshot query failed:', e instanceof Error ? e.message : e);
-  }
 
   return {
     brandName: brand.name,
@@ -401,7 +365,6 @@ async function gatherRecapData(
     adsSpend,
     linkClicks,
     visualInsights,
-    webKpis
   };
 }
 
@@ -561,14 +524,6 @@ async function generateSuggestions(data: Omit<WeeklyRecap, 'trends' | 'suggestio
       );
     }
   }
-  if (data.webKpis && data.webKpis.worsened > 0) {
-    extra.push({
-      type: 'general',
-      message: isIt
-        ? `${data.webKpis.worsened} keyword tracciate sono peggiorate — rivedi e aggiorna gli articoli target.`
-        : `${data.webKpis.worsened} tracked keyword(s) dropped — review and refresh the target articles.`
-    });
-  }
   // WHAT I COULD NOT DETERMINE. Deterministic, so it appears whether or not the model remembers to
   // write it: a recap that never says what it could not see reads as complete, and the week a user
   // discovers the gap they discount every recap that came before it too.
@@ -580,9 +535,6 @@ async function generateSuggestions(data: Omit<WeeklyRecap, 'trends' | 'suggestio
         ? `quale formato o orario funzioni meglio: ${data.postsPublished} post pubblicati non bastano per distinguerlo dal caso`
         : `which format or slot performs best: ${data.postsPublished} posts is not enough to tell it from chance`
     );
-  }
-  if (!data.webKpis || data.webKpis.tracked === 0) {
-    unknowns.push(isIt ? "l'andamento sulle ricerche (nessuna keyword tracciata)" : 'search performance (no tracked keywords)');
   }
   if (!data.adsSpend) unknowns.push(isIt ? "l'effetto del paid (nessuna spesa nel periodo)" : 'paid impact (no spend in the window)');
   if (unknowns.length) {
@@ -615,7 +567,7 @@ ${noOwnHistory ? 'NOTE: the brand has NO own published-post engagement data in t
 Paid ads spend (last week metrics): ${data.adsSpend.toFixed(2)}; pending ads proposals: ${data.adsProposed}
 Editorial plan: ${data.editorialPlan?.status ?? 'none'}
 Scheduler runs this week: ${data.schedulerRunsThisWeek}
-${visualLines ? `Visual insights (own posts, % ER vs brand mean): ${visualLines}\n` : ''}${data.webKpis && data.webKpis.tracked > 0 ? `Rank tracking: ${data.webKpis.tracked} keywords tracked, ${data.webKpis.improved} improved, ${data.webKpis.worsened} worsened\n` : ''}
+${visualLines ? `Visual insights (own posts, % ER vs brand mean): ${visualLines}\n` : ''}
 ${evidenceBlock(
         assessEvidence({
           // Week over week on whatever happened to be published: nothing randomised, several things
@@ -709,10 +661,6 @@ const GROWTH_FIX_LABELS: Record<GrowthCheckKey, { en: string; it: string }> = {
   web: {
     en: 'Connect a website or blog — organic search is where content compounds.',
     it: 'Collega un sito o un blog — la ricerca organica è dove i contenuti si accumulano.'
-  },
-  gsc: {
-    en: 'Connect Google Search Console so rankings and queries feed the plan.',
-    it: 'Collega Google Search Console così posizioni e query alimentano il piano.'
   },
   social_connect: {
     en: 'Connect at least one social account — posts need a platform to publish to.',

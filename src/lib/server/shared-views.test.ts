@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const getCalendar = vi.fn();
 vi.mock('./cli-queries', () => ({ getCalendar: (...args: unknown[]) => getCalendar(...args) }));
 
-import { SHARED_VIEW_TYPES } from '@anomalia/api-contracts';
+import { SHARED_VIEW_TYPES } from '@dazero/api-contracts';
 import {
   CALENDAR_POST_FIELDS,
   CALENDAR_SNAPSHOT_FIELDS,

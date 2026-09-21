@@ -10,7 +10,7 @@ import { suggestBioUrl, validateBioUrl } from '$lib/server/post-links';
 // most clicks in the last 7 days).
 //
 // The "copy in bio" step is MANUAL by design: Zernio does not expose bio updates through the
-// publishing API, so Anomalia can never write the bio for you. This endpoint only STORES the value
+// publishing API, so dazero can never write the bio for you. This endpoint only STORES the value
 // the user pastes by hand (PUT) and tells them what to paste (GET.suggested). An agent or the
 // studio UI can read `suggested` and have the user apply it, then PUT the result back.
 

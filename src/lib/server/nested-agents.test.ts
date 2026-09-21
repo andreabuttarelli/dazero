@@ -19,7 +19,6 @@ describe('niente agenti annidati sul GTM di produzione', () => {
 // con una riga per file fa sì che due PR in parallelo tocchino righe diverse invece della stessa.
 const LOOP_DRIVER: Record<string, 'harness' | 'sdk'> = {
 	'produce-agent.ts': 'sdk',
-	'seo-agent.ts': 'sdk',
 	'strategy-agent.ts': 'sdk',
 	'week-planner-agent.ts': 'sdk'
 };
@@ -68,14 +67,7 @@ describe('batch loops: cap USD restano su generateText', () => {
 	);
 });
 
-describe('autopilot: tick accoda, HTTP week planner resta a 200s', () => {
-	it('il tick non chiama planWeekStrategy né runAutopilotForBrand in-process', () => {
-		const src = readFileSync(join(root, 'routes/api/v1/autopilot/tick/+server.ts'), 'utf8');
-		expect(src).toContain("tool_name: 'run_autopilot'");
-		expect(src).not.toContain('runAutopilotForBrand(');
-		expect(src).not.toContain('planWeekStrategy');
-	});
-
+describe('week planner: HTTP resta a 200s', () => {
 	it('il week planner di default ha 200s', () => {
 		const src = readFileSync(join(root, 'lib/server/week-planner-agent.ts'), 'utf8');
 		expect(src).toMatch(/opts\.deadlineMs \?\? 200_000/);

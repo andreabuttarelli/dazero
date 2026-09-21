@@ -28,7 +28,6 @@
     id,
     detail,
     timezone,
-    fullHref,
     form,
     onclose
   }: {
@@ -38,7 +37,6 @@
     /** La scheda completa del post (anteprima, dettagli, analisi, boost): il pannello e' la
      *  lettura rapida, non il suo sostituto, e senza questo link quelle cinque rotte non le
      *  raggiungerebbe piu' nessuno. */
-    fullHref: string;
     form: Outcome | null;
     onclose: () => void;
   } = $props();
@@ -160,12 +158,6 @@
         {/if}
       </form>
 
-      <a
-        href={fullHref}
-        class="text-muted-foreground text-xs underline underline-offset-4"
-        data-sveltekit-preload-data="off">Open the full post</a
-      >
-
       {#if postState.canApprove}
         <div class="border-border flex flex-col gap-3 rounded-lg border p-4">
           <h3 class="text-sm font-semibold">Approve</h3>
@@ -193,7 +185,7 @@
             >
               <input type="hidden" name="id" value={id} />
               <p role="alert" class="text-sm">
-                Anomalia sends it to the connected {platformsOf(detail).join(' and ') || 'social'} account.
+                dazero sends it to the connected {platformsOf(detail).join(' and ') || 'social'} account.
                 If no account is connected yet, the post stays approved and waits for one.
               </p>
               <div class="flex flex-wrap gap-2">

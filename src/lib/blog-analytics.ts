@@ -11,7 +11,7 @@
  *    non caricarli, mai il contrario.
  * 3. **Girano solo dopo il consenso**, come il pixel che il blog gia' aveva.
  *
- * Le forme degli id sono ricopiate dal contratto (`@anomalia/api-contracts`) invece di essere
+ * Le forme degli id sono ricopiate dal contratto (`@dazero/api-contracts`) invece di essere
  * importate: importarle trascinerebbe zod nel bundle del blog pubblico per quattro regex.
  * `blog-analytics.test.ts` fallisce se le due tabelle divergono.
  */

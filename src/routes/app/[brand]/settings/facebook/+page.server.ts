@@ -1,5 +1,4 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { canEnter } from '$lib/server/access';
 import type { Actions, PageServerLoad } from './$types';
 import { getFacebookPages, selectFacebookPage, syncBrandAccounts, type FacebookPage } from '$lib/server/zernio';
 import { canConnectSocials } from '$lib/server/plans';
@@ -44,8 +43,6 @@ const resolveBrand = async (
 
 export const load: PageServerLoad = async ({ params, url, parent, locals: { supabase } }) => {
   await parent(); // ensures the brand layout (auth + brand resolution) has run
-  if (!(await canEnter(supabase))) throw redirect(303, '/waitlist');
-
   const dest = url.searchParams.get('return') === 'activate' ? 'activate' : 'settings';
   const tempToken = url.searchParams.get('tempToken') ?? url.searchParams.get('temp_token');
   // Zernio names this connect_token; accept documented name + fallbacks.
@@ -123,7 +120,7 @@ export const actions: Actions = {
     const brand = await resolveBrand(supabase, params.brand);
     if (!brand?.zernio_profile_id) return fail(404, { error: 'brand' });
     if (!canConnectSocials(brand.plan, brand.status)) {
-      throw redirect(303, `/app/${params.brand}/activate`);
+      throw redirect(303, '/app/billing');
     }
 
     let userProfile: unknown = null;

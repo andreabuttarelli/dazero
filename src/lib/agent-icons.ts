@@ -8,7 +8,7 @@ import { Sparkles, PenLine, Video, Clapperboard, Globe, TrendingUp } from '@luci
 export type AgentMeta = { id: string; icon: typeof PenLine };
 
 /**
- * Neutral fallback: no hub specialization (full Anomalia). NON è più una scelta offerta —
+ * Neutral fallback: no hub specialization (full dazero). NON è più una scelta offerta —
  * è l'identità di ciò che ESISTE GIÀ: i thread salvati con `agent = null` (in produzione la
  * grande maggioranza) e qualunque id che non si riconosce. Normalizzare su un altro id
  * trasformerebbe una conversazione aperta con l'assistente pieno in una conversazione con uno
@@ -17,7 +17,7 @@ export type AgentMeta = { id: string; icon: typeof PenLine };
 export const DEFAULT_AGENT_ID = 'auto';
 
 /**
- * Con chi PARTE una conversazione nuova, ora che Anomalia non è più selezionabile.
+ * Con chi PARTE una conversazione nuova, ora che dazero non è più selezionabile.
  *
  * L'utente incontra la squadra nell'onboarding e sceglie da chi partire; da lì in poi il
  * composer deve comunque proporre qualcuno, e il Content Creator è il mestiere più largo
@@ -54,7 +54,7 @@ export const AGENT_META: AgentMeta[] = [
  * Le opzioni del picker (composer, campo "A", editor delle routine). Web è a pagamento come
  * l'hub in sidebar.
  *
- * ANOMALIA NON È PIÙ FRA LE SCELTE. Non è un mestiere: è "tutti i tool, nessuna
+ * DAZERO NON È PIÙ FRA LE SCELTE. Non è un mestiere: è "tutti i tool, nessuna
  * specializzazione", ed era la strada di minor resistenza — si atterrava lì e non si
  * incontrava mai la squadra. Resta però l'identità dei thread che ce l'hanno già, quindi
  * `current` la rimette in lista quando è LEI l'agente selezionato: aprire una conversazione

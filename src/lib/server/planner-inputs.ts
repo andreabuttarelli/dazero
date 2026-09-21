@@ -1,13 +1,13 @@
 import { swallow } from '$lib/server/swallow';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { strategyBriefFromReport, type Benchmark, type StrategyReport } from '$lib/server/research';
-import { rankRecentWinners } from '$lib/server/scheduler';
+import { rankRecentWinners } from '$lib/server/recent-winners';
 import { ensureBrandHistory } from '$lib/server/scrapecreators';
 import { attachBrandPages } from '$lib/server/content-library';
 import { proposePlan, cadenceAllowed, saveProposedPlan } from '$lib/server/editorial-plan';
 import { activeGtmBrief } from '$lib/server/gtm';
 import { loadApprovedRubrics } from '$lib/server/rubrics';
-import { localeLanguageName } from '$lib/i18n/locale';
+import { OUTPUT_LANGUAGE } from '$lib/i18n/locale';
 import { analyzePostHistory } from '$lib/server/post-history-insights';
 
 /**
@@ -146,8 +146,7 @@ type ProposeBrand = {
 // activates it immediately (the click IS the approval there). Throws on LLM/insert failure.
 export async function proposeFirstPlan(
   supabase: SupabaseClient,
-  brand: ProposeBrand,
-  locale: string | null | undefined
+  brand: ProposeBrand
 ): Promise<{ id: string }> {
   const [profile, evidence, gtmBrief, rubrics] = await Promise.all([
     plannerProfile(supabase, brand),
@@ -158,7 +157,7 @@ export async function proposeFirstPlan(
   const proposal = await proposePlan(profile, {
     platforms: Array.isArray(brand.target_platforms) ? (brand.target_platforms as string[]) : [],
     allowedCadences: cadenceAllowed(brand.plan),
-    outputLanguage: localeLanguageName(locale),
+    outputLanguage: OUTPUT_LANGUAGE,
     strategyBrief: [gtmBrief, evidence.strategyBrief].filter(Boolean).join('\n\n'),
     benchmark: evidence.benchmark,
     topPosts: evidence.topPosts,

@@ -6,7 +6,6 @@ import { PUBLISHING_POLICY, getPublishingSettings } from './publishing-settings'
 // Art. 50(2) human-review exemption rests on, so "someone quietly added an auto-publish branch
 // back" has to fail CI rather than ship.
 
-const SCHEDULER = readFileSync('src/lib/server/scheduler.ts', 'utf8');
 const BLOG = readFileSync('src/lib/server/blog-generate.ts', 'utf8');
 
 describe('publishing policy', () => {
@@ -46,19 +45,6 @@ describe('publishing policy', () => {
 });
 
 describe('the approval gate is enforced in code', () => {
-  it('the scheduler never publishes a post it produced', () => {
-    // The autopilot produces into pending_user and stops. If it ever imports the publish path
-    // again, that is the bypass coming back.
-    expect(SCHEDULER).not.toMatch(/publishApprovedPost/);
-    expect(SCHEDULER).toMatch(/const needsApproval = freshPosts \?\? \[\];/);
-  });
-
-  it('the scheduler has no publishing mode or per-account auto-publish left', () => {
-    for (const gone of ['auto_all', 'auto_curated', 'publishingMode', 'fullAuto', 'auto_publish']) {
-      expect(SCHEDULER, `scheduler still references ${gone}`).not.toMatch(new RegExp(gone));
-    }
-  });
-
   it('the blog cron only publishes articles a human approved', () => {
     // publishDueArticles selects status 'approved'; drafts written by the autopilot are 'draft'
     // and can never be picked up, whatever scheduled_for they carry.

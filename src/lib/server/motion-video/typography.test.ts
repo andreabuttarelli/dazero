@@ -5,7 +5,7 @@ import { resolveTypography } from '$lib/design/typography';
  * `fonts` is the list of families found while crawling the site, in discovery order — Halant first,
  * Inter fifth — and `graphic_style` is what the user actually picked in Studio.
  */
-const ANOMALIA_KIT = {
+const DAZERO_KIT = {
 	fonts: [
 		{ name: 'Halant', source: 'google-fonts' },
 		{ name: 'Space Grotesk', source: 'google-fonts' },
@@ -26,15 +26,15 @@ describe('motion brief typography', () => {
 	it('puts the CHOSEN display font first, not the first one found on the site', () => {
 		// The bug: fonts[0] was Halant, a serif, so the brief said "headlines = Halant" and the agent
 		// obeyed. The user had picked Inter and the picker had saved it — to graphic_style.
-		expect(briefFonts(ANOMALIA_KIT)[0]).toBe('Inter');
-		expect(resolveTypography(ANOMALIA_KIT).source).toBe('brand');
+		expect(briefFonts(DAZERO_KIT)[0]).toBe('Inter');
+		expect(resolveTypography(DAZERO_KIT).source).toBe('brand');
 	});
 
 	it('keeps the slots positional — display then body, duplicates and all', () => {
 		// Deduping looks tidy and is a bug: a brand that picked Inter for both collapses to one
 		// entry, and formatMotionBrandBrief reads fonts[1] as the body face — which would then fall
 		// through to whatever came next. Here, that was Halant.
-		expect(briefFonts(ANOMALIA_KIT)).toEqual(['Inter', 'Inter']);
+		expect(briefFonts(DAZERO_KIT)).toEqual(['Inter', 'Inter']);
 	});
 
 	it('falls back to the detected font when nothing was chosen', () => {

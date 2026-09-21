@@ -4,7 +4,7 @@
   let { open = $bindable(false) }: { open?: boolean } = $props();
 
   const TK = 'landing.hero.connect';
-  const MCP_URL = 'https://mcp.anomalia.so/mcp';
+  const MCP_URL = 'https://mcp.dazero.co/mcp';
 
   /**
    * Tre strade, in ordine di quanto chiedono a chi legge — e la prima non chiede niente. Chi apre
@@ -25,14 +25,14 @@
    * macchina, e tradurlo e' un modo di romperlo. Nomina solo cose che esistono — l'indirizzo
    * risponde, e le prime due chiamate sono quelle che il server stesso suggerisce al handshake.
    */
-  const PROMPT = `Add Anomalia as an MCP server and start using it.
+  const PROMPT = `Add dazero as an MCP server and start using it.
 
-Anomalia is a marketing control plane: it holds a brand's posts, editorial plan, media library,
+dazero is a marketing control plane: it holds a brand's posts, editorial plan, media library,
 blog, SEO and ads, and you drive it with your own model.
 
 1. Add the server. It speaks streamable HTTP at ${MCP_URL} and signs in with OAuth —
    there are no API keys to paste. In Claude Code that is:
-   claude mcp add --transport http anomalia ${MCP_URL}
+   claude mcp add --transport http dazero ${MCP_URL}
    In any other host: add a remote MCP server at that URL and finish the sign-in it opens.
 
 2. Once connected, call list_brands to see which brands I can work on, then ask me which one
@@ -50,7 +50,7 @@ blog, SEO and ads, and you drive it with your own model.
     {
       name: 'Claude Code',
       how: 'oneCommand',
-      snippet: `claude mcp add --transport http anomalia ${MCP_URL}`,
+      snippet: `claude mcp add --transport http dazero ${MCP_URL}`,
       docs: 'https://docs.claude.com/en/docs/claude-code/mcp'
     },
     { name: 'Claude Desktop', how: 'connectors', docs: 'https://support.anthropic.com/en/articles/11175166' },
@@ -59,29 +59,29 @@ blog, SEO and ads, and you drive it with your own model.
       name: 'Codex',
       how: 'configFile',
       file: '~/.codex/config.toml',
-      snippet: `[mcp_servers.anomalia]\nurl = "${MCP_URL}"`,
+      snippet: `[mcp_servers.dazero]\nurl = "${MCP_URL}"`,
       docs: 'https://developers.openai.com/codex/mcp'
     },
     {
       name: 'Cursor',
       how: 'configFile',
       file: '~/.cursor/mcp.json',
-      snippet: `{\n  "mcpServers": {\n    "anomalia": { "url": "${MCP_URL}" }\n  }\n}`,
+      snippet: `{\n  "mcpServers": {\n    "dazero": { "url": "${MCP_URL}" }\n  }\n}`,
       docs: 'https://docs.cursor.com/context/mcp'
     },
     {
       name: 'OpenCode',
       how: 'configFile',
       file: 'opencode.json',
-      snippet: `{\n  "mcp": {\n    "anomalia": { "type": "remote", "url": "${MCP_URL}" }\n  }\n}`,
+      snippet: `{\n  "mcp": {\n    "dazero": { "type": "remote", "url": "${MCP_URL}" }\n  }\n}`,
       docs: 'https://opencode.ai/docs/mcp-servers/'
     },
     { name: 'Grok', how: 'connectors', docs: 'https://docs.x.ai/docs/guides/mcp-integrations' }
   ];
 
-  const CLI = `curl -sSL https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/scripts/install.sh | bash
-anomalia login
-anomalia brands`;
+  const CLI = `curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash
+dazero login
+dazero brands`;
 </script>
 
 {#if open}

@@ -105,7 +105,7 @@ describe('staticImportsOfStubs', () => {
 
 describe('regole di esclusione', () => {
   it('toglie il provider a pagamento ma tiene il selettore, che è progettato per la sua assenza', () => {
-    expect(isExcluded('src/lib/server/billing/anomalia-provider.ts', EXCLUSION_RULES)).toBe(true);
+    expect(isExcluded('src/lib/server/billing/dazero-provider.ts', EXCLUSION_RULES)).toBe(true);
     expect(isExcluded('src/lib/server/billing/index.ts', EXCLUSION_RULES)).toBe(false);
   });
 

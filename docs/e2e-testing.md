@@ -1,4 +1,4 @@
-# Testing E2E su Anomalia, senza andare a tentativi
+# Testing E2E su dazero, senza andare a tentativi
 
 Come far girare l'app in locale, loggare **al primo colpo**, aprire un thread
 con un agente e verificarne la risposta. Ogni sezione nasce da un inciampo già
@@ -21,9 +21,9 @@ errori fuorvianti (`Cannot find package '@sentry/sveltekit'`,
 worktree*.
 
 ```bash
-git worktree add -b fix/<slug> ../anomalia-wt/<slug> dev
-cd ../anomalia-wt/<slug>
-cp /Users/andreabuttarelli/Documents/GitHub/anomalia/.env .env
+git worktree add -b fix/<slug> ../dazero-wt/<slug> dev
+cd ../dazero-wt/<slug>
+cp /Users/andreabuttarelli/Documents/GitHub/dazero/.env .env
 npm ci   # patch-package riapplica le patch delle dipendenze in postinstall
 ```
 
@@ -37,15 +37,15 @@ codice mai toccato).
 docker ps --format '{{.Names}}\t{{.Status}}'
 ```
 
-La stack porta `anomalia-app` (immagine `anomalia-selfhost-app`, porta 3000),
-`anomalia-kong` (8000), `anomalia-db` (5432), `anomalia-cron`. Attenzione:
-`anomalia-app` prosciuga `chat_jobs` dallo stesso DB del tuo dev server — se
+La stack porta `dazero-app` (immagine `dazero-selfhost-app`, porta 3000),
+`dazero-kong` (8000), `dazero-db` (5432), `dazero-cron`. Attenzione:
+`dazero-app` prosciuga `chat_jobs` dallo stesso DB del tuo dev server — se
 l'immagine è più vecchia del checkout, il codice nuovo **non gira mai** e i due
 reaper si contendono i turni. Prima di giudicare un flusso chat:
 
 ```bash
-docker images | grep anomalia-selfhost-app   # data dell'immagine vs git log -1
-docker logs --since 1h anomalia-app 2>&1 | grep -i chat
+docker images | grep dazero-selfhost-app   # data dell'immagine vs git log -1
+docker logs --since 1h dazero-app 2>&1 | grep -i chat
 ```
 
 Se il container è stantio e non serve alla verifica, fermalo; se serve,
@@ -55,7 +55,7 @@ build vecchio*.)
 ## 3. Dev server del worktree: env overlay, mai l'.env del repo
 
 L'.env del repo punta al progetto hosted; la stack locale ha le sue chiavi
-dentro `anomalia-kong`. Il dev server del worktree deve parlare con la stack
+dentro `dazero-kong`. Il dev server del worktree deve parlare con la stack
 locale, con `PUBLIC_SUPABASE_URL=http://localhost:8000` — **non** l'hostname
 `kong` del container, che dal Mac non risolve (errore tipico nel log:
 `getaddrinfo ENOTFOUND kong` a ogni login).
@@ -63,7 +63,7 @@ locale, con `PUBLIC_SUPABASE_URL=http://localhost:8000` — **non** l'hostname
 Le chiavi valide si leggono dall'ambiente del container, senza copiarle a mano:
 
 ```bash
-getenv() { docker inspect anomalia-app --format '{{range .Config.Env}}{{println .}}{{end}}' \
+getenv() { docker inspect dazero-app --format '{{range .Config.Env}}{{println .}}{{end}}' \
   | perl -ne "if (/^\Q$1\E=(.*)\$/) { print \$1; exit }"; }
 
 PUBLIC_SUPABASE_URL=http://localhost:8000 \
@@ -82,14 +82,14 @@ fondamentale: è lì che appaiono gli errori server che il browser non mostra.
 
 Lo stack locale ha l'utente di test e il brand demo:
 
-- **utente**: `test@anomalia.so` / `123456`
+- **utente**: `test@dazero.co` / `123456`
 - **brand**: slug `demo`, nome `Demo Brand`, piano `pro`, attivo
 
 Verifica che esistano (idempotente, mai ricreare a mano):
 
 ```bash
-docker exec anomalia-db psql -U postgres -d postgres -c \
-  "select id, email from auth.users where email = 'test@anomalia.so';
+docker exec dazero-db psql -U postgres -d postgres -c \
+  "select id, email from auth.users where email = 'test@dazero.co';
    select id, slug, name, plan, status from public.brands where slug = 'demo';"
 ```
 
@@ -99,7 +99,7 @@ Se manca il membership o l'utente, il seed ufficiale è idempotente:
 DATABASE_URL=postgres://postgres:<POSTGRES_PASSWORD>@localhost:5432/postgres \
 PUBLIC_SUPABASE_URL=http://localhost:8000 \
 SUPABASE_SERVICE_ROLE_KEY=$(getenv SUPABASE_SERVICE_ROLE_KEY) \
-SEED_DEMO_EMAIL=test@anomalia.so SEED_DEMO_PASSWORD=123456 \
+SEED_DEMO_EMAIL=test@dazero.co SEED_DEMO_PASSWORD=123456 \
 node scripts/db-seed.mjs
 ```
 
@@ -132,7 +132,7 @@ import { chromium } from 'playwright';
 const browser = await chromium.launch({ headless: false });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 await page.goto('http://localhost:5176/login');
-await page.locator('input[name="email"]').fill('test@anomalia.so');
+await page.locator('input[name="email"]').fill('test@dazero.co');
 await page.locator('input[name="password"]').fill('123456');
 await page.locator('form[action="?/login"] button[type="submit"]').click();
 await page.waitForTimeout(1000);
@@ -141,7 +141,7 @@ await page.waitForTimeout(1000);
 Due trappole che sembrano "login rotto" e non lo sono:
 
 1. **Il redirect finale va all'ultimo brand usato**, non a `/app`: il cookie
-   `anomalia_last_brand` può mandarti su `/app/<vecchio-brand>`. Naviga sempre
+   `dazero_last_brand` può mandarti su `/app/<vecchio-brand>`. Naviga sempre
    esplicitamente dove devi verificare:
    ```js
    await page.goto('http://localhost:5176/app/demo');
@@ -218,14 +218,14 @@ In ordine, sempre nello stesso ordine:
    vivono lì, non nel browser. Cercare `error`, `AuthApiError`, `AGENT_KIT`.
 2. **`ai_calls` fallite** (ultimi 7 giorni, chidice da sola):
    ```bash
-   docker exec anomalia-db psql -U postgres -d postgres -c \
+   docker exec dazero-db psql -U postgres -d postgres -c \
      "select created_at, label, provider, left(error,300) from public.ai_calls
       where ok = false and created_at > now() - interval '7 days'
       order by created_at desc limit 30;"
    ```
 3. **`chat_jobs` falliti**:
    ```bash
-   docker exec anomalia-db psql -U postgres -d postgres -c \
+   docker exec dazero-db psql -U postgres -d postgres -c \
      "select created_at, status, tool_name, left(error,300) from public.chat_jobs
       where status = 'failed' and created_at > now() - interval '7 days'
       order by created_at desc limit 30;"
@@ -249,9 +249,9 @@ stack vero. Dettagli in `tests/e2e/`.
 Prima di ogni sessione E2E, in fila, un minuto:
 
 - [ ] worktree proprio, `npm ci` fatto (di nuovo, se hai ribasato)
-- [ ] stack docker su, `anomalia-app` fresco o fermato consapevolmente
+- [ ] stack docker su, `dazero-app` fresco o fermato consapevolmente
 - [ ] dev server su porta esplicita, env overlay con `localhost:8000`, log su file
-- [ ] utente `test@anomalia.so` e brand `demo` presenti (una query psql)
+- [ ] utente `test@dazero.co` e brand `demo` presenti (una query psql)
 - [ ] browser headed, cookie puliti se il log parla di refresh token
 - [ ] navigazione esplicita a `/app/demo` (mai fidarsi del redirect finale)
 - [ ] marker univoco nel messaggio, attesa sulla condizione, reload di verifica

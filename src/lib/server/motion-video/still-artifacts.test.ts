@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const publishArtifact = vi.fn();
-vi.mock('$lib/server/chat/artifacts', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('$lib/server/chat/artifacts')>();
+vi.mock('$lib/server/designer/artifacts', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('$lib/server/designer/artifacts')>();
 	return { ...actual, publishArtifact };
 });
 

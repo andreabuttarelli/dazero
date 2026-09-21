@@ -14,7 +14,7 @@ import {
   uploadPostImage,
   type AspectRatio
 } from '$lib/server/content-preview';
-import { CHAT_USER_ERROR } from '$lib/server/chat/report-error';
+import { CHAT_USER_ERROR } from '$lib/server/designer/report-error';
 import {
   UGC_CAPTURE_RULES,
   UGC_COVER_MODEL,
@@ -54,7 +54,7 @@ import {
   DESIGNER_SLICE_RESERVE_MS,
   truncatedDesignerNotice
 } from '$lib/server/designer-jobs';
-import type { ChatTurnDeadline } from '$lib/server/chat/turn-limits';
+import type { ChatTurnDeadline } from '$lib/server/designer/turn-limits';
 import { runUgcOrchestrator } from '$lib/server/media-generator/ugc-agent';
 
 export const UGC_BATCH_MAX = 20;

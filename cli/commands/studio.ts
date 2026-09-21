@@ -32,7 +32,7 @@ export async function cmdStudio(slug: string, opts: {
   id?: string;
 }) {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: anomalia login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
 
   const action = opts.action ?? 'show';
 

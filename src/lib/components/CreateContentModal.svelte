@@ -1,7 +1,7 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
   import { invalidateAll } from '$app/navigation';
-  import { Image as ImageIcon, Images as ImagesIcon, Clapperboard, Video as VideoIcon, Upload as UploadIcon } from '@lucide/svelte';
+  import { Image as ImageIcon, Images as ImagesIcon, Clapperboard, Upload as UploadIcon } from '@lucide/svelte';
   import { PLATFORM_META } from '$lib/components/platform-meta';
   import { VIDEO_ONLY_PLATFORMS } from '$lib/platform-limits';
   import { createSupabaseBrowserClient } from '$lib/supabase/client';
@@ -9,27 +9,21 @@
   import { RASTER_IMAGE_ACCEPT, RASTER_OR_VIDEO_ACCEPT, isRasterImageSource } from '$lib/raster-image';
   import UpgradeLink from '$lib/components/UpgradeLink.svelte';
 
-  // "Crea contenuto" — one user-briefed content. Photo/AI-video post multipart to
-  // /app/<brand>/content/create-single; 'team' (a founder-made video commission, plan-gated)
-  // posts to /content/request-video instead — no AI runs, the request lands in the founders'
-  // queue and the clip comes back in-app. Reloads the page data on success either way.
   let {
     open = $bindable(false),
     brandSlug,
     platforms = [],
-    founderVideos = { remaining: 0, quota: 0 },
     onDone
   }: {
     open?: boolean;
     brandSlug: string;
     platforms?: string[];
-    founderVideos?: { remaining: number; quota: number };
-    onDone?: (r: { kind: 'single' | 'team'; contentType: string; videoFallback: boolean }) => void;
+    onDone?: (r: { contentType: string; videoFallback: boolean }) => void;
   } = $props();
 
   const MAX_REFS = 3;
 
-  let kind = $state<'upload' | 'image' | 'carousel' | 'video' | 'team'>('image');
+  let kind = $state<'upload' | 'image' | 'carousel' | 'video'>('image');
   let platform = $state('');
   // Platforms whose publish API accepts a multi-image carousel (mirror of the server's
   // CAROUSEL_PLATFORMS). A carousel on any other platform is blocked before generation.
@@ -154,7 +148,7 @@
     const body = (await res.json().catch(() => ({}))) as { ok?: boolean; contentType?: string };
     if (!res.ok || !body.ok) throw new Error($_('app.content.single.uploadFailed'));
     await invalidateAll();
-    onDone?.({ kind: 'single', contentType: body.contentType ?? 'uploaded_image', videoFallback: false });
+    onDone?.({ contentType: body.contentType ?? 'uploaded_image', videoFallback: false });
     brief = '';
     removeMedia();
     open = false;
@@ -182,8 +176,7 @@
       fd.set('brief', brief.trim());
       if (kind === 'carousel') fd.set('slides', String(slideCount));
       for (const f of files) fd.append('refs', f);
-      const endpoint = kind === 'team' ? 'request-video' : 'create-single';
-      const res = await fetch(`/app/${brandSlug}/content/${endpoint}`, { method: 'POST', body: fd });
+      const res = await fetch(`/app/${brandSlug}/content/create-single`, { method: 'POST', body: fd });
       const body = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         error?: string;
@@ -193,9 +186,7 @@
       if (!res.ok || !body.ok) {
         error =
           body.error === 'quota'
-            ? kind === 'team'
-              ? $_('app.content.single.teamQuotaFull')
-              : $_('app.content.single.quotaFull')
+            ? $_('app.content.single.quotaFull')
             : body.error === 'render_failed'
               ? $_('app.content.single.renderFailed')
               : body.error === 'carousel_platform'
@@ -210,7 +201,6 @@
       }
       await invalidateAll();
       onDone?.({
-        kind: kind === 'team' ? 'team' : 'single',
         contentType: body.contentType ?? 'generated_image',
         videoFallback: body.videoFallback === true
       });
@@ -241,7 +231,7 @@
         <button type="button" class="ccm-x" onclick={close} aria-label="×">×</button>
       </div>
 
-      <!-- 1. Device upload, photo, AI video, or a founder-made video commission (plan-gated) -->
+      <!-- 1. Device upload, photo, carousel or AI video -->
       <div class="ccm-kinds" role="radiogroup" aria-label={$_('app.content.single.kindLabel')}>
         <button type="button" class="kind" role="radio" aria-checked={kind === 'upload'} class:on={kind === 'upload'} onclick={() => (kind = 'upload')} disabled={creating}>
           <span class="kind-ic"><UploadIcon size={18} strokeWidth={1.8} /></span>
@@ -275,30 +265,7 @@
           </span>
           <span class="kind-check" aria-hidden="true"></span>
         </button>
-        <button
-          type="button"
-          class="kind"
-          role="radio"
-          aria-checked={kind === 'team'}
-          class:on={kind === 'team'}
-          onclick={() => (kind = 'team')}
-          disabled={creating || founderVideos.quota <= 0 || founderVideos.remaining <= 0}
-          title={founderVideos.quota <= 0 ? $_('app.content.single.teamNotInPlan') : ''}
-        >
-          <span class="kind-ic"><VideoIcon size={18} strokeWidth={1.8} /></span>
-          <span class="kind-tx">
-            <span class="kind-t">
-              {$_('app.content.single.team')}
-              <span class="kind-badge">{founderVideos.remaining}/{founderVideos.quota}</span>
-            </span>
-            <span class="kind-d">{$_('app.content.single.teamDesc')}</span>
-          </span>
-          <span class="kind-check" aria-hidden="true"></span>
-        </button>
       </div>
-      {#if kind === 'team'}
-        <p class="ccm-team-note">{$_('app.content.single.teamNote')}</p>
-      {/if}
 
       <!-- 2. Platform -->
       <div class="ccm-f">
@@ -402,9 +369,9 @@
       <button type="button" class="ccm-go" onclick={create} disabled={creating || !carouselOk || (kind === 'upload' ? !media : !brief.trim())}>
         {#if creating}
           <span class="spin"></span>
-          {kind === 'upload' ? $_('app.content.single.uploading') : kind === 'team' ? $_('app.content.single.sendingRequest') : kind === 'video' ? $_('app.content.single.creatingVideo') : kind === 'carousel' ? $_('app.content.single.creatingCarousel') : $_('app.content.single.creating')}
+          {kind === 'upload' ? $_('app.content.single.uploading') : kind === 'video' ? $_('app.content.single.creatingVideo') : kind === 'carousel' ? $_('app.content.single.creatingCarousel') : $_('app.content.single.creating')}
         {:else}
-          {kind === 'upload' ? $_('app.content.single.uploadCta') : kind === 'team' ? $_('app.content.single.sendRequest') : $_('app.content.single.create')}
+          {kind === 'upload' ? $_('app.content.single.uploadCta') : $_('app.content.single.create')}
         {/if}
       </button>
     </div>
@@ -465,10 +432,6 @@
   .kind-tx { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
   .kind-t { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
   .kind-d { font-size: 12px; color: var(--ink-soft, #6e6e73); line-height: 1.4; letter-spacing: -0.02em; }
-  .kind-badge {
-    font-size: 11px; font-weight: 700; color: var(--accent, #c485fe);
-    background: rgba(var(--accent-rgb, 196, 133, 254), 0.1); padding: 2px 8px; border-radius: 980px;
-  }
   .kind-check {
     flex: 0 0 18px; width: 18px; height: 18px; border-radius: 50%; position: relative;
     border: 1.5px solid var(--line-2, #d2d2d7);
@@ -476,12 +439,6 @@
   }
   .kind.on .kind-check { border-color: var(--accent, #c485fe); background: var(--accent, #c485fe); }
   .kind.on .kind-check::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: #fff; }
-  .ccm-team-note {
-    margin: -5px 0 0; font-size: 12.5px; color: var(--ink-soft, #6e6e73); line-height: 1.45;
-    padding: 10px 12px; border-radius: 12px;
-    background: rgba(var(--accent-rgb, 196, 133, 254), 0.06);
-    border: 1px solid rgba(var(--accent-rgb, 196, 133, 254), 0.18);
-  }
   .ccm-f { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
   .ccm-f > span { font-weight: 600; color: var(--ink-soft, #6e6e73); }
   .ccm-f textarea {

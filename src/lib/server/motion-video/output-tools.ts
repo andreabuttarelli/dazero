@@ -16,7 +16,6 @@
  * composizione, così la scelta diventa aritmetica invece che speranza.
  */
 import { swallow } from '$lib/server/swallow';
-import { bilingualNoticeLocale } from '$lib/i18n/locale';
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';

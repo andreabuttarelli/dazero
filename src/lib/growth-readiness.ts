@@ -14,7 +14,6 @@ export type GrowthCheckKey =
   | 'knowledge'
   | 'plan'
   | 'web'
-  | 'gsc'
   | 'social_connect';
 
 export type GrowthCheck = {
@@ -45,8 +44,6 @@ export type GrowthSnapshot = {
   hasEditorialPlan: boolean;
   /** Optional: an active website/blog configured (warn-only check; callers that don't track it stay ok). */
   hasWebsite?: boolean;
-  /** Optional: Google Search Console connected (warn-only check; same opt-in semantics). */
-  gscConnected?: boolean;
   /** Optional: at least one active social account to publish to (warn-only check; same opt-in semantics). */
   hasSocialAccounts?: boolean;
 };
@@ -79,7 +76,7 @@ export function evaluateGrowthReadiness(s: GrowthSnapshot): GrowthReadiness {
       key: 'voice',
       ok: voiceOk,
       blocking: true,
-      fix: `${base}/plan`,
+      fix: `${base}/studio`,
       detail: s.personality ? 'personality' : s.voiceKit ? 'kit' : undefined
     },
     {
@@ -126,26 +123,20 @@ export function evaluateGrowthReadiness(s: GrowthSnapshot): GrowthReadiness {
       key: 'knowledge',
       ok: s.documentCount >= 1,
       blocking: false,
-      fix: `${base}/settings/knowledge`,
+      fix: `${base}/studio/knowledge`,
       detail: String(s.documentCount)
     },
     {
       key: 'plan',
       ok: s.hasEditorialPlan && s.personality,
       blocking: false,
-      fix: `${base}/plan`
+      fix: `${base}/calendar`
     },
     {
       key: 'web',
       ok: s.hasWebsite !== false,
       blocking: false,
       fix: `${base}/site`
-    },
-    {
-      key: 'gsc',
-      ok: s.gscConnected !== false,
-      blocking: false,
-      fix: `${base}/settings/search-console`
     },
     {
       key: 'social_connect',

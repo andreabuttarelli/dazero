@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dazero": {
+      "type": "http",
+      "url": "https://mcp.dazero.co/mcp"
+    }
+  }
+}

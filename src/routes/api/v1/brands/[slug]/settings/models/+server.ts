@@ -6,7 +6,7 @@ import {
   MEDIA_MODEL_SLOT_IDS,
   SET_MEDIA_MODEL,
   statusForFailure
-} from '@anomalia/api-contracts';
+} from '@dazero/api-contracts';
 import { mediaModelSlot, slotAccepts, slotChoices } from '$lib/media-model-slots';
 import { chooseMediaModel } from '$lib/server/media-model-prefs';
 

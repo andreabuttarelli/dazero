@@ -750,7 +750,7 @@ export const STRATEGY_SCHEMA = {
           cta: {
             type: 'string' as const,
             description:
-              "VIDEO seeds only — CTA (~6–10 spoken words): qualify the viewer then soft action. Example: 'anyway if you're done guessing, try Anomalia and tell me I'm wrong.' Empty string for non-video seeds."
+              "VIDEO seeds only — CTA (~6–10 spoken words): qualify the viewer then soft action. Example: 'anyway if you're done guessing, try dazero and tell me I'm wrong.' Empty string for non-video seeds."
           },
           title: {
             type: 'string' as const,

@@ -58,7 +58,7 @@
     // un agente custom è una persona del brand, non un default con cui aprire le chat nuove.
     if (!pickCurrent.key.startsWith('custom:')) {
       try {
-        localStorage.setItem(`anomalia:first-agent:${slug}`, pickCurrent.key);
+        localStorage.setItem(`dazero:first-agent:${slug}`, pickCurrent.key);
       } catch {
         /* quota / private mode: si perde la memoria, non la chat */
       }

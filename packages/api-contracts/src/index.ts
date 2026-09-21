@@ -2,7 +2,6 @@ import type { z } from 'zod';
 import { inAFamily } from './families';
 import { ADS_ACTION, ADS_REMIX } from './ads';
 import { SET_APPEARANCE } from './appearance';
-import { SET_AUTOMATION } from './automations';
 import { BILLING_PORTAL_LINK, CHECKOUT_LINK } from './billing';
 import {
   CREATE_ARTICLE,
@@ -45,16 +44,10 @@ import {
   SET_BLOG_SETTINGS
 } from './blog-settings';
 import { SET_BRAND_SETTINGS } from './brand-settings';
-import { DIAGNOSE_RADAR } from './market';
 import { GET_MEDIA_MODELS, SET_MEDIA_MODEL } from './media-models';
 import { SAVE_MEMORY } from './memory';
 import { SEARCH_KNOWLEDGE } from './knowledge';
-import {
-  SET_RADAR_PLATFORM
-} from './radar';
-import { GEO_ACTION, REFRESH_KEYWORDS, SEO_ACTION } from './search';
 import { SOCIAL_CONNECT_LINK } from './social';
-import { GET_GSC } from './web-metrics';
 import { ENHANCE_PROMPT } from './prompts';
 import { GET_WRITING_SKILLS } from './writing-skills';
 import {
@@ -101,7 +94,7 @@ export const RESOURCE_SEGMENT = ':id';
  * è separabile da quella di nessun altro, e «questo tool vale quello che costa» resta senza
  * risposta.
  */
-export const TOOL_HEADER = 'x-anomalia-tool';
+export const TOOL_HEADER = 'x-dazero-tool';
 
 /**
  * Il nome arriva dalla rete, quindi non è un nome finché non lo si guarda: si accetta solo la
@@ -159,15 +152,12 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   DELETE_DOCUMENT,
   DELETE_PERSON,
   DIAGNOSE_BRAND,
-  DIAGNOSE_RADAR,
   EDIT_POST,
   ENHANCE_PROMPT,
   GENERATE_CAROUSEL,
   GENERATE_IMAGE,
   GENERATE_VIDEO,
-  GEO_ACTION,
   GET_CREATION_KIT,
-  GET_GSC,
   GET_MEDIA_MODELS,
   GET_WRITING_SKILLS,
   IMPORT_MEDIA_URL,
@@ -177,7 +167,6 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   PUBLISH_ARTICLE,
   QUERY_DATABASE,
   REFINE_MEDIA,
-  REFRESH_KEYWORDS,
   REGENERATE_POST_MEDIA,
   REGENERATE_SLIDE,
   RENDER_POST,
@@ -190,15 +179,12 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   SAVE_PLAN,
   SAVE_WEEK_SEEDS,
   SEARCH_KNOWLEDGE,
-  SEO_ACTION,
   SET_APPEARANCE,
-  SET_AUTOMATION,
   SET_BIO,
   SET_BLOG_SETTINGS,
   SET_BRAND_SETTINGS,
   SET_COLORS,
   SET_MEDIA_MODEL,
-  SET_RADAR_PLATFORM,
   SOCIAL_CONNECT_LINK,
   SYNC_HISTORY,
   UNPUBLISH_ARTICLE,
@@ -336,7 +322,6 @@ export {
   GOAL_CRITERION_STATUSES,
   GOAL_STATUSES
 } from './brand-state';
-export { DIAGNOSE_RADAR, MARKET_FIELD_DEFAULT, MARKET_FIELD_MAX } from './market';
 export {
   GET_MEDIA_MODELS,
   MEDIA_MODEL_JOBS,
@@ -344,14 +329,6 @@ export {
   SET_MEDIA_MODEL
 } from './media-models';
 export type { MediaModelSlotId } from './media-models';
-export {
-  RADAR_BASE_SOURCE_KINDS,
-  RADAR_PLATFORMS,
-  RADAR_PRO_SOURCE_KINDS,
-  RADAR_SOURCE_KINDS,
-  SET_RADAR_PLATFORM
-} from './radar';
-export type { RadarPlatform, RadarSourceKindName } from './radar';
 export {
   KNOWLEDGE_COLLECTIONS,
   KNOWLEDGE_DOC_STATUSES,
@@ -372,9 +349,7 @@ export {
   UPDATE_MEMORY_ENTRY
 } from './memory';
 export type { AgentMemoryCategory } from './memory';
-export { GEO_ACTION, REFRESH_KEYWORDS, SEO_ACTION } from './search';
 export { ENHANCE_PROMPT } from './prompts';
-export { GET_GSC } from './web-metrics';
 export {
   GET_WRITING_SKILLS,
   WRITING_DECK_AGENTS,
@@ -406,8 +381,7 @@ export {
 export {
   AUTOMATION_CADENCES,
   AUTOMATION_JOBS,
-  AUTOMATION_STATES,
-  SET_AUTOMATION
+  AUTOMATION_STATES
 } from './automations';
 export type { AutomationJob } from './automations';
 export { SOCIAL_CONNECT_LINK } from './social';
@@ -460,7 +434,6 @@ export { TABLE_CHECKS, WRITABLE_COLUMNS } from './write-rules';
  * codice in esecuzione non mostra e che si perdono fra i trecento preesistenti.
  */
 export { ADD_COMPETITOR, DELETE_COMPETITOR, DELETE_PRODUCT } from './studio';
-export { ADD_RADAR_SOURCE, REMOVE_RADAR_SOURCE } from './radar';
 export { REMOVE_BLOG_TERM } from './blog-settings';
 export { GET_ADS } from './reads';
 export { RECORD_MEMORY_USED } from './memory';

@@ -26,7 +26,7 @@ import {
 	kitColorHexes,
 	kitLogoUrl
 } from '$lib/motion-video/brand';
-import type { ChatTurnDeadline } from '$lib/server/chat/turn-limits';
+import type { ChatTurnDeadline } from '$lib/server/designer/turn-limits';
 import type { DesignerSliceEnd } from '$lib/designer-limits';
 
 export type MotionTurnAds = Array<{
@@ -94,7 +94,7 @@ export async function loadMotionTurnKit(
 	// chosen in Studio wins, then the font detected on the site, then Inter. Motion was the only
 	// surface reading `fonts` directly — the raw list of families found while crawling, in discovery
 	// order — so a brand that had explicitly picked Inter got its FIRST detected face instead, and
-	// for Anomalia that is Halant, a serif. The agent then obeyed the brief perfectly and shipped
+	// for dazero that is Halant, a serif. The agent then obeyed the brief perfectly and shipped
 	// serif headlines nobody asked for.
 	//
 	// The list is positional and only two slots are read: [0] is the display face, [1] the body one.

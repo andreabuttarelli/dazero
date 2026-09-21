@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { BLOG_FONTS, BRAND_ENDPOINTS } from '@anomalia/api-contracts';
+import { BLOG_FONTS, BRAND_ENDPOINTS } from '@dazero/api-contracts';
 import { brandWebMcpTools, modelContext, registerBrandWebMcp } from './webmcp';
 
 const TOKEN = 'eyJ-fake-session-token';

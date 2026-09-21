@@ -80,7 +80,7 @@
     <div class="panel-head">
       <div>
         <div class="t">Indirizzo attuale</div>
-        <p class="panel-sub">Il blog è già online su questo URL Anomalia.</p>
+        <p class="panel-sub">Il blog è già online su questo URL dazero.</p>
       </div>
     </div>
     <div class="panel-body">

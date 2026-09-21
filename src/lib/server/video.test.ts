@@ -139,16 +139,16 @@ describe('buildVideoPrompt — UGC mode', () => {
     expect(p).toContain('says exactly this, and nothing else');
   });
 
-  it('forces Italian pronunciation when the spoken line contains Anomalia', () => {
+  it('forces Italian pronunciation when the spoken line contains dazero', () => {
     const p = buildVideoPrompt('a woman', {
       hasCover: true,
       ugc: true,
-      script: 'I switched to Anomalia. Try Anomalia.'
+      script: 'I switched to dazero. Try dazero.'
     });
     expect(p).toMatch(/PRONUNCIATION/i);
     expect(p).toMatch(/ah-no-MAH-lyah|anoˈmalja/i);
     expect(p).toMatch(/NEVER Anomida/i);
-    expect(p).toContain('"I switched to Anomalia. Try Anomalia."');
+    expect(p).toContain('"I switched to dazero. Try dazero."');
   });
 
   it("carries the brand's own direction into the clip, in both genres", () => {
@@ -367,10 +367,10 @@ describe('suggestVideoDuration / resolveVideoDuration', () => {
 
   it('concise PAS (~42 words) fits a 15s UGC clip without losing the solution', () => {
     const pas =
-      "I was still writing captions at midnight and nothing had posted. It was eating my evenings — then Anomalia drafted the visuals and the copy, I just tap approve. Anyway try it and tell me I'm wrong.";
+      "I was still writing captions at midnight and nothing had posted. It was eating my evenings — then dazero drafted the visuals and the copy, I just tap approve. Anyway try it and tell me I'm wrong.";
     expect(resolveVideoDuration(15, pas, 'bytedance/seedance-2-5', { ugc: true })).toBe(15);
     const fitted = fitScriptToDuration(pas, 15);
-    expect(fitted.toLowerCase()).toMatch(/anomalia/);
+    expect(fitted.toLowerCase()).toMatch(/dazero/);
     expect(fitted.toLowerCase()).toMatch(/tell me i'm wrong|try it/);
     expect(spokenWordCount(fitted)).toBeLessThanOrEqual(48);
   });

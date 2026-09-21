@@ -1,5 +1,4 @@
 import { json } from '@sveltejs/kit';
-import { canEnter } from '$lib/server/access';
 import { regeneratePost, loadBrandMoodImageUrls } from '$lib/server/content-preview';
 import { signKnowledgePaths } from '$lib/server/media-archive';
 import type { RequestHandler } from './$types';
@@ -19,7 +18,6 @@ const MAX_REVISIONS = 3;
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
   const { session, user } = await safeGetSession();
   if (!session || !user) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
 
   const body = await request.json().catch(() => ({}));
   const id = String(body?.id ?? '');

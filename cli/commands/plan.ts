@@ -11,7 +11,7 @@ export async function cmdPlan(slug: string, opts: {
   clearProducts?: boolean;
 }) {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: anomalia login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
 
   const action = opts.action ?? 'show';
 
@@ -82,15 +82,15 @@ async function showPlan(token: string, slug: string) {
       console.log('  Modifiche:');
       for (const ch of changes) console.log(`    • ${ch}`);
     }
-    console.log(`\n  ${c.dim('Usa:')} anomalia plan ${slug} approve  ${c.dim('per approvare')}`);
-    console.log(`  ${c.dim('Usa:')} anomalia plan ${slug} discard  ${c.dim('per scartare')}`);
+    console.log(`\n  ${c.dim('Usa:')} dazero plan ${slug} approve  ${c.dim('per approvare')}`);
+    console.log(`  ${c.dim('Usa:')} dazero plan ${slug} discard  ${c.dim('per scartare')}`);
     console.log();
   }
 
   // ── Active plan ──
   if (!plan) {
     info('Nessun piano editoriale attivo.');
-    console.log(`\n  ${c.dim('Usa:')} anomalia plan ${slug} propose  ${c.dim('per generare il primo piano')}`);
+    console.log(`\n  ${c.dim('Usa:')} dazero plan ${slug} propose  ${c.dim('per generare il primo piano')}`);
     console.log();
     return;
   }
@@ -154,9 +154,9 @@ async function showPlan(token: string, slug: string) {
 
   // Commands
   console.log(`\n  ${c.dim('Comandi:')}`);
-  console.log(`  anomalia plan ${slug} revise --feedback "..."   ${c.dim('→ richiedi revisione')}`);
-  console.log(`  anomalia plan ${slug} save-brief --week 0 --brief "..."  ${c.dim('→ salva brief')}`);
-  console.log(`  anomalia plan ${slug} replan --week 0 --brief "..."      ${c.dim('→ rigenera settimana')}`);
+  console.log(`  dazero plan ${slug} revise --feedback "..."   ${c.dim('→ richiedi revisione')}`);
+  console.log(`  dazero plan ${slug} save-brief --week 0 --brief "..."  ${c.dim('→ salva brief')}`);
+  console.log(`  dazero plan ${slug} replan --week 0 --brief "..."      ${c.dim('→ rigenera settimana')}`);
 
   console.log();
 }
@@ -164,7 +164,7 @@ async function showPlan(token: string, slug: string) {
 async function proposePlan(token: string, slug: string) {
   console.log(c.yellow('Generazione piano editoriale in corso…'));
   const result = await api.proposePlan(token, slug);
-  ok('Piano proposto. Usa `anomalia plan ' + slug + '` per vederlo e `anomalia plan ' + slug + ' approve` per attivarlo.');
+  ok('Piano proposto. Usa `dazero plan ' + slug + '` per vederlo e `dazero plan ' + slug + ' approve` per attivarlo.');
 }
 
 async function revisePlan(token: string, slug: string, feedback?: string) {
@@ -174,7 +174,7 @@ async function revisePlan(token: string, slug: string, feedback?: string) {
   }
   console.log(c.yellow('Revisione in corso…'));
   await api.revisePlan(token, slug, feedback);
-  ok('Revisione proposta. Usa `anomalia plan ' + slug + '` per vederla.');
+  ok('Revisione proposta. Usa `dazero plan ' + slug + '` per vederla.');
 }
 
 async function approvePlan(token: string, slug: string) {

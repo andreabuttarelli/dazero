@@ -8,7 +8,7 @@ vi.mock('$lib/server/cli-auth', () => ({
 
 import { GET, POST } from './+server';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
-import { AGENT_MEMORY_CATEGORIES, MEMORY_CATEGORIES, MEMORY_ENTRIES_MAX } from '@anomalia/api-contracts';
+import { AGENT_MEMORY_CATEGORIES, MEMORY_CATEGORIES, MEMORY_ENTRIES_MAX } from '@dazero/api-contracts';
 import { MEMORY_CATEGORY_VALUES } from '$lib/server/brand-memory';
 
 type Row = Record<string, unknown>;
@@ -96,7 +96,7 @@ function signedIn(rows: Row[] = []) {
 }
 
 function get(query: Record<string, string> = {}, slug = 'demo') {
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/memory`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/memory`);
   for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
   return (GET as (e: unknown) => Promise<Response>)({
     request: new Request(url),
@@ -106,7 +106,7 @@ function get(query: Record<string, string> = {}, slug = 'demo') {
 }
 
 function post(payload: Record<string, unknown>, slug = 'demo') {
-  const url = new URL(`https://anomalia.test/api/v1/brands/${slug}/memory`);
+  const url = new URL(`https://dazero.test/api/v1/brands/${slug}/memory`);
   return (POST as (e: unknown) => Promise<Response>)({
     request: new Request(url, { method: 'POST', body: JSON.stringify(payload) }),
     params: { slug },

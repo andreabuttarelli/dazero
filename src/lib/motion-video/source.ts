@@ -196,7 +196,7 @@ export function defaultMotionSource(opts: {
 	const totalSeconds = durationInFrames / fps;
 	const beat1Seconds = Math.round(totalSeconds * 0.34 * 10) / 10;
 	const beat2Seconds = Math.round(totalSeconds * 0.36 * 10) / 10;
-	const ctaText = opts.ctaText?.trim() || 'Start free → anomalia.so';
+	const ctaText = opts.ctaText?.trim() || 'Start free → dazero.co';
 
 	return `import React from 'react';
 import {

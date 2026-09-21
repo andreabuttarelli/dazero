@@ -4,7 +4,7 @@ import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, gateAiAction } from '$lib/server/cli-auth';
 import { cadenceAllowed, loadActivePlan, revisePlan } from '$lib/server/editorial-plan';
 import { activeGtmBrief } from '$lib/server/gtm';
-import { localeLanguageName } from '$lib/i18n/locale';
+import { OUTPUT_LANGUAGE } from '$lib/i18n/locale';
 import { plannerProfile, planEvidence } from '$lib/server/planner-inputs';
 
 export const POST: RequestHandler = async ({ request, params }) => {
@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ request, params }) => {
     const revised = await revisePlan(current, feedback, profile, {
       platforms: Array.isArray(brand.target_platforms) ? (brand.target_platforms as string[]) : [],
       allowedCadences: cadenceAllowed(brand.plan),
-      outputLanguage: localeLanguageName(null),
+      outputLanguage: OUTPUT_LANGUAGE,
       strategyBrief: [gtmBrief, evidence.strategyBrief].filter(Boolean).join('\n\n'),
       benchmark: evidence.benchmark,
       topPosts: evidence.topPosts,

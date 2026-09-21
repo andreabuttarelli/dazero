@@ -24,15 +24,6 @@ export type LoopName =
   | 'analytics_review'
   | 'autopilot'
   | 'weekly_recap'
-  | 'seo'
-  // La ricerca keyword è un lavoro a sé dal ripasso SEO: cadenze diverse (bisettimanale contro
-  // settimanale) e quindi cursori diversi, o l'una si mangerebbe il turno dell'altra.
-  | 'seo_keywords'
-  | 'geo'
-  | 'radar'
-  // Il recap giornaliero del radar è un lavoro a sé: la scansione e l'email hanno cadenze diverse
-  // e il cliente può volerne una senza l'altra.
-  | 'radar_recap'
   | 'market_refs'
   // La revisione della strategia: il ripasso del GTM e il rinnovo del piano editoriale sono lo
   // stesso mestiere a due granularità (rileggere il piano contro quello che è successo davvero),

@@ -1,6 +1,5 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import { canEnter } from '$lib/server/access';
 import { remaining } from '$lib/server/usage';
 import { generateManualCaptions, normalizePlatforms } from '$lib/server/manual-posting';
 import type { ContentPrefs } from '$lib/server/content-preview';
@@ -8,8 +7,6 @@ import type { ContentPrefs } from '$lib/server/content-preview';
 export const POST: RequestHandler = async ({ params, request, locals: { supabase, safeGetSession } }) => {
   const { session } = await safeGetSession();
   if (!session) return new Response('Unauthorized', { status: 401 });
-  if (!(await canEnter(supabase))) return new Response('Forbidden', { status: 403 });
-
   const { data: brand } = await supabase
     .from('brands')
     .select('id, name, plan, timezone, content_prefs')

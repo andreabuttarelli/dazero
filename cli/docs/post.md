@@ -5,7 +5,7 @@ Il comando `post` permette di gestire singoli post: modificare, approvare, pubbl
 ## Visualizzare un post
 
 ```bash
-anomalia post my-brand <post-id>
+dazero post my-brand <post-id>
 ```
 
 Mostra tutti i dettagli del post: platform, status, caption, pillar, format, slot, product.
@@ -15,43 +15,43 @@ Mostra tutti i dettagli del post: platform, status, caption, pillar, format, slo
 ### Caption
 
 ```bash
-anomalia post my-brand <post-id> edit --caption "Nuovo testo della caption"
+dazero post my-brand <post-id> edit --caption "Nuovo testo della caption"
 ```
 
 ### Prompt immagine
 
 ```bash
-anomalia post my-brand <post-id> edit --imagePrompt "Un caffè artigianale su sfondo chiaro"
+dazero post my-brand <post-id> edit --imagePrompt "Un caffè artigianale su sfondo chiaro"
 ```
 
 ### Piattaforme
 
 ```bash
-anomalia post my-brand <post-id> edit --platforms "instagram,facebook"
+dazero post my-brand <post-id> edit --platforms "instagram,facebook"
 ```
 
 ### Tipo contenuto
 
 ```bash
-anomalia post my-brand <post-id> edit --contentType carousel
+dazero post my-brand <post-id> edit --contentType carousel
 ```
 
 ### Data/ora
 
 ```bash
-anomalia post my-brand <post-id> edit --slot "2026-06-20T10:00"
+dazero post my-brand <post-id> edit --slot "2026-06-20T10:00"
 ```
 
 ### Prodotto associato
 
 ```bash
-anomalia post my-brand <post-id> edit --product "Pizza Margherita"
+dazero post my-brand <post-id> edit --product "Pizza Margherita"
 ```
 
 ### Modifiche multiple
 
 ```bash
-anomalia post my-brand <post-id> edit \
+dazero post my-brand <post-id> edit \
   --caption "Nuovo testo" \
   --platforms "instagram" \
   --slot "2026-06-20T10:00"
@@ -60,7 +60,7 @@ anomalia post my-brand <post-id> edit \
 ## Approvare un post
 
 ```bash
-anomalia post my-brand <post-id> approve
+dazero post my-brand <post-id> approve
 ```
 
 Approva il post e lo schedula per la pubblicazione tramite Zernio.
@@ -68,7 +68,7 @@ Approva il post e lo schedula per la pubblicazione tramite Zernio.
 ## Pubblicare immediatamente
 
 ```bash
-anomalia post my-brand <post-id> publish
+dazero post my-brand <post-id> publish
 ```
 
 Pubblica il post subito, indipendentemente dallo scheduling.
@@ -76,7 +76,7 @@ Pubblica il post subito, indipendentemente dallo scheduling.
 ## Riprogrammare
 
 ```bash
-anomalia post my-brand <post-id> reschedule --scheduledFor "2026-06-20T10:00"
+dazero post my-brand <post-id> reschedule --scheduledFor "2026-06-20T10:00"
 ```
 
 Cancella lo scheduling esistente e programma il post per la nuova data.
@@ -84,7 +84,7 @@ Cancella lo scheduling esistente e programma il post per la nuova data.
 ## Eliminare un post
 
 ```bash
-anomalia post my-brand <post-id> reject
+dazero post my-brand <post-id> reject
 ```
 
 Elimina il post. Funziona solo per post con status `pending_user`.
@@ -97,5 +97,5 @@ questi comandi.
 ## ID del post
 
 L'ID del post si ottiene da:
-- `anomalia content my-brand` — lista tutti i post con ID
+- `dazero content my-brand` — lista tutti i post con ID
 - Dashboard web — click su un post per vedere l'ID

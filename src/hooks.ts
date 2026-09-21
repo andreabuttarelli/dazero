@@ -2,7 +2,7 @@ import type { Reroute } from '@sveltejs/kit';
 import { building } from '$app/environment';
 import { env as publicEnv } from '$env/dynamic/public';
 
-// Multi-tenant blog hosting: any request arriving on a host that ISN'T the main Anomalia app (i.e. a
+// Multi-tenant blog hosting: any request arriving on a host that ISN'T the main dazero app (i.e. a
 // brand's own custom domain pointed here via CNAME) is served from the `_site` route group, which
 // resolves the brand by hostname and renders its published articles. The main app is untouched.
 const appHost = (() => { try { return new URL(publicEnv.PUBLIC_APP_URL).hostname; } catch { return ''; } })();

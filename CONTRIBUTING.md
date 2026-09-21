@@ -79,7 +79,7 @@ an email attached to your GitHub account — for maintainers of this repo that m
 key, token, database URL or customer data in code, in tests, in docs, or in a migration comment.
 If something leaked, see [`SECURITY.md`](./SECURITY.md) — don't fix it quietly in a public PR.
 
-**`packages/*` cannot import the app.** The five agent packages (`@anomalia/agent-{kit,contracts,core,adapters,client}`)
+**`packages/*` cannot import the app.** The five agent packages (`@dazero/agent-{kit,contracts,core,adapters,client}`)
 must never import `$lib/*` or `$env/*` — they don't exist outside SvelteKit. Real dependencies
 arrive as constructor deps, wired in exactly one file (`src/lib/agent/bridge/adapters.ts`).
 `packages/no-app-imports.test.ts` enforces this on every commit; each package has its own README.
@@ -97,5 +97,5 @@ SECURITY, the public changelog, package READMEs — is English.
 4. In the PR body, say what you ran and what you did not. "I didn't run the e2e suite" is a fine
    sentence; a silent gap is not.
 
-The `anomalia` CLI, its MCP server and the publishable agent skills live in [`cli/`](cli/) of this
+The `dazero` CLI, its MCP server and the publishable agent skills live in [`cli/`](cli/) of this
 same repository (Apache-2.0, released from `cli-v*` tags). CLI changes are PRs here like any other.
