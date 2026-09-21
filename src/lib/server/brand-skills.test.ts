@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { brandSkills, skillsForAgent } from './brand-skills';
 
 const WRITING = ['humanizer', 'stop-slop'];
@@ -109,11 +108,5 @@ describe('skillsForAgent — ogni agente ha le sue skill', () => {
 			const names = (await skillsForAgent(agentId as string | undefined)).map((s) => s.name).sort();
 			expect(names).toEqual(WRITING);
 		}
-	});
-
-	it('startHarnessTurn cucina le skill PER AGENTE dentro HarnessAgent', () => {
-		const src = readFileSync('src/lib/agent/bridge/adapters.ts', 'utf8');
-		expect(src).toMatch(/skillsForAgent\(opts\.agentId\)/);
-		expect(src).toMatch(/skills\.length > 0 \? \{ skills \} : \{\}/);
 	});
 });

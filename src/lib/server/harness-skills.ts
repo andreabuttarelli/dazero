@@ -1,6 +1,9 @@
 /**
- * LE SKILL DEL REPO NELL'AGENTE CHAT — lette da `.agents`/`.claude` sotto `skills/<nome>/SKILL.md`,
- * trasformate nel contratto `HarnessV1Skill` di `@ai-sdk/harness`.
+ * LE SKILL DEL REPO NELL'AGENTE CHAT — lette da `.agents`/`.claude` sotto `skills/<nome>/SKILL.md`.
+ *
+ * La forma `{ name, description, content }` era il contratto `HarnessV1Skill` di `@ai-sdk/harness`,
+ * che non è più una dipendenza: resta perché è quella che serve a chi le legge oggi — la rotta
+ * `writing-skills` — non per compatibilità con un pacchetto che non c'è più.
  *
  * DEFAULT OFF: le skill del repo sono scritte per gli agenti di codice, non per il brand. Un
  * turno di chat non ne vede nessuna a meno che `HARNESS_SKILLS` non lo chieda — una lista di nomi
