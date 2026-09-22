@@ -6,6 +6,7 @@ import { mcpLog } from './observability.ts';
 import { registerOrgDataTools } from './tools/org-data.ts';
 import { registerPostTools } from './tools/posts.ts';
 import { registerAdsTools } from './tools/ads.ts';
+import { registerNodeTools } from './tools/nodes.ts';
 
 /**
  * Il client la mostra da solo al handshake, una volta per sessione, PRIMA di ogni descrizione e
@@ -20,6 +21,7 @@ export const MCP_INSTRUCTIONS = [
   'dazero is an infinite canvas of typed nodes (media, social feeds, products, ads, generations), driven by a person, the in-app chat, or an agent here over MCP.',
   'Reads cost nothing and change nothing, and READING IS ONE TOOL: `query`. Projects, canvases, nodes, connections, assets, posts, ad campaigns, products, social accounts — every table, scoped to your org. Name `columns` or the answer comes back short; `offset` is the next page; `count: "exact"` when the number IS the answer; `embed` brings a related table along.',
   'Three generic writes reach every table: `insert_row`, `update_row`, `delete_row`. `describe_node_types` gives the JSON Schema `nodes.data` must match per `type` before you insert or update one.',
+  '`run_node_generation` is the canvas Generate button: it fills an existing node with text, image or video, never creates one. `medium` must match the node\'s type; a stale `version` comes back `conflict`, never a silent overwrite; a video comes back `queued`, not finished — the render lands later.',
   'A canvas node is raw material; a post (`list_posts`/`create_post`/`set_post_status`) is the promoted artifact ready to schedule. An ad campaign (`list_ad_campaigns`/`create_ad_campaign`/`approve_ad_campaign`) spends real money and always drafts unapproved — only a signed-in person can approve it, never an API key.',
   'A project has no brand until one is attached (`projects.brand_id` is nullable, and that is the normal case): open a canvas to explore, choose a brand only once something is ready to publish.',
   'Signing in is not a tool: over HTTP the host does the OAuth round and sends the Bearer; locally run `dazero login` once — the CLI and this server share one session file. No API keys required, though one works the same way.'
@@ -138,6 +140,7 @@ export function createdazeroMcpServer(): McpServer {
   registerOrgDataTools(server);
   registerPostTools(server);
   registerAdsTools(server);
+  registerNodeTools(server);
 
   return server;
 }

@@ -4,10 +4,11 @@ import { MCP_INSTRUCTIONS } from './server.ts';
 
 /**
  * IL LEDGER DEL RITIRO. La superficie MCP passa da decine di tool brand-scoped (piano editoriale,
- * studio, media, SEO/GEO, blog…) a undici org-scoped: `query` legge tutto, tre generici scrivono
+ * studio, media, SEO/GEO, blog…) a dodici org-scoped: `query` legge tutto, tre generici scrivono
  * qualunque riga (nodi della tela compresi — disegnare non è un'azione sul mondo),
- * `describe_node_types` dà la forma di `nodes.data`, e due famiglie autonome esistono per le due
- * cose che LO sono davvero — post che si promuovono e campagne che spendono soldi.
+ * `describe_node_types` dà la forma di `nodes.data`, `run_node_generation` è il click Generare
+ * della tela, e due famiglie autonome esistono per le due cose che LO sono davvero — post che si
+ * promuovono e campagne che spendono soldi.
  *
  * Ogni nome qui sotto esisteva su questa superficie ed è sparito. La rotta REST che lo serviva, se
  * esiste ancora, resta: la CLI e l'app la chiamano ancora. Quello che sparisce è SOLO la voce in
@@ -54,11 +55,12 @@ const RESTANO = [
   'set_post_status',
   'list_ad_campaigns',
   'create_ad_campaign',
-  'approve_ad_campaign'
+  'approve_ad_campaign',
+  'run_node_generation'
 ];
 
-describe('la superficie MCP è le undici dichiarate', () => {
-  test('tools/list è esattamente questi undici nomi', async () => {
+describe('la superficie MCP è le dodici dichiarate', () => {
+  test('tools/list è esattamente questi dodici nomi', async () => {
     const names = (await tools()).map((t) => t.name).sort();
 
     expect(names).toEqual([...RESTANO].sort());
