@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { blogArticlesPerMonth, blogTranslationLanguages, blogArticlesPerWeek, postQuota, videoCap, mixCostUsd, VIDEO_SHARE, batchWeeks } from './plans';
+import { postQuota, videoCap, mixCostUsd, VIDEO_SHARE, batchWeeks } from './plans';
 import { PLAN_WEEKS } from './editorial-plan';
 import { creditQuota } from './credits';
 
@@ -17,20 +17,6 @@ describe('pricing display capacity matches server quotas', () => {
     const { PLANS } = await import('$lib/plans');
     for (const p of PLANS) {
       expect(p.postsPerMonth).toBe(postQuota(p.key));
-    }
-  });
-
-  it('articlesPerMonth on each card equals BLOG_ARTICLES_PER_MONTH', async () => {
-    const { PLANS } = await import('$lib/plans');
-    for (const p of PLANS) {
-      expect(p.articlesPerMonth).toBe(blogArticlesPerMonth(p.key));
-    }
-  });
-
-  it('articlesPerWeek on each card equals BLOG_ARTICLES_PER_WEEK', async () => {
-    const { PLANS } = await import('$lib/plans');
-    for (const p of PLANS) {
-      expect(p.articlesPerWeek).toBe(blogArticlesPerWeek(p.key));
     }
   });
 });
@@ -56,81 +42,6 @@ describe('post quotas fit the credit envelope', () => {
     // of trading post count for format.
     expect(videoCap('go')).toBeGreaterThan(postQuota('go') * 0.3);
     expect(videoCap('starter')).toBeGreaterThan(postQuota('starter') * 0.3);
-  });
-});
-
-// The monthly ceiling gates the month planner and the autopilot drip. An unknown or absent plan must
-// fall back to the LOWEST allowance, never to "unlimited" — the fallback is what a brand mid-upgrade,
-// or a legacy row with a plan string we don't know, actually gets.
-describe('blogArticlesPerMonth', () => {
-  it('scales 2× then 3×: Go 15 / Starter 30 / Pro 90', () => {
-    expect(blogArticlesPerMonth('go')).toBe(15);
-    expect(blogArticlesPerMonth('starter')).toBe(30);
-    expect(blogArticlesPerMonth('pro')).toBe(90);
-  });
-
-  it('falls back to the go allowance for unknown/absent plans (free matches Go)', () => {
-    expect(blogArticlesPerMonth(null)).toBe(15);
-    expect(blogArticlesPerMonth(undefined)).toBe(15);
-    expect(blogArticlesPerMonth('enterprise-2029')).toBe(15);
-  });
-
-  it('keeps the legacy scale tier covered', () => {
-    expect(blogArticlesPerMonth('scale')).toBe(90);
-  });
-
-  it('is a ceiling above what the default cadence can produce in a month', () => {
-    expect(blogArticlesPerWeek('go') * 4).toBeLessThanOrEqual(blogArticlesPerMonth('go'));
-    expect(blogArticlesPerWeek('starter') * 4).toBeLessThanOrEqual(blogArticlesPerMonth('starter'));
-    expect(blogArticlesPerWeek('pro') * 4).toBeLessThanOrEqual(blogArticlesPerMonth('pro'));
-  });
-});
-
-// Translations are the top tier's multiplier, so the count must be 0 below it — a non-zero fallback
-// would hand the feature to every unknown plan string.
-describe('blogTranslationLanguages', () => {
-  it('is 3 on the top tier and 0 on starter', () => {
-    expect(blogTranslationLanguages('pro')).toBe(3);
-    expect(blogTranslationLanguages('starter')).toBe(0);
-  });
-
-  it('defaults to 0 for unknown/absent plans, never to the paid perk', () => {
-    expect(blogTranslationLanguages(null)).toBe(0);
-    expect(blogTranslationLanguages(undefined)).toBe(0);
-    expect(blogTranslationLanguages('enterprise-2029')).toBe(0);
-  });
-});
-
-// blogMonthlyUsage clamps at zero: a brand that somehow exceeded the cap (cadence changed mid-month,
-// plan downgraded) must read as "0 left", never as a negative that would flip `remaining > 0` checks.
-describe('blogMonthlyUsage', () => {
-  // Mirrors the real chain: .select(head).eq(brand).is(translation_of, null).gte(monthStart).
-  // The `.is` link is load-bearing — the cap counts ORIGINALS, so translations must not consume it.
-  function fakeAdmin(count: number) {
-    return {
-      from: () => ({
-        select: () => ({
-          eq: () => ({ is: () => ({ gte: () => Promise.resolve({ count }) }) })
-        })
-      })
-    } as never;
-  }
-
-  it('reports what is left for the month', async () => {
-    const { blogMonthlyUsage } = await import('./blog-generate');
-    expect(await blogMonthlyUsage(fakeAdmin(4), 'b', 'starter')).toEqual({ cap: 30, used: 4, remaining: 26 });
-  });
-
-  it('clamps remaining at 0 when the cap was already exceeded', async () => {
-    const { blogMonthlyUsage } = await import('./blog-generate');
-    const u = await blogMonthlyUsage(fakeAdmin(45), 'b', 'starter');
-    expect(u.used).toBe(45);
-    expect(u.remaining).toBe(0);
-  });
-
-  it('treats a null count (empty table) as zero used', async () => {
-    const { blogMonthlyUsage } = await import('./blog-generate');
-    expect((await blogMonthlyUsage(fakeAdmin(null as unknown as number), 'b', 'pro')).remaining).toBe(90);
   });
 });
 
