@@ -103,7 +103,7 @@ const iframeSchema = z
   });
 
 /** Gli stessi valori di `social_accounts_platform_check` — la stessa piattaforma, la stessa riga. */
-const SOCIAL_PLATFORMS = [
+export const SOCIAL_PLATFORMS = [
   'instagram',
   'facebook',
   'x',
