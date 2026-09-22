@@ -123,13 +123,10 @@ export type BrandDetail = {
   brand: BrandSummary;
   pendingCount: number;
   runs: { status: string; posts_created: number; created_at: string; error: string | null }[];
-  plan: { id: string; status: string; cadence: string; weeks: unknown[] } | null;
   productCount: number;
   accountCount: number;
   scheduledCount: number;
   publishedCount: number;
-  hasGtm: boolean;
-  hasContentPlans: boolean;
   hasHistory: boolean;
   kit: { about: string | null; brand_colors: unknown } | null;
   logoUrl: string | null;

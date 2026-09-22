@@ -68,6 +68,5 @@
 <ul>
   <li><a href={'/docs/getting-started'}>{$_('docs.intro.s36')}</a> {$_('docs.intro.s37')}</li>
   <li><a href={'/docs/brands'}>{$_('docs.intro.s38')}</a> {$_('docs.intro.s39')}</li>
-  <li><a href={'/docs/editorial-plan'}>{$_('docs.intro.s40')}</a> {$_('docs.intro.s41')}</li>
   <li><a href={'/docs/studio'}>{$_('docs.intro.s42')}</a> {$_('docs.intro.s43')}</li>
 </ul>

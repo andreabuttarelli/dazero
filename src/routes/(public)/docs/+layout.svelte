@@ -37,14 +37,12 @@
       { title: $_('docs.layout.s5'), href: '/docs/team-invites', icon: 'users' },
     ]},
     { label: $_('docs.layout.s6'), items: [
-      { title: $_('docs.layout.s7'), href: '/docs/editorial-plan', icon: 'calendar' },
       { title: $_('docs.layout.s8'), href: '/docs/studio', icon: 'palette' },
       { title: $_('docs.layout.s9'), href: '/docs/post-history', icon: 'clock' },
       { title: $_('docs.layout.s10'), href: '/docs/thematic-calendar', icon: 'calendar' },
     ]},
     { label: $_('docs.layout.s11'), items: [
       { title: $_('docs.layout.s12'), href: '/docs/research', icon: 'target' },
-      { title: $_('docs.layout.s13'), href: '/docs/gtm-strategy', icon: 'trending-up' },
       { title: $_('docs.layout.s14'), href: '/docs/brand-memory', icon: 'database' },
       { title: $_('docs.layout.s15'), href: '/docs/weekly-recap', icon: 'mail' },
     ]},
@@ -75,7 +73,6 @@
       { title: $_('docs.layout.s32'), href: '/docs/api/brands', icon: 'layers' },
       { title: $_('docs.layout.s33'), href: '/docs/api/posts', icon: 'file-text' },
       { title: $_('docs.layout.s35'), href: '/docs/api/studio', icon: 'palette' },
-      { title: $_('docs.layout.s36'), href: '/docs/api/strategy', icon: 'target' },
       { title: $_('docs.layout.s37'), href: '/docs/api/analytics', icon: 'bar-chart' },
       { title: $_('docs.layout.s38'), href: '/docs/api/products', icon: 'package' },
       { title: $_('docs.layout.s39'), href: '/docs/api/articles', icon: 'file-text' },

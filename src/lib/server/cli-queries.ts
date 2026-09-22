@@ -2,7 +2,6 @@
  * Shared query functions for CLI API endpoints.
  * These can also be reused by +page.server.ts files to avoid duplication.
  */
-import { swallow } from '$lib/server/swallow';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { redactJson } from '$lib/server/redact';
 
@@ -35,22 +34,16 @@ export async function getBrandsList(supabase: SupabaseClient, onlyIds: string[] 
 // ── Brand detail ────────────────────────────────────────────────────────
 
 export async function getBrandDetail(supabase: SupabaseClient, brandId: string) {
-  const [pendingRes, runsRes, planRes, productsRes, accountsRes, postsStatusRes, gtmRes, contentPlansRes, historyRes, kitRes] = await Promise.all([
+  const [pendingRes, runsRes, productsRes, accountsRes, postsStatusRes, historyRes, kitRes] = await Promise.all([
     supabase.from('posts').select('id', { count: 'exact', head: true })
       .eq('brand_id', brandId).eq('status', 'pending_user'),
     supabase.from('scheduler_runs').select('status, posts_created, created_at, error')
       .eq('brand_id', brandId).order('created_at', { ascending: false }).limit(3),
-    supabase.from('editorial_plans').select('id, status, cadence, weeks')
-      .eq('brand_id', brandId).eq('status', 'active').maybeSingle(),
     supabase.from('products').select('id', { count: 'exact', head: true })
       .eq('brand_id', brandId),
     supabase.from('social_accounts').select('id', { count: 'exact', head: true })
       .eq('brand_id', brandId),
     supabase.from('posts').select('status').eq('brand_id', brandId),
-    supabase.from('gtm_plans').select('id', { count: 'exact', head: true })
-      .eq('brand_id', brandId).eq('status', 'active'),
-    supabase.from('content_plans').select('id', { count: 'exact', head: true })
-      .eq('brand_id', brandId),
     supabase.from('social_post_history').select('id', { count: 'exact', head: true })
       .eq('brand_id', brandId),
     supabase.from('brand_kit').select('about, brand_colors, logos, favicon_url')
@@ -69,13 +62,10 @@ export async function getBrandDetail(supabase: SupabaseClient, brandId: string) 
   return {
     pendingCount: pendingRes.count ?? 0,
     runs: runsRes.data ?? [],
-    plan: planRes.data,
     productCount: productsRes.count ?? 0,
     accountCount: accountsRes.count ?? 0,
     scheduledCount: statusCounts.get('scheduled') ?? 0,
     publishedCount: statusCounts.get('published') ?? 0,
-    hasGtm: (gtmRes.count ?? 0) > 0,
-    hasContentPlans: (contentPlansRes.count ?? 0) > 0,
     hasHistory: (historyRes.count ?? 0) > 0,
     kit: kit ? { about: kit.about, brand_colors: kit.brand_colors } : null,
     logoUrl,
@@ -96,174 +86,6 @@ export async function getPosts(supabase: SupabaseClient, brandId: string, status
 
   const { data } = await query.order('created_at', { ascending: false }).limit(50);
   return data ?? [];
-}
-
-// ── Editorial plan ──────────────────────────────────────────────────────
-
-export async function getEditorialPlan(supabase: SupabaseClient, brandId: string) {
-  const [activeRes, proposedRes, usageRes] = await Promise.all([
-    supabase.from('editorial_plans')
-      .select('id, status, strategy, voice, cadence, platform_mix, gtm, weeks, parent_id, revision_feedback, changes_summary, source, created_at, activated_at')
-      .eq('brand_id', brandId).eq('status', 'active').maybeSingle(),
-    supabase.from('editorial_plans')
-      .select('id, status, strategy, voice, cadence, platform_mix, gtm, weeks, parent_id, revision_feedback, changes_summary, source, created_at, activated_at')
-      .eq('brand_id', brandId).eq('status', 'proposed')
-      .order('created_at', { ascending: false }).limit(1).maybeSingle(),
-    supabase.from('brand_usage').select('posts_count')
-      .eq('brand_id', brandId).order('month', { ascending: false }).limit(1),
-  ]);
-
-  const usage = usageRes.data?.[0];
-  const plan = activeRes.data;
-
-  // Compute current week index + posts quota (single brands fetch)
-  let currentWeek: number | null = null;
-  const { data: brandMeta } = await supabase.from('brands').select('timezone, plan').eq('id', brandId).maybeSingle();
-  if (plan?.weeks && brandMeta) {
-    try {
-      const { currentWeekIndex } = await import('$lib/server/editorial-plan');
-      currentWeek = currentWeekIndex(plan as any, brandMeta.timezone);
-    } catch (error) { swallow('compute current editorial week', error); }
-  }
-
-  const postsQuota = await import('$lib/server/plans').then((m) => m.postQuota(brandMeta?.plan));
-
-  return {
-    plan: activeRes.data,
-    proposed: proposedRes.data,
-    proposedFeedback: proposedRes.data?.revision_feedback ?? null,
-    currentWeek,
-    quota: {
-      used: usage?.posts_count ?? 0,
-      remaining: Math.max(postsQuota - (usage?.posts_count ?? 0), 0),
-    },
-  };
-}
-
-// ── Weekly plan ─────────────────────────────────────────────────────────
-
-export async function getWeeklyPlan(supabase: SupabaseClient, brandId: string, brandTimezone: string, brandPlan: string | null) {
-  const [planRes, contentPlansRes, postsRes, usageRes] = await Promise.all([
-    supabase.from('editorial_plans').select('status, cadence, weeks, platform_mix, strategy')
-      .eq('brand_id', brandId).eq('status', 'active').maybeSingle(),
-    supabase.from('content_plans').select('id, title, seeds, editorial_week, status, editorial_plan_id')
-      .eq('brand_id', brandId).order('created_at', { ascending: false }).limit(5),
-    supabase.from('posts').select('id, platform, platforms, caption, status, slot, scheduled_for, published_at, pillar, format, content_type, plan_id')
-      .eq('brand_id', brandId)
-      .in('status', ['pending_user', 'approved', 'scheduled', 'published', 'failed'])
-      .order('slot', { ascending: true, nullsFirst: false }).limit(50),
-    supabase.from('brand_usage').select('posts_count, videos_count')
-      .eq('brand_id', brandId).order('month', { ascending: false }).limit(1),
-  ]);
-
-  const plan = planRes.data;
-  const contentPlans = contentPlansRes.data ?? [];
-  const posts = postsRes.data ?? [];
-  const usage = usageRes.data?.[0];
-
-  let currentWeekIdx: number | null = null;
-  if (plan) {
-    try {
-      const { currentWeekIndex } = await import('$lib/server/editorial-plan');
-      currentWeekIdx = currentWeekIndex(plan as any, brandTimezone);
-    } catch (error) { swallow('compute current editorial week', error); }
-  }
-
-  const weeks = (plan?.weeks ?? []) as Record<string, unknown>[];
-  const activeContentPlan = contentPlans.find(cp => cp.status === 'draft');
-  const quotaMax = brandPlan === 'pro' ? 30 : 12;
-
-  return {
-    plan: plan ? {
-      cadence: plan.cadence,
-      weeks: weeks.map((w, i) => ({
-        index: i,
-        theme: String(w.theme ?? w.title ?? ''),
-        status: String(w.status ?? 'planned'),
-      })),
-      platform_mix: plan.platform_mix,
-      strategy: plan.strategy,
-    } : null,
-    currentWeekIdx,
-    posts: posts.map(p => ({
-      id: p.id,
-      platform: p.platform,
-      caption: p.caption,
-      status: p.status,
-      slot: p.slot,
-      scheduled_for: p.scheduled_for,
-      pillar: p.pillar,
-      format: p.format,
-    })),
-    seeds: activeContentPlan ? {
-      id: activeContentPlan.id,
-      seeds: activeContentPlan.seeds,
-      editorial_week: activeContentPlan.editorial_week,
-    } : null,
-    quota: {
-      used: usage?.posts_count ?? 0,
-      max: quotaMax,
-    },
-  };
-}
-
-// ── GTM ─────────────────────────────────────────────────────────────────
-
-export async function getGtm(supabase: SupabaseClient, brandId: string) {
-  const [activeRes, proposedRes] = await Promise.all([
-    supabase.from('gtm_plans')
-      .select('id, status, horizon, objective, phases, parent_id, revision_feedback, reply, changes_summary, source, created_at, activated_at')
-      .eq('brand_id', brandId).eq('status', 'active').maybeSingle(),
-    supabase.from('gtm_plans')
-      .select('id, status, horizon, objective, phases, parent_id, revision_feedback, reply, changes_summary, source, created_at, activated_at')
-      .eq('brand_id', brandId).eq('status', 'proposed')
-      .order('created_at', { ascending: false }).limit(1).maybeSingle(),
-  ]);
-
-  const now = new Date();
-  const gtm = activeRes.data;
-  const phases = (gtm?.phases ?? []) as Record<string, unknown>[];
-
-  // Compute phase statuses
-  const phaseStatuses = phases.map((ph) => {
-    const sd = ph.start_date ? new Date(ph.start_date as string) : null;
-    const ed = ph.end_date ? new Date(ph.end_date as string) : null;
-    if (ed && ed < now) return 'done' as const;
-    if (sd && sd <= now && (!ed || ed >= now)) return 'now' as const;
-    return 'next' as const;
-  });
-
-  const currentPhase = phaseStatuses.findIndex(s => s === 'now');
-
-  // Studio completeness
-  const [kitRes, prodRes, histRes, docsRes] = await Promise.all([
-    supabase.from('brand_kit').select('about, target_audience, logos, brand_colors, ai_character').eq('brand_id', brandId).maybeSingle(),
-    supabase.from('products').select('id', { count: 'exact', head: true }).eq('brand_id', brandId),
-    supabase.from('social_post_history').select('id', { count: 'exact', head: true }).eq('brand_id', brandId),
-    supabase.from('brand_documents').select('id', { count: 'exact', head: true }).eq('brand_id', brandId),
-  ]);
-  const kit = kitRes.data;
-  const checks = [
-    (prodRes.count ?? 0) > 0,
-    (histRes.count ?? 0) > 0,
-    !!kit?.ai_character,
-    !!kit?.about,
-    !!kit?.target_audience,
-    !!(kit?.logos as unknown[])?.length,
-    !!kit?.brand_colors,
-    (docsRes.count ?? 0) > 0,
-  ];
-  const studioPct = Math.round((checks.filter(Boolean).length / checks.length) * 100);
-
-  return {
-    gtm: activeRes.data,
-    proposed: proposedRes.data,
-    proposedFeedback: proposedRes.data?.revision_feedback ?? null,
-    currentPhase: currentPhase >= 0 ? currentPhase : null,
-    phaseStatuses,
-    horizons: ['90d', '6m', '1y', '2y'] as const,
-    studioPct,
-  };
 }
 
 // ── Analytics ───────────────────────────────────────────────────────────

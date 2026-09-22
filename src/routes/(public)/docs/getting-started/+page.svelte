@@ -47,7 +47,6 @@
 <h2>{$_('docs.getting_started.s18')}</h2>
 <ul>
   <li><a href={'/docs/credits'}>{$_('docs.getting_started.s25')}</a> {$_('docs.getting_started.s26')}</li>
-  <li><a href={'/docs/editorial-plan'}>{$_('docs.getting_started.s19')}</a> {$_('docs.getting_started.s20')}</li>
   <li><a href={'/docs/studio'}>{$_('docs.getting_started.s21')}</a> {$_('docs.getting_started.s22')}</li>
   <li><a href={'/docs/team-invites'}>{$_('docs.getting_started.s23')}</a> {$_('docs.getting_started.s24')}</li>
 </ul>

@@ -16,9 +16,8 @@ export async function cmdDashboard(slug: string) {
 
   // Pipeline
   const stages = [
-    { label: 'Ricerca', detail: 'Studio e brand kit', done: detail.hasGtm },
-    { label: 'Strategia', detail: 'GTM + piano editoriale', done: detail.hasGtm && !!detail.plan },
-    { label: 'Generazione', detail: 'Seeds e contenuti', done: !!detail.plan && (detail.hasContentPlans || detail.pendingCount > 0) },
+    { label: 'Ricerca', detail: 'Studio e brand kit', done: !!detail.kit?.about },
+    { label: 'Generazione', detail: 'Contenuti in coda', done: detail.pendingCount > 0 || detail.scheduledCount > 0 || detail.publishedCount > 0 },
     { label: 'Pubblicazione', detail: 'Scheduling e post', done: detail.scheduledCount > 0 || detail.publishedCount > 0 },
     { label: 'Analisi', detail: 'Metriche e ottimizzazione', done: detail.hasHistory },
   ];
@@ -42,10 +41,5 @@ export async function cmdDashboard(slug: string) {
     const runErr = detail.runs[0].status === 'failed' ? c.red(`  ✗ ${detail.runs[0].error ?? ''}`) : '';
     console.log(`  Ultimo run: ${formatDate(detail.runs[0].created_at)} — ${detail.runs[0].posts_created} post${runErr}`);
   }
-  if (detail.plan) {
-    const weekCount = Array.isArray(detail.plan.weeks) ? detail.plan.weeks.length : '?';
-    console.log(`  Piano editoriale: ${c.green('attivo')} · ${detail.plan.cadence ?? '—'} · ${weekCount} settimane`);
-  }
-
   console.log();
 }
