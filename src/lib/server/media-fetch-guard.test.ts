@@ -1,9 +1,9 @@
 /**
- * Le tre funzioni che scaricano un URL remoto e lo depositano: il logo del brand, l'archivio
- * immagini e l'archivio dei media di mercato. Il test è uno solo perché la guardia è una sola —
- * `safeFetchBytes` — e ciò che va dimostrato per ognuna è identico: un nome pubblico che risolve
- * su un indirizzo privato, un redirect che ci cammina dentro, un corpo oltre il tetto con e senza
- * content-length. Tre copie di questi helper sarebbero tre copie che divergono.
+ * Le due funzioni che scaricano un URL remoto e lo depositano: il logo del brand e l'archivio
+ * immagini. Il test è uno solo perché la guardia è una sola — `safeFetchBytes` — e ciò che va
+ * dimostrato per ognuna è identico: un nome pubblico che risolve su un indirizzo privato, un
+ * redirect che ci cammina dentro, un corpo oltre il tetto con e senza content-length. Due copie
+ * di questi helper sarebbero due copie che divergono.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -13,14 +13,12 @@ vi.mock('node:dns/promises', () => ({ lookup: vi.fn() }));
 
 import { lookup } from 'node:dns/promises';
 import { archiveImageToBucket } from './media-archive';
-import { archiveMarketMedia } from './market-media';
 import { storeBrandLogoFromUrl } from './studio-actions';
 
 const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
 
 const OVER_LOGO_CEILING = Buffer.alloc(4_500_000, 1);
 const OVER_ARCHIVE_CEILING = Buffer.alloc(5_500_000, 1);
-const OVER_MARKET_IMAGE_CEILING = Buffer.alloc(8_500_000, 1);
 
 const PUBLIC_ADDRESS = '93.184.216.34';
 const LITERAL_IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
@@ -122,15 +120,6 @@ function archiveImage(url: string) {
     path,
     ...supa
   }));
-}
-
-function archiveMarket(url: string) {
-  const supa = fakeSupabase();
-  return archiveMarketMedia(supa.client as never, {
-    platform: 'threads',
-    externalId: 'threads:abc',
-    url
-  }).then((result) => ({ result, ...supa }));
 }
 
 function storeLogo(url: string) {
@@ -303,81 +292,5 @@ describe('archiveImageToBucket', () => {
     expect(uploads).toEqual([]);
     // Il tetto è 5MB: venti pezzi bastano a superarlo, e il ventunesimo è quello che lo dimostra.
     expect(pulled.count).toBeLessThan(SERVED_CHUNKS / 2);
-  });
-});
-
-describe('archiveMarketMedia', () => {
-  it('archivia il video e ne riporta peso e tipo', async () => {
-    serves({ 'https://cdn.example.com/clip.mp4': { status: 200, type: 'video/mp4', body: PNG } });
-
-    const { result, uploads } = await archiveMarket('https://cdn.example.com/clip.mp4');
-
-    expect(result).toEqual({
-      ok: true,
-      media: { path: 'market/threads/threads_abc.mp4', bytes: PNG.byteLength, kind: 'video' }
-    });
-    expect(uploads).toHaveLength(1);
-  });
-
-  it('rifiuta un nome pubblico che il DNS risolve su un indirizzo privato', async () => {
-    resolvesTo({ 'cdn.example.com': '127.0.0.1' });
-    const { requested } = serves({});
-
-    const { result, uploads } = await archiveMarket('https://cdn.example.com/clip.mp4');
-
-    expect(result).toMatchObject({ ok: false, reason: 'blocked_host' });
-    expect(requested).toEqual([]);
-    expect(uploads).toEqual([]);
-  });
-
-  it('rifiuta un redirect che entra in una rete privata, senza seguirlo', async () => {
-    resolvesTo({ 'cdn.example.com': PUBLIC_ADDRESS, 'internal.example.com': '192.168.1.9' });
-    const { requested } = serves({
-      'https://cdn.example.com/clip.mp4': { status: 302, location: 'https://internal.example.com/secret' },
-      'https://internal.example.com/secret': { status: 200, type: 'video/mp4', body: PNG }
-    });
-
-    const { result, uploads } = await archiveMarket('https://cdn.example.com/clip.mp4');
-
-    expect(result).toMatchObject({ ok: false, reason: 'blocked_host' });
-    expect(requested).toEqual(['https://cdn.example.com/clip.mp4']);
-    expect(uploads).toEqual([]);
-  });
-
-  it('rifiuta un immagine oltre il suo tetto quando il content-length mente', async () => {
-    serves({
-      'https://cdn.example.com/big.jpg': {
-        status: 200,
-        type: 'image/jpeg',
-        length: '120',
-        body: OVER_MARKET_IMAGE_CEILING
-      }
-    });
-
-    const { result, uploads } = await archiveMarket('https://cdn.example.com/big.jpg');
-
-    expect(result).toMatchObject({ ok: false, reason: 'too_large' });
-    expect(uploads).toEqual([]);
-  });
-
-  it('rifiuta un immagine oltre il suo tetto anche quando il content-length manca', async () => {
-    serves({
-      'https://cdn.example.com/nolength.jpg': { status: 200, type: 'image/jpeg', body: OVER_MARKET_IMAGE_CEILING }
-    });
-
-    const { result, uploads } = await archiveMarket('https://cdn.example.com/nolength.jpg');
-
-    expect(result).toMatchObject({ ok: false, reason: 'too_large' });
-    expect(uploads).toEqual([]);
-  });
-
-  it('accetta ancora http: le CDN delle piattaforme servono ancora link in chiaro', async () => {
-    resolvesTo({ 'cdn.example.com': PUBLIC_ADDRESS });
-    serves({ 'http://cdn.example.com/clip.mp4': { status: 200, type: 'video/mp4', body: PNG } });
-
-    const { result, uploads } = await archiveMarket('http://cdn.example.com/clip.mp4');
-
-    expect(result).toMatchObject({ ok: true });
-    expect(uploads).toHaveLength(1);
   });
 });
