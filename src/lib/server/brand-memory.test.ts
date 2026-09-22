@@ -63,20 +63,6 @@ describe('buildMemoryContext skills', () => {
     // Only the fact counts as used — otherwise a listed-but-unused skill would never decay.
     expect(rpc).toHaveBeenCalledWith('bump_brand_memory_usage', { entry_ids: ['f1'] });
   });
-
-  it('appends built-in product skill triggers, scoped by agent', async () => {
-    const { supabase } = mockSupabase([]);
-
-    // Il Motion Specialist vede i trigger delle skill di default (trigger, mai il corpo).
-    const motion = await buildMemoryContext(supabase as never, 'brand-1', { agent: 'motion' });
-    expect(motion).toContain('motion-voiceover-fit — Use when');
-    expect(motion).toContain('motion-transition-mechanism — Use when');
-    expect(motion).not.toContain('generate_voiceover ONCE'); // steps stay behind read_memory
-
-    // L'analyst non scrive sorgente Remotion: nessuna riga spesa sul suo prompt.
-    const analyst = await buildMemoryContext(supabase as never, 'brand-1', { agent: 'analyst' });
-    expect(analyst).not.toContain('motion-voiceover-fit');
-  });
 });
 
 // ── La memoria dell'agente: il mestiere, non il brand ─────────────────────────

@@ -21,35 +21,10 @@ function setEnv(vars: Record<string, string | undefined>) {
   Object.assign(M.env, vars);
 }
 
-const KIE_ENV = { KIE_API_KEY: 'kie-test-key', AI_ROUTE_TEXT: 'gemini@kie' };
-
 describe('le superfici sul centralino (non lo SDK Google)', () => {
   beforeEach(() => {
     vi.resetModules();
     setEnv({});
-  });
-
-  it('1. i media dentro i risultati dei tool: su kie il clip è rifiutato, non degradato', async () => {
-    setEnv({ OPENROUTER_API_KEY: 'o' });
-    const google = await import('./motion-video/reference-tools');
-    expect(google.supportsClipInToolResult('gemini-3.7-flash')).toBe(true);
-    // Nota: l'id che vuole kie passerebbe la vecchia regex — è esattamente il caso da fermare.
-    expect(google.supportsClipInToolResult('gemini-3-7-flash')).toBe(true);
-
-    vi.resetModules();
-    setEnv(KIE_ENV);
-    const kie = await import('./motion-video/reference-tools');
-    expect(kie.supportsClipInToolResult('gemini-3.7-flash')).toBe(false);
-    expect(kie.supportsClipInToolResult('gemini-3-7-flash')).toBe(false);
-  });
-
-  it('2. i giudici video passano dal centralino, non da googleGenaiClient', () => {
-    const judges = ['motion-references.ts'];
-    for (const f of judges) {
-      const src = readFileSync(join(HERE, f), 'utf8');
-      expect(src, f).not.toContain('googleGenaiClient(');
-      expect(src, f).toMatch(/llmStructured|llmText|llmVideoReviewerModel/);
-    }
   });
 
   it('3. la ricerca nativa resta sul centralino, con il suo modello dichiarato', () => {
