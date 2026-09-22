@@ -1,4 +1,3 @@
-import { UGC_AD_SECONDS, UGC_ORGANIC_SECONDS } from '$lib/ugc-formats';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { videoModel } from '$lib/server/model-routing';
 import { OPENROUTER_UPSCALE_MODEL } from '$lib/video-models';
@@ -118,8 +117,8 @@ export const DEFAULT_VIDEO_DURATION = 13;
  *   other models, including the default Grok Imagine, fall back to the organic cap.
  *   The ad flag never picks the model: the selected/brand/default model runs the job.
  */
-export const UGC_ORGANIC_MAX_DURATION = UGC_ORGANIC_SECONDS;
-export const UGC_AD_DURATION = UGC_AD_SECONDS;
+export const UGC_ORGANIC_MAX_DURATION = 15;
+export const UGC_AD_DURATION = 22;
 /** @deprecated Prefer {@link UGC_ORGANIC_MAX_DURATION} — kept as alias for organic UGC. */
 export const UGC_MAX_DURATION = UGC_ORGANIC_MAX_DURATION;
 
