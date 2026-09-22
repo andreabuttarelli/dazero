@@ -20,11 +20,15 @@
    * riassume il brand no. Due puntini su quest'ultimo inviterebbero a un gesto che poi fallisce.
    */
   import { Handle, Position, type NodeProps } from '@xyflow/svelte';
+  import { CONNECTOR_LABEL, type ConnectorType } from '$lib/canvas/connectors';
 
   type TileData = {
     render?: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
     id: string;
     connectable?: boolean;
+    /** Le porte di QUESTO nodo, dal modello scelto (`connectorsFor`). Assente = un solo ingresso
+     *  generico — il caso di chi non ha ancora scelto un modello, o non produce affatto. */
+    connectors?: ConnectorType[];
   };
 
   // `selected` lo tiene SvelteFlow e lo passa a ogni nodo: è l'unico che sa davvero cosa è
@@ -36,7 +40,20 @@
 </script>
 
 {#if tile.connectable}
-  <Handle type="target" position={Position.Left} />
+  {#if tile.connectors?.length}
+    {#each tile.connectors as connector, i (connector)}
+      <Handle
+        type="target"
+        id={connector}
+        position={Position.Left}
+        style={`top:${((i + 1) / (tile.connectors.length + 1)) * 100}%`}
+        title={CONNECTOR_LABEL[connector]}
+        aria-label={CONNECTOR_LABEL[connector]}
+      />
+    {/each}
+  {:else}
+    <Handle type="target" position={Position.Left} />
+  {/if}
 {/if}
 
 {#if tile.render}
@@ -54,6 +71,7 @@
     width: 9px;
     height: 9px;
     border: 2px solid var(--paper, #fff);
+    border-radius: 0;
     background: var(--ink-soft, #6e6e73);
     opacity: 0;
     transition: opacity 120ms ease;
