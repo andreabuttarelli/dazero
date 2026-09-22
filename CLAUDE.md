@@ -95,32 +95,6 @@ mano: sono ciò che trasforma una colonna sbagliata in un errore di compilazione
   `loadBrandForUser`, and `gateAiAction` (paid plan + credits) for endpoints that spend AI
 - **Login callback** (`src/routes/cli/callback/`) — the page the browser login flow posts back to
 
-## Connectors (Composio)
-
-External apps are brokered by **Composio** (`COMPOSIO_API_KEY`), not by us: it holds the OAuth
-tokens and we store only the connected account id. Provider APIs are called through the Composio
-proxy (`composioProxy`), so no access token is ever read or logged in this repo.
-
-- **Client** `src/lib/server/composio.ts` — REST v3.1: toolkits, auth configs, Connect Links,
-  connected accounts, tools, proxy.
-- **Catalog + brand rows** `src/lib/server/composio-catalog.ts` (+ client-safe
-  `src/lib/composio-catalog.ts`) — `app_integration_registry` decides what brands see,
-  `brand_app_connections` mirrors Composio and is reconciled on read.
-- **Agent tools** `src/lib/server/composio-agent.ts` — backs the chat tools
-  `list_integrations_tools` / `call_integrations_tools`.
-- **Knowledge ingest** `src/lib/server/knowledge-sources.ts` + `knowledge-connectors/` — Drive,
-  Notion, GitHub, Gmail into `brand_documents`.
-- **Surfaces**: Settings → Connectors (browser), and `/api/v1/brands/:slug/connections*` for the
-  CLI and MCP (`dazero connections`). Docs: [`docs/api/09-connections.md`](docs/api/09-connections.md).
-- **Outbound webhooks** `brand-webhooks.ts` + `brand-triggers.ts` — Composio posts every trigger
-  event to one project URL (`/api/v1/composio/webhook`, `COMPOSIO_WEBHOOK_SECRET`); we fan out to
-  each brand's own endpoint with our signature, retries (`/api/v1/webhooks/work`, cron) and a
-  delivery log. Trigger instances are created and deleted from the brand's own state: an endpoint
-  plus a connected toolkit plus something selected to watch.
-
-Composio-managed auth means most toolkits need no OAuth app of ours; create a custom auth config
-in the Composio dashboard when a toolkit needs our branding, scopes or quota — the code prefers a
-custom config over the managed one automatically.
 
 ## How code is written here: clean architecture and Kent Beck's method (a rule, not a habit)
 
@@ -187,6 +161,21 @@ code:
   next case is added with a row and all of them are visible together. A rule written in five
   places diverges at the first change — and diverges silently.
 
+## Angoli quadrati, ovunque (una regola, non un'abitudine)
+
+**Nessun border radius.** Pagine, componenti, menu, nodi della tela, avatar, badge, pill: tutto a
+0px. La regola vive in un token, `--radius: 0rem` in `src/lib/styles/tailwind.css`, da cui
+derivano `--radius-sm/md/lg/xl`: niente classi `rounded-*`, niente `border-radius` scritti a
+mano, niente `rx`/`ry` sugli SVG.
+
+## L'app comanda, CLI e MCP si adattano (una regola, non un'abitudine)
+
+La direzione è una sola: **app → CLI → MCP.** Se una funzionalità esce dal prodotto, escono con
+lei gli endpoint che la servivano, i comandi CLI che li chiamavano e i tool MCP che li
+esponevano — nello stesso cambiamento.
+
+Che la CLI usi una cosa **non è un argomento per tenerla**: è l'argomento per aggiornare la CLI.
+
 ## Two changelogs, always both (a rule, not a habit)
 
 Every change a user can notice updates **two**, in the same commit. Both are **one file per
@@ -219,7 +208,12 @@ worktree. Con più worktree aperti — che qui è la norma, uno per task — uno
 essere riesumato in un altro e sostituire in silenzio i tuoi edit con quelli di un lavoro
 estraneo. È già successo, ed è costato lavoro perso: la storia sta in [`LESSONS.md`](LESSONS.md).
 
-Non c'è un caso in cui valga la pena: **un hook `PreToolUse` lo blocca prima che parta.** Per
+Non c'è un caso in cui valga la pena: **un hook `PreToolUse` lo blocca prima che parta**
+(`.claude/hooks/block-destructive-git.sh`, registrato in `.claude/settings.json`, casi in
+`.claude/hooks/cases.tsv`, verifica con `.claude/hooks/check.sh`). Blocca anche `reset --hard` e
+`clean -fd`; lascia passare `stash list` e `stash show`. Fino al 22/09/2026 questa sezione
+descriveva un hook che nel repo non esisteva: uno `stash -u` ha poi spazzato il lavoro non
+committato di otto agenti. Per
 sospendere delle modifiche ci sono tre strade, tutte più sicure e nessuna più lenta:
 
 - **committa sul branch del task** — è per questo che il branch esiste, e un commit di lavoro si
