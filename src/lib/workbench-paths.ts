@@ -16,7 +16,7 @@ export const HUB_TABS: Partial<Record<WorkbenchPageHub, { key: string; path: str
     { key: 'social', path: '/ads/social', adsOnly: true },
     { key: 'library', path: '/ads/library', adsOnly: true }
   ],
-  designer: [{ key: 'mediaLibrary', path: '/media' }]
+  designer: [{ key: 'mediaLibrary', path: '/assets' }]
 };
 
 // La nav del brand: la STRUTTURA pura (path + chiavi i18n), così workbench-paths.test.ts cammina
@@ -31,7 +31,8 @@ export type NavIconId =
   | 'palette'
   | 'send'
   | 'megaphone'
-  | 'library';
+  | 'library'
+  | 'building';
 
 export type NavTeamItem = {
   /** Path sotto /p/{projectId} (con lo slash iniziale, come HUB_TABS). Vuoto = la home del progetto. */
@@ -59,7 +60,8 @@ export const NAV_TEAM_SPACES: NavTeamItem[] = [
   // La home del progetto: `/p/<projectId>` rimanda al workbench, quindi sta fra gli `also` o la
   // voce si spegnerebbe appena atterrati.
   { path: '', labelKey: 'app.nav2.home', icon: 'home', also: ['/workbench'] },
-  { path: '/media', labelKey: 'app.nav2.materials', icon: 'images' },
+  { path: '/assets', labelKey: 'app.nav2.materials', icon: 'images' },
+  { path: '/brands', labelKey: 'app.nav2.brands', icon: 'building' },
   { path: '/calendar', labelKey: 'app.hub.publish.calendar', icon: 'calendar', badge: 'content' },
   { path: '/settings/brand', labelKey: 'app.hub.brand.identity', icon: 'palette' }
 ];

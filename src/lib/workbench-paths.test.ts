@@ -28,7 +28,7 @@ describe('la nav del brand', () => {
         { key: 'social', path: '/ads/social', adsOnly: true },
         { key: 'library', path: '/ads/library', adsOnly: true }
       ],
-      designer: [{ key: 'mediaLibrary', path: '/media' }]
+      designer: [{ key: 'mediaLibrary', path: '/assets' }]
     });
   });
 
@@ -49,7 +49,7 @@ describe('la nav del brand', () => {
       icons.add(t.icon);
     }
     // Un token per riga, non un indice: SPACE_ICONS[i] si slittava da solo a ogni voce aggiunta.
-    expect(icons.size).toBe(7);
+    expect(icons.size).toBe(8);
     // La home apre gli Spazi, ed è la sola voce senza segmento: `path` vuoto = `/p/<projectId>`.
     expect(NAV_TEAM_SPACES[0].path).toBe('');
     // Sanità: le liste non si sovrappongono (una pagina, una casa).
@@ -67,7 +67,8 @@ describe('la nav del brand', () => {
   it('gli Spazi sono le voci della sidebar, in ordine', () => {
     expect(NAV_TEAM_SPACES.map((t) => [t.path, t.labelKey])).toEqual([
       ['', 'app.nav2.home'],
-      ['/media', 'app.nav2.materials'],
+      ['/assets', 'app.nav2.materials'],
+      ['/brands', 'app.nav2.brands'],
       ['/calendar', 'app.hub.publish.calendar'],
       ['/settings/brand', 'app.hub.brand.identity']
     ]);

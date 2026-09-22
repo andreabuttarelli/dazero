@@ -15,6 +15,7 @@
   import Megaphone from '@lucide/svelte/icons/megaphone';
   import Library from '@lucide/svelte/icons/library';
   import Frame from '@lucide/svelte/icons/frame';
+  import Building from '@lucide/svelte/icons/building';
   import { NAV_SECTION, NAV_TEAM_SPACES, NAV_OFF_SIDEBAR, type NavIconId } from '$lib/workbench-paths';
   import { SHELL_LAYOUT, readSidebarPanePx, writeSidebarPanePx } from '$lib/shell-prefs';
   import { browser } from '$app/environment';
@@ -44,7 +45,8 @@
     palette: Palette,
     send: Send,
     megaphone: Megaphone,
-    library: Library
+    library: Library,
+    building: Building
   };
 
   function navTeamHref(teamPath: string) {
