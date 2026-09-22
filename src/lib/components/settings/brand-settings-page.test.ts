@@ -42,34 +42,19 @@ describe('le impostazioni del brand sono una pagina sola', () => {
   });
 
   /**
-   * Un rimando o un avviso che punta a una rotta cancellata è un 404 che non fallisce nessun
-   * test di import: il link è una stringa. Oggi ne sono stati trovati tre — due avvisi e tre
-   * rimandi legacy da `/studio/*`.
+   * Un avviso che punta a una rotta cancellata è un 404 che non fallisce nessun test di import:
+   * il link è una stringa. I rimandi legacy da `/studio/*` sono spariti insieme alle rotte —
+   * `dead-links.test.ts` tiene fermo che nessun link vivo punti a una rotta assente.
    */
-  it('non lascia link a rotte cancellate negli avvisi e nei rimandi legacy', () => {
-    const sources = [
-      read('../../warnings.ts'),
-      ...['hashtags', 'platforms', 'voice-examples'].map((s) =>
-        read(`../../../routes/p/[projectId]/studio/${s}/+page.server.ts`)
-      )
-    ];
+  it('non lascia link a rotte cancellate negli avvisi', () => {
+    const source = read('../../warnings.ts');
 
-    for (const source of sources) {
-      for (const section of MERGED) {
-        expect(source, `punta ancora a settings/${section}`).not.toContain(`/settings/${section}`);
-      }
+    for (const section of MERGED) {
+      expect(source, `punta ancora a settings/${section}`).not.toContain(`/settings/${section}`);
     }
   });
 
-  it('manda ogni rimando legacy all’ancora della sua sezione, non in cima alla pagina', () => {
-    for (const section of ['hashtags', 'platforms', 'voice-examples']) {
-      const source = read(`../../../routes/p/[projectId]/studio/${section}/+page.server.ts`);
-      // `?query` prima di `#hash`, o il fragment si porta dentro la query.
-      expect(source).toContain(`/settings/brand${'${qs ? `?${qs}` : \'\'}'}#${section}`);
-    }
-  });
-
-  it('ogni ancora usata dai rimandi è una sezione vera di StudioPage', () => {
+  it('ogni ancora usata da StudioPage è una sezione vera', () => {
     const studio = read('../studio/StudioPage.svelte');
 
     for (const section of ['brand', 'platforms', 'hashtags', 'voice-examples']) {
