@@ -35,7 +35,6 @@
     Bell,
     Plug2,
   } from '@lucide/svelte';
-  import { paletteOpen } from '$lib/shortcuts';
   import {
     brandWarnings,
     seenWarningIds,
