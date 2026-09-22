@@ -55,26 +55,27 @@ async function docContentFor(input: {
 }
 
 /**
- * REGISTRA UN FILE GIÀ CARICATO: un asset in libreria, e un nodo sulla tela nato pieno.
+ * VERIFICA E REGISTRA UN FILE GIÀ CARICATO COME ASSET — senza deciderne il destino sulla tela.
+ *
+ * `registerCanvasUpload` (sotto) aggiunge il nodo; la libreria degli asset del progetto
+ * (`/p/<id>/assets`) no — un file caricato lì entra in libreria e basta, non nasce anche come
+ * tile su una tela che non ha aperto. Isolare questa parte evita un secondo uploader che
+ * ridecide da capo formato, tetto e conversione in markdown, la stessa scrittura di
+ * `registerCanvasUpload` letta due volte finché una delle due non diverge.
  *
  * Il percorso è verificato — deve stare sotto `CANVAS_UPLOAD_PREFIX(orgId, projectId)`, o un
  * percorso forgiato potrebbe registrare il file di un'altra org come proprio. Il file resta nello
- * Storage anche se questa funzione fallisce PRIMA di scrivere l'asset: a differenza del vecchio
- * `uploadCanvasAsset`, qui il client l'ha già caricato per conto suo, e toglierlo su un errore che
- * magari è solo "il documento non si converte" butterebbe via un file che l'utente rivedrebbe
- * ricaricando la pagina — mostrare l'errore sul nodo (o niente nodo, per un fallimento prima della
- * riga) è la scelta onesta: il file resta raggiungibile dallo Storage per un nuovo tentativo.
+ * Storage anche se questa funzione fallisce PRIMA di scrivere l'asset: il client l'ha già
+ * caricato per conto suo, e toglierlo su un errore che magari è solo "il documento non si
+ * converte" butterebbe via un file che l'utente rivedrebbe ricaricando la pagina.
  */
-export async function registerCanvasUpload(db: Db, input: {
+export async function registerUploadedAsset(db: Db, input: {
   orgId: string;
   projectId: string;
-  canvasId: string;
   path: string;
   fileName: string;
   mimeType: string;
   bytes: number;
-  x: number;
-  y: number;
 }) {
   if (!input.path.startsWith(canvasUploadPrefix(input.orgId, input.projectId)) || input.path.includes('..')) {
     throw new UploadError(400, 'Percorso non valido');
@@ -106,14 +107,34 @@ export async function registerCanvasUpload(db: Db, input: {
     type: ASSET_TYPE_FOR_KIND[kind],
     source: 'upload',
     url: input.path,
+    content: docContent,
     mimeType: input.mimeType,
     bytes: input.bytes
   });
 
+  return { asset, kind };
+}
+
+/**
+ * REGISTRA UN FILE GIÀ CARICATO: un asset in libreria, e un nodo sulla tela nato pieno.
+ */
+export async function registerCanvasUpload(db: Db, input: {
+  orgId: string;
+  projectId: string;
+  canvasId: string;
+  path: string;
+  fileName: string;
+  mimeType: string;
+  bytes: number;
+  x: number;
+  y: number;
+}) {
+  const { asset, kind } = await registerUploadedAsset(db, input);
+
   try {
     const data =
       kind === 'document'
-        ? { content: docContent ?? '', public: false }
+        ? { content: asset.content ?? '', public: false }
         : { assetId: asset.id, url: `/p/${input.projectId}/c/${input.canvasId}/assets/${asset.id}`, name: input.fileName, mimeType: input.mimeType };
 
     const node = await createNode(db, {

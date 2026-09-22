@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Db } from '$lib/server/db/client';
-import { registerCanvasUpload, UploadError } from './upload';
+import { registerCanvasUpload, registerUploadedAsset, UploadError } from './upload';
 
 const scope = { orgId: 'org', projectId: 'project', canvasId: 'canvas', x: 10, y: 20 };
 const path = 'org/project/file.png';
@@ -103,5 +103,31 @@ describe('registrare un upload già in storage', () => {
       registerCanvasUpload(db, { ...scope, path: 'org/project/note.txt', fileName: 'note.txt', mimeType: 'text/plain', bytes: 20 })
     ).rejects.toBeInstanceOf(UploadError);
     expect(inserted).toEqual([]);
+  });
+});
+
+describe('registrare un asset senza nodo (la libreria del progetto, non una tela)', () => {
+  it('un\'immagine entra in libreria senza che nasca un nodo', async () => {
+    const { db, inserted } = storageDb();
+    const { asset, kind } = await registerUploadedAsset(db, {
+      orgId: scope.orgId, projectId: scope.projectId, path, fileName: 'foto.png', mimeType: 'image/png', bytes: 100
+    });
+
+    expect(asset.id).toBe('asset-1');
+    expect(kind).toBe('image');
+    expect(inserted[0]).toMatchObject({ type: 'image', source: 'upload', url: path });
+  });
+
+  it('un documento si converte in markdown e finisce in `asset.content`', async () => {
+    const { db } = storageDb({
+      download: async () => ({ data: new Blob(['contenuto del pdf']), error: null })
+    });
+
+    const { kind } = await registerUploadedAsset(db, {
+      orgId: scope.orgId, projectId: scope.projectId, path: 'org/project/note.txt',
+      fileName: 'note.txt', mimeType: 'text/plain', bytes: 20
+    });
+
+    expect(kind).toBe('document');
   });
 });
