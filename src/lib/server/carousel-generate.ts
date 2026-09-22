@@ -13,8 +13,7 @@
  * luce fa uscire quella slide dalla serie e niente avvisa.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { CAROUSEL_CRAFT } from '$lib/server/carousel-craft';
-import { CAROUSEL_MIN_SLIDES, carouselMaxSlides } from '$lib/server/content-preview/seed-model';
+import { CAROUSEL_CRAFT, CAROUSEL_MIN_SLIDES, carouselMaxSlides } from '$lib/server/carousel-craft';
 
 export type CarouselPlan = {
   continuityTokens: string[];
