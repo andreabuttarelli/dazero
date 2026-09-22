@@ -153,20 +153,7 @@ const ESCAPE_HATCH_PREFIXES = [
   '#'
 ];
 
-/**
- * VIA DI FUGA DICHIARATA PER FILE: questi due componenti non sono montati da nessuna rotta —
- * rimpiazzati da `DashboardSidebar` — quindi i loro link non sono mai cliccabili oggi. Restano
- * scritti male, ma non sono il difetto che questa prova cerca: un link morto dentro un
- * componente morto non apre un 404 a nessuno. Se uno di questi torna a essere montato, la riga
- * va tolta qui.
- */
-const ESCAPE_HATCH_FILES = [
-  'src/lib/components/BrandProjectSwitcher.svelte',
-];
-
-function isEscapeHatch(file: string, target: string): boolean {
-  const rel = file.slice(REPO_ROOT.length).replace(/^\//, '');
-  if (ESCAPE_HATCH_FILES.includes(rel)) return true;
+function isEscapeHatch(target: string): boolean {
   return ESCAPE_HATCH_PREFIXES.some((p) => target.startsWith(p));
 }
 
@@ -188,7 +175,7 @@ describe('nessun link interno punta a una rotta che non esiste', () => {
   });
 
   const dead = allHits
-    .filter((h) => !isEscapeHatch(h.file, h.target))
+    .filter((h) => !isEscapeHatch(h.target))
     .map((h) => ({ ...h, path: normalizeDynamicSegments(stripQueryAndHash(h.target)) }))
     .filter((h) => !isRealRoute(h.path))
     .map((h) => `${h.file.slice(REPO_ROOT.length)}:${h.line} -> ${h.target}`);

@@ -3,8 +3,10 @@
   // Il tenant nell'URL è il PROGETTO, non il brand — che resta una proprietà del progetto.
   import '$lib/styles/tailwind.css';
   import * as Sidebar from '$lib/components/ui/sidebar/index.js';
-  import DashboardSidebar, { type NavGroup } from '$lib/components/DashboardSidebar.svelte';
-  import type { SwitcherBrand } from '$lib/components/BrandProjectSwitcher.svelte';
+  import DashboardSidebar, {
+    type NavGroup,
+    type SwitcherBrand
+  } from '$lib/components/DashboardSidebar.svelte';
   import { page } from '$app/stores';
   import { _ } from 'svelte-i18n';
   import House from '@lucide/svelte/icons/house';

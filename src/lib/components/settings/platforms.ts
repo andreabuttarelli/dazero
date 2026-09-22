@@ -53,10 +53,8 @@ export const SETTINGS_BRAND_SECTIONS = [
 export const SETTINGS_ADS_SECTIONS = ['ads-accounts', 'ads'] as const;
 
 /**
- * La mappa delle impostazioni: STESSO ordine e stessi raggruppamenti della SettingsSidebar
- * vera (src/lib/components/SettingsSidebar.svelte). La leggono il rail del drawer mobile e
- * la palette ⌘K: una lista sola, o le tre divergono al primo cambio.
- * `flag` nasconde la voce quando la feature è spenta, esattamente come nella sidebar.
+ * La mappa delle impostazioni: l'inventario delle sezioni, nell'ordine dei loro raggruppamenti.
+ * `flag` nasconde la voce quando la feature è spenta.
  */
 export type SettingsNavEntry = {
   /** Sezione sotto /app/<slug>/settings/. */

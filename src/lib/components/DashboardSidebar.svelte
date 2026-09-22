@@ -42,8 +42,6 @@
     warningCenterOpen,
     warningCounts
   } from '$lib/warnings';
-  // Il componente non è più montato qui: resta l'import del tipo, dove SwitcherBrand è definito.
-  import { type SwitcherBrand } from '$lib/components/BrandProjectSwitcher.svelte';
   import AgentAvatarStack from '$lib/components/AgentAvatarStack.svelte';
   import AgentAvatar from '$lib/components/AgentAvatar.svelte';
   import { hoverFaceFor, restingFaceFor } from '$lib/agent-avatars';
@@ -94,6 +92,15 @@
     hasStrategy: boolean;
     hasEditorialPlan: boolean;
     blogEnabled: boolean;
+  };
+
+  export type SwitcherBrand = {
+    id: string;
+    name: string;
+    slug: string;
+    logoUrl: string | null;
+    /** Dove porta il clic. Manca → la home del brand (`/app/<slug>`). */
+    href?: string;
   };
 
   let {
@@ -154,7 +161,7 @@
       : ''
   );
   const sidebar = useSidebar();
-  /** Full-page map instead of the closed/open Sheet dance (matches SettingsSidebar). */
+  /** Full-page map instead of the closed/open Sheet dance. */
   const asMobileMap = $derived(sidebar.isMobile && forceOpenMobile);
   /** Overlay drawer (~85vw): slightly larger type/hit areas than desktop — keep proportional. */
   const mobile = $derived(sidebar.isMobile);

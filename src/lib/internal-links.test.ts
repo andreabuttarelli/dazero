@@ -39,12 +39,7 @@ const SCAN_DIRS = [
 const EXCLUDE_PATH_PARTS = [
   '/p/[projectId]/c/[canvasId]',
   '/components/canvas/',
-  '.test.ts',
-  // Leftover legacy-chat shell components: none is rendered by any route today (this branch is
-  // stripping that surface), so their `/app/<slug>/...` links reach no one to 404 for. Fixing
-  // dead code mid-strip would be work the deletion is about to throw away; deleting them here
-  // would be scope creep onto the branch doing that deletion. Declared, not silently skipped.
-  '/components/BrandProjectSwitcher.svelte'
+  '.test.ts'
 ];
 
 function walk(dir: string, out: string[] = []): string[] {
