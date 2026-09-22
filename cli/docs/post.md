@@ -89,10 +89,20 @@ dazero post my-brand <post-id> reject
 
 Elimina il post. Funziona solo per post con status `pending_user`.
 
+## Generare l'immagine mancante
+
+```bash
+dazero post my-brand <post-id> render
+```
+
+Disegna l'immagine dal prompt già scritto sul post. Un render, nessun controllo automatico:
+guarda il risultato prima di approvare.
+
 ## Uso con AI
 
-Le stesse operazioni si chiedono al proprio agente in linguaggio naturale: via MCP arriva a
-questi comandi.
+Questi comandi sono la fallback REST, brand-scoped. Un agente collegato via MCP lavora sui post
+con un tool set diverso e org-scoped — `list_posts`, `create_post`, `set_post_status` — non lo
+stesso percorso di questo comando: vedi [`skills/dazero/references/tools.md`](../skills/dazero/references/tools.md).
 
 ## ID del post
 

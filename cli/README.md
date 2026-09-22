@@ -1,25 +1,25 @@
-# dazero CLI — Social Media AI Automation CLI, MCP Server & Agent Skill
+# dazero CLI — infinite-canvas CLI, MCP Server & Agent Skill
 
-**Automate your social media from the terminal.** [dazero](https://dazero.co) is the social
-media AI autopilot that plans, writes, designs and publishes posts, blog articles and SEO/GEO
-audits on autopilot. This repository is its command-line client, [MCP server](docs/mcp.md)
-(Model Context Protocol — `stdio` + HTTP) and agent skill: everything you need to run social
-media automation, content generation and approval workflows from a terminal or an AI agent.
+[dazero](https://dazero.co) is an infinite canvas of typed nodes (text, image, video, doc,
+iframe, social feed, social post mockup, products, ads) for producing and publishing social
+content. This repository is its command-line client, [MCP server](docs/mcp.md) (Model Context
+Protocol — `stdio` + HTTP) and agent skill: everything you need to read and write the canvas,
+approve posts and manage ad campaigns from a terminal or an AI agent.
 
 This repository ships **three ways** to drive the same product (same OAuth, same API, **no static tokens**):
 
 | | What | Who it’s for |
 |---|------|----------------|
-| **CLI** | `dazero` terminal commands | Humans & scripts |
-| **MCP** | Model Context Protocol server (`stdio` + HTTP) | Cursor, Claude, other MCP hosts |
+| **CLI** | `dazero` terminal commands, brand-scoped | Humans & scripts |
+| **MCP** | Model Context Protocol server (`stdio` + HTTP), org-scoped | Cursor, Claude, other MCP hosts |
 | **Skill** | Agent Skill (`skills/dazero/`) | Coding agents / skills.sh / `npx skills` |
 
-> **You need an dazero account.** This is a client, not a standalone tool: every call talks to
+> **You need a dazero account.** This is a client, not a standalone tool: every call talks to
 > the dazero API over HTTPS. Without an account there is nothing to drive.
 
-With the dazero CLI you can automate social media posting, approve AI-generated content in one
-tap, edit a carousel slide by slide, turn a post into a video, run SEO and GEO audits, and manage
-your blog — from the terminal **or** from an AI agent like Cursor or Claude.
+With the dazero CLI you can browse brands, approve pending posts, edit a post's caption or media,
+re-render a missing image, manage ad campaigns and re-sync a connected store's product catalog —
+from the terminal **or** from an AI agent like Cursor or Claude talking to the MCP server.
 
 ```text
 ┌─────────────┐   ┌─────────────┐   ┌──────────────────┐
@@ -80,8 +80,7 @@ dazero brands
 dazero dashboard my-brand
 dazero content my-brand --status pending_user
 dazero approve my-brand --all
-dazero seo my-brand
-dazero web my-brand generate --topic "..."
+dazero calendar my-brand
 dazero ads my-brand --remix
 ```
 
@@ -91,13 +90,12 @@ prefixes error instead of guessing.
 
 | Area | Commands |
 |------|----------|
-| Posts | `content`, `approve`, `post <id> [show\|edit\|regenerate\|slide\|reorder\|video\|publish]` |
-| Planning | `plan`, `weekly-plan`, `calendar`, `gtm` |
-| Brand | `studio`, `voice`, `people`, `products` |
-| Web | `seo`, `geo`, `keywords`, `web` |
+| Posts | `content`, `approve`, `post <id> [show\|edit\|render\|approve\|publish\|reschedule\|reject]` |
+| Planning | `calendar` |
+| Brand | `products [sync]` |
 | Ads | `ads` — campaigns, spend, boost proposals, remix, duplicate/delete (`--sync`, `--propose`, `--remix`, `--create`, `--approve`, `--pause`, `--resume`, `--duplicate`, `--delete`, `--reject`, `--ad` per singola creatività) |
-| Insight | `dashboard`, `status`, `analytics` |
-| AI | `ai --message "..."` — natural language, full read/write access |
+| Insight | `dashboard`, `status`, `health` |
+| Account | `upgrade`, `update`, `login`, `logout` |
 
 Full command dump: [`llms.txt`](llms.txt) · more docs: [`docs/`](docs/)
 
@@ -152,7 +150,7 @@ If Connect fails with `Not an https or loopback URI: cursor://…`, your Cursor 
 using the custom-scheme OAuth callback — use **stdio** above, update Cursor (loopback
 `http://localhost:8787/callback`), or see [`docs/mcp.md`](docs/mcp.md#cursor--remote-http-oauth).
 
-- Local stdio: `login` tool or existing `dazero login` → `~/.config/dazero/session.json`
+- Local stdio: `dazero login` (no sign-in tool) → `~/.config/dazero/session.json`
   (script/CI alternative: `dazero login --email tu@email --password …` or `--password-stdin`, no browser)
 - Remote HTTP: `Authorization: Bearer <access_token>` (401 without it is expected)
 

@@ -1,6 +1,8 @@
 # dazero CLI
 
-CLI for managing dazero social media AI autopilot brands from the terminal.
+CLI for dazero — an infinite canvas of typed nodes (text, image, video, doc, iframe, social
+feed, social post mockup, products, ads) — from the terminal. Brand-scoped; MCP is the
+org-scoped, richer surface for agents (see docs/mcp.md and skills/dazero/references/tools.md).
 
 ## Installation
 
@@ -14,16 +16,14 @@ curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scr
 - `dazero brands` — List all brands
 - `dazero dashboard <slug>` — Full brand dashboard
 - `dazero status <slug>` — Detailed status
+- `dazero health` — Check Supabase / Gemini / Zernio API status
 
 ### Posts
 - `dazero content <slug> [--status <status>]` — List/filter posts (status: pending_user, approved, scheduled, published, failed)
+- `dazero content <slug> --clear <status>` — Bulk-delete posts with that status
 - `dazero approve <slug> [--all] [--dry]` — Approve pending posts
-- `dazero post <slug> <id>` — Show post: text, media, carousel slides
+- `dazero post <slug> <id>` — Show post: text, media, platforms
 - `dazero post <slug> <id> edit [--caption|--title|--link|--subreddit|--firstComment|--imagePrompt|--media|--format|--platforms|--platformCaption|--slot|--product]` — Edit fields (no render, no credits)
-- `dazero post <slug> <id> regenerate --instruction "warmer background"` — Refine a single image (bills one render)
-- `dazero post <slug> <id> slide --index 1 --instruction "..."` — Re-render ONE carousel slide (0 = cover)
-- `dazero post <slug> <id> reorder --order "0,2,1"` — Reorder/drop slides (no render)
-- `dazero post <slug> <id> video [--duration 6] [--script "..."] [--instruction "..."]` — Animate the cover into a clip; also retries a video that fell back to a photo
 - `dazero post <slug> <id> render` — Generate the missing image from the prompt
 - `dazero post <slug> <id> approve` — Approve single post
 - `dazero post <slug> <id> publish` — Publish immediately
@@ -32,62 +32,11 @@ curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scr
 
 Editing a SCHEDULED post re-syncs it to Zernio automatically, so what goes out is what you edited.
 
-### Editorial Plan
-- `dazero plan <slug>` — View active plan + proposals
-- `dazero plan <slug> propose` — Generate first editorial plan
-- `dazero plan <slug> revise --feedback "..."` — Request revision
-- `dazero plan <slug> approve` — Approve proposed plan
-- `dazero plan <slug> discard` — Discard proposed plan
-- `dazero plan <slug> save-brief --week 0 --brief "..."` — Save week brief
-- `dazero plan <slug> replan --week 0 --brief "..."` — Regenerate week
+### Calendar
+- `dazero calendar <slug> [--month YYYY-MM]` — Monthly scheduled posts
 
-### Weekly Plan
-- `dazero weekly-plan <slug> [--week N]` — View weekly plan + seeds
-- `dazero weekly-plan <slug> plan --week N` — Generate seeds for a week
-- `dazero weekly-plan <slug> produce --week N` — Produce seeds into posts
-
-### Strategy
-- `dazero gtm <slug>` — View GTM roadmap
-- `dazero voice <slug>` — View voice rules
-
-### Studio
-- `dazero studio <slug>` — View full studio
-- `dazero studio <slug> kit-update --about "..." [--category "..."] [--audience "..."]` — Update brand kit
-- `dazero studio <slug> colors --colors "#hex,#hex"` — Set brand colors
-- `dazero studio <slug> add-note --title "..." --text "..."` — Add knowledge note
-- `dazero studio <slug> delete-doc --id <uuid>` — Delete document
-- `dazero studio <slug> people-add --name "..." --consent [--role "..."]` — Add real person (`--consent` attests you have their consent; without it the API refuses)
-- `dazero studio <slug> people-generate --name "..." [--gender female] [--vibe professional]` — Generate AI person
-- `dazero studio <slug> people-delete --id <uuid>` — Delete person
-- `dazero studio <slug> add-competitor --name "..." [--website "..."]` — Add competitor
-- `dazero studio <slug> delete-competitor --id <uuid>` — Delete competitor
-- `dazero studio <slug> research` — AI competitor research
-- `dazero studio <slug> sync-history` — Sync social post history
-
-### SEO
-- `dazero seo <slug>` — Tech score, search performance, SEO grade + initiatives
-- `dazero seo <slug> run` — Run the technical audit (also refreshes the plan)
-- `dazero seo <slug> plan` — Generate the SEO growth plan
-- `dazero seo <slug> more [--guidance "..."]` — Append more initiatives
-- `dazero seo <slug> asset --id <initiativeId>` — Turn an initiative into a ready asset
-- `dazero seo <slug> article --id <initiativeId>` — Turn an initiative into a full article draft
-
-### GEO (AI visibility)
-- `dazero geo <slug>` — Share of voice, per-prompt citations, ready fixes
-- `dazero geo <slug> run` — Run the citation audit
-- `dazero geo <slug> fix` — Generate fix artifacts for the gaps found
-
-### Keywords
-- `dazero keywords <slug>` — Keyword strategy: volume, difficulty, opportunity, action
-- `dazero keywords <slug> refresh` — Regenerate the keyword research
-
-### Web / Blog
-- `dazero web <slug> [--status draft|scheduled|published|all]` — List articles (drafts included)
-- `dazero web <slug> generate --topic "..."` — Generate an article draft from a topic
-- `dazero web <slug> optimize --id <id>` — Rewrite for SEO score (meta title/description included)
-- `dazero web <slug> publish|unpublish|delete --id <id>` — Manage an article
-
-Note: `--id` accepts the short prefix printed in the tables.
+### Products
+- `dazero products <slug> [list|sync]` — List catalog, or re-import from the connected store (Shopify/Woo)
 
 ### Ads
 - `dazero ads <slug>` — Ad campaigns, spend, metrics + boost candidates
@@ -104,20 +53,18 @@ Note: `--id` accepts the short prefix printed in the tables.
 - `dazero ads <slug> --delete <id>` — Delete a campaign on the platform (history kept)
 - `dazero ads <slug> --reject <id>` — Reject a proposal
 
-### Analytics
-- `dazero analytics <slug>` — View analytics
-- `dazero calendar <slug> [--month YYYY-MM]` — View calendar
-
-### AI Chat
+### Account & billing
+- `dazero upgrade <slug>` — Open plan upgrade page
 
 ### System
+- `dazero login [--email --password | --password-stdin]` — Authenticate
+- `dazero logout` — Clear the local session
 - `dazero update` — Update CLI to latest version
-- `dazero upgrade <slug>` — Open plan upgrade page
-- `021 --help` — Show help
+- `dazero --help` — Show help
 
 ## Environment
 
-- `PUBLIC_APP_URL` — Backend URL (default: http://localhost:5173)
+- `PUBLIC_APP_URL` — Backend URL (default: http://localhost:5173, falls back to https://dazero.co)
 
 ## Auth
 
@@ -126,13 +73,17 @@ Run `dazero login` once to authenticate via browser, or non-interactively with `
 ## MCP
 
 MCP server in `mcp/` — stdio + Streamable HTTP. Same OAuth identity as the CLI (no static API tokens).
+Twelve tools, org-scoped: `query`, `insert_row`, `update_row`, `delete_row`, `describe_node_types`,
+`list_posts`, `create_post`, `set_post_status`, `list_ad_campaigns`, `create_ad_campaign`,
+`approve_ad_campaign`, `run_node_generation`.
 
 ```bash
 bun run mcp          # stdio
 bun run mcp:http     # http://localhost:8787/mcp
 ```
 
-Remote (Vercel / `mcp.dazero.co`): `Authorization: Bearer <access_token>`. Full map: `docs/mcp.md`.
+Remote (Vercel / `mcp.dazero.co`): `Authorization: Bearer <access_token>`. Full map: `docs/mcp.md`,
+`skills/dazero/references/tools.md`.
 
 ## Observability (Sentry + Supabase)
 
@@ -143,5 +94,6 @@ MCP HTTP logs/errors → Vercel stderr, optional Sentry (`SENTRY_DSN`), optional
 The CLI is a thin HTTP client. All operations go through `/api/v1/*` endpoints. No direct database access. No secrets embedded.
 
 ```
-CLI / MCP → HTTP → /api/v1/* → Supabase → Database
+CLI  → HTTP → /api/v1/brands/:slug/*  → Supabase → Database
+MCP  → HTTP → /api/v1/org/*           → Supabase → Database
 ```
