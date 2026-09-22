@@ -57,14 +57,19 @@ function toAsset(row: AssetColumns): Asset {
 
 export async function listProjectAssets(
   db: Db,
-  scope: { orgId: string; projectId: string }
+  scope: { orgId: string; projectId: string; source?: AssetSource }
 ): Promise<Asset[]> {
-  const { data, error } = await db
+  let query = db
     .from('assets')
     .select(ASSET_COLUMNS)
     .eq('org_id', scope.orgId)
-    .eq('project_id', scope.projectId)
-    .order('created_at', { ascending: false });
+    .eq('project_id', scope.projectId);
+
+  if (scope.source) {
+    query = query.eq('source', scope.source);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
     throw error;

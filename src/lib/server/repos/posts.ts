@@ -120,7 +120,7 @@ export async function promoteToPost(
       brand_id: input.brandId,
       title: input.title ?? null,
       caption: input.caption,
-      media: input.media as unknown as Database['public']['Tables']['posts']['Insert']['media'],
+      media: input.media,
       link_url: input.linkUrl ?? null,
       per_platform: (input.perPlatform ?? null) as Database['public']['Tables']['posts']['Insert']['per_platform'],
       actor_kind: input.actorKind ?? 'user',

@@ -297,10 +297,10 @@
     pending -= 1;
 
     if (!result) {
-      nodes = nodes.map((node) =>
-        node.id === id ? { ...node, data: { ...node.data, running: false, error: 'Generazione non riuscita' } } : node
-      );
-      failed = 'Generazione non riuscita';
+      // Il motivo VERO sta già scritto su `nodes.data` — `giveUp()` lo mette lì prima di
+      // tornare. Un messaggio fisso qui lo coprirebbe con un «non riuscita» che non dice niente
+      // di più di uno spinner che si ferma: `refresh()` lo riporta dal server, dove `GenNode` sa
+      // già mostrarlo (`node.error`).
       await refresh();
       return;
     }

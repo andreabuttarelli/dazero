@@ -19,6 +19,7 @@ import { emailLocale } from '$lib/server/email-i18n';
 import { OUTPUT_LANGUAGE } from '$lib/i18n/locale';
 import { jobPausedForBrand } from '$lib/server/job-roster';
 import { recordLoopTick } from '$lib/server/loop-ticks';
+import { appPathForBrand, joinAppPath } from '$lib/server/tenancy/brand-slug';
 
 // Weekly recap tick: runs every Monday morning (08:00 UTC) for all active brands.
 // Same auth pattern as the autopilot/tick endpoint.
@@ -33,7 +34,7 @@ function weekLabel(tz: string): string {
   return `${fmt.format(start)} – ${fmt.format(now)}`;
 }
 
-function toRecapData(recap: WeeklyRecap, tz: string): RecapData {
+function toRecapData(recap: WeeklyRecap, tz: string, appBasePath: string): RecapData {
   const appBase = (publicEnv.PUBLIC_APP_URL || '').replace(/\/$/, '');
   const eng = recap.totalEngagement;
   const prevEng = recap.prevEngagement;
@@ -48,15 +49,6 @@ function toRecapData(recap: WeeklyRecap, tz: string): RecapData {
     if (/^https?:\/\//i.test(url)) return url;
     return appBase ? `${appBase}${url.startsWith('/') ? url : `/${url}`}` : url;
   };
-
-  const growthFixes =
-    recap.growth && (!recap.growth.ready || recap.growth.warnings.length)
-      ? [...recap.growth.blocking, ...recap.growth.warnings].map((c) => ({
-          key: c.key,
-          blocking: c.blocking,
-          url: abs(c.fix)
-        }))
-      : [];
 
   return {
     brandName: recap.brandName,
@@ -82,19 +74,10 @@ function toRecapData(recap: WeeklyRecap, tz: string): RecapData {
     trends: recap.trends,
     suggestions: recap.suggestions.map((s) => ({ type: s.type, message: s.message })),
     actionItems: recap.actionItems.map((a) => ({ label: a.label, url: abs(a.url) })),
-    dashboardUrl: appBase ? `${appBase}/app/${recap.brandSlug}` : '',
+    dashboardUrl: abs(appBasePath) ?? '',
     connectedAccounts: recap.connectedAccounts,
     visualInsights: recap.visualInsights,
-    webKpis: recap.webKpis,
-    growth:
-      growthFixes.length > 0
-        ? {
-            ready: !!recap.growth?.ready,
-            blockingCount: recap.growth?.blocking.length ?? 0,
-            warningCount: recap.growth?.warnings.length ?? 0,
-            fixes: growthFixes
-          }
-        : null
+    webKpis: recap.webKpis
   };
 }
 
@@ -120,6 +103,9 @@ async function processBrand(admin: Awaited<ReturnType<typeof createAdminClient>>
   const ownerLocale = emailLocale(contacts[0].locale);
   const outputLanguage = OUTPUT_LANGUAGE;
 
+  // Resolved once per brand: every link either email below builds hangs off the same project.
+  const appBasePath = await appPathForBrand(admin, brand.id);
+
   // Calendar double-bookings: independent of the recap, so send it even if the recap gets skipped.
   // Weekly cadence is the dedup — the persistent in-app warning covers the urgent, real-time case.
   // ponytail: weekly is the ceiling; add a dedicated daily cron + a notified-at stamp if users need
@@ -132,7 +118,7 @@ async function processBrand(admin: Awaited<ReturnType<typeof createAdminClient>>
   const conflicts = countCalendarConflicts(livePosts ?? [], brand.timezone);
   if (conflicts > 0) {
     const appBase = (publicEnv.PUBLIC_APP_URL || '').replace(/\/$/, '');
-    const calendarUrl = appBase ? `${appBase}/app/${brand.slug}/calendar` : '';
+    const calendarUrl = appBase ? `${appBase}${joinAppPath(appBasePath, '/calendar')}` : '';
     const { notifyBrandContacts } = await import('$lib/server/brand-notify');
     await notifyBrandContacts(admin, contacts, {
       logPrefix: '[weekly-recap tick]',
@@ -151,7 +137,7 @@ async function processBrand(admin: Awaited<ReturnType<typeof createAdminClient>>
     return { slug: brand.slug, sent: false, skipped: true };
   }
 
-  const data = toRecapData(recap, brand.timezone);
+  const data = toRecapData(recap, brand.timezone, appBasePath);
 
   const { notifyBrandContacts } = await import('$lib/server/brand-notify');
   const sent = await notifyBrandContacts(admin, contacts, {

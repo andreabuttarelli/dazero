@@ -9,6 +9,9 @@ import {
   expireRun,
   failRun,
   listNodeRuns,
+  queuedVideoRuns,
+  releaseClaim,
+  retryClaim,
   setExternalJob,
   type NodeRun
 } from '$lib/server/repos/node-runs';
@@ -92,6 +95,23 @@ async function depositImage(db: Db, input: StartRun, media: { storage_path?: str
   });
 }
 
+async function depositVideo(
+  db: Db,
+  scope: { orgId: string; projectId: string; nodeId: string },
+  media: { url: string; durationSeconds: number | null }
+): Promise<Asset> {
+  return insertAsset(db, {
+    orgId: scope.orgId,
+    projectId: scope.projectId,
+    type: 'video',
+    source: 'generated',
+    url: media.url,
+    mimeType: 'video/mp4',
+    durationS: media.durationSeconds,
+    sourceNodeId: scope.nodeId
+  });
+}
+
 /**
  * Il giro compiuto entra in storia e prende la vetrina.
  *
@@ -128,26 +148,67 @@ async function land(db: Db, input: StartRun, version: number, run: NodeRun, asse
  * Un giro che non atterra deve COMUNQUE abbassare `running`. Senza, il nodo resta in corso per
  * sempre e il bottone resta spento: il difetto che non si può più riprovare. `refId` di prima si
  * conserva — il risultato vecchio non sparisce perché il nuovo è fallito.
+ *
+ * QUESTA SCRITTURA NON PUÒ ESSERE PERSA A UN CONFLITTO DI VERSIONE. `writeNodeData` con
+ * `expectedVersion` è la guardia giusta per il CONTENUTO — un secondo autore non deve sovrascrivere
+ * il primo senza saperlo — ma una chiusura di errore non è contenuto: è il solo fatto che rimette
+ * il nodo in condizione di essere riprovato. Un'altra scrittura arrivata nel mezzo (il trascinamento,
+ * un altro campo) alza la versione, la guardia rifiuta scrivendo zero righe, e senza un ritentativo
+ * quello zero passava per un successo silenzioso — il nodo restava `running:true` per sempre, il
+ * difetto che questo commento sostituisce. Il ritentativo rilegge la versione VERA e ci scrive
+ * sopra: un tetto di tentativi, non un ciclo infinito, perché un nodo cancellato nel mezzo non deve
+ * far girare questa funzione all'infinito.
  */
+const GIVE_UP_MAX_ATTEMPTS = 5;
+
+/**
+ * Riscrive `nodes.data` rileggendo la versione VERA a ogni conflitto, fino a un tetto di
+ * tentativi. Condivisa da `giveUp` (chiusura d'errore) e dal riconciliatore video (chiusura di
+ * successo arrivata da un cron, dove non c'è più una richiesta HTTP viva che possa riprovare da
+ * sola): in entrambi i casi un conflitto perso lascerebbe il nodo `running:true` per sempre.
+ */
+async function writeNodeDataRetrying(
+  db: Db,
+  input: { orgId: string; nodeId: string; actor?: Actor },
+  version: number,
+  patch: (prior: Record<string, unknown>) => Record<string, unknown>
+): Promise<boolean> {
+  let attemptVersion = version;
+  for (let attempt = 0; attempt < GIVE_UP_MAX_ATTEMPTS; attempt++) {
+    const prior = await findNode(db, { orgId: input.orgId, nodeId: input.nodeId }).catch(() => null);
+    if (!prior) {
+      return false;
+    }
+
+    const written = await writeNodeData(db, {
+      orgId: input.orgId,
+      nodeId: input.nodeId,
+      expectedVersion: attemptVersion,
+      actor: input.actor,
+      data: patch(prior.data as Record<string, unknown>)
+    }).catch(() => null);
+
+    if (written?.outcome === 'written') {
+      return true;
+    }
+
+    attemptVersion = prior.version;
+  }
+  return false;
+}
+
 async function giveUp(db: Db, input: StartRun, version: number, run: NodeRun, message: string): Promise<void> {
   await failRun(db, { orgId: input.orgId, runId: run.id, error: message }).catch(() => {});
 
-  const prior = await findNode(db, { orgId: input.orgId, nodeId: input.nodeId }).catch(() => null);
-  await writeNodeData(db, {
-    orgId: input.orgId,
-    nodeId: input.nodeId,
-    expectedVersion: version,
-    actor: input.actor,
-    data: {
-      ...(prior?.data ?? {}),
-      prompt: input.prompt,
-      model: input.model,
-      params: input.params,
-      running: false,
-      runId: run.id,
-      error: message
-    }
-  }).catch(() => {});
+  await writeNodeDataRetrying(db, input, version, (prior) => ({
+    ...prior,
+    prompt: input.prompt,
+    model: input.model,
+    params: input.params,
+    running: false,
+    runId: run.id,
+    error: message
+  }));
 }
 
 export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
@@ -166,12 +227,19 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
     actorId: input.actor?.id ?? input.userId
   });
 
+  const priorNode = await findNode(db, { orgId: input.orgId, nodeId: input.nodeId });
+
+  // `...priorNode.data` prima delle chiavi nuove: senza, il `refId` di un giro riuscito prima
+  // sparisce nell'istante in cui `running` si accende, e se il giro nuovo fallisce non c'è più un
+  // `prior` che lo riporti indietro — l'immagine buona è persa per un giro che non ha prodotto
+  // niente.
   const marked = await writeNodeData(db, {
     orgId: input.orgId,
     nodeId: input.nodeId,
     expectedVersion: input.expectedVersion,
     actor: input.actor,
     data: {
+      ...priorNode?.data,
       prompt: input.prompt,
       model: input.model,
       params: input.params,
@@ -185,12 +253,27 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
   }
   const version = marked.node.version;
 
+  // QUEL CHE LA TELA COLLEGA, DENTRO QUEL CHE SI MANDA AL MODELLO. Una lettura sola, prima dei tre
+  // rami: `upstream-inputs.ts` è pura logica testata da sé (`upstream-inputs.test.ts`), e questa è
+  // l'unica riga che la fa parlare col database di questo giro — vedi `upstream.ts`.
+  const { upstreamInputsFor } = await import('$lib/server/canvas/upstream');
+  const upstream = await upstreamInputsFor(db, {
+    orgId: input.orgId,
+    canvasId: input.canvasId,
+    nodeId: input.nodeId
+  });
+  const prompt = [...upstream.text, input.prompt].filter((t) => t.trim()).join('\n\n');
+
   try {
     if (input.medium === 'text') {
       const { llmText } = await import('$lib/server/llm');
-      const out = await llmText({ prompt: input.prompt, model: input.model ?? undefined, label: 'canvas.text' });
-      const asset = await depositText(db, input, out.text);
-      return land(db, input, version, run, asset);
+      const { withOrgContext, billedUsdInScope } = await import('$lib/server/ai-log');
+      const { text, costUsd } = await withOrgContext(input.orgId, async () => {
+        const result = await llmText({ prompt, model: input.model ?? undefined, label: 'canvas.text' });
+        return { text: result.text, costUsd: billedUsdInScope() ?? null };
+      });
+      const asset = await depositText(db, input, text);
+      return land(db, input, version, run, asset, costUsd);
     }
 
     if (input.medium === 'image') {
@@ -198,10 +281,14 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
       const out = await generateImagesWithoutBrand(db as never, {
         orgId: input.orgId,
         userId: input.userId,
-        prompt: input.prompt,
+        prompt,
         model: input.model ?? undefined,
         count: ONE_RENDER,
-        aspectRatio: input.params.aspectRatio as never
+        aspectRatio: input.params.aspectRatio as never,
+        // Un solo riferimento: `ImageJob.baseMediaId` è un campo, non una lista — anche quando il
+        // modello ne accetterebbe di più (`upstream.referenceImageUrls`, dal catalogo in
+        // `graph.ts`). Il tetto vero sta lì; qui si spedisce solo quel che il trasporto sa portare.
+        baseMediaId: upstream.referenceImageUrl ?? undefined
       });
       if (!out.ok) {
         const message = 'reason' in out && out.reason ? `${out.error}: ${out.reason}` : out.error;
@@ -218,17 +305,20 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
         await giveUp(db, input, version, run, message);
         return { kind: 'refused', error: message };
       }
-      return land(db, input, version, run, asset);
+      return land(db, input, version, run, asset, out.costUsd);
     }
 
     const { generateVideoWithoutBrand } = await import('$lib/server/media-generate');
     const out = await generateVideoWithoutBrand({
       orgId: input.orgId,
       userId: input.userId,
-      prompt: input.prompt,
+      prompt,
       model: input.model ?? undefined,
       aspectRatio: input.params.aspectRatio as never,
-      durationSeconds: input.params.duration
+      durationSeconds: input.params.duration,
+      baseMediaId: upstream.startFrameUrl ?? undefined,
+      lastFrameUrl: upstream.endFrameUrl ?? undefined,
+      referenceImageUrls: upstream.referenceImageUrls
     });
     if (!out.ok) {
       await giveUp(db, input, version, run, out.error);
@@ -242,6 +332,191 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
     await giveUp(db, input, version, run, message);
     return { kind: 'refused', error: message };
   }
+}
+
+/**
+ * RIPORTARE UN VIDEO IN CODA A `done`/`failed`: L'UNICA COSA CHE `runGenNode` NON FA DA SOLA.
+ *
+ * `runGenNode` per un video torna `queued` e ferma lì — il rendering vive dal fornitore, minuti
+ * dopo la richiesta HTTP che l'ha chiesto. `submitAndTrackVideoRender` (dentro
+ * `generateVideoWithoutBrand`) ha già scritto la STESSA sottomissione due volte: su `node_runs`
+ * (qui, come `external_job_id`) e su `video_renders` (`task_id`, con tutto quel che serve a
+ * finirla — risoluzione, opzioni di montaggio, quando è partita). Questa funzione non inventa un
+ * secondo trasporto: legge quella riga per il task id e riusa `finishVideoRender`, lo stesso
+ * motore che il riconciliatore dei brand usa già per `video_renders`.
+ *
+ *   node_runs(running, external_job_id) ──┐
+ *                                          ├─→ video_renders(task_id) ──→ finishVideoRender
+ *   depositVideo → assets ←────────────────┘                                    │
+ *          │                                                          pending/done/failed
+ *          └───────────────── writeNodeDataRetrying / giveUp ←────────────────┘
+ *
+ * IL CLAIM (`claimRun` → `finishing`) VIENE PRIMA DI TUTTO — stesso motivo di `video-render-queue.ts`:
+ * due tick sovrapposti non devono scaricare e fatturare la stessa clip due volte. Un «non è ancora
+ * pronta» rilascia il claim SENZA toccare `attempts` — quasi ogni claim è proprio questo, e
+ * contarlo trasformerebbe il tetto dei tentativi in una scadenza di pochi minuti, esattamente
+ * l'errore che il commento in cima a `video-render-queue.ts` documenta già.
+ */
+const VIDEO_RECONCILE_LIMIT = 20;
+const VIDEO_RUN_MAX_ATTEMPTS = 8;
+
+type VideoRenderLookup = {
+  id: string;
+  task_id: string;
+  model: string;
+  prompt: string | null;
+  duration_seconds: number | null;
+  resolution: string | null;
+  cover_url: string | null;
+  persist_opts: unknown;
+  submitted_at: string;
+};
+
+/**
+ * `video_renders` non è nello schema tipizzato di `Db` — vive nella parte del database che
+ * `finishVideoRender` interroga già passando un `SupabaseClient` non ristretto. Stesso confine
+ * qui: il cast dichiara che questa singola query esce dal narrowing, non lo aggira altrove.
+ */
+async function findVideoRenderRow(db: Db, taskId: string): Promise<VideoRenderLookup | null> {
+  const { data, error } = await (db as unknown as { from(table: string): any })
+    .from('video_renders')
+    .select('id, task_id, model, prompt, duration_seconds, resolution, cover_url, persist_opts, submitted_at')
+    .eq('task_id', taskId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  return (data as VideoRenderLookup | null) ?? null;
+}
+
+function toStartRunShape(run: NodeRun): StartRun {
+  return {
+    orgId: run.orgId,
+    projectId: '',
+    canvasId: '',
+    nodeId: run.nodeId,
+    userId: run.actorId ?? '',
+    medium: 'video',
+    prompt: run.prompt ?? '',
+    model: run.model,
+    params: (run.params ?? {}) as GenParams
+  } as StartRun;
+}
+
+export type VideoReconcileOutcome = { checked: number; done: number; failed: number; pending: number };
+
+export async function reconcileVideoNodeRuns(db: Db): Promise<VideoReconcileOutcome> {
+  const { rowToSubmitted } = await import('$lib/server/video-render-queue');
+  const { finishVideoRender } = await import('$lib/server/video');
+  const { withOrgContext, billedUsdInScope } = await import('$lib/server/ai-log');
+
+  const queued = await queuedVideoRuns(db, { limit: VIDEO_RECONCILE_LIMIT });
+
+  let checked = 0;
+  let done = 0;
+  let failed = 0;
+  let pending = 0;
+
+  for (const run of queued) {
+    if (!run.externalJobId) continue;
+
+    const claimed = await claimRun(db, { orgId: run.orgId, runId: run.id });
+    if (!claimed) continue;
+    checked += 1;
+
+    const node = await findNode(db, { orgId: run.orgId, nodeId: run.nodeId }).catch(() => null);
+    if (!node) {
+      // Il nodo non c'è più: chiudere comunque il giro, non c'è dato nessuno da svegliare.
+      await failRun(db, { orgId: run.orgId, runId: run.id, error: 'node_deleted' }).catch(() => {});
+      failed += 1;
+      continue;
+    }
+
+    const startRunShape: StartRun = { ...toStartRunShape(run), projectId: node.projectId, canvasId: node.canvasId };
+
+    try {
+      const row = await findVideoRenderRow(db, run.externalJobId);
+      if (!row) {
+        await giveUp(db, startRunShape, node.version, { ...run, status: 'finishing' }, 'video_render_row_missing');
+        failed += 1;
+        continue;
+      }
+
+      const submitted = rowToSubmitted({
+        id: row.id,
+        brand_id: null,
+        org_id: run.orgId,
+        user_id: startRunShape.userId,
+        post_id: null,
+        thread_id: null,
+        task_id: row.task_id,
+        model: row.model,
+        status: 'rendering',
+        duration_seconds: row.duration_seconds,
+        resolution: row.resolution,
+        cover_url: row.cover_url,
+        prompt: row.prompt,
+        persist_opts: row.persist_opts as never,
+        submitted_at: row.submitted_at,
+        attempts: run.attempts,
+        error: null
+      });
+
+      const outcome = await withOrgContext(run.orgId, () =>
+        finishVideoRender(db as never, startRunShape.userId, submitted)
+      );
+
+      if (outcome.status === 'pending') {
+        await releaseClaim(db, { orgId: run.orgId, runId: run.id });
+        pending += 1;
+        continue;
+      }
+
+      if (outcome.status === 'failed') {
+        const exhausted = run.attempts + 1 >= VIDEO_RUN_MAX_ATTEMPTS;
+        if (!exhausted) {
+          await retryClaim(db, { orgId: run.orgId, runId: run.id, attempts: run.attempts + 1, error: outcome.error });
+          pending += 1;
+          continue;
+        }
+        await giveUp(db, startRunShape, node.version, { ...run, status: 'finishing' }, outcome.error);
+        failed += 1;
+        continue;
+      }
+
+      const costUsd = billedUsdInScope() ?? null;
+      const asset = await depositVideo(
+        db,
+        { orgId: run.orgId, projectId: node.projectId, nodeId: run.nodeId },
+        { url: outcome.url, durationSeconds: outcome.durationSeconds }
+      );
+      await completeRun(db, { orgId: run.orgId, runId: run.id, assetId: asset.id, costUsd });
+      await writeNodeDataRetrying(db, startRunShape, node.version, (prior) => ({
+        ...prior,
+        prompt: startRunShape.prompt,
+        model: startRunShape.model,
+        params: startRunShape.params,
+        running: false,
+        runId: run.id,
+        refId: asset.id,
+        error: null
+      }));
+      done += 1;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'video_reconcile_failed';
+      const exhausted = run.attempts + 1 >= VIDEO_RUN_MAX_ATTEMPTS;
+      if (!exhausted) {
+        await retryClaim(db, { orgId: run.orgId, runId: run.id, attempts: run.attempts + 1, error: message }).catch(() => {});
+        pending += 1;
+        continue;
+      }
+      await giveUp(db, startRunShape, node.version, { ...run, status: 'finishing' }, message);
+      failed += 1;
+    }
+  }
+
+  return { checked, done, failed, pending };
 }
 
 export type RunWithText = NodeRun & { text: string | null };

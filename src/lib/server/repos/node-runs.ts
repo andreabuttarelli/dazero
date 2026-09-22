@@ -31,12 +31,14 @@ export type NodeRun = {
   externalJobId: string | null;
   costUsd: number | null;
   attempts: number;
+  /** Chi paga e autorizza il giro — su un video in coda è lo userId che serve a ritirare la clip. */
+  actorId: string | null;
   startedAt: string;
   finishedAt: string | null;
 };
 
 const RUN_COLUMNS =
-  'id, org_id, node_id, prompt, model, params, status, error, output_asset_id, external_job_id, cost_usd, attempts, started_at, finished_at';
+  'id, org_id, node_id, prompt, model, params, status, error, output_asset_id, external_job_id, cost_usd, attempts, actor_id, started_at, finished_at';
 
 type RunColumns = Pick<
   RunRow,
@@ -52,6 +54,7 @@ type RunColumns = Pick<
   | 'external_job_id'
   | 'cost_usd'
   | 'attempts'
+  | 'actor_id'
   | 'started_at'
   | 'finished_at'
 >;
@@ -70,6 +73,7 @@ function toRun(row: RunColumns): NodeRun {
     externalJobId: row.external_job_id,
     costUsd: row.cost_usd === null ? null : Number(row.cost_usd),
     attempts: Number(row.attempts ?? 0),
+    actorId: row.actor_id,
     startedAt: row.started_at,
     finishedAt: row.finished_at
   };
@@ -133,6 +137,67 @@ export async function claimRun(
     throw error;
   }
   return data ? toRun(data) : null;
+}
+
+/**
+ * Rende il giro a `running`, com'era prima del claim. Per un "è pronta?" che dice ancora no: il
+ * fornitore va richiesto al prossimo tick, senza contarlo come un tentativo fallito.
+ */
+export async function releaseClaim(
+  db: Db,
+  input: { orgId: string; runId: string }
+): Promise<void> {
+  const { error } = await db
+    .from('node_runs')
+    .update({ status: 'running', claimed_at: null })
+    .eq('id', input.runId)
+    .eq('org_id', input.orgId)
+    .eq('status', 'finishing');
+
+  if (error) {
+    throw error;
+  }
+}
+
+/**
+ * Rende il giro a `running` e conta il tentativo. Per un errore incerto — non il rifiuto letto dal
+ * fornitore, ma una riga che non si è lasciata scrivere — dove ririprovare ha senso ma non
+ * all'infinito: il chiamante confronta `attempts` col proprio tetto prima del prossimo tick.
+ */
+export async function retryClaim(
+  db: Db,
+  input: { orgId: string; runId: string; attempts: number; error: string }
+): Promise<void> {
+  const { error } = await db
+    .from('node_runs')
+    .update({ status: 'running', claimed_at: null, attempts: input.attempts, error: input.error })
+    .eq('id', input.runId)
+    .eq('org_id', input.orgId)
+    .eq('status', 'finishing');
+
+  if (error) {
+    throw error;
+  }
+}
+
+/**
+ * I giri video in coda: `running` con un `external_job_id` già scritto. Un giro sincrono (testo,
+ * immagine) non ha mai un external_job_id — lo abbandona subito a `done` o `failed` — quindi il
+ * filtro basta a distinguere i due mondi senza un `medium` sulla riga.
+ */
+export async function queuedVideoRuns(db: Db, input: { limit: number }): Promise<NodeRun[]> {
+  const { data, error } = await db
+    .from('node_runs')
+    .select(RUN_COLUMNS)
+    .eq('status', 'running')
+    .not('external_job_id', 'is', null)
+    .order('started_at', { ascending: true })
+    .limit(input.limit);
+
+  if (error) {
+    throw error;
+  }
+  return (data ?? []).map(toRun);
 }
 
 export async function completeRun(

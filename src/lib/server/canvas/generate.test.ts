@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fakeDb } from '$lib/server/db/fake-db';
+import type { Db } from '$lib/server/db/client';
 import { expireStuckRuns, runGenNode, RUN_STALE_MS } from './generate';
 
 const ORG = '11111111-1111-1111-1111-111111111111';
@@ -148,5 +149,244 @@ describe('una run rimasta running non ha altra via se non il timeout', () => {
     const result = await expireStuckRuns(db);
 
     expect(result).toMatchObject({ expired: 0 });
+  });
+});
+
+/**
+ * UNA TABELLA `nodes` CHE SI COMPORTA DAVVERO: la versione conta, e un UPDATE con la versione
+ * sbagliata torna zero righe — esattamente il vincolo ottimistico che `fakeDb` (statico) non può
+ * simulare, perché la stessa `updateRows` risponderebbe uguale a ogni chiamata.
+ */
+type StatefulNodesDb = { db: Db; bumpVersion: (data: Record<string, unknown>) => void; currentNode: () => { data: Record<string, unknown>; version: number } };
+
+function statefulNodesDb(initial: { id: string; orgId: string; data: Record<string, unknown>; version: number }): StatefulNodesDb {
+  const state = { data: { ...initial.data }, version: initial.version };
+  const runs: Array<{ id: string; status: string; error: string | null; cost_usd: number | null }> = [];
+  let runSeq = 0;
+
+  const nodeRow = () => ({
+    id: initial.id,
+    canvas_id: 'canvas',
+    project_id: 'project',
+    type: 'image',
+    display_name: null,
+    x: 0,
+    y: 0,
+    z: 0,
+    width: null,
+    height: null,
+    data: state.data,
+    version: state.version
+  });
+
+  const db = {
+    from(table: string) {
+      if (table === 'nodes') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                is: () => ({
+                  maybeSingle: async () => ({ data: nodeRow(), error: null }),
+                  // `upstreamInputsFor` chiama `listNodes`, che finisce con `.order(...)` e si
+                  // aspetta un array — questo nodo, senza archi in ingresso in questo scenario.
+                  order: () => Promise.resolve({ data: [nodeRow()], error: null })
+                })
+              })
+            })
+          }),
+          update: (patch: { data: Record<string, unknown>; version: number }) => ({
+            eq: () => ({
+              eq: () => ({
+                eq: (column: string, expectedVersion: number) => ({
+                  select: () => ({
+                    maybeSingle: async () => {
+                      if (column !== 'version' || expectedVersion !== state.version) {
+                        return { data: null, error: null };
+                      }
+                      state.data = patch.data;
+                      state.version = patch.version;
+                      return { data: nodeRow(), error: null };
+                    }
+                  })
+                })
+              })
+            })
+          })
+        };
+      }
+
+      if (table === 'node_runs') {
+        return {
+          insert: (payload: { status: string }) => ({
+            select: () => ({
+              single: async () => {
+                const id = `run-${++runSeq}`;
+                runs.push({ id, status: payload.status, error: null, cost_usd: null });
+                return {
+                  data: {
+                    id,
+                    org_id: initial.orgId,
+                    node_id: initial.id,
+                    prompt: 'p',
+                    model: 'm',
+                    params: {},
+                    status: payload.status,
+                    error: null,
+                    output_asset_id: null,
+                    external_job_id: null,
+                    cost_usd: null,
+                    attempts: 0,
+                    started_at: new Date().toISOString(),
+                    finished_at: null
+                  },
+                  error: null
+                };
+              }
+            })
+          }),
+          update: (patch: { status?: string; error?: string }) => ({
+            eq: (_col: string, runId: string) => ({
+              eq: () => {
+                const run = runs.find((r) => r.id === runId);
+                if (run) {
+                  Object.assign(run, patch);
+                }
+                return Promise.resolve({ data: null, error: null });
+              }
+            })
+          })
+        };
+      }
+
+      if (table === 'nodes_connections') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({ is: () => Promise.resolve({ data: [], error: null }) })
+            })
+          })
+        };
+      }
+
+      if (table === 'assets') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) })
+            })
+          })
+        };
+      }
+
+      throw new Error(`statefulNodesDb: unhandled table "${table}"`);
+    }
+  };
+  return {
+    db: db as unknown as Db,
+    // Simula la scrittura concorrente — il trascinamento, un altro pannello — che arriva DENTRO
+    // la finestra fra il click e il fallimento, e che `runGenNode` non può vedere: la versione
+    // che porta in mano è quella del click, già superata quando la generazione fallisce.
+    bumpVersion: (data: Record<string, unknown>) => {
+      state.data = data;
+      state.version += 1;
+    },
+    currentNode: () => ({ data: state.data, version: state.version })
+  };
+}
+
+/**
+ * LA CORSA CHE `giveUp()` PERDEVA IN SILENZIO.
+ *
+ * `runGenNode` legge la versione al click (1). Prima che la generazione fallisca, un'altra
+ * scrittura (il trascinamento, un altro pannello) alza la tela a versione 2. La chiusura
+ * dell'errore, scritta con la versione 1 che `runGenNode` porta ancora in mano, trova un conflitto
+ * — e SENZA un ritentativo quello zero-righe passava per un successo muto: `node_runs.status`
+ * diventava `failed` ma il nodo restava `running:true` per sempre, invisibile a chiunque non
+ * legga la tabella a mano.
+ */
+describe('un giro fallito non perde la sua chiusura a un conflitto di versione', () => {
+  beforeEach(() => {
+    generateImagesWithoutBrand.mockReset();
+  });
+
+  it('il nodo esce da running:true anche se la versione è cambiata nel frattempo', async () => {
+    const { db, bumpVersion, currentNode } = statefulNodesDb({ id: NODE, orgId: ORG, data: {}, version: 1 });
+
+    // La corsa vera: la scrittura concorrente arriva DOPO che `runGenNode` ha già segnato il nodo
+    // `running:true` (quindi già alla versione 2) e PRIMA che la generazione fallisca — proprio la
+    // finestra in cui `giveUp()` porta ancora in mano la versione del click.
+    generateImagesWithoutBrand.mockImplementation(async () => {
+      bumpVersion({ ...currentNode().data, note: 'a concurrent drag landed mid-generation' });
+      return { ok: false, error: 'render_failed' };
+    });
+
+    const result = await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'image',
+      prompt: 'this will fail',
+      model: 'openai/gpt-image',
+      params: {},
+      // La versione al click: 1. Nel frattempo il nodo è già a 2 — runGenNode non lo sa ancora,
+      // esattamente come nella corsa reale.
+      expectedVersion: 1
+    });
+
+    expect(result.kind).toBe('refused');
+
+    const data = currentNode().data as { running?: boolean; error?: string | null; note?: string };
+    expect(data.running).toBe(false);
+    expect(data.error).toBeTruthy();
+    expect(data.note).toBe('a concurrent drag landed mid-generation');
+  });
+});
+
+/**
+ * RIGENERARE NON DEVE SPEGNERE QUEL CHE C'È GIÀ, NEMMENO PER UN ISTANTE.
+ *
+ * `runGenNode` segna `running:true` scrivendo un `data` nuovo di zecca invece di partire da
+ * quello che il nodo aveva — e quel nodo aveva un `refId`, l'immagine di prima. La prima
+ * scrittura lo cancella subito, prima ancora di sapere se il nuovo giro riuscirà: se poi fallisce,
+ * `giveUp` parte da un `prior` che non lo ha già più, e l'immagine buona sparisce per un giro che
+ * non ha prodotto niente.
+ */
+describe('rigenerare un nodo che ha già un risultato non lo perde se il nuovo giro fallisce', () => {
+  beforeEach(() => {
+    generateImagesWithoutBrand.mockReset();
+  });
+
+  it('refId di prima sopravvive a un giro che fallisce', async () => {
+    const { db, currentNode } = statefulNodesDb({
+      id: NODE,
+      orgId: ORG,
+      data: { prompt: 'a cat', model: 'openai/gpt-image', params: {}, refId: 'asset-before', running: false, error: null },
+      version: 1
+    });
+
+    generateImagesWithoutBrand.mockResolvedValue({ ok: false, error: 'render_failed' });
+
+    const result = await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'image',
+      prompt: 'a dog now',
+      model: 'openai/gpt-image',
+      params: {},
+      expectedVersion: 1
+    });
+
+    expect(result.kind).toBe('refused');
+
+    const data = currentNode().data as { refId?: string; running?: boolean; error?: string | null };
+    expect(data.refId).toBe('asset-before');
+    expect(data.running).toBe(false);
+    expect(data.error).toBeTruthy();
   });
 });

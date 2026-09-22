@@ -17,20 +17,6 @@ export const POST: RequestHandler = async ({ request, params }) => {
   if (!draft_id) return json({ error: 'draft_id is required' }, { status: 400 });
 
   try {
-    const { loadGrowthReadiness, growthReadinessMessage } = await import('$lib/server/growth-readiness');
-    const growth = await loadGrowthReadiness(supabase, brand.id);
-    if (!growth.ready) {
-      return json(
-        {
-          error: 'growth_data_incomplete',
-          message: growthReadinessMessage(growth),
-          checks: growth.checks,
-          ready: false
-        },
-        { status: 422 }
-      );
-    }
-
     // Load the draft
     const { data: draft } = await supabase
       .from('content_plans').select('*')

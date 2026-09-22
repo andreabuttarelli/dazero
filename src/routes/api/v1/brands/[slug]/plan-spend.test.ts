@@ -65,7 +65,8 @@ const READ_ONLY_KEY: ApiKeyInfo = {
   id: 'key-1',
   name: 'read only',
   user_id: 'user-1',
-  permissions: { brand_ids: '*', scopes: ['read'] }
+  org_id: 'org-1',
+  scopes: ['read']
 };
 
 type Handler = (event: unknown) => Promise<Response>;

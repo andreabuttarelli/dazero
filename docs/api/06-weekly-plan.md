@@ -244,7 +244,6 @@ Trasforma i seed di una bozza in post reali (caption + prompt immagine via AI), 
 |---|---|
 | `402` | `{"error":"credits_exhausted"}` |
 | `400` | `{"error":"draft_id is required"}` |
-| `422` | `{"error":"growth_data_incomplete","message":"…","checks":[…],"ready":false}` |
 | `404` | `{"error":"Draft not found"}` |
 | `400` | `{"error":"No seeds to produce"}` |
 | `500` | `{"error":"Produce failed: <errore>"}` |

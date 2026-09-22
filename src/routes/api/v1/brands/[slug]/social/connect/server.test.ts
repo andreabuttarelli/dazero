@@ -22,7 +22,9 @@ function fakeSupabase(accounts: Row[]) {
   const projectQ = {
     select: () => projectQ,
     eq: () => projectQ,
-    maybeSingle: async () => ({ data: { id: 'project-1' } })
+    is: () => projectQ,
+    order: () => projectQ,
+    limit: async () => ({ data: [{ id: 'project-1' }] })
   };
   return {
     from: (table: string) => (table === 'projects' ? projectQ : socialQ)

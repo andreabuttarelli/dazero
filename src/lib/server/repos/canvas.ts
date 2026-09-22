@@ -1,5 +1,6 @@
 import type { Db } from '$lib/server/db/client';
 import type { Database } from '$lib/database.types';
+import type { NarrowedDatabase } from '$lib/server/db/typed-database';
 import { actorCols, edgeActorCols, type Actor } from './actor';
 
 /**
@@ -16,10 +17,11 @@ import { actorCols, edgeActorCols, type Actor } from './actor';
  *   A riscrive il prompt e B cambia il modello, l'ultimo che arriva butta via l'altro senza dirlo.
  *   Per questo `data` passa dalla versione attesa e zero righe è un conflitto, non un successo.
  */
-type Json = Database['public']['Tables']['nodes']['Row']['data'];
+type NodeInsert = NarrowedDatabase['public']['Tables']['nodes']['Insert'];
+type NodeUpdate = NarrowedDatabase['public']['Tables']['nodes']['Update'];
 
 type NodeColumns = Pick<
-  Database['public']['Tables']['nodes']['Row'],
+  NarrowedDatabase['public']['Tables']['nodes']['Row'],
   | 'id'
   | 'canvas_id'
   | 'project_id'
@@ -185,6 +187,31 @@ export async function listNodes(
   return (data ?? []).map(toNode);
 }
 
+/**
+ * DA UN ELENCO DI ID DI NODO AI NODI, SENZA CANVAS: la libreria media guarda tutto il progetto,
+ * non una tela sola, e `source_node_id` non porta con sé quale tela lo tiene.
+ */
+export async function listNodesByIds(
+  db: Db,
+  scope: { orgId: string; nodeIds: string[] }
+): Promise<CanvasNodeRecord[]> {
+  if (!scope.nodeIds.length) {
+    return [];
+  }
+
+  const { data, error } = await db
+    .from('nodes')
+    .select(NODE_COLUMNS)
+    .eq('org_id', scope.orgId)
+    .in('id', scope.nodeIds)
+    .is('deleted_at', null);
+
+  if (error) {
+    throw error;
+  }
+  return (data ?? []).map(toNode);
+}
+
 export async function findNode(
   db: Db,
   input: { orgId: string; nodeId: string }
@@ -217,21 +244,24 @@ export async function createNode(
     actor?: Actor;
   }
 ): Promise<CanvasNodeRecord> {
-  const { data, error } = await db
-    .from('nodes')
-    .insert({
-      org_id: input.orgId,
-      project_id: input.projectId,
-      canvas_id: input.canvasId,
-      type: input.type,
-      display_name: input.displayName ?? null,
-      x: input.x,
-      y: input.y,
-      data: (input.data ?? {}) as Json,
-      ...actorCols(input.actor)
-    })
-    .select(NODE_COLUMNS)
-    .single();
+  /**
+   * `type` e `data` arrivano qui SLEGATI — chi chiama non promette che siano la stessa coppia che
+   * `node-data.ts` accetterebbe, e questo repo non li valida: quella riga sta in `write-tool.ts`
+   * per l'MCP, non qui. Il cast dichiara l'onestà del confine, non una garanzia che non c'è.
+   */
+  const row: NodeInsert = {
+    org_id: input.orgId,
+    project_id: input.projectId,
+    canvas_id: input.canvasId,
+    type: input.type,
+    display_name: input.displayName ?? null,
+    x: input.x,
+    y: input.y,
+    data: input.data ?? {},
+    ...actorCols(input.actor)
+  } as NodeInsert;
+
+  const { data, error } = await db.from('nodes').insert<NodeInsert>(row).select(NODE_COLUMNS).single();
 
   if (error) {
     throw error;
@@ -293,14 +323,18 @@ export async function writeNodeData(
     actor?: Actor;
   }
 ): Promise<DataWrite> {
+  /** Stesso confine di `createNode`: `data` arriva senza `type` qui, quindi non può provare di
+   *  essere la forma giusta — chi valida la coppia è `write-tool.ts`, non questo repo. */
+  const patch: NodeUpdate = {
+    data: input.data,
+    version: input.expectedVersion + 1,
+    ...actorCols(input.actor),
+    updated_at: new Date().toISOString()
+  } as NodeUpdate;
+
   const { data, error } = await db
     .from('nodes')
-    .update({
-      data: input.data as Json,
-      version: input.expectedVersion + 1,
-      ...actorCols(input.actor),
-      updated_at: new Date().toISOString()
-    })
+    .update(patch)
     .eq('id', input.nodeId)
     .eq('org_id', input.orgId)
     .eq('version', input.expectedVersion)

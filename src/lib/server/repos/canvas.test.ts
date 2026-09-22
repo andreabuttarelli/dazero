@@ -4,6 +4,7 @@ import {
   createNode,
   deleteConnection,
   listNodes,
+  listNodesByIds,
   moveNode,
   writeNodeData
 } from '$lib/server/repos/canvas';
@@ -29,6 +30,10 @@ function fakeDb(rows: Record<string, unknown[]>) {
       },
       is(column: string, value: unknown) {
         call.filters.push([column, value]);
+        return chain;
+      },
+      in(column: string, values: unknown) {
+        call.filters.push([column, values]);
         return chain;
       },
       order() {
@@ -118,6 +123,25 @@ describe('la lettura non esce dall org', () => {
       data: { prompt: 'ciao' },
       version: 3
     });
+  });
+});
+
+describe('un asset risale al nodo che lo ha generato', () => {
+  it('scopa la ricerca per org e per l elenco di id', async () => {
+    const { db, calls } = fakeDb({ nodes: [nodeRow] });
+
+    await listNodesByIds(db, { orgId: ORG, nodeIds: [NODE] });
+
+    expect(filtersOf(calls, 'select')).toMatchObject({ org_id: ORG, id: [NODE] });
+  });
+
+  it('un elenco vuoto non interroga il database', async () => {
+    const { db, calls } = fakeDb({ nodes: [nodeRow] });
+
+    const found = await listNodesByIds(db, { orgId: ORG, nodeIds: [] });
+
+    expect(found).toEqual([]);
+    expect(calls).toEqual([]);
   });
 });
 

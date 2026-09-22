@@ -124,6 +124,22 @@ describe('quanti ingressi accetta un nodo, e dipende dal modello', () => {
     expect(out.accepted).toHaveLength(1);
     expect(out.rejected).toHaveLength(1);
   });
+
+  it("un'immagine di riferimento entra: senza modello noto, una sola", () => {
+    const out = acceptedInputs(node('i', 'image'), [node('r1', 'image'), node('r2', 'image')]);
+
+    expect(out.accepted).toHaveLength(1);
+    expect(out.rejected).toHaveLength(1);
+  });
+
+  it("con un modello che ne regge di più, entrano tutte fino al suo tetto", () => {
+    const refs = Array.from({ length: 5 }, (_, i) => node(`r${i}`, 'image'));
+
+    const out = acceptedInputs(node('i', 'image', { model: 'qwen3-pro' }), refs);
+
+    expect(out.accepted).toHaveLength(3); // maxRefs di qwen3-pro
+    expect(out.rejected).toHaveLength(2);
+  });
 });
 
 describe('una pagina incorporata è una sorgente, come un documento', () => {

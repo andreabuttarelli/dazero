@@ -61,6 +61,16 @@ export type GenerateMediaOpts = {
   baseMediaId?: string;
   /** Secondi. Assente → la preferenza del brand. */
   durationSeconds?: number;
+  /**
+   * Il fotogramma FINALE — richiede `baseMediaId` come iniziale, e vale solo sulla famiglia
+   * Seedance (`RenderVideoOpts.lastFrameUrl`): un modello senza riferimenti multimodali lo ignora,
+   * lo stesso posto che decide quanti ne prende (`videoRefCapacity`, `video-models.ts`).
+   */
+  lastFrameUrl?: string;
+  /** Riferimenti multimodali OLTRE al fotogramma iniziale. URL pubblici già firmati: questo
+   *  percorso senza brand non ha una libreria da cui risolverli per id. */
+  referenceImageUrls?: string[];
+  referenceAudioUrls?: string[];
 };
 
 export type GenerateMediaResult =
@@ -527,7 +537,7 @@ export async function generateBrandImages(
  */
 export async function generateImagesWithoutBrand(
   supabase: SupabaseClient,
-  job: Omit<ImageJob, 'baseMediaId' | 'brandId' | 'title'> & { orgId: string }
+  job: Omit<ImageJob, 'brandId' | 'title'> & { orgId: string }
 ): Promise<ImageJobResult> {
   const { withOrgContext } = await import('$lib/server/ai-log');
 
@@ -923,6 +933,11 @@ async function startVideo(opts: GenerateMediaOpts): Promise<VideoJobResult> {
       // Con una copertina il modello parte da quei pixel: soggetto, scena e stile sono gia' li',
       // e il prompt dirige il MOVIMENTO.
       imageUrl: coverUrl,
+      // Un fotogramma finale senza quello iniziale non ha un percorso da chiudere: si ignora
+      // invece di mandarlo al provider, che lo scarterebbe comunque (`RenderVideoOpts.lastFrameUrl`).
+      lastFrameUrl: coverUrl ? opts.lastFrameUrl : undefined,
+      referenceImageUrls: opts.referenceImageUrls,
+      referenceAudioUrls: opts.referenceAudioUrls,
       duration: opts.durationSeconds ?? (prefs.videoDuration as number | undefined),
       visualStyle,
       instructions: prefs.videoInstructions as string | null | undefined,

@@ -128,6 +128,10 @@
       "schedule": "0 */6 * * *"
     },
     {
+      "path": "/api/v1/ai-models/sync",
+      "schedule": "0 */6 * * *"
+    },
+    {
       "path": "/api/v1/onboarding/steps/work",
       "schedule": "*/2 * * * *"
     },

@@ -22,12 +22,10 @@ describe('verdictBetween — il verdetto che si dà mentre il puntatore è in ar
     expect(verdictBetween(at, 't', 'i')).toEqual({ ok: true });
   });
 
-  it("un'immagine verso un nodo immagine si rifiuta, e dice perché", () => {
+  it("un'immagine verso un nodo immagine passa: è il riferimento", () => {
     const at = lookup({ i: image, i2: { ...image, id: 'i2' } });
-    const verdict = verdictBetween(at, 'i', 'i2');
 
-    expect(verdict.ok).toBe(false);
-    expect(verdict.ok === false && verdict.why).toContain('immagine');
+    expect(verdictBetween(at, 'i', 'i2')).toEqual({ ok: true });
   });
 
   it('un arco verso una sorgente si rifiuta: una pagina incorporata non si genera', () => {
@@ -71,9 +69,9 @@ describe('edgeKindsFor — quali versi ha senso proporre', () => {
    * l'unico verso possibile quando l'arco «che produce» non ha senso.
    */
   it('su una coppia che non si alimenta resta solo lo stare insieme', () => {
-    const at = lookup({ i: image, i2: { ...image, id: 'i2' } });
+    const at = lookup({ v: video, i: image });
 
-    expect(edgeKindsFor(at, 'i', 'i2')).toEqual(['groups_with']);
+    expect(edgeKindsFor(at, 'v', 'i')).toEqual(['groups_with']);
   });
 
   it('il verso proposto per primo è quello che si salva senza chiedere niente', () => {

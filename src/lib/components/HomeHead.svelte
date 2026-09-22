@@ -45,7 +45,6 @@
     return out.slice(0, STRIP_MAX);
   });
 
-  const blocking = $derived(overview.growth?.blocking?.length ?? 0);
   const views = $derived(overview.analysis?.views7d ?? 0);
 
   const compact = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n));
@@ -122,14 +121,6 @@
     <div><b>{overview.queue.scheduled}</b><span>{$_(`${TK}.figScheduled`)}</span></div>
     <div><b>{compact(views)}</b><span>{$_(`${TK}.figViews`)}</span></div>
   </div>
-
-  {#if blocking > 0}
-    <a class="hh-fix" href={`${base}/studio`}>
-      <span class="hh-fix-n">{blocking}</span>
-      <span>{$_(`${TK}.fixPill`)}</span>
-      <span class="hh-fix-x">{$_(`${TK}.fixTail`)}</span>
-    </a>
-  {/if}
 </section>
 
 <style>
@@ -214,20 +205,6 @@
   }
   .hh-figs span { font-size: 11.5px; color: var(--ink-faint); }
 
-  /* I controlli non spariscono: scendono al rango che hanno. Una riga, non otto con otto bottoni. */
-  .hh-fix {
-    display: inline-flex; align-items: center; gap: 9px; align-self: flex-start;
-    padding: 7px 14px 7px 7px; border-radius: 999px;
-    background: rgba(245, 158, 11, 0.1); color: var(--ink);
-    font-size: 12.5px; text-decoration: none;
-  }
-  .hh-fix:hover { background: rgba(245, 158, 11, 0.16); }
-  .hh-fix-n {
-    display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
-    background: #f59e0b; color: #3b2600; font-size: 11.5px; font-weight: 700;
-  }
-  .hh-fix-x { color: var(--ink-faint); }
-
   /* `@container`, non `@media`: la home vive dentro il contenitore `workbench` dichiarato dal
      layout del brand, e la sidebar si apre e si chiude. A finestra larga con la sidebar aperta
      lo spazio vero è duecentotrenta pixel in meno di quello che una media query vede. */
@@ -235,6 +212,5 @@
     .hh-card { grid-template-columns: 92px minmax(0, 1fr); gap: 12px; }
     .hh-tile { flex-basis: 128px; }
     .hh-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 14px; }
-    .hh-fix-x { display: none; }
   }
 </style>

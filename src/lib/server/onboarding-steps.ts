@@ -953,12 +953,12 @@ async function notifyStrategyPlanReady(
   } = await import('$lib/server/email');
   const { notifyBrandContacts } = await import('$lib/server/brand-notify');
   const { siteUrl } = await import('$lib/seo');
+  const { appPathForBrand } = await import('$lib/server/tenancy/brand-slug');
 
   const name = (brand.name as string) || 'your brand';
-  const slug = brand.slug as string;
   const weeks = Math.max(1, opts.weeks || 4);
   // Setup continues in the brand dashboard chat, not the legacy onboarding wizard.
-  const continueUrl = `${siteUrl()}/app/${encodeURIComponent(slug)}`;
+  const continueUrl = `${siteUrl()}${await appPathForBrand(admin, brandId)}`;
 
   try {
     await notifyBrandContacts(admin, contacts, {

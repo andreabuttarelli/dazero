@@ -4,7 +4,6 @@ import { currentWeekIndex } from '$lib/server/editorial-plan';
 import { hasWebHub, isPaidPlan, hasBacklinkNetwork } from '$lib/server/plans';
 import { studioCompleteness } from '$lib/studio-completeness';
 import { aggregateRecentEngagement, type SocialHistoryRow } from '$lib/server/social-history-metrics';
-import { loadGrowthReadiness, type GrowthReadiness } from '$lib/server/growth-readiness';
 
 type BrandRow = { id: string; slug: string; plan: string | null; timezone: string; content_prefs?: unknown };
 
@@ -130,9 +129,6 @@ export type HomeOverview = {
     /** ISO timestamp of the newest social_post_history.synced_at, if any. */
     statsUpdatedAt: string | null;
   };
-  /** dazero media-reviewer mix (unique posts, worst score when organic+ads). */
-  /** Organic-growth data gate — same checks as /plan produce. */
-  growth: GrowthReadiness;
 };
 
 export type BrandOverview = {
@@ -442,10 +438,7 @@ export function deriveUpcomingBlogs(
 
 export async function loadHomeOverview(
   supabase: SupabaseClient,
-  // `website` is required, not optional: it is forwarded to loadGrowthReadiness in place of
-  // the `brands` row that used to be re-read here, and a caller that omitted it would make
-  // growth readiness silently report "no website" for a brand that has one.
-  brand: BrandRow & { blog_config?: unknown; name?: string; website: string | null },
+  brand: BrandRow & { blog_config?: unknown; name?: string },
   extras?: {
     studioPct?: number;
     strategySetup?: { gtm?: boolean; plan?: boolean };
@@ -471,7 +464,6 @@ export async function loadHomeOverview(
     { data: lastStatsSync },
     { data: blogRows },
     { count: blogPublishedCount },
-    growth,
     { data: publishedPosts }
   ] = await Promise.all([
     // One index-only read answers every post COUNT this page shows (pending, scheduled,
@@ -538,9 +530,6 @@ export async function loadHomeOverview(
       .select('id', { count: 'exact', head: true })
       .eq('brand_id', brand.id)
       .eq('status', 'published'),
-    // `brand` is the layout's brand embed, so growth readiness reuses it instead of
-    // re-reading the same row.
-    loadGrowthReadiness(supabase, brand.id, brand),
     // Gli ultimi post usciti, con la foto. Sei e non di piu': la striscia della home ne mostra
     // quattro e i due di scorta coprono quelli senza immagine, che nella striscia non entrano.
     supabase
@@ -652,8 +641,7 @@ export async function loadHomeOverview(
       viewsByDay: engagement.viewsByDay,
       likesByDay: engagement.likesByDay,
       statsUpdatedAt: lastStatsSync?.synced_at ? String(lastStatsSync.synced_at) : null
-    },
-    growth
+    }
   };
 }
 

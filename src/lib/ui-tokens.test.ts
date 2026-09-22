@@ -54,7 +54,6 @@ const LEGACY_STRAYS = [
   '--card src/lib/components/studio/FontPicker.svelte',
   '--card src/routes/p/[projectId]/settings/facebook/+page.svelte',
   '--card src/routes/p/[projectId]/settings/linkedin/+page.svelte',
-  '--danger src/lib/components/GrowthReadiness.svelte',
   '--hover src/lib/components/studio/FontPicker.svelte',
   '--muted src/lib/components/AdsOverview.svelte',
   '--muted src/routes/p/[projectId]/ads/google/+page.svelte',
@@ -67,8 +66,7 @@ const LEGACY_STRAYS = [
   '--sidebar-foreground src/lib/components/SettingsSidebar.svelte',
   '--surface src/routes/cli/callback/+page.svelte',
   '--surface src/routes/login/+page.svelte',
-  '--surface src/routes/oauth/authorize/+page.svelte',
-  '--warn src/lib/components/GrowthReadiness.svelte'
+  '--surface src/routes/oauth/authorize/+page.svelte'
 ];
 
 describe('ui-tokens', () => {

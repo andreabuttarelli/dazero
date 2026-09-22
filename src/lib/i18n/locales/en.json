@@ -1900,8 +1900,6 @@
         "figWaiting": "waiting for you",
         "figScheduled": "scheduled",
         "figViews": "views",
-        "fixPill": "things to fix",
-        "fixTail": "before producing next week",
         "state": {
           "wait": "Waiting for you",
           "plan": "Scheduled",

@@ -8,10 +8,9 @@ import { analyzePostHistory, type HistoryPost } from './post-history-insights';
 import { remaining, monthKey } from './usage';
 import { buildMemoryContext, writeMemory, type MemoryCategory } from './brand-memory';
 import { withBrandContext } from './ai-log';
-import { loadGrowthReadiness, type GrowthReadiness } from './growth-readiness';
 import { OWN_SOURCE } from './own-post-history';
-import type { GrowthCheckKey } from '$lib/growth-readiness';
 import { assessEvidence, evidenceBlock, sampleVerdict } from '$lib/server/evidence-quality';
+import { appPathForBrand, joinAppPath } from '$lib/server/tenancy/brand-slug';
 
 // Engagement metrics from social_post_history.metrics JSONB — OWN posts only (source='zernio').
 export type EngagementMetrics = {
@@ -76,9 +75,6 @@ export type WeeklyRecap = {
   trends: { topic: string; relevance: string; sourceUrl?: string; imageUrl?: string }[];
   suggestions: { type: string; message: string }[];
   actionItems: { label: string; url?: string }[];
-
-  /** Organic-growth data gate — surfaced in the weekly email when incomplete. */
-  growth: GrowthReadiness | null;
 };
 
 
@@ -127,7 +123,7 @@ function engTotal(e: EngagementMetrics): number {
 async function gatherRecapData(
   supabase: SupabaseClient,
   brandId: string
-): Promise<Omit<WeeklyRecap, 'trends' | 'suggestions' | 'actionItems' | 'growth'>> {
+): Promise<Omit<WeeklyRecap, 'trends' | 'suggestions' | 'actionItems'>> {
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
@@ -473,7 +469,7 @@ async function generateTrends(brandName: string, brandContext: string, outputLan
   }
 }
 
-async function generateSuggestions(data: Omit<WeeklyRecap, 'trends' | 'suggestions' | 'actionItems' | 'growth'>, outputLanguage = 'Italian'): Promise<{ type: string; message: string }[]> {
+async function generateSuggestions(data: Omit<WeeklyRecap, 'trends' | 'suggestions' | 'actionItems'>, outputLanguage = 'Italian'): Promise<{ type: string; message: string }[]> {
   // No own published-post metrics (source='zernio') in the window → the engagement section is
   // genuinely empty. Say so explicitly instead of letting the model infer performance from zeros.
   const noOwnHistory =
@@ -617,77 +613,15 @@ Respond with a JSON array of {type, message} objects. type can be: posting_frequ
   }
 }
 
-const GROWTH_FIX_LABELS: Record<GrowthCheckKey, { en: string; it: string }> = {
-  about: {
-    en: 'Add a clear brand About in Studio — produce is blocked without it.',
-    it: 'Aggiungi un About chiaro in Studio — senza, la production è bloccata.'
-  },
-  voice: {
-    en: 'Define voice/personality (approve an editorial plan, or set tone in Studio Brand).',
-    it: 'Definisci voce/personalità (approva un piano editoriale, o imposta il tono in Studio Brand).'
-  },
-  history: {
-    en: 'Connect social accounts and sync history — need at least 5 past posts with metrics.',
-    it: 'Collega i social e sincronizza lo storico — servono almeno 5 post passati con metriche.'
-  },
-  historyDepth: {
-    en: 'Sync more past posts (aim for 12+) so winning patterns are reliable.',
-    it: 'Sincronizza più post passati (punta a 12+) così i pattern vincenti sono affidabili.'
-  },
-  competitors: {
-    en: 'Add at least one competitor so market formats can steer the batch.',
-    it: 'Aggiungi almeno un competitor così i formati di mercato possono guidare il batch.'
-  },
-  audience: {
-    en: 'Define the target audience in Studio Brand.',
-    it: 'Definisci il pubblico target in Studio Brand.'
-  },
-  products: {
-    en: 'Add offerings in Studio Products so posts feature real things.',
-    it: 'Aggiungi prodotti/servizi in Studio Products così i post parlano di cose reali.'
-  },
-  visual: {
-    en: 'Set visual style in Studio Brand so images stay on-brand.',
-    it: 'Imposta lo stile visuale in Studio Brand così le immagini restano on-brand.'
-  },
-  knowledge: {
-    en: 'Add Studio Knowledge notes or docs — concrete facts beat generic claims.',
-    it: 'Aggiungi note o documenti in Studio Knowledge — i fatti battono le frasi generiche.'
-  },
-  plan: {
-    en: 'Approve an editorial plan with a one-line personality — it leads every caption.',
-    it: 'Approva un piano editoriale con una personalità in una riga — guida ogni caption.'
-  },
-  web: {
-    en: 'Connect a website or blog — organic search is where content compounds.',
-    it: 'Collega un sito o un blog — la ricerca organica è dove i contenuti si accumulano.'
-  },
-  social_connect: {
-    en: 'Connect at least one social account — posts need a platform to publish to.',
-    it: 'Connetti almeno un account social per pubblicare.'
-  }
-};
-
 function buildActionItems(
-  data: Omit<WeeklyRecap, 'trends' | 'suggestions' | 'actionItems' | 'growth'>,
-  locale = 'en',
-  growth: GrowthReadiness | null = null
+  data: Omit<WeeklyRecap, 'trends' | 'suggestions' | 'actionItems'>,
+  appBasePath: string,
+  locale = 'en'
 ): { label: string; url?: string }[] {
   const items: { label: string; url?: string }[] = [];
   // Normalizzazione unica del brand: it/it-IT/it-CH → italiano, tutto il resto (incluso
   // profilo senza locale) → inglese. Lo stretto `=== 'it' || 'it-IT'` perdeva `it-CH`.
   const isIt = bilingualNoticeLocale(locale) === 'it';
-
-  if (growth && (!growth.ready || growth.warnings.length > 0)) {
-    const pending = [...growth.blocking, ...growth.warnings];
-    for (const c of pending) {
-      const copy = GROWTH_FIX_LABELS[c.key];
-      items.push({
-        label: isIt ? copy.it : copy.en,
-        url: c.fix
-      });
-    }
-  }
 
   if (data.postsPending > 0) {
     items.push({ label: isIt
@@ -730,7 +664,7 @@ function buildActionItems(
       label: isIt
         ? `Hai ${n} proposta/e ads in attesa. Rivedile su Ads e approva solo i budget che vuoi spendere.`
         : `You have ${n} ads proposal(s) waiting. Review them on Ads and approve only the budgets you want to spend.`,
-      url: `/app/${data.brandSlug}/ads`
+      url: joinAppPath(appBasePath, '/ads')
     });
   }
 
@@ -866,13 +800,8 @@ async function generateWeeklyRecapInner(
   // Gather all recap data
   const data = await gatherRecapData(supabase, brandId);
 
-  // Growth readiness — same gate as /plan produce; surface gaps in the Monday email.
-  let growth: GrowthReadiness | null = null;
-  try {
-    growth = await loadGrowthReadiness(supabase, brandId);
-  } catch (e) {
-    console.warn('[weekly-recap] growth readiness failed:', e instanceof Error ? e.message : e);
-  }
+  // Resolved once: every link this email builds (ads, …) hangs off the same project.
+  const appBasePath = await appPathForBrand(supabase, brandId);
 
   // Get brand context for trends
   const { data: kit } = await supabase
@@ -906,9 +835,8 @@ async function generateWeeklyRecapInner(
 
   return {
     ...data,
-    growth,
     trends: enrichedTrends,
     suggestions: suggestions.status === 'fulfilled' ? suggestions.value : [],
-    actionItems: buildActionItems(data, outputLanguage === 'Italian' ? 'it' : 'en', growth),
+    actionItems: buildActionItems(data, appBasePath, outputLanguage === 'Italian' ? 'it' : 'en'),
   };
 }

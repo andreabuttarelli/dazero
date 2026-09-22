@@ -19,6 +19,32 @@ import { logAiCall } from '$lib/server/ai-log';
 import type { OrgQueryAuthority } from './query-tool';
 import { announcePresence } from './presence';
 import type { Actor } from '$lib/server/repos/actor';
+import { validateNodeData, validateNodeDataPatch } from '$lib/canvas/node-data';
+import { jsonbColumnsOf, validateJsonbColumn } from './jsonb-schemas';
+
+const NODES_TABLE = 'nodes';
+
+function invalidJsonbColumn(message: string): Refusal {
+  return {
+    error: 'invalid_jsonb_column',
+    message,
+    fix: 'Read one existing row of the same table with `query` to see the shape this column really takes.'
+  };
+}
+
+/** Le sole colonne jsonb REGISTRATE che questa scrittura tocca — non ogni colonna inviata. */
+function jsonbTouchedBy(table: string, values: Record<string, unknown>): string[] {
+  const columns = new Set(jsonbColumnsOf(table));
+  return Object.keys(values).filter((key) => columns.has(key));
+}
+
+function firstInvalidJsonbColumn(table: string, values: Record<string, unknown>): Refusal | null {
+  for (const column of jsonbTouchedBy(table, values)) {
+    const verdict = validateJsonbColumn(table, column, values[column]);
+    if (!verdict.ok) return invalidJsonbColumn(verdict.error);
+  }
+  return null;
+}
 
 export const UPDATE_MAX_ROWS = 50;
 export const DELETE_MAX_ROWS = 10;
@@ -125,6 +151,14 @@ function badIdentifier(table: string, values: Record<string, unknown>, where: Fi
   return null;
 }
 
+function invalidNodeData(message: string): Refusal {
+  return {
+    error: 'invalid_node_data',
+    message,
+    fix: 'Call `describe_node_types` for the shape this type expects, or read one existing node of the same type with `query`.'
+  };
+}
+
 export type WriteToolDeps = {
   authority: OrgQueryAuthority;
   orgId: string;
@@ -227,6 +261,14 @@ export function createOrgWriteTools({ authority, orgId, userId, threadId, actor 
       );
     }
 
+    if (table === NODES_TABLE) {
+      const verdict = validateNodeData(String(values.type ?? ''), values.data);
+      if (!verdict.ok) return finish(invalidNodeData(verdict.error), 'org_db_write:refused:invalid_node_data', t0);
+    } else {
+      const refusedJsonb = firstInvalidJsonbColumn(table, values);
+      if (refusedJsonb) return finish(refusedJsonb, 'org_db_write:refused:invalid_jsonb_column', t0);
+    }
+
     const { data, error } = await supabase
       .from(table)
       .insert({ ...values, org_id: orgId })
@@ -315,6 +357,25 @@ export function createOrgWriteTools({ authority, orgId, userId, threadId, actor 
         `org_db_write:${table}:update:too_many:${matched}`,
         t0
       );
+    }
+
+    if (table === NODES_TABLE && 'data' in values) {
+      const current = await filtered(supabase.from(table).select('id, type, data'), where)
+        .limit(UPDATE_MAX_ROWS)
+        .abortSignal(AbortSignal.timeout(WRITE_ABORT_MS));
+
+      if (current.error) return failed(table, current.error, `org_db_write:${table}:precheck:err:${current.error.code ?? '?'}`, t0);
+
+      for (const row of (current.data ?? []) as Array<{ id: string; type: string; data: unknown }>) {
+        const type = String(values.type ?? row.type);
+        const verdict = validateNodeDataPatch(type, row.data, values.data);
+        if (!verdict.ok) {
+          return finish(invalidNodeData(`node ${row.id}: ${verdict.error}`), 'org_db_write:refused:invalid_node_data', t0);
+        }
+      }
+    } else if (table !== NODES_TABLE) {
+      const refusedJsonb = firstInvalidJsonbColumn(table, values);
+      if (refusedJsonb) return finish(refusedJsonb, 'org_db_write:refused:invalid_jsonb_column', t0);
     }
 
     const written = await filtered(supabase.from(table).update(values), where)

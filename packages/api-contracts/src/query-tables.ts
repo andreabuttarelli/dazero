@@ -8,7 +8,7 @@
  */
 export const QUERY_TABLES =
   'ad_campaigns ad_metrics admins ads_remix_briefs agent_computers agent_runs agent_sessions agent_templates ' +
-  'ai_calls api_keys app_flags article_views benchmark_runs blog_authors blog_categories blog_integrations ' +
+  'ai_calls ai_models api_keys app_flags article_views benchmark_runs blog_authors blog_categories blog_integrations ' +
   'blog_month_jobs blog_tags brand_app_connections brand_article_tags brand_article_versions brand_articles ' +
   'brand_backlink_opportunities brand_backlink_placements brand_canvas_edges brand_canvas_item_runs brand_canvas_items ' +
   'brand_canvases brand_crawl_runs brand_demo_accounts brand_design_templates brand_doc_chunks brand_documents ' +

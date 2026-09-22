@@ -38,6 +38,7 @@
     "db:types": "supabase gen types typescript --project-id klnswzhhgrqvbfjzioul > src/lib/database.types.ts",
     "eval:canvas": "vite-node --config scripts/vite-node.config.ts scripts/eval/canvas.ts",
     "eval:image-node": "vite-node --config scripts/vite-node.config.ts scripts/eval/image-node.ts",
+    "eval:gen-node": "vite-node --config scripts/vite-node.config.ts scripts/eval/gen-node.ts",
     "eval:bootstrap": "vite-node --config scripts/vite-node.config.ts scripts/eval/bootstrap.ts"
   },
   "devDependencies": {

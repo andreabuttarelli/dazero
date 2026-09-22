@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { studioCompleteness } from '$lib/studio-completeness';
+import { APP_BOOTSTRAP_PATH, appPathForBrand } from '$lib/server/tenancy/brand-slug';
 
 // The core activation funnel, in order. The day-2/day-3 nurture email points at the FIRST
 // unfinished step so the nudge always matches where the brand actually is.
@@ -22,7 +23,7 @@ export async function brandStage(
   admin: SupabaseClient,
   brand: { id: string; slug: string }
 ): Promise<BrandStage> {
-  const base = `/app/${brand.slug}`;
+  const base = await appPathForBrand(admin, brand.id);
   const eq = (table: string, extra: (q: any) => any = (q) => q) =>
     extra(admin.from(table).select('id', { count: 'exact', head: true }).eq('brand_id', brand.id));
 
@@ -78,6 +79,12 @@ export async function brandStage(
                 : (live.count ?? 0) === 0
                   ? 'publish'
                   : 'done';
+
+  // No project resolved for this brand: every stage lands on the bootstrap, never on a
+  // sub-path appended to it (that would 404 — `/app` takes no further segment).
+  if (base === APP_BOOTSTRAP_PATH) {
+    return { stage, nextPath: APP_BOOTSTRAP_PATH };
+  }
 
   const path: Record<Stage, string> = {
     studio: `${base}/settings/brand`,

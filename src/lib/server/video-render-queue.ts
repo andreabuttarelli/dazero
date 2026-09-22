@@ -194,7 +194,8 @@ function inPayerScope<T>(row: VideoRenderRow, fn: () => Promise<T>): Promise<T> 
 	return withOrgContext(String(row.org_id), fn);
 }
 
-function rowToSubmitted(row: VideoRenderRow): SubmittedVideoRender {
+/** Esportata: il canvas la riusa per finire un `node_runs` video dalla stessa riga `video_renders`. */
+export function rowToSubmitted(row: VideoRenderRow): SubmittedVideoRender {
 	return {
 		taskId: row.task_id,
 		model: row.model,

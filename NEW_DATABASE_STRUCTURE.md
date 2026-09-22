@@ -1188,6 +1188,380 @@ nei backup. `key_prefix` serve solo a far riconoscere all'utente quale chiave st
 
 ---
 
+# Fatturazione
+
+**Il gap.** Le 26 tabelle non hanno NIENTE di fatturazione: zero colonne `plan`, `stripe`,
+`subscription`, `quota`. `credits.ts` è già stato riscritto per il nuovo schema e la quota è
+`creditQuota(null)` fissa per tutti — **ogni cliente pagante è oggi limitato alla quota free
+(400 crediti)**, perché non c'è una colonna da cui leggere quella vera. Non è un difetto di tipi:
+è un limite di fatturato finché non si chiude questa sezione.
+
+**Il tenant è l'org**, quindi il pagamento appartiene all'org — non al brand, come nel prodotto
+vecchio.
+
+## Il modello di prezzo: a consumo, con un margine minimo che non si tocca mai
+
+Il prodotto vende **crediti a consumo**, non funzionalità a livelli.
+
+- **Abbonamento e acquisto una tantum, sugli stessi punti di prezzo, a due cambi diversi**:
+  abbonamento 100 crediti/$1 di prezzo (alla tariffa piatta), una tantum 70 crediti/$1 — comprare
+  senza impegno costa di più al cliente, e per questo rende di più a noi.
+- **Ogni chiamata AI porta un margine minimo del 50%.** Non un "markup del 20%" — la primissima
+  stesura di questa sezione lo era, ed è stato un errore di leva: un margine è sul RICAVO
+  (`(prezzo−costo)/prezzo`), un markup è sul COSTO (`(prezzo−costo)/costo`). Un markup del 20% dà
+  solo il 16,7% di margine reale, e uno sconto a scala sopra quel numero andava sotto zero proprio
+  sui clienti più grandi — la promessa "non ci rimettiamo mai" si sarebbe rotta esattamente lì. Il
+  markup che dà davvero il 50% di margine è **100%: 200 crediti ogni $1 di costo provider.**
+- **Non si perde mai, su nessun gradino, nel caso peggiore** — il cliente spende ogni credito
+  comprato. Mai un margine che conta su crediti non spesi (breakage): un modello che ha bisogno di
+  breakage per essere in utile è un modello che scommette, non che fattura.
+
+⚠️ **Questa sezione ha attraversato quattro stesure**: tier a funzionalità → cambio unico senza
+scadenza → markup del 20% (leva sbagliata) → questa. Ogni giro ha corretto SOLO l'errore del
+precedente, tenendo ferme le decisioni già prese — scadenza, ordine di spesa,
+`billed_credits` scritto in scrittura.
+
+## L'aritmetica: margine ≠ markup, ed è quello che ha prodotto l'errore
+
+Con `billed_credits = cost_usd × 100 × (1+markup)`:
+
+```
+margine = markup / (1 + markup)
+
+markup  20% → margine 16,7%
+markup 100% → margine 50,0%   ← quello scelto: $5 di crediti costano $2,50 di spesa provider
+```
+
+Un credito venduto costa `1 / (100 × (1+markup)) = 1/200` dollari da onorare. Il margine di un
+gradino che vende `credits` crediti a `price` dollari è quindi:
+
+```
+margine(prezzo, crediti) = 1 − (crediti / (prezzo × 200))
+```
+
+Ogni credito venduto SOPRA la tariffa piatta (100 crediti/$1 abbonamento) è margine speso
+deliberatamente — mai un errore di arrotondamento, mai un caso limite non controllato.
+
+## La scala: piatta fino a $50, sconto solo da $100 in su
+
+```
+prezzo   cr abbonamento   cr una tantum   costo max   margine sub   margine 1x   bonus vs. tariffa piatta
+$5              500            350          $2,50         50%          65%              —
+$15           1.500          1.050          $7,50         50%          65%              —
+$30           3.000          2.100         $15,00         50%          65%              —
+$50           5.000          3.500         $25,00         50%          65%              —
+$100         11.200          7.840         $56,00         44%          61%             12%
+$200         24.000         16.800        $120,00         40%          58%             20%
+$400         52.000         36.400        $260,00         35%          55%             30%
+```
+
+**Perché questa forma, e non una curva continua** (le due stesure precedenti ne proponevano una,
+lineare o degressiva su ogni gradino): **i primi quattro gradini sono un'unica tariffa piatta**
+(100 crediti/$1 abbonamento, 70 crediti/$1 una tantum), senza aritmetica da spiegare — un cliente
+fa il conto a mente, e non c'è un bonus parziale da giustificare su un pacchetto piccolo. Lo sconto
+comincia esattamente dove un acquisto è abbastanza grande perché lo sconto significhi qualcosa, e
+ogni punto di margine speso da lì in su è deliberato, non deriva.
+
+**Margine medio pesato sul prezzo: 39%** — dentro la fascia 30-40% chiesta, con il floor toccato
+**esattamente** sul gradino più alto ($400 → 35%), mai sceso sotto per nessun gradino, in nessuna
+colonna. **Costo max** è il caso peggiore: il cliente spende ogni credito comprato — nessuna ipotesi
+di crediti mai spesi, quelli sono margine IN PIÙ, mai una condizione per essere in utile.
+
+**La colonna una tantum non ha bisogno di un proprio floor**: a parità di prezzo vende meno crediti
+(70:1 contro 100:1), quindi costa sempre meno da onorare — il suo margine è sempre più alto di
+quello dell'abbonamento sullo stesso gradino, per costruzione, non da verificare riga per riga.
+
+⚠️ **Questa tabella non è schema — vive in codice**, come `PLANS` oggi. Lo schema non sa quanti
+gradini esistono: legge `stripe_price_id → credits` dall'evento Stripe (abbonamento) o
+`metadata.credits` scritto dal nostro codice al checkout (una tantum). **Cambiare la scala —
+aggiungere un gradino sotto $5 o sopra $400, alzare un bonus — è editare la lista in codice, mai
+una migrazione, ma editarla senza far girare il test sotto è esattamente come un gradino torna
+sotto il floor senza che nessuno se ne accorga finché non arriva la fattura.**
+
+## Il guard: un test che cammina la scala, non un commento
+
+**Il floor deve essere una proprietà del sistema, non un'intenzione scritta qui.** Un test che
+cammina OGNI gradino, in ENTRAMBE le colonne, calcola il margine al markup configurato nel caso
+peggiore, e fallisce sotto il floor — è il punto centrale di questo esercizio: è quello che rende
+"non ci rimettiamo mai" una proprietà del sistema, non una frase in un documento.
+
+```ts
+// src/lib/server/credit-ladder.test.ts
+import { describe, it, expect } from 'vitest';
+import { CREDIT_LADDER, MARGIN_FLOOR, marginForRung } from './credit-ladder';
+
+describe('credit ladder never falls below the margin floor', () => {
+  for (const rung of CREDIT_LADDER) {
+    it(`$${rung.price} subscription clears the floor in the worst case`, () => {
+      // Caso peggiore: il cliente spende OGNI credito comprato. Nessuna ipotesi di breakage.
+      expect(marginForRung(rung.price, rung.creditsSubscription)).toBeGreaterThanOrEqual(MARGIN_FLOOR);
+    });
+    it(`$${rung.price} one-time clears the floor in the worst case`, () => {
+      expect(marginForRung(rung.price, rung.creditsOneTime)).toBeGreaterThanOrEqual(MARGIN_FLOOR);
+    });
+  }
+});
+```
+
+`marginForRung` è la STESSA formula usata per costruire la tabella sopra — mai una seconda
+implementazione che potrebbe disallinearsi dalla prima. Un futuro editor della scala lo scopre in
+CI, non in una fattura di fine mese: **la scala non è libera di essere modificata "a occhio".**
+
+## `credit_ledger`: grant e debiti come righe, saldo = somma — con un ordine di spesa, non solo un totale
+
+```
+## credit_ledger
+
+id              uuid pk
+org_id          uuid not null references orgs(id) on delete cascade
+kind            text not null check (kind in ('grant','debit'))
+source          text not null
+                check (source in ('subscription_renewal','one_time_purchase','promo',
+                                   'manual','refund','ai_usage'))
+amount          integer not null check (amount > 0)   -- crediti; `kind` dice il segno
+note            text
+created_by      uuid references profiles(id)          -- null per system/stripe
+
+stripe_event_id       text     -- idempotenza (vedi sotto) e tracciabilità
+stripe_checkout_id    text     -- acquisto una tantum: la sessione che ha pagato
+stripe_invoice_id     text     -- rinnovo abbonamento: la fattura che l'ha coperto
+ai_call_id            uuid references ai_calls(id) on delete set null  -- kind='debit', source='ai_usage'
+
+-- null = non scade mai. Valorizzato = scade — vedi "Scadenza" sotto.
+expires_at      timestamptz
+
+created_at      timestamptz not null default now()
+
+unique (stripe_event_id)   -- l'idempotenza, vedi "Idempotenza"
+```
+
+**`kind` + `amount` sempre positivo, non un `amount` con segno**: un debito negativo sommato a un
+grant positivo è un dettaglio implementativo che si può sbagliare; `kind` esplicito si legge da
+solo in un audit. **`source` è la tabella delle eccezioni che CLAUDE.md chiede**: ogni riga porta il
+PERCHÉ in una colonna sola, mai dedotto da quali FK sono valorizzate.
+
+## Scadenza: decisa
+
+**`source='subscription_renewal'` → `expires_at` = fine del periodo a cui appartiene.
+`source='one_time_purchase'` → `expires_at = null`, permanente finché non è speso.** Scritta dal
+trigger di rinnovo e da quello di acquisto (vedi "Stripe" sotto). `promo`/`manual` restano a
+discrezione di chi scrive la riga.
+
+⚠️ **Sovrapposizione di rinnovi a cavallo del cambio periodo**: se il grant del periodo precedente
+non è ancora scaduto nel momento esatto del rinnovo, per una finestra breve l'org ha due grant
+abbonamento vivi insieme — non impedito esplicitamente, un margine di minuti di crediti "in più",
+non un accumulo perenne. Se il prodotto vuole azzerarlo al centesimo, il trigger di rinnovo può
+marcare `expires_at = now()` sul grant precedente non ancora scaduto: non aggiunto di default, è
+una scelta di severità commerciale, non un difetto tecnico.
+
+## L'ordine di spesa: le scadenti PRIMA — e perché il debito torna a essere una riga per chiamata
+
+**Con la scadenza vera, l'ordine di consumo è un fatto di soldi, non un dettaglio.** Se un'org ha
+1.000 crediti da abbonamento che scadono fra 3 giorni e 5.000 da un pacchetto permanente, e spende
+200 oggi, quei 200 DEVONO uscire dai 1.000 in scadenza — altrimenti scadono inutilizzati mentre il
+permanente si consuma al posto loro, e il cliente è derubato in silenzio: nessun errore, nessun
+log, solo un saldo finale più basso di quanto si aspetti.
+
+Con un saldo calcolato dal vivo su `ai_calls` (l'ibrido di una stesura precedente) non c'è un modo
+pulito di sapere quale grant sta consumando quale dollaro. **Il debito torna quindi a essere una
+riga per chiamata nel `credit_ledger`** — e con `billed_credits` scritto al momento della chiamata
+(vedi sotto), quella riga è comunque necessaria per fatturare bene: non è lavoro aggiunto per
+niente.
+
+```sql
+create or replace function public.org_credit_balance(_org_id uuid) returns integer
+  language sql stable security definer set search_path = public as $$
+  select coalesce(sum(case when kind = 'grant' then amount else -amount end), 0)::integer
+  from public.credit_ledger
+  where org_id = _org_id
+    and (expires_at is null or expires_at > now());
+$$;
+```
+
+**Il saldo resta la somma di tutte le righe non scadute** — una query, nessun ordine da calcolare
+per rispondere "quanto ho". **Il debito NON si spacchetta per grant consumato**: complicherebbe la
+scrittura (un lock sui grant dell'org per calcolare quanto resta di ciascuno) per un beneficio che
+il saldo non richiede — è già corretto con un debito unico, cieco all'ordine per definizione.
+**Quello che serve l'ordine è una domanda diversa: "quanto sta per scadere invaso?"**, e risponde
+una vista FIFO sui grant che scadono prima, separata dal saldo:
+
+```sql
+create or replace view public.org_credits_at_risk as
+with grants as (
+  select org_id, id, amount, expires_at,
+         sum(amount) over (partition by org_id order by expires_at nulls last, created_at) as running_total
+  from public.credit_ledger
+  where kind = 'grant' and (expires_at is null or expires_at > now())
+),
+spent as (
+  select org_id, coalesce(sum(amount), 0) as total_spent
+  from public.credit_ledger where kind = 'debit' group by org_id
+)
+select g.org_id, g.expires_at,
+       greatest(0, least(g.amount, g.running_total - coalesce(s.total_spent, 0))) as at_risk
+from grants g
+left join spent s on s.org_id = g.org_id
+where g.expires_at is not null and g.running_total > coalesce(s.total_spent, 0);
+```
+
+Questa vista alimenta l'email di avviso ("hai 340 crediti che scadono fra 3 giorni") — **non il
+gate di spesa**, che continua a leggere solo `org_credit_balance`. L'ordine di consumo (le scadenti
+prima) è implicito nel modo in cui si CALCOLA quanto è a rischio (FIFO per scadenza), non in come si
+scrivono i debiti (un debito solo, cieco all'ordine): la stessa separazione fra "quanto ho" e "cosa
+sto per perdere" che un estratto conto fa con un fido in scadenza.
+
+**Test che fissa il comportamento** (rosso prima, poi verde): org con un grant abbonamento da 1.000
+in scadenza fra 1 giorno, un grant pacchetto da 5.000 permanente, 200 di spesa registrata —
+`org_credits_at_risk` deve rispondere `at_risk = 800` (1.000 − 200: la spesa intacca prima lo
+scadente), mai `1.000` (la spesa avrebbe intaccato il permanente) né `0` (falso allarme).
+
+## Il debito reale: `billed_credits`, scritto UNA VOLTA, in scrittura — non ricalcolato al bisogno
+
+**`ai_calls` ha già due colonne per questo, tenute separate ad alta voce:**
+
+```
+cost_usd            numeric(12,6)    -- quello che il PROVIDER ci ha fatturato. MAI marcato su.
+billed_credits      numeric          -- quello che ADDEBITIAMO all'utente. cost_usd × 200.
+```
+
+Mischiarle rende il margine incalcolabile e un rimborso incalcolabile (un rimborso si emette sul
+CREDITO addebitato, non sul costo — l'utente non deve sapere cosa costa a noi una chiamata).
+`cost_usd` **resta grezzo**, sempre.
+
+**Il markup si applica in SCRITTURA, non in lettura.** Se vivesse in lettura, cambiare la costante
+cambierebbe silenziosamente quanto un cliente risulta aver speso per chiamate GIÀ fatte — il suo
+storico si riscriverebbe sotto di lui. Con la scrittura, `billed_credits` è congelato per chiamata:
+un cambio di markup vale solo per le chiamate future. È la stessa ragione per cui `ai_calls.model`
+deve essere il modello che ha *risposto* e non quello richiesto — un fatto, non una policy
+rileggibile diversamente domani — già scritta altrove in questo documento per un'altra colonna
+della stessa tabella.
+
+```ts
+// src/lib/server/credit-ladder.ts — UN posto, vicino ai gradini, non un terzo in ai-log.ts o
+// plan-budget.ts. Verificato: né l'uno né l'altro hanno oggi una costante di margine sull'utente —
+// il commento "il markup" in ai-log.ts parla del prezzo del gateway LLM (il provider a monte), un
+// concetto diverso che non va toccato; PRODUCTION_MARGIN in plan-budget.ts è un terzo concetto
+// ancora (quanto di un abbonamento va in produzione contenuti). Le tre costanti coesistono, nessuna
+// sostituisce le altre.
+export const AI_MARKUP = 1.00;                       // 100% — $5 di crediti costano $2,50 di spesa
+                                                       // provider (margine 50% alla tariffa piatta)
+export const MARGIN_FLOOR = 0.35;                     // nessun gradino scende sotto — pinnato dal test
+
+export const CREDITS_PER_USD_SUBSCRIPTION_LIST = 100 * (1 + AI_MARKUP); // 200: cambio costo→credito
+
+export const CREDIT_LADDER = [
+  { price: 5,   creditsSubscription: 500,    creditsOneTime: 350   },
+  { price: 15,  creditsSubscription: 1_500,  creditsOneTime: 1_050 },
+  { price: 30,  creditsSubscription: 3_000,  creditsOneTime: 2_100 },
+  { price: 50,  creditsSubscription: 5_000,  creditsOneTime: 3_500 },
+  { price: 100, creditsSubscription: 11_200, creditsOneTime: 7_840 },
+  { price: 200, creditsSubscription: 24_000, creditsOneTime: 16_800 },
+  { price: 400, creditsSubscription: 52_000, creditsOneTime: 36_400 }
+] as const;
+
+export function billedCreditsFor(costUsd: number): number {
+  return Math.round(costUsd * CREDITS_PER_USD_SUBSCRIPTION_LIST);
+}
+
+export function marginForRung(price: number, credits: number): number {
+  const cost = credits / CREDITS_PER_USD_SUBSCRIPTION_LIST;
+  return (price - cost) / price;
+}
+```
+
+⚠️ **`CREDITS_PER_USD_SUBSCRIPTION_LIST` calcola SOLO il debito di una chiamata AI**, sempre allo
+stesso cambio, a prescindere da come l'org ha comprato i suoi crediti — il cambio 70:1 vale SOLO
+all'ACQUISTO (quanti crediti dà un pacchetto da $X), mai alla SPESA (quanti crediti costa una
+chiamata): un credito, una volta nel saldo, vale uguale a prescindere da dove viene. Non c'è
+un'IA più cara per chi ha comprato un pacchetto invece di abbonarsi.
+
+**`billed_credits` null sulle righe storiche.** Ogni riga scritta prima di questa migrazione ha
+`billed_credits = null` — `logAiCall` oggi non la valorizza mai (verificato: solo `cost_usd` e
+`provider_credits` finiscono nella INSERT). Il fallback per chi legge lo storico:
+`coalesce(billed_credits, round(cost_usd * 200))` — usato solo per report/audit su dati vecchi, MAI
+per il saldo vivo (che legge solo `credit_ledger`, dove il debito è già scritto al momento della
+chiamata). **Nessun backfill in questa migrazione**: valorizzare `billed_credits` su ogni riga
+storica è un'operazione separata, esplicitamente fuori scope — tocca centinaia di migliaia di
+righe e non cambia nulla di operativo oggi.
+
+## Cosa costa il piano gratuito
+
+`FREE_CREDITS = 400` in `plans.ts`, allo stesso cambio 200:1: **costa esattamente $2,00 di spesa
+provider per org, ogni mese che l'org resta attiva sul free.** Sta appena SOTTO il gradino
+d'ingresso ($5 → 500 crediti abbonamento): il free è un assaggio, strettamente meno del più piccolo
+acquisto possibile — una relazione più pulita delle stesure precedenti, dove il free coincideva
+esattamente con l'ingresso a pagamento. **Vale la pena dichiararlo deliberato nel copy**, non
+lasciarlo come un numero senza commento: 400 non è "quasi 500", è scelto per restare sotto.
+
+## Stripe: due forme di prodotto, due cambi, un solo meccanismo di sync
+
+**Abbonamento**: uno `stripe.subscriptions` (FDW) per rung, letto dal trigger
+`sync_org_from_stripe_subscription`. Scrive un grant nel ledger a ogni rinnovo, con `expires_at` =
+fine del prossimo periodo e `stripe_event_id = 'sub:' || subscription.id || ':' || period_start` —
+un rinnovo per periodo, un grant per rinnovo, mai duplicato (vedi "Idempotenza").
+
+**Acquisto una tantum**: `stripe.checkout_sessions`, altro oggetto dello stesso Wrapper — nessun
+secondo meccanismo. Una Checkout Session `mode='payment'` completata; il trigger legge
+`metadata.credits` (scritto dal nostro codice al checkout, già calcolato al cambio 70:1 sulla
+scala sopra) e scrive un grant con `expires_at = null`.
+
+## Idempotenza: il vincolo `unique`, non la logica applicativa
+
+**`unique(stripe_event_id)` + `on conflict do nothing`** su ogni insert nel `credit_ledger`, sia
+per il rinnovo sia per l'acquisto. Stripe consegna gli eventi *at-least-once*, il FDW può
+risincronizzare la stessa riga più volte — un grant scritto due volte per lo stesso evento è
+credito regalato, non un errore innocuo. Il vincolo è sulla tabella: strutturalmente impossibile
+inserire la stessa riga due volte, non solo improbabile.
+
+## Quota abbonamento e override enterprise
+
+L'override enterprise resta **un grant manuale nel ledger** (`source='manual'`), non una colonna su
+`orgs`. Con `expires_at` un concetto vivo, un override permanente porta `expires_at = null`
+(comportamento identico a un pacchetto una tantum), uno a termine lo valorizza.
+
+## Il piano free e il cancello
+
+Il trigger di rinnovo non scrive più un nuovo grant quando l'abbonamento risulta
+`canceled`/`unpaid`/`incomplete_expired`, e il grant del periodo corrente scade comunque da solo
+alla data che già porta — non serve un azzeramento esplicito alla cancellazione. Un pacchetto una
+tantum ancora vivo continua a essere spendibile anche a abbonamento scaduto: conseguenza diretta
+di tenere le due fonti separate, e il comportamento che mi sembra giusto (l'utente ha pagato per
+quel credito specifico, non per l'abbonamento).
+
+`gateCredits`/`gateOrgCredits` restano il cancello, la fonte della verità è `org_credit_balance`.
+Fail-CHIUSO su un errore di lettura resta com'era.
+
+## Cosa resta aperto
+
+**Chiuse da questo giro (decisioni dell'utente, non più `?`):**
+- Scadenza abbonamento sì, una tantum no.
+- Cambio 100:1 abbonamento / 70:1 una tantum.
+- **Margine 50% sui primi quattro gradini (tariffa piatta), sconto solo da $100 in su, floor al
+  35% mai sceso — implementato con la scala fissa e il test che la cammina.**
+- Ordine di spesa (le scadenti prima) — risolto con un debito unico per chiamata più una vista FIFO
+  separata per "cosa è a rischio".
+- Debito per-chiamata nel ledger — non più un `?`, necessario per l'ordine di spesa.
+- Collisione $4/free — risolta cambiando l'ancora a $5/500 crediti: il free (400) sta ora
+  strettamente sotto il gradino d'ingresso, non più a pari merito.
+
+**Sopravvissute:**
+- **`orgs.owner_id` non esiste.** Autorità di fatturazione da ridefinire su
+  `orgs_members.role='owner'`.
+- **Retention di righe scadute nel ledger.** Restano per sempre, escluse dalla somma.
+- **Sovrapposizione di grant da rinnovo a cavallo del cambio periodo.** Non impedita
+  esplicitamente.
+- **Backfill di `billed_credits` sulle righe storiche.** Fuori scope.
+
+**Nuove:**
+- **La forma "piatto fino a $50, sconto da $100" è una decisione commerciale già presa
+  dall'utente**, non più una mia proposta — nessun `?` residuo sulla scala stessa.
+- **Il floor al 35% è fissato**, ma resta implicito che AGGIUNGERE un gradino (sotto $5, sopra
+  $400) o alzare un bonus esistente richiede di far girare di nuovo il test prima di pubblicarlo:
+  non è enunciato da nessuna parte CHI ha l'autorità di cambiare la scala senza una migrazione —
+  oggi chiunque tocchi il file in codice, senza un secondo controllo oltre al test stesso.
+
+---
+
 # Collaborazione in tempo reale
 
 La regola che decide tutto lo schema qui sotto è una sola:

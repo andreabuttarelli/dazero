@@ -24,41 +24,9 @@ function baseRecap(over: Partial<RecapData> = {}): RecapData {
     actionItems: [],
     dashboardUrl: 'https://app.example/app/acme',
     connectedAccounts: [{ platform: 'instagram', username: 'acme' }],
-    growth: null,
     ...over
   };
 }
-
-describe('weekly recap growth section', () => {
-  it('renders growth remediation in html and text when incomplete', () => {
-    const data = baseRecap({
-      growth: {
-        ready: false,
-        blockingCount: 2,
-        warningCount: 1,
-        fixes: [
-          { key: 'about', blocking: true, url: 'https://app.example/app/acme/settings/brand' },
-          { key: 'competitors', blocking: true, url: 'https://app.example/app/acme/settings/brand' },
-          { key: 'audience', blocking: false, url: 'https://app.example/app/acme/settings/brand' }
-        ]
-      }
-    });
-    const html = weeklyRecapEmailHtml('en', data);
-    expect(html).toContain('Growth data readiness');
-    expect(html).toContain('required fixes before produce');
-    expect(html).toContain('Add a clear brand About in Studio');
-    expect(html).toContain('https://app.example/app/acme/settings/brand');
-
-    const text = weeklyRecapEmailText('en', data);
-    expect(text).toContain('Growth data readiness');
-    expect(text).toContain('Add a clear brand About in Studio');
-  });
-
-  it('omits growth section when brand data is complete', () => {
-    const html = weeklyRecapEmailHtml('en', baseRecap({ growth: null }));
-    expect(html).not.toContain('Growth data readiness');
-  });
-});
 
 describe('weekly recap link clicks section', () => {
   it('renders link clicks in html and text when > 0', () => {

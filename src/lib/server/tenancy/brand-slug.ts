@@ -46,16 +46,51 @@ export async function brandIdOf(
 
 /** Il verso opposto: dal brand al progetto che lo contiene, per un link che deve atterrare su
  *  `/p/<projectId>/…` conoscendo solo il brand (es. un URL coniato da una rotta API keyed by
- *  slug). Un brand senza progetto — o con più d'uno — non ha un solo link corretto: `null`. */
+ *  slug). Un brand senza progetto — nessuno vivo — non ha link: `null`. Con più d'uno, il più
+ *  vecchio: è quello che possedeva già i contenuti di cui l'email/rotta sta parlando, mentre i
+ *  progetti archiviati non sono una destinazione valida. */
 export async function projectIdOfBrand(
   supabase: SupabaseClient,
   brandId: string
 ): Promise<string | null> {
-  const { data: project } = await supabase
+  const { data: projects } = await supabase
     .from('projects')
     .select('id')
     .eq('brand_id', brandId)
-    .maybeSingle();
+    .is('archived_at', null)
+    .order('created_at', { ascending: true })
+    .limit(1);
 
-  return project?.id ?? null;
+  return projects?.[0]?.id ?? null;
+}
+
+/** Bootstrap route: picks a project for whoever lands here with none chosen yet. The one link
+ *  that is never a 404, for a brand whose project could not be resolved. */
+export const APP_BOOTSTRAP_PATH = '/app';
+
+/**
+ * Un link `/p/<projectId>/…` per un brand conosciuto solo per slug o id — quello che un'email
+ * transazionale costruisce. Risolve il progetto UNA volta e lo antepone a `path`; senza un
+ * progetto vivo il link non si può costruire, e un generico verso il bootstrap batte un 404
+ * garantito.
+ */
+export async function appPathForBrand(
+  supabase: SupabaseClient,
+  brandId: string,
+  path = ''
+): Promise<string> {
+  const projectId = await projectIdOfBrand(supabase, brandId);
+  if (!projectId) {
+    return APP_BOOTSTRAP_PATH;
+  }
+  return `/p/${projectId}${path}`;
+}
+
+/**
+ * Un `appBasePath` già risolto (una volta, per più link della stessa email) più un sotto-path —
+ * MAI una concatenazione diretta: il bootstrap `/app` non accetta segmenti dopo di sé, quindi
+ * quando la base è il bootstrap il sotto-path si perde piuttosto che produrre un altro 404.
+ */
+export function joinAppPath(appBasePath: string, path: string): string {
+  return appBasePath === APP_BOOTSTRAP_PATH ? APP_BOOTSTRAP_PATH : `${appBasePath}${path}`;
 }

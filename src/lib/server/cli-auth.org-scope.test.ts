@@ -28,11 +28,12 @@ function supabaseNaming(name: string | null) {
   };
 }
 
-const scopedKey: ApiKeyInfo = {
+const apiKey: ApiKeyInfo = {
   id: 'key-1',
   name: 'solo acme',
   user_id: 'user-1',
-  permissions: { brand_ids: ['brand-1'], scopes: ['write'] }
+  org_id: 'org-1',
+  scopes: ['write']
 };
 
 function caller(over: Record<string, unknown> = {}) {
@@ -74,23 +75,15 @@ describe('orgScopeFor', () => {
   });
 
   /**
-   * Una chiave ristretta a certi brand è una restrizione che l'utente ha scelto. Lasciarla spendere
-   * fuori da quei brand la allargherebbe in silenzio, proprio mentre si apre una strada nuova.
+   * Una chiave API vale per un'org sola (`api_keys.org_id`): quella è la sua org, senza bisogno di
+   * risolverla con `ensureOrgForUser` (che serve solo al percorso JWT, dove l'utente può avere più
+   * org). Nessun rifiuto qui: non c'è più una distinzione "ristretta" da controllare.
    */
-  it('una chiave ristretta a certi brand si rifiuta, non si allarga', async () => {
-    const { error } = await orgScopeFor(caller({ apiKey: scopedKey }));
-
-    expect(error?.status).toBe(403);
-    expect(await error?.json()).toEqual({ error: 'brand_scoped_key' });
-    expect(ensureOrgForUser).not.toHaveBeenCalled();
-  });
-
-  it('una chiave che vale per tutti i brand passa', async () => {
-    const wide = { ...scopedKey, permissions: { brand_ids: '*' as const, scopes: ['write'] } };
-
-    const { scope } = await orgScopeFor(caller({ apiKey: wide }));
+  it('una chiave API usa la propria org direttamente, senza risolverla', async () => {
+    const { scope } = await orgScopeFor(caller({ apiKey }));
 
     expect(scope?.orgId).toBe('org-1');
+    expect(ensureOrgForUser).not.toHaveBeenCalled();
   });
 
   it('senza crediti non si apre niente', async () => {

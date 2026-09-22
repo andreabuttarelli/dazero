@@ -19,6 +19,7 @@ import {
   sendEmail
 } from '$lib/server/email';
 import { senderEmailDomain } from '$lib/server/support-config';
+import { appPathForBrand } from '$lib/server/tenancy/brand-slug';
 
 // Lifecycle drip: welcome (T+0), day-1 call-insist, day-2/3 next-step. Runs every 10 min so the
 // welcome lands within minutes of signup. Each (brand, step) is sent at most once (dedup ledger,
@@ -83,14 +84,15 @@ async function processBrand(
   }
 
   const name = await ownerName(admin, brand);
-  const stepUrl = stage ? `${(publicEnv.PUBLIC_APP_URL || '').replace(/\/$/, '')}${stage.nextPath}` : '';
+  const appBasePath = await appPathForBrand(admin, brand.id);
   const appBase = (publicEnv.PUBLIC_APP_URL || '').replace(/\/$/, '');
+  const stepUrl = stage ? `${appBase}${stage.nextPath}` : '';
   const pushUrl =
     step === 'welcome' || step === 'day1_call'
       ? appBase
-        ? `${appBase}/app/${brand.slug}`
+        ? `${appBase}${appBasePath}`
         : ''
-      : stepUrl || (appBase ? `${appBase}/app/${brand.slug}` : '');
+      : stepUrl || (appBase ? `${appBase}${appBasePath}` : '');
 
   const { notifyBrandContacts } = await import('$lib/server/brand-notify');
   const sent = await notifyBrandContacts(admin, contacts, {
@@ -101,14 +103,14 @@ async function processBrand(
       if (step === 'welcome') {
         msg = {
           subject: welcomeEmailSubject(l, brand.name),
-          html: welcomeEmailHtml(l, common, opts.origin),
-          text: welcomeEmailText(l, common, opts.origin)
+          html: welcomeEmailHtml(l, common, appBasePath, opts.origin),
+          text: welcomeEmailText(l, common, appBasePath, opts.origin)
         };
       } else if (step === 'day1_call') {
         msg = {
           subject: day1EmailSubject(l, name, brand.name),
-          html: day1EmailHtml(l, common, opts.origin),
-          text: day1EmailText(l, common, opts.origin)
+          html: day1EmailHtml(l, common, appBasePath, opts.origin),
+          text: day1EmailText(l, common, appBasePath, opts.origin)
         };
       } else {
         const day = step === 'day3_step' ? 3 : 2;

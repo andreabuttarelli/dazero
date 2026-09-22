@@ -28,6 +28,7 @@
 
 /** Cosa una cosa È. I tre primitivi, e nient'altro. */
 import { videoRefCapacity } from '$lib/video-models';
+import { imageModelSpec } from '$lib/image-models';
 
 export const MEDIUMS = ['text', 'image', 'video'] as const;
 export type Medium = (typeof MEDIUMS)[number];
@@ -74,9 +75,9 @@ type NodeSpec = {
 export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
   // Un testo si scrive, non si genera da altro: è il punto di partenza di ogni catena.
   text: { medium: 'text', generated: false, accepts: [], requires: [] },
-  // Un'immagine nasce da un prompt. Un'altra immagine come riferimento è un'altra funzione
-  // (`refine_media`), che entrerà quando il nodo saprà distinguerla da un prompt.
-  image: { medium: 'image', generated: true, accepts: ['text'], requires: ['text'] },
+  // Un'immagine nasce da un prompt, e un'altra immagine collegata è il riferimento da riprodurre
+  // fedelmente (`ImageJob.baseMediaId`) — non un prompt in più, quindi resta facoltativa.
+  image: { medium: 'image', generated: true, accepts: ['text', 'image'], requires: ['text'] },
   // Un video nasce dal prompt, e un'immagine è il fotogramma di partenza: facoltativa, perché il
   // prodotto sa girare una clip dal solo testo e chiederla bloccherebbe quel percorso.
   video: { medium: 'video', generated: true, accepts: ['text', 'image'], requires: ['text'] },
@@ -214,5 +215,9 @@ function capacityOf(node: CanvasNode): Record<Medium, number> {
   }
   // Un post raccoglie ciò che gli si dà: è un contenitore, non un modello con i suoi limiti.
   if (node.kind === 'post') return { text: 1, image: 20, video: 5 };
+  // Un'immagine di riferimento è quante il MODELLO scelto ne accetta davvero (`maxRefs`, da 3 a
+  // 16): un tetto uguale per tutti mentirebbe agli stessi due versi di `video`. Senza un modello
+  // noto resta 1 — il caso oggi eseguito (`baseMediaId`), mai un numero inventato.
+  if (node.kind === 'image') return { text: 1, image: imageModelSpec(node.model)?.maxRefs ?? 1, video: 0 };
   return { text: 1, image: 1, video: 0 };
 }

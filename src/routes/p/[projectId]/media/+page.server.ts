@@ -1,158 +1,96 @@
-import { fail } from '@sveltejs/kit';
-import type { Actions, PageServerLoad } from './$types';
-import { withBrandContext } from '$lib/server/ai-log';
-import { brandSlugOf } from '$lib/server/tenancy/brand-slug';
-import {
-  catalogBrandMedia,
-  deleteBrandMedia,
-  insertBrandMedia,
-  listBrandMedia
-} from '$lib/server/brand-media';
-import { requireBrand } from '$lib/server/projects/brand-shell';
+import { error, redirect } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
+import { listMemberships } from '$lib/server/repos/orgs';
+import { findProjectForUser } from '$lib/server/projects/lookup';
+import { listProjectAssets, type Asset } from '$lib/server/repos/assets';
+import { listNodesByIds } from '$lib/server/repos/canvas';
+import { signAssetFiles } from '$lib/server/repos/asset-storage';
+import { signKnowledgePaths } from '$lib/server/media-archive';
+import { parseAssetSourceFilter } from './asset-filter';
 
-// Tetto condiviso, non budget: il lavoro vero di questa rotta sta in ~120s. Su Vercel ogni
-// valore distinto di `maxDuration` fa emettere ad adapter-vercel una funzione serverless
-// INTERA (~90 MB di node_modules ricopiati), quindi gli scaglioni sono solo tre: 300, 800,
-// 1800. Rimetterlo a 120 non rende la rotta più sicura: aggiunge una funzione da 90 MB.
-export const config = { maxDuration: 300 };
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function withBrand<T>(supabase: any, slug: string, fn: (brand: any) => Promise<T>): Promise<T> {
-  const { data: brand } = await supabase.from('brands').select('id').eq('slug', slug).maybeSingle();
-  if (!brand) return fail(404, { error: 'Brand not found' }) as T;
-  return withBrandContext(brand.id, () => fn(brand));
-}
-
-export const load: PageServerLoad = async ({ parent, locals: { supabase } }) => {
-  const { brand: brandOrNull } = await parent();
-  const brand = requireBrand(brandOrNull);
-
-  async function loadDeferred() {
-    const items = await listBrandMedia(supabase, brand.id, { limit: 120 });
-    return { items };
-  }
-
-  return {
-    brand,
-    deferred: loadDeferred()
-  };
+/**
+ * LA LIBRERIA MEDIA DI UN PROGETTO, SULLO SCHEMA NUOVO.
+ *
+ * Ogni asset porta già `source` e `source_node_id` — non c'è una cartella o un tag da inventare,
+ * il filtro è la vetrina su una colonna che esiste già. Il filtro sta nella QUERY
+ * (`listProjectAssets` prende `source`), non in un `.filter()` lato client: un progetto accumula
+ * migliaia di asset e la pagina non li scarica tutti per poi scartarne due terzi.
+ *
+ * Due bucket, perché due sono le strade che un asset percorre per arrivare qui:
+ * `canvas-assets` per un upload, `brand-knowledge` per un render — `assets/[id]/+server.ts`
+ * nella tela decide allo stesso modo, guardando `source`.
+ *
+ * `parseAssetSourceFilter` vive nel suo file: `+page.server.ts` accetta solo gli export che
+ * SvelteKit conosce, e uno in più fa cadere la rotta con un 500 prima ancora di girare.
+ */
+export type MediaAsset = Asset & {
+  signedUrl: string | null;
+  sourceNode: { id: string; displayName: string | null; canvasId: string } | null;
 };
 
-export const actions: Actions = {
-  // Client uploads to Storage first, then posts path + metadata here.
-  upload: async ({ request, params, locals: { supabase, safeGetSession } }) => {
-    const brandSlug = await brandSlugOf(supabase, params.projectId);
-    if (!brandSlug) return fail(409, { error: 'no_brand' });
-    return withBrand(supabase, brandSlug, async (brand) => {
-      const { user } = await safeGetSession();
-      if (!user) return fail(401, { error: 'Not authenticated' });
-
-      const fd = await request.formData();
-      const paths = fd.getAll('path').map(String).filter(Boolean);
-      const fileNames = fd.getAll('file_name').map(String);
-      const mimeTypes = fd.getAll('mime_type').map(String);
-      const sizes = fd.getAll('size_bytes').map((v) => Number(v) || null);
-      const widths = fd.getAll('width').map((v) => Number(v) || null);
-      const heights = fd.getAll('height').map((v) => Number(v) || null);
-      const durations = fd.getAll('duration_seconds').map((v) => Number(v) || null);
-
-      if (!paths.length) return fail(400, { error: 'No files uploaded' });
-
-      const insertedIds: string[] = [];
-      for (let i = 0; i < paths.length; i++) {
-        const path = paths[i];
-        if (!path.startsWith(`${user.id}/${brand.id}/`)) {
-          return fail(400, { error: 'Invalid file path' });
-        }
-        const mime = mimeTypes[i] ?? '';
-        if (!mime.startsWith('image/') && !mime.startsWith('video/')) {
-          return fail(400, { error: 'Only images and videos are supported' });
-        }
-        const { row, error } = await insertBrandMedia(supabase, {
-          brandId: brand.id,
-          userId: user.id,
-          storagePath: path,
-          fileName: fileNames[i] || path.split('/').pop() || 'asset',
-          mime,
-          bytes: sizes[i],
-          width: widths[i],
-          height: heights[i],
-          durationSeconds: durations[i]
-        });
-        if (error || !row) return fail(400, { error: error ?? 'Insert failed' });
-        insertedIds.push(row.id);
-      }
-
-      // Catalog each asset (vision for images). Cap parallelism to avoid Gemini rate spikes.
-      const results: Array<{ id: string; ok: boolean }> = [];
-      for (const id of insertedIds) {
-        const r = await catalogBrandMedia(supabase, id, brand.id);
-        results.push({ id, ok: r.ok });
-      }
-
-      return { saved: true, count: insertedIds.length, cataloged: results.filter((r) => r.ok).length };
-    });
-  },
-
-  update: async ({ request, params, locals: { supabase } }) => {
-    const brandSlug = await brandSlugOf(supabase, params.projectId);
-    if (!brandSlug) return fail(409, { error: 'no_brand' });
-    return withBrand(supabase, brandSlug, async (brand) => {
-      const fd = await request.formData();
-      const id = String(fd.get('id') ?? '');
-      if (!id) return fail(400, { error: 'Missing id' });
-
-      const tagsRaw = String(fd.get('tags') ?? '');
-      const tags = tagsRaw
-        .split(/[,#]+/)
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .slice(0, 20);
-
-      const patch = {
-        title: String(fd.get('title') ?? '').trim() || null,
-        description: String(fd.get('description') ?? '').trim() || null,
-        tags,
-        suggested_use: String(fd.get('suggested_use') ?? '').trim() || null,
-        when_to_use: String(fd.get('when_to_use') ?? '').trim() || null,
-        how_to_use: String(fd.get('how_to_use') ?? '').trim() || null,
-        where_to_use: String(fd.get('where_to_use') ?? '').trim() || null,
-        updated_at: new Date().toISOString()
-      };
-
-      const { error } = await supabase
-        .from('brand_media')
-        .update(patch)
-        .eq('id', id)
-        .eq('brand_id', brand.id);
-      if (error) return fail(400, { error: error.message });
-      return { saved: true };
-    });
-  },
-
-  recatalog: async ({ request, params, locals: { supabase } }) => {
-    const brandSlug = await brandSlugOf(supabase, params.projectId);
-    if (!brandSlug) return fail(409, { error: 'no_brand' });
-    return withBrand(supabase, brandSlug, async (brand) => {
-      const fd = await request.formData();
-      const id = String(fd.get('id') ?? '');
-      if (!id) return fail(400, { error: 'Missing id' });
-      const r = await catalogBrandMedia(supabase, id, brand.id);
-      if (!r.ok) return fail(400, { error: r.error ?? 'Catalog failed' });
-      return { saved: true };
-    });
-  },
-
-  delete: async ({ request, params, locals: { supabase } }) => {
-    const brandSlug = await brandSlugOf(supabase, params.projectId);
-    if (!brandSlug) return fail(409, { error: 'no_brand' });
-    return withBrand(supabase, brandSlug, async (brand) => {
-      const fd = await request.formData();
-      const id = String(fd.get('id') ?? '');
-      if (!id) return fail(400, { error: 'Missing id' });
-      const r = await deleteBrandMedia(supabase, brand.id, id);
-      if (!r.ok) return fail(400, { error: r.error ?? 'Delete failed' });
-      return { saved: true };
-    });
+async function withSignedUrls(
+  locals: App.Locals,
+  assets: Asset[]
+): Promise<Map<string, string>> {
+  const db = await locals.db();
+  if (!db) {
+    throw error(500, 'sessione senza client');
   }
+
+  const uploadPaths = assets.filter((a) => a.source === 'upload' && a.url).map((a) => a.url!);
+  const generatedPaths = assets.filter((a) => a.source === 'generated' && a.url).map((a) => a.url!);
+
+  const [uploaded, generated] = await Promise.all([
+    signAssetFiles(db, uploadPaths),
+    signKnowledgePaths(db as never, generatedPaths)
+  ]);
+
+  return new Map([...uploaded, ...generated]);
+}
+
+export const load: PageServerLoad = async ({ params, url, locals }) => {
+  const { session, user } = await locals.safeGetSession();
+  if (!session || !user) {
+    throw redirect(303, '/login');
+  }
+
+  const db = await locals.db();
+  if (!db) {
+    throw error(500, 'sessione senza client');
+  }
+
+  const memberships = await listMemberships(db, user.id);
+  const found = await findProjectForUser(db, { projectId: params.projectId ?? '', memberships });
+  if (!found) {
+    throw error(404, 'questo progetto non esiste, o non è tuo');
+  }
+
+  const { orgId, project } = found;
+  const source = parseAssetSourceFilter(url.searchParams.get('source'));
+
+  const assets = await listProjectAssets(db, { orgId, projectId: project.id, source });
+
+  const nodeIds = [...new Set(assets.map((a) => a.sourceNodeId).filter((id): id is string => !!id))];
+  const [signedUrls, nodes] = await Promise.all([
+    withSignedUrls(locals, assets),
+    listNodesByIds(db, { orgId, nodeIds })
+  ]);
+  const nodesById = new Map(nodes.map((n) => [n.id, n]));
+
+  const items: MediaAsset[] = assets.map((asset) => {
+    const node = asset.sourceNodeId ? nodesById.get(asset.sourceNodeId) : undefined;
+    return {
+      ...asset,
+      signedUrl: asset.url ? (signedUrls.get(asset.url) ?? null) : null,
+      sourceNode: node
+        ? { id: node.id, displayName: node.displayName, canvasId: node.canvasId }
+        : null
+    };
+  });
+
+  return {
+    project: { id: project.id, name: project.name, slug: project.slug },
+    items,
+    filter: source ?? 'all'
+  };
 };

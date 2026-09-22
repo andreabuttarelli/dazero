@@ -4,6 +4,7 @@ import { senderEmailDomain } from './support-config';
 import type { Locale } from '$lib/i18n/locale';
 import type { Stage } from './lifecycle';
 import { siteUrl } from '$lib/seo';
+import { joinAppPath } from '$lib/server/tenancy/brand-slug';
 
 // Sender address. The domain must be verified in Resend, otherwise Resend rejects delivery to
 // anyone but the account owner. Override EMAIL_FROM entirely, or just EMAIL_DOMAIN to change only
@@ -324,13 +325,6 @@ export type RecapData = {
   actionItems: { label: string; url?: string }[];
   dashboardUrl: string;
   connectedAccounts: { platform: string; username: string | null }[];
-  /** Organic-growth remediation — null/empty when brand data is complete. */
-  growth: {
-    ready: boolean;
-    blockingCount: number;
-    warningCount: number;
-    fixes: { key: string; blocking: boolean; url?: string }[];
-  } | null;
   /** Click path (post → traffico misurabile): post_links clicks (redirect + landing) in the
    *  last 7 days. Optional — the section renders only when present and > 0. */
   linkClicks?: number;
@@ -416,41 +410,6 @@ function visualInsightsSectionHtml(locale: Locale, data: RecapData): string {
   return `${sectionTitle(tEmail(locale, 'recap_weekly.visual_insights'))}${items}`;
 }
 
-function growthSectionHtml(locale: Locale, data: RecapData): string {
-  const g = data.growth;
-  if (!g || (!g.blockingCount && !g.warningCount)) return '';
-  const status = g.blockingCount
-    ? tEmail(locale, 'recap_weekly.growth.blocked', { n: g.blockingCount })
-    : tEmail(locale, 'recap_weekly.growth.warn', { n: g.warningCount });
-  const lede = g.blockingCount
-    ? tEmail(locale, 'recap_weekly.growth.lede_blocked')
-    : tEmail(locale, 'recap_weekly.growth.lede_warn');
-  const bg = g.blockingCount ? '#fff8f0' : '#f8fafc';
-  const border = g.blockingCount ? '#fde68a' : '#e2e8f0';
-  const titleColor = g.blockingCount ? '#92400e' : '#334155';
-  const rows = g.fixes
-    .map((f) => {
-      const label = tEmail(locale, `recap_weekly.growth.check.${f.key}`);
-      const link = f.url
-        ? `<a href="${esc(f.url)}" style="color:${ACCENT};text-decoration:none;font-weight:600;white-space:nowrap;">${tEmail(locale, 'recap_weekly.growth.fix')}</a>`
-        : '';
-      const badge = f.blocking
-        ? `<span style="font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#b45309;margin-right:6px;">${tEmail(locale, 'recap_weekly.growth.required')}</span>`
-        : '';
-      return `<div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:8px 0;border-top:1px solid ${border};font-size:13px;color:#1d1d1f;line-height:1.4;">
-        <div>${badge}${esc(label)}</div>
-        ${link}
-      </div>`;
-    })
-    .join('');
-  return `${sectionTitle(tEmail(locale, 'recap_weekly.growth.title'))}
-    <div style="padding:14px 16px;background:${bg};border-radius:10px;border:1px solid ${border};margin:0 0 8px;">
-      <div style="font-size:13px;font-weight:700;color:${titleColor};">${esc(status)}</div>
-      <div style="font-size:12px;color:${titleColor};margin-top:4px;line-height:1.5;">${esc(lede)}</div>
-      <div style="margin-top:8px;">${rows}</div>
-    </div>`;
-}
-
 function accountBadge(platform: string, username: string | null): string {
   return `<span style="display:inline-block;background:#f0f0f3;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;color:#1d1d1f;margin:0 4px 4px 0;">${esc(platform)}${username ? ` @${esc(username)}` : ''}</span>`;
 }
@@ -527,8 +486,6 @@ export function weeklyRecapEmailHtml(locale: Locale, data: RecapData, origin?: s
 
     ${accountsSection}
 
-    ${growthSectionHtml(locale, data)}
-
     ${divider()}
     ${sectionTitle(tEmail(locale, 'recap_weekly.stats_title'))}
 
@@ -581,26 +538,6 @@ export function weeklyRecapEmailText(locale: Locale, data: RecapData): string {
   } else {
     lines.push(tEmail(locale, 'recap_weekly.no_accounts_title'));
     lines.push(tEmail(locale, 'recap_weekly.no_accounts_desc'));
-    lines.push('');
-  }
-
-  if (data.growth && (data.growth.blockingCount || data.growth.warningCount)) {
-    lines.push(`— ${tEmail(locale, 'recap_weekly.growth.title')} —`);
-    lines.push(
-      data.growth.blockingCount
-        ? tEmail(locale, 'recap_weekly.growth.blocked', { n: data.growth.blockingCount })
-        : tEmail(locale, 'recap_weekly.growth.warn', { n: data.growth.warningCount })
-    );
-    lines.push(
-      data.growth.blockingCount
-        ? tEmail(locale, 'recap_weekly.growth.lede_blocked')
-        : tEmail(locale, 'recap_weekly.growth.lede_warn')
-    );
-    for (const f of data.growth.fixes) {
-      const label = tEmail(locale, `recap_weekly.growth.check.${f.key}`);
-      const tag = f.blocking ? `[${tEmail(locale, 'recap_weekly.growth.required')}] ` : '';
-      lines.push(`  → ${tag}${label}${f.url ? ` ${f.url}` : ''}`);
-    }
     lines.push('');
   }
 
@@ -700,9 +637,10 @@ export function digestEmailHtml(
   locale: Locale,
   brand: { name: string; slug: string },
   posts: DigestPost[],
+  appBasePath: string,
   origin?: string
 ): string {
-  const calendarUrl = `${siteUrl(origin)}/app/${brand.slug}/calendar`;
+  const calendarUrl = `${siteUrl(origin)}${joinAppPath(appBasePath, '/calendar')}`;
   const items = posts.map((p) => digestPostRow(p, calendarUrl)).join('');
   return shell(
     origin,
@@ -717,9 +655,10 @@ export function digestEmailHtml(
 export function digestEmailText(
   locale: Locale,
   brand: { name: string; slug: string },
-  posts: DigestPost[]
+  posts: DigestPost[],
+  appBasePath: string
 ): string {
-  const calendarUrl = `${siteUrl()}/app/${brand.slug}/calendar`;
+  const calendarUrl = `${siteUrl()}${joinAppPath(appBasePath, '/calendar')}`;
   const lines = posts.map((p) => {
     const url = p.published_url || calendarUrl;
     return `- ${(p.platform ?? '').toUpperCase()}: ${(p.caption ?? '').slice(0, 160)} (${url})`;
@@ -858,12 +797,10 @@ export function creditWarningEmailText(locale: Locale, opts: {
 
 // ── Lifecycle drip ───────────────────────────────────────────────────────────────────────────
 // Welcome (T+0), day-1 call-insist, and day-2/3 next-step nudges. Sent by api/v1/lifecycle/tick.
-// The 6 welcome "next steps" mirror the in-app OnboardingChecklist (sidebar progress).
+// Blog/SEO steps dropped 2026-09-22: that surface no longer exists in the app.
 const WELCOME_STEPS: { key: string; path: string }[] = [
   { key: 'studio', path: 'studio' },
-  { key: 'plan', path: 'calendar' },
-  { key: 'blog', path: 'site' },
-  { key: 'seo', path: 'web' }
+  { key: 'plan', path: 'calendar' }
 ];
 
 export function welcomeEmailSubject(locale: Locale, brandName: string): string {
@@ -873,12 +810,12 @@ export function welcomeEmailSubject(locale: Locale, brandName: string): string {
 export function welcomeEmailHtml(
   locale: Locale,
   opts: { name: string; brandName: string; brandSlug: string; callUrl: string },
+  appBasePath: string,
   origin?: string
 ): string {
-  const base = `${siteUrl(origin)}/app/${opts.brandSlug}`;
   const steps = WELCOME_STEPS.map(
     (s) =>
-      `<li style="margin:0 0 8px;"><a href="${base}/${s.path}" style="color:#7c5cff;text-decoration:none;">${tEmail(locale, `welcome.step.${s.key}`)}</a></li>`
+      `<li style="margin:0 0 8px;"><a href="${siteUrl(origin)}${joinAppPath(appBasePath, `/${s.path}`)}" style="color:#7c5cff;text-decoration:none;">${tEmail(locale, `welcome.step.${s.key}`)}</a></li>`
   ).join('');
   return shell(
     origin,
@@ -896,10 +833,13 @@ export function welcomeEmailHtml(
 export function welcomeEmailText(
   locale: Locale,
   opts: { name: string; brandName: string; brandSlug: string; callUrl: string },
+  appBasePath: string,
   origin?: string
 ): string {
-  const base = `${siteUrl(origin)}/app/${opts.brandSlug}`;
-  const steps = WELCOME_STEPS.map((s, i) => `${i + 1}. ${tEmail(locale, `welcome.step.${s.key}`)} — ${base}/${s.path}`).join('\n');
+  const steps = WELCOME_STEPS.map(
+    (s, i) =>
+      `${i + 1}. ${tEmail(locale, `welcome.step.${s.key}`)} — ${siteUrl(origin)}${joinAppPath(appBasePath, `/${s.path}`)}`
+  ).join('\n');
   return [
     tEmail(locale, 'welcome.heading', { name: opts.name }),
     '',
@@ -922,9 +862,10 @@ export function day1EmailSubject(locale: Locale, name: string, brandName: string
 export function day1EmailHtml(
   locale: Locale,
   opts: { name: string; brandName: string; brandSlug: string; callUrl: string },
+  appBasePath: string,
   origin?: string
 ): string {
-  const selfUrl = `${siteUrl(origin)}/app/${opts.brandSlug}/settings/brand`;
+  const selfUrl = `${siteUrl(origin)}${joinAppPath(appBasePath, '/settings/brand')}`;
   return shell(
     origin,
     `
@@ -940,9 +881,10 @@ export function day1EmailHtml(
 export function day1EmailText(
   locale: Locale,
   opts: { name: string; brandName: string; brandSlug: string; callUrl: string },
+  appBasePath: string,
   origin?: string
 ): string {
-  const selfUrl = `${siteUrl(origin)}/app/${opts.brandSlug}/settings/brand`;
+  const selfUrl = `${siteUrl(origin)}${joinAppPath(appBasePath, '/settings/brand')}`;
   return [
     tEmail(locale, 'lifecycle.day1.heading', { brand: opts.brandName }),
     '',

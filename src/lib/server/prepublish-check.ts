@@ -431,7 +431,8 @@ async function notifyHeld(
     const { notifyBrandContacts } = await import('$lib/server/brand-notify');
     const contacts = await brandContacts(supabase, brand.org_id, brand.id);
     if (!contacts.length) continue;
-    const url = `${appBase}/app/${brand.slug}/calendar`;
+    const { appPathForBrand } = await import('$lib/server/tenancy/brand-slug');
+    const url = `${appBase}${await appPathForBrand(supabase, brand.id, '/calendar')}`;
     await notifyBrandContacts(supabase, contacts, {
       logPrefix: '[prepublish]',
       buildEmail: (locale, to) => ({

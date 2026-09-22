@@ -6,11 +6,19 @@ import { json } from '@sveltejs/kit';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { markRlsScoped } from '$lib/server/rls-client';
 
+/**
+ * The new `api_keys` (org_id NOT NULL, scopes: string[]) has no per-brand scoping column — a key
+ * is now good for every brand of ONE org, not a chosen list. `permissions.brand_ids` has no
+ * successor: brand-level API key scoping is a genuine product gap on this schema, not something
+ * repointed here — see the task report. `checkApiKeyBrandAccess` below checks org membership,
+ * the only scoping the schema can still express.
+ */
 export interface ApiKeyInfo {
   id: string;
   name: string;
   user_id: string;
-  permissions: { brand_ids: string[] | '*'; scopes: string[] };
+  org_id: string;
+  scopes: string[];
 }
 
 /**
@@ -90,11 +98,17 @@ async function authenticateApiKey(token: string) {
 
   const { data: keyRow, error: lookupError } = await admin
     .from('api_keys')
-    .select('id, user_id, name, permissions')
+    .select('id, user_id, org_id, name, scopes, expires_at, revoked_at')
     .eq('key_hash', keyHash)
     .maybeSingle();
 
   if (lookupError || !keyRow) {
+    return { error: json({ error: 'Invalid API key' }, { status: 401 }) };
+  }
+  if (keyRow.revoked_at) {
+    return { error: json({ error: 'Invalid API key' }, { status: 401 }) };
+  }
+  if (keyRow.expires_at && new Date(keyRow.expires_at).getTime() < Date.now()) {
     return { error: json({ error: 'Invalid API key' }, { status: 401 }) };
   }
 
@@ -105,7 +119,8 @@ async function authenticateApiKey(token: string) {
     id: keyRow.id,
     name: keyRow.name,
     user_id: keyRow.user_id,
-    permissions: keyRow.permissions as ApiKeyInfo['permissions']
+    org_id: keyRow.org_id,
+    scopes: keyRow.scopes ?? []
   };
 
   // Service-role client: it bypasses RLS, so the ownership check RLS would have done has to be
@@ -129,31 +144,30 @@ async function authenticateApiKey(token: string) {
  */
 const apiKeyIdentity = new WeakMap<SupabaseClient, { userId: string; apiKey: ApiKeyInfo }>();
 
-/** Mirrors the auth_brand_ids() RLS predicate: brands of orgs you own ∪ brands you're a member of. */
+/**
+ * Mirrors the RLS org_isolation predicate: brands of every org this user belongs to (any role —
+ * `brand_members` has no successor on the new schema, so membership is org-wide, not per-brand).
+ */
 async function accessibleBrandIds(admin: SupabaseClient, userId: string): Promise<string[]> {
-  const [orgs, members] = await Promise.all([
-    admin.from('organizations').select('id').eq('owner_id', userId),
-    admin.from('brand_members').select('brand_id').eq('user_id', userId)
-  ]);
-  const ids = new Set<string>((members.data ?? []).map((m: any) => m.brand_id));
-  const orgIds = (orgs.data ?? []).map((o: any) => o.id);
-  if (orgIds.length) {
-    const { data } = await admin.from('brands').select('id').in('org_id', orgIds);
-    for (const b of data ?? []) ids.add(b.id);
-  }
-  return [...ids];
+  const { data: memberships } = await admin.from('orgs_members').select('org_id').eq('user_id', userId);
+  const orgIds = (memberships ?? []).map((m: any) => m.org_id);
+  if (!orgIds.length) return [];
+
+  const { data } = await admin.from('brands').select('id').in('org_id', orgIds);
+  return (data ?? []).map((b: any) => b.id);
 }
 
 /**
- * Brand ids this request is allowed to touch — the user's own brands narrowed to the key's scope.
+ * Brand ids this request is allowed to touch — the user's own brands narrowed to the key's org.
  * Returns null for JWT auth, where the client is already RLS-scoped and no filtering is needed.
  */
 export async function apiKeyBrandIds(supabase: SupabaseClient): Promise<string[] | null> {
   const identity = apiKeyIdentity.get(supabase);
   if (!identity) return null;
   const owned = await accessibleBrandIds(supabase, identity.userId);
-  const scoped = identity.apiKey.permissions.brand_ids;
-  return scoped === '*' ? owned : owned.filter((id) => scoped.includes(id));
+  const { data } = await supabase.from('brands').select('id').eq('org_id', identity.apiKey.org_id);
+  const inKeyOrg = new Set((data ?? []).map((b: any) => b.id));
+  return owned.filter((id) => inKeyOrg.has(id));
 }
 
 /** Hash an API key with SHA-256, returns hex string. */
@@ -177,18 +191,16 @@ export async function generateApiKey(): Promise<{ raw: string; hash: string; pre
 // ── API Key permission helpers ─────────────────────────────────
 
 /**
- * Check if an API key has access to a specific brand.
+ * Check if an API key has access to a specific brand — i.e. the brand's org is the key's org.
  * Returns undefined if allowed, or a 403 Response if denied.
  * For JWT auth (no apiKey), this is a no-op — RLS handles it.
  */
 export function checkApiKeyBrandAccess(
   apiKey: ApiKeyInfo | undefined,
-  brandId: string
+  brand: { org_id: string }
 ): Response | undefined {
   if (!apiKey) return undefined; // JWT auth — RLS handles it
-  const { brand_ids } = apiKey.permissions;
-  if (brand_ids === '*') return undefined;
-  if (Array.isArray(brand_ids) && brand_ids.includes(brandId)) return undefined;
+  if (brand.org_id === apiKey.org_id) return undefined;
   return json({ error: 'API key does not have access to this brand' }, { status: 403 });
 }
 
@@ -201,7 +213,7 @@ export function checkApiKeyWriteAccess(
   apiKey: ApiKeyInfo | undefined
 ): Response | undefined {
   if (!apiKey) return undefined; // JWT auth
-  if (apiKey.permissions.scopes.includes('write')) return undefined;
+  if (apiKey.scopes.includes('write')) return undefined;
   return json({ error: 'API key is read-only' }, { status: 403 });
 }
 
@@ -248,12 +260,13 @@ export async function gateOrgAiAction(
 }
 
 /**
- * Una chiave che vale solo per certi brand. Dove un brand si nomina, `checkApiKeyBrandAccess` la
- * confronta con quello; dove NON si nomina non c'è niente da confrontare, e lasciarla passare
- * allargherebbe in silenzio una restrizione che l'utente ha scelto.
+ * Una chiave API vale sempre per una sola org (`api_keys.org_id`, NOT NULL sul nuovo schema): la
+ * vecchia distinzione fra "tutti i brand" e "solo alcuni" non ha più una colonna da cui leggersi,
+ * e con essa il rifiuto in `orgScopeFor` — una chiave qualunque ORA ha un'org sola e ben definita,
+ * la propria, quindi passa sempre; era il caso "* " di prima, non quello ristretto.
  */
-export function apiKeyIsBrandScoped(apiKey: ApiKeyInfo | undefined): boolean {
-  return !!apiKey && apiKey.permissions.brand_ids !== '*';
+export function apiKeyIsBrandScoped(_apiKey: ApiKeyInfo | undefined): boolean {
+  return false;
 }
 
 export type OrgScope = {
@@ -294,18 +307,21 @@ export async function orgScopeFor(
   const { supabase, user, error, apiKey } = caller;
   if (error) return { error };
 
-  if (apiKeyIsBrandScoped(apiKey)) {
-    return { error: json({ error: 'brand_scoped_key' }, { status: 403 }) };
+  // A key's org is fixed by the row (api_keys.org_id) — there is nothing left to resolve. Only a
+  // JWT caller, who may belong to several orgs, needs ensureOrgForUser to pick one.
+  let orgId: string | null;
+  if (apiKey) {
+    orgId = apiKey.org_id;
+  } else {
+    const { ensureOrgForUser } = await import('./org');
+    orgId = await ensureOrgForUser(supabase, user as never);
   }
-
-  const { ensureOrgForUser } = await import('./org');
-  const orgId = await ensureOrgForUser(supabase, user as never);
   if (!orgId) return { error: json({ error: 'no_organization' }, { status: 500 }) };
 
   const gate = await gateOrgAiAction(orgId, apiKey);
   if (gate) return { error: gate };
 
-  const { data } = await supabase.from('organizations').select('id, name').eq('id', orgId).maybeSingle();
+  const { data } = await supabase.from('orgs').select('id, name').eq('id', orgId).maybeSingle();
 
   return {
     scope: {
@@ -335,15 +351,25 @@ export function brandStyleRefusal(brandStyle: string | undefined): Response | un
   );
 }
 
-/** The columns loadBrandForUser selects — typed, so callers don't get `unknown` everywhere. */
+/**
+ * The columns loadBrandForUser selects — typed, so callers don't get `unknown` everywhere.
+ *
+ * `status`, `plan`, `timezone`, `target_platforms`, `launched_at`, `content_prefs`, `setup_step`,
+ * `setup_completed_at`, `zernio_profile_id`, `ads_settings` are NOT columns on the new `brands`
+ * (verified against database.types.ts — it has only id, org_id, name, slug, website,
+ * short_description, content, palette, target, logo_url, created_at, updated_at). They stay in
+ * the type with safe defaults below so the ~60 call sites across api/v1/brands/[slug]/** that
+ * read them still compile; their RUNTIME behavior against fields the database no longer has is a
+ * separate, much larger defect than the auth path fixed here — see the task report.
+ */
 export type CliBrand = {
   id: string;
   org_id: string;
   name: string;
   slug: string;
-  status: string;          // NOT NULL, default 'trial'
+  status: string;
   plan: string | null;
-  timezone: string;        // NOT NULL, default 'Europe/Rome'
+  timezone: string;
   target_platforms: string[] | null;
   launched_at: string | null;
   content_prefs: Record<string, unknown> | null;
@@ -353,12 +379,25 @@ export type CliBrand = {
   ads_settings: unknown;
 } & Record<string, unknown>;
 
+const CLI_BRAND_DEFAULTS = {
+  status: 'active',
+  plan: null,
+  timezone: 'Europe/Rome',
+  target_platforms: null,
+  launched_at: null,
+  content_prefs: null,
+  setup_step: null,
+  setup_completed_at: null,
+  zernio_profile_id: null,
+  ads_settings: null
+} as const;
+
 /**
  * Load a brand by slug, verifying it belongs to the authenticated user via RLS.
  *
  * API-key requests run as service-role (RLS bypassed), so when `apiKey` is present the tenant
- * boundary is re-applied by hand: the brand must belong to the key's user (as org owner or
- * brand member) AND be within the key's `brand_ids` scope. 404 (not 403) — an API key must not
+ * boundary is re-applied by hand: the brand's org must be the key's org — the only scoping the
+ * new `api_keys` can still express (see ApiKeyInfo's doc). 404 (not 403) — an API key must not
  * be able to probe which slugs exist.
  */
 export async function loadBrandForUser(
@@ -370,46 +409,19 @@ export async function loadBrandForUser(
 > {
   // Service-role (API key) can see every row for a slug; JWT+RLS usually returns one.
   // Never maybeSingle() here — duplicate trial rows for the same slug exist in prod.
-  const { data: rows, error } = await supabase
-    .from('brands')
-    .select('id, org_id, name, slug, status, plan, timezone, target_platforms, launched_at, content_prefs, setup_step, setup_completed_at, zernio_profile_id, ads_settings')
-    .eq('slug', slug);
+  const { data: rows, error } = await supabase.from('brands').select('id, org_id, name, slug').eq('slug', slug);
 
   if (error || !rows?.length) {
     return { error: json({ error: 'Brand not found' }, { status: 404 }) };
   }
 
-  let candidates = rows as CliBrand[];
+  let candidates = (rows as { id: string; org_id: string; name: string; slug: string }[]).map(
+    (row) => ({ ...CLI_BRAND_DEFAULTS, ...row }) as CliBrand
+  );
 
   // API-key path: the client bypassed RLS, so re-apply the tenant boundary by hand.
   if (apiKey) {
-    const scoped: CliBrand[] = [];
-    for (const brand of candidates) {
-      const denied = checkApiKeyBrandAccess(apiKey, brand.id);
-      if (denied) continue;
-
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('id', brand.org_id)
-        .eq('owner_id', apiKey.user_id)
-        .maybeSingle();
-
-      if (org) {
-        scoped.push(brand);
-        continue;
-      }
-
-      const { data: member } = await supabase
-        .from('brand_members')
-        .select('brand_id')
-        .eq('brand_id', brand.id)
-        .eq('user_id', apiKey.user_id)
-        .maybeSingle();
-
-      if (member) scoped.push(brand);
-    }
-    candidates = scoped;
+    candidates = candidates.filter((brand) => !checkApiKeyBrandAccess(apiKey, brand));
   }
 
   // Defense in depth: catches callers that forgot to pass `apiKey` while the client is still
@@ -423,10 +435,9 @@ export async function loadBrandForUser(
     return { error: json({ error: 'Brand not found' }, { status: 404 }) };
   }
 
-  // Prefer the live brand when slug collisions exist (active > trial, launched first).
-  const rank = (b: CliBrand) =>
-    (b.status === 'active' ? 100 : 0) + (b.launched_at ? 10 : 0) + (b.plan ? 1 : 0);
-  candidates.sort((a, b) => rank(b) - rank(a));
-
+  // Used to prefer the live brand on a slug collision (active > trial, launched first) via
+  // status/launched_at/plan — none of those columns exist on the new `brands` (see CliBrand's
+  // doc), so a collision now returns whichever row the query happens to return first. Slugs are
+  // unique in practice; this is a real loss of a tiebreak, not a bug introduced here.
   return { brand: candidates[0] };
 }

@@ -10,7 +10,7 @@ export const GET: RequestHandler = async ({ request, params }) => {
   const { brand, error: brandError } = await loadBrandForUser(auth.supabase, params.slug, auth.apiKey);
   if (brandError) return brandError;
 
-  const brandAccess = checkApiKeyBrandAccess(auth.apiKey, brand.id);
+  const brandAccess = checkApiKeyBrandAccess(auth.apiKey, brand);
   if (brandAccess) return brandAccess;
 
   // Own keys only — the API-key path runs as service-role, so the user filter can't be left to RLS.

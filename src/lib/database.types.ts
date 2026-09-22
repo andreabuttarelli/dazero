@@ -1519,7 +1519,7 @@ export type Database = {
       products: {
         Row: {
           available: boolean | null
-          brand_id: string
+          brand_id: string | null
           created_at: string
           currency: string | null
           description: string | null
@@ -1527,9 +1527,12 @@ export type Database = {
           handle: string | null
           id: string
           images: Json | null
+          node_id: string | null
           org_id: string
           platform: string
           price: number | null
+          project_id: string | null
+          store_url: string | null
           synced_at: string
           title: string
           updated_at: string
@@ -1537,7 +1540,7 @@ export type Database = {
         }
         Insert: {
           available?: boolean | null
-          brand_id: string
+          brand_id?: string | null
           created_at?: string
           currency?: string | null
           description?: string | null
@@ -1545,9 +1548,12 @@ export type Database = {
           handle?: string | null
           id?: string
           images?: Json | null
+          node_id?: string | null
           org_id: string
           platform: string
           price?: number | null
+          project_id?: string | null
+          store_url?: string | null
           synced_at?: string
           title: string
           updated_at?: string
@@ -1555,7 +1561,7 @@ export type Database = {
         }
         Update: {
           available?: boolean | null
-          brand_id?: string
+          brand_id?: string | null
           created_at?: string
           currency?: string | null
           description?: string | null
@@ -1563,9 +1569,12 @@ export type Database = {
           handle?: string | null
           id?: string
           images?: Json | null
+          node_id?: string | null
           org_id?: string
           platform?: string
           price?: number | null
+          project_id?: string | null
+          store_url?: string | null
           synced_at?: string
           title?: string
           updated_at?: string
@@ -1580,10 +1589,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "products_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "products_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1842,6 +1865,7 @@ export type Database = {
           permalink: string | null
           platform: string
           posted_at: string | null
+          project_id: string | null
         }
         Insert: {
           caption?: string | null
@@ -1857,6 +1881,7 @@ export type Database = {
           permalink?: string | null
           platform: string
           posted_at?: string | null
+          project_id?: string | null
         }
         Update: {
           caption?: string | null
@@ -1872,6 +1897,7 @@ export type Database = {
           permalink?: string | null
           platform?: string
           posted_at?: string | null
+          project_id?: string | null
         }
         Relationships: [
           {
@@ -1886,6 +1912,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_posts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]

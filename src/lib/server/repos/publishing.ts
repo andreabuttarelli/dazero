@@ -171,7 +171,7 @@ export async function scheduleDelivery(
       scheduled_at: input.scheduledAt,
       timezone: input.timezone ?? 'UTC',
       caption: input.caption ?? null,
-      media: (input.media ?? null) as Database['public']['Tables']['scheduled_posts']['Insert']['media'],
+      media: input.media ?? null,
       status: 'scheduled'
     })
     .select(DELIVERY_COLUMNS)

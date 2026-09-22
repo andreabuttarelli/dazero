@@ -28,3 +28,21 @@ export async function signAssetFile(db: Db, path: string): Promise<string> {
   }
   return data.signedUrl;
 }
+
+export async function signAssetFiles(db: Db, paths: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const clean = [...new Set(paths.filter(Boolean))];
+  if (!clean.length) {
+    return out;
+  }
+
+  const { data } = await db.storage
+    .from(CANVAS_ASSET_BUCKET)
+    .createSignedUrls(clean, SIGNED_URL_SECONDS);
+  for (const row of data ?? []) {
+    if (row.signedUrl && row.path) {
+      out.set(row.path, row.signedUrl);
+    }
+  }
+  return out;
+}

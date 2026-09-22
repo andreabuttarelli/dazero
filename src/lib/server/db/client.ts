@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env as publicEnv } from '$env/dynamic/public';
 import { env } from '$env/dynamic/private';
 import { markRlsScoped } from '$lib/server/rls-client';
-import type { Database } from '$lib/database.types';
+import type { NarrowedDatabase } from '$lib/server/db/typed-database';
 import type { ServiceRoleUse } from '$lib/server/db/service-role-uses';
 
 /**
@@ -19,8 +19,12 @@ import type { ServiceRoleUse } from '$lib/server/db/service-role-uses';
  *
  * Per questo la seconda non si costruisce chiamando una funzione qualsiasi: esige una voce del
  * registro, che è il posto dove la giustificazione sta scritta accanto a tutte le altre.
+ *
+ * `NarrowedDatabase` è `Database` con le colonne jsonb validate (`nodes.data` e le altre cinque
+ * in `typed-database.ts`) già ristrette alla loro forma vera invece di `Json` — vedi quel file
+ * per il perché. Ogni repository che importa `Db` da qui la eredita gratis.
  */
-export type Db = SupabaseClient<Database>;
+export type Db = SupabaseClient<NarrowedDatabase>;
 
 const AUTH_OFF = { auth: { persistSession: false, autoRefreshToken: false } } as const;
 
@@ -39,7 +43,7 @@ export function createUserDb(accessToken: string): Db {
     throw new Error('PUBLIC_SUPABASE_ANON_KEY not configured');
   }
 
-  const client = createClient<Database>(url(), key, {
+  const client = createClient<NarrowedDatabase>(url(), key, {
     ...AUTH_OFF,
     global: { headers: { Authorization: `Bearer ${accessToken}` } }
   });
@@ -60,5 +64,5 @@ export function createServiceRoleDb(use: ServiceRoleUse): Db {
     throw new Error(`service role senza giustificazione: ${use.path}`);
   }
 
-  return createClient<Database>(url(), key, AUTH_OFF);
+  return createClient<NarrowedDatabase>(url(), key, AUTH_OFF);
 }
