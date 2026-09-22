@@ -307,6 +307,19 @@ export function createOrgWriteTools({ authority, orgId, userId, threadId, actor 
     const refusal = badIdentifier(input.table, values, where);
     if (refusal) return finish(refusal, `org_db_write:refused:${refusal.error}`, t0);
 
+    const named = values.org_id;
+    if (named !== undefined && named !== null && String(named) !== orgId) {
+      return finish(
+        {
+          error: 'wrong_org',
+          message: `This session is org ${orgId}, and the write names ${String(named)}. Nothing was written and nothing was corrected for you.`,
+          fix: `Drop \`org_id\` from values — a row cannot change org.`
+        },
+        'org_db_write:refused:wrong_org',
+        t0
+      );
+    }
+
     if (!where.length) {
       return finish(
         {

@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { resolveOrgCaller } from '$lib/server/org-data/auth';
 import { createOrgWriteTools } from '$lib/server/org-data/write-tool';
 import { agentActor } from '$lib/server/repos/actor';
+import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from '@dazero/api-contracts';
 
 /**
  * `insert_row`/`update_row`/`delete_row` sul nuovo schema. Come `/org/query`, monta lo stesso
@@ -23,11 +24,15 @@ const write = async (request: Request, url: URL, op: 'insert' | 'update' | 'dele
 
   const actor = apiKeyId ? agentActor(userId, `api_key:${apiKeyId}`) : undefined;
   const tools = createOrgWriteTools({ authority, orgId, userId, actor });
-  const body = await request.json().catch(() => ({}));
+  const contract = op === 'insert' ? INSERT_ROW : op === 'update' ? UPDATE_ROW : DELETE_ROW;
+  const parsed = contract.input.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return json({ error: 'invalid_input', details: parsed.error.issues }, { status: 400 });
+  }
 
-  if (op === 'insert') return json(await tools.insertRow(body));
-  if (op === 'update') return json(await tools.updateRow(body));
-  return json(await tools.deleteRow(body));
+  if (op === 'insert') return json(await tools.insertRow(parsed.data as Parameters<typeof tools.insertRow>[0]));
+  if (op === 'update') return json(await tools.updateRow(parsed.data as Parameters<typeof tools.updateRow>[0]));
+  return json(await tools.deleteRow(parsed.data as Parameters<typeof tools.deleteRow>[0]));
 };
 
 export const POST: RequestHandler = ({ request, url }) => write(request, url, 'insert');

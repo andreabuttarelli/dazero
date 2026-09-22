@@ -149,6 +149,19 @@ describe('update_row / delete_row: org_id si impone sul filtro, un id di un\'alt
     expect(out.matched).toBe(0);
   });
 
+  it('update: un org_id dentro values è rifiutato, non solo ignorato nel where', async () => {
+    const { calls, supabase } = fakeAuthority({ count: 1, writeRows: [{ id: 'n1', org_id: 'org-mine' }] });
+
+    const out = await tools(supabase, 'org-mine').updateRow({
+      table: 'nodes',
+      where: [{ column: 'id', op: 'eq', value: 'n1' }],
+      values: { display_name: 'x', org_id: 'org-altrui' }
+    });
+
+    expect(out.error).toBe('wrong_org');
+    expect(calls.filter((c) => c.op === 'update')).toHaveLength(0);
+  });
+
   it('delete: stesso confine — org_id si impone sul filtro', async () => {
     const { calls, supabase } = fakeAuthority({ count: 1, writeRows: [{ id: 'n1' }] });
 
