@@ -246,47 +246,46 @@ The evaluation (`scripts/eval/`) is the only thing that verifies **the product w
 the real agents to work on a disposable trial brand, with real requests, and judges FACTS before
 tastes — does the artifact exist? is the number right? how many text blocks? what did it cost?
 
-**What exists today — three commands, and they measure different things:**
+**What exists today — four commands against the real canvas, and they measure different things:**
 
 ```bash
-npm run eval:durability   # the work does not vanish: 3 scenarios against the real database and the real plpgsql
-npm run eval:durability -- --only=<scenario>
-npm run eval:creative     # rubrics → plan → posts → rendered images, each image judged on craft facts
-npm run eval:creative -- --no-images --posts=2
-npm run eval:clip         # renders real UGC clips and judges the RESA on them
-npm run eval:clip -- --clips=3 --model=bytedance/seedance-2-5
+npm run eval:bootstrap    # a real signup lands in a working org/project — the entry path itself
+npm run eval:canvas       # realtime on nodes/canvases/presence: does a peer see what another peer wrote?
+npm run eval:gen-node     # the three paths run_node_generation can take, against the real engine
+npm run eval:image-node   # an image node lands a real file in storage, not just a row that claims one
 ```
 
-`eval:durability` measures whether the product *keeps what it produced* — a turn killed
-mid-work, the salvage when it gives up, and a taken-over run that must not deposit a second
-message. It runs against real SQL, which is the whole point: the two defects that slipped
-through in one session were a changed function signature and a reaper whose contract had moved
-under its own tests, and a fake client cannot see either.
+`eval:bootstrap` proves the entry path a real signup takes — a fresh user through `enterApp` —
+lands in a usable org and project, not a row that exists but nothing can open.
 
-`eval:creative` walks the real path (`proposeRubrics` → `planStrategy` → `executePlan` → render)
-on a brand with stories and no catalogue, and since 2026-09-19 every rendered image goes through
-`photo-craft-review`: contact shadow present? lighting gear in the frame? product opened when
-nobody asked? It writes `04-mestiere.md` next to the images, which is what makes a prompt change
-comparable instead of a matter of opinion.
+`eval:canvas` proves realtime works on what the canvas is built from: it connects two clients to
+the same canvas and checks that a write from one arrives at the other — presence, node changes,
+connections. A UI that reads from a channel nobody proved delivers is a UI that looks done and
+silently isn't.
 
-`eval:clip` is the same question one medium further on, and the expensive one: it renders real UGC
-clips through `renderVideo` and has `clip-craft-review` watch them — a third hand, an object that
-teleports, lip-sync that smears, a stretch where nothing moves. One clip by default, because a clip
-is the most expensive thing the product buys.
+`eval:gen-node` walks `run_node_generation`'s three real outcomes — success, a stale `version`
+refused as `conflict`, a medium that doesn't match the node's `type` refused before anything is
+spent — against the actual engine, not a mock of it.
+
+`eval:image-node` is the narrower, cheaper proof that an image node lands a real file: one render
+on the cheapest model in the catalog, then the object is actually downloaded and its bytes
+counted. A bucket that exists and a policy that compiles are not the same claim as a file landing
+in it — `store_failed` can still come back for reasons neither of those catches.
 
 **What does NOT exist, so nobody writes it in a report as if it had run:** `npm run eval`,
-`npm run eval:ux` — the onboarding walk was removed: it cost real money on every run and graded
-the in-app chat, which is not where the product is going — the
-`--all` / `--budget` / `--jobs` / `--compare` flags, cost read from `ai_calls`, `docs/EVAL_PLAN.md`,
-and the browser engine with a throttled network. The richer scenario catalogue described in the
-frozen `CHANGELOG.md` (`brand-nudo`, `conteggio-secco`, …) was designed and never merged. Reading
-about a command here is not evidence that it runs — check `package.json`.
+`npm run eval:ux`, `npm run eval:durability`, `npm run eval:creative`, `npm run eval:clip` — the
+rubric/plan/post pipeline and the UGC clip renderer they walked are gone with the rest of the old
+product, and their scripts were deleted alongside them, not left broken in `scripts/eval/`. Also
+absent: the `--all` / `--budget` / `--jobs` / `--compare` flags, cost read from `ai_calls`,
+`docs/EVAL_PLAN.md`, and a browser engine with a throttled network. Reading about a command here
+is not evidence that it runs — check `package.json`.
 
-**And being in `package.json` is not evidence that it WORKS.** `eval:creative` sat there broken for
-weeks: three of its calls still passed a `null as never` first argument that had been dropped from
-those signatures, so it died with a `TypeError` on its first step. Nothing was red, because no test
-covers a script and nobody ran it — it costs money. A probe nobody runs rots exactly like the
-product it was meant to watch: run it before you trust its last report.
+**And being in `package.json` is not evidence that it WORKS.** A script with a dead import — a
+function whose signature moved, a module that no longer exists — fails on its first line and
+nobody notices, because no unit test covers a script and nobody runs it between deploys; it costs
+money. A probe nobody runs rots exactly like the product it was meant to watch: run it before you
+trust its last report, and delete it outright the day its imports stop resolving rather than
+leaving it to lie in a report later.
 
 **When to run it** — not on every commit (it costs real money), but always:
 
@@ -315,11 +314,12 @@ The criterion of a good scenario is one only: **if you re-ran the real failures 
 would this one catch them?** If a real defect would not have been caught by any scenario, the
 scenario is missing.
 
-**Two families, not one.** The *quality* scenarios (does the agent answer well? deliver? use the
-brand's context?) run server-side and stand alone. The *durability* scenarios — bad network, tab
-closed and reopened mid-work, a turn that outlasts 30 minutes and must continue alone — need a
-real browser with a throttled network, so they live alongside but on another engine. A product
-that answers well and loses work when the line drops is not ready: measure both.
+**Two families, not one — only one built today.** *Quality* scenarios (does the write land? does
+realtime deliver it? does the file actually exist?) run server-side and are what `scripts/eval/`
+holds now. A second family — bad network, tab closed and reopened mid-work, a turn that outlasts
+30 minutes — would need a real browser with a throttled network and does not exist yet: nothing
+in this repo measures it. A product that answers well and loses work when the line drops is not
+ready, so that gap is real, not a nitpick — it just isn't closed by a command you can run today.
 
 ## The commit author, or Vercel won't build
 
