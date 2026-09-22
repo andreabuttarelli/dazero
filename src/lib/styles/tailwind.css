@@ -156,10 +156,10 @@
   @apply border-0 border-t border-transparent my-9;
 }
 .docs-prose code {
-  @apply font-mono text-[13px] bg-muted border border-border rounded-md px-1.5 py-0.5;
+  @apply font-mono text-[13px] bg-muted border border-border px-1.5 py-0.5;
 }
 .docs-prose pre {
-  @apply bg-muted border border-border rounded-xl px-5 py-4 overflow-x-auto mb-4;
+  @apply bg-muted border border-border px-5 py-4 overflow-x-auto mb-4;
 }
 .docs-prose pre code {
   @apply bg-transparent border-0 p-0 text-[13px];
@@ -175,7 +175,7 @@
   @apply font-semibold text-muted-foreground text-xs uppercase tracking-wider;
 }
 .docs-prose .docs-note {
-  @apply bg-primary/5 border border-primary/15 rounded-[10px] px-[18px] py-3.5 text-[14.5px] text-muted-foreground mb-4 leading-relaxed;
+  @apply bg-primary/5 border border-primary/15 px-[18px] py-3.5 text-[14.5px] text-muted-foreground mb-4 leading-relaxed;
 }
 .docs-prose .docs-note strong {
   @apply text-primary;
@@ -190,7 +190,7 @@
 .docs-prose .docs-step::before {
   counter-increment: step;
   content: counter(step);
-  @apply absolute left-0 top-0 w-7 h-7 rounded-full bg-primary/10 text-primary text-[13px] font-bold flex items-center justify-center;
+  @apply absolute left-0 top-0 w-7 h-7 bg-primary/10 text-primary text-[13px] font-bold flex items-center justify-center;
 }
 .docs-prose .docs-step h3 {
   @apply mt-0.5;
@@ -208,7 +208,7 @@
   @apply flex gap-4 mt-14 pt-6 border-t border-border;
 }
 .docs-prose .docs-pager a {
-  @apply flex-1 p-3.5 px-4 border border-border rounded-[10px] no-underline hover:border-primary hover:bg-primary/[0.04] transition-colors;
+  @apply flex-1 p-3.5 px-4 border border-border no-underline hover:border-primary hover:bg-primary/[0.04] transition-colors;
 }
 .docs-prose .docs-pager-label {
   @apply text-xs text-muted-foreground mb-1;
