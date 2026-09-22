@@ -7,7 +7,7 @@
   import ConnectAgentDialog from '$lib/components/ConnectAgentDialog.svelte';
   import SegmentedControl from '$lib/components/brand-agent/SegmentedControl.svelte';
   import ChatPanel from '$lib/components/brand-agent/ChatPanel.svelte';
-  import AssetsPanel from '$lib/components/brand-agent/AssetsPanel.svelte';
+  import ProjectDragPanel from '$lib/components/canvas/ProjectDragPanel.svelte';
   import { readSidebarPane, writeSidebarPane, type SidebarPane } from '$lib/shell-prefs';
   // Il menu utente è PORTALATO da bits-ui e si smonta alla selezione: per le voci che portano
   // ai settings si chiama l'API del modal invece di affidarsi al click dell'<a>.
@@ -123,6 +123,7 @@
     demo = false,
     onNavClick = undefined as ((item: NavItem) => void) | undefined,
     brandSlug = '',
+    projectId = '',
     forceOpenMobile = false,
     checklist = null as ChecklistProps | null,
     switcherBrands = [] as SwitcherBrand[],
@@ -146,6 +147,9 @@
     demo?: boolean;
     onNavClick?: ((item: NavItem) => void) | undefined;
     brandSlug?: string;
+    /** Il progetto aperto: il materiale draggabile del pannello "assets" è suo, non del brand —
+     *  un progetto può non averne uno (CLAUDE.md, `projects.brand_id` nullable). */
+    projectId?: string;
     /** When true on mobile, keep the sidebar sheet open (master map home). */
     forceOpenMobile?: boolean;
     checklist?: ChecklistProps | null;
@@ -477,7 +481,7 @@
       <ChatPanel {brandSlug} />
     </div>
     <div class="flex min-h-0 flex-1 flex-col group-data-[collapsible=icon]:hidden" class:hidden={pane !== 'assets'}>
-      <AssetsPanel {brandSlug} />
+      <ProjectDragPanel {projectId} />
     </div>
   </Sidebar.Content>
 

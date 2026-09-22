@@ -149,6 +149,7 @@
       brandPlan={''}
       signOutLabel={$_('app.account.signOut')}
       {brandSlug}
+      projectId={data.project.id}
       {switcherBrands}
     />
     <div
