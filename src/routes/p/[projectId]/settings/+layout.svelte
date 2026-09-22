@@ -99,10 +99,6 @@
         title: $_('app.nav.library'),
         subtitle: $_('app.settings.library.subtitle')
       },
-      [`${base}/demo-account`]: {
-        title: $_('app.settings.demoAccount.title'),
-        subtitle: $_('app.settings.demoAccount.subtitle')
-      },
       [`${base}/connected-accounts`]: {
         title: $_('app.settings.connectedAccounts')
       },
