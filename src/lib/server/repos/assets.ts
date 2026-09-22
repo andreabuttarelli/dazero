@@ -151,6 +151,42 @@ export async function insertAsset(
   return toAsset(data);
 }
 
+/**
+ * UN FILE CHE ESISTE GIÀ FUORI DALLA TELA — il logo di un brand, non un upload né un render —
+ * DIVENTA UN ASSET SOLO LA PRIMA VOLTA. `source: 'imported'` è il terzo caso di `ASSET_SOURCES`
+ * per esattamente questo: un file che il progetto non ha caricato né generato, ma che porta con
+ * sé (il brand è dell'org, non del progetto — vedi CLAUDE.md). Idempotente su `org_id` + `url`:
+ * trascinare lo stesso logo due volte non deve raddoppiare la riga in libreria.
+ */
+export async function findOrCreateImportedAsset(
+  db: Db,
+  input: { orgId: string; type: AssetType; url: string; mimeType?: string | null }
+): Promise<Asset> {
+  const { data: existing, error: findErr } = await db
+    .from('assets')
+    .select(ASSET_COLUMNS)
+    .eq('org_id', input.orgId)
+    .eq('source', 'imported')
+    .eq('url', input.url)
+    .maybeSingle();
+
+  if (findErr) {
+    throw findErr;
+  }
+  if (existing) {
+    return toAsset(existing);
+  }
+
+  return insertAsset(db, {
+    orgId: input.orgId,
+    projectId: null,
+    type: input.type,
+    source: 'imported',
+    url: input.url,
+    mimeType: input.mimeType ?? null
+  });
+}
+
 export async function deleteAsset(db: Db, input: { orgId: string; assetId: string }): Promise<void> {
   const { error } = await db.from('assets').delete().eq('org_id', input.orgId).eq('id', input.assetId);
   if (error) {
