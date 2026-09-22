@@ -12,18 +12,11 @@ describe('niente agenti annidati sul GTM di produzione', () => {
 	});
 });
 
-// CHI GUIDA IL GIRO, un orchestratore per riga.
-//
-// `harness` = passa ancora da `harnessGenerateText`; `sdk` = guida `generateText` da sé e prende
-// la traccia dai moduli foglia. Gli orchestratori escono dal framework uno per PR, e una tabella
-// con una riga per file fa sì che due PR in parallelo tocchino righe diverse invece della stessa.
-const LOOP_DRIVER: Record<string, 'harness' | 'sdk'> = {
-	'produce-agent.ts': 'sdk',
-	'strategy-agent.ts': 'sdk',
-	'week-planner-agent.ts': 'sdk'
-};
-
-const loopFiles = Object.keys(LOOP_DRIVER);
+// CHI GUIDA IL GIRO. Il framework harness è stato rimosso: i tre batch loop guidano `generateText`
+// da sé e prendono la traccia da `agent-steward`/`agent-tools`/`agent-sessions`, che sono moduli
+// foglia e non toccano la chat né `$lib/agent` — questo test è ciò che impedisce a un import di
+// tornare a farlo.
+const loopFiles = ['produce-agent.ts', 'strategy-agent.ts', 'week-planner-agent.ts'];
 
 describe('batch loops: cap USD restano su generateText', () => {
 	it.each(loopFiles)('%s ha un tetto e non è un HarnessAgent', (file) => {
@@ -34,33 +27,19 @@ describe('batch loops: cap USD restano su generateText', () => {
 		);
 	});
 
-	it.each(loopFiles.filter((f) => LOOP_DRIVER[f] === 'harness'))(
-		'%s passa ancora da harnessGenerateText',
+	it.each(loopFiles)('%s guida l\'SDK e prende la traccia da agent-steward', (file) => {
+		const src = readFileSync(join(root, `lib/server/${file}`), 'utf8');
+		expect(src).toMatch(/await generateText\(/);
+		expect(src).not.toContain('harnessGenerateText(');
+		expect(src).not.toMatch(/from '\$lib\/server\/harness/);
+		expect(src).toMatch(/from '\$lib\/server\/agent-steward'/);
+		expect(src).toMatch(/from '\$lib\/server\/agent-tools'/);
+	});
+
+	it.each(['agent-steward.ts', 'agent-tools.ts', 'agent-sessions.ts'])(
+		'%s non importa la chat né $lib/agent',
 		(file) => {
 			const src = readFileSync(join(root, `lib/server/${file}`), 'utf8');
-			expect(src).toContain('harnessGenerateText');
-		}
-	);
-
-	// `harness/index` riesporta `harness/run`, che importa `chat/model` e `chat/controller`: chi
-	// prende la traccia dall'indice si porta dentro la chat e `$lib/agent` senza usarli. I moduli
-	// foglia non li toccano, e questo test è l'unica cosa che impedisce di «riordinare» l'import.
-	it.each(loopFiles.filter((f) => LOOP_DRIVER[f] === 'sdk'))(
-		'%s guida l\'SDK e prende la traccia dai moduli foglia',
-		(file) => {
-			const src = readFileSync(join(root, `lib/server/${file}`), 'utf8');
-			expect(src).toMatch(/await generateText\(/);
-			expect(src).not.toContain('harnessGenerateText(');
-			expect(src).not.toMatch(/from '\$lib\/server\/harness'/);
-			expect(src).toMatch(/from '\$lib\/server\/harness\/session'/);
-			expect(src).toMatch(/from '\$lib\/server\/harness\/persist'/);
-		}
-	);
-
-	it.each(['session.ts', 'persist.ts', 'pipeline.ts', 'steward.ts'])(
-		'harness/%s non importa la chat né $lib/agent',
-		(file) => {
-			const src = readFileSync(join(root, `lib/server/harness/${file}`), 'utf8');
 			expect(src).not.toMatch(/from '\$lib\/server\/chat\//);
 			expect(src).not.toMatch(/from '\$lib\/agent\//);
 		}

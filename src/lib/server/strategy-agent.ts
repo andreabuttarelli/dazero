@@ -2,15 +2,14 @@ import { maxOutputTokensFor } from '$lib/server/ai-output-limits';
 import type { LanguageModel } from 'ai';
 import { llmDefaultModel, llmLanguageModel } from '$lib/server/llm';
 import { generateText, tool, stepCountIs, hasToolCall, type StopCondition } from 'ai';
-import { createHarnessSession } from '$lib/server/harness/session';
-import { persistHarnessSession } from '$lib/server/harness/persist';
-import { wrapTools } from '$lib/server/harness/pipeline';
-import { applyStewardPrepareStep, createSessionSteward } from '$lib/server/harness/steward';
+import { AgentToolLog, applyStewardPrepareStep, createAgentSteward } from '$lib/server/agent-steward';
+import { wrapAgentTools } from '$lib/server/agent-tools';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { env } from '$env/dynamic/private';
 import { computeCostUsd, logAiCall, setBrandPlanContext, withBrandContext } from '$lib/server/ai-log';
 import { persistAgentRun } from '$lib/server/agent-runs';
+import { createRecorder, saveAgentSession } from '$lib/server/agent-sessions';
 import { getCreditsUsage, type Brand } from '$lib/server/credits';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { groundedText } from '$lib/server/research';
@@ -63,7 +62,7 @@ export function agentFallbackModel(): AgentModel | null {
  * the model dying before it changed anything (bad key, quota, 5xx on the first call). Once a tool
  * has run the error propagates, exactly as it does today.
  *
- * Each attempt is its own harness session, so the Usage transcript shows both.
+ * Each attempt gets its own tool log, so the step trace shows both.
  */
 export async function withAgentFallback<T>(
   label: string,
@@ -752,88 +751,70 @@ async function runStrategyAgentInner(opts: StrategyAgentOpts): Promise<StrategyA
     await withAgentFallback('strategy-agent', async (chosen, markDirty) => {
       loopModel = chosen;
 
-      const session = createHarnessSession({
-        brandId: opts.brandId,
-        userId: opts.userId,
-        agent: 'strategy',
-        mode: opts.mode,
-        model: loopModel.modelId,
-        provider: loopModel.provider,
-        surface: 'batch'
-      });
       const prompt = `${userPrompt}\n\nStart by reading stored brand context (read_brand_studio, read_gtm, read_editorial_plan, read_knowledge, read_media) before any paid search.`;
-      session.captureRequest({ system: baseSystem, prompt });
 
-      const steward = createSessionSteward(session, Object.keys(tools));
-      const watchedTools = wrapTools(session, tools, {
+      const log = new AgentToolLog('strategy');
+      log.setSystem(baseSystem);
+      const steward = createAgentSteward(log, Object.keys(tools));
+      const watchedTools = wrapAgentTools(log, tools, {
         before: [...(steward.pipeline().before ?? []), () => { markDirty(); }]
       });
 
-      try {
-        const result = await generateText({
-          // Text-only reasoning → DeepSeek by default (see strategyAgentModel).
-          model: loopModel.model,
-          maxOutputTokens: maxOutputTokensFor(loopModel.provider),
-          system: baseSystem,
-          prompt,
-          allowSystemInMessages: true,
-          tools: watchedTools,
-          stopWhen: [hasToolCall('finish'), stepCountIs(MAX_STRATEGY_STEPS), stallStop, () => deadlineReached(t0, deadlineMs)],
-          temperature: 0.4,
-          prepareStep: () => {
-            const elapsed = Date.now() - t0;
-            const remainingSec = Math.max(0, Math.round((deadlineMs - elapsed) / 1000));
-            const stepSystem = appendBudgetToSystem(baseSystem, budget, remainingSec);
-            const step =
-              budget.usdRemaining <= 0 && (workingPlan || basePlan.weeks.length)
-                ? { toolChoice: { type: 'tool' as const, toolName: 'finish' }, system: stepSystem }
-                : { system: stepSystem };
-            const patched = applyStewardPrepareStep(session, steward, step, baseSystem) ?? {};
-            session.capturePrepareStep(patched);
-            return patched;
-          },
-          onStepFinish: ({ usage, toolCalls, toolResults, text }) => {
-            session.recordStep({ usage, toolCalls, text });
-            addStrategyStepCost(budget, usage, loopModel);
-            stallFingerprints.push(
-              stepFingerprint(
-                { cadence: workingPlan?.cadence, w0: workingPlan?.weeks?.[0]?.theme, s: budget.searchesLeft, d: budget.draftsLeft },
-                toolCalls?.map((tc) => ({ toolName: tc.toolName, input: 'input' in tc ? tc.input : undefined }))
-              )
-            );
-            stepNum += 1;
-            const entry: StrategyAgentStepLog = {
-              step: stepNum,
-              toolCalls: toolCalls?.map((tc) => ({ name: tc.toolName, input: 'input' in tc ? tc.input : undefined })),
-              toolResults: toolResults?.map((tr) => ({ name: tr.toolName, output: 'output' in tr ? tr.output : undefined })),
-              text: text?.trim() || undefined
-            };
-            stepLog.push(entry);
-            if (opts.verbose) {
-              console.log(`\n[strategy-agent] ══ step ${stepNum} ══`);
-              for (const tc of entry.toolCalls ?? []) {
-                console.log(`  → ${tc.name}`, JSON.stringify(tc.input, null, 2).slice(0, 1500));
-              }
-              for (const tr of entry.toolResults ?? []) {
-                console.log(`  ← ${tr.name}`, JSON.stringify(tr.output, null, 2).slice(0, 3000));
-              }
-              if (entry.text) console.log(`  · text: ${entry.text.slice(0, 400)}`);
-              console.log(
-                `  · budget: searches=${budget.searchesLeft} drafts=${budget.draftsLeft} repairs=${budget.repairsLeft} usd≈$${budget.usdRemaining.toFixed(2)}`
-              );
+      const result = await generateText({
+        // Text-only reasoning → DeepSeek by default (see strategyAgentModel).
+        model: loopModel.model,
+        maxOutputTokens: maxOutputTokensFor(loopModel.provider),
+        system: baseSystem,
+        prompt,
+        allowSystemInMessages: true,
+        tools: watchedTools,
+        stopWhen: [hasToolCall('finish'), stepCountIs(MAX_STRATEGY_STEPS), stallStop, () => deadlineReached(t0, deadlineMs)],
+        temperature: 0.4,
+        prepareStep: () => {
+          const elapsed = Date.now() - t0;
+          const remainingSec = Math.max(0, Math.round((deadlineMs - elapsed) / 1000));
+          const stepSystem = appendBudgetToSystem(baseSystem, budget, remainingSec);
+          const step =
+            budget.usdRemaining <= 0 && (workingPlan || basePlan.weeks.length)
+              ? { toolChoice: { type: 'tool' as const, toolName: 'finish' }, system: stepSystem }
+              : { system: stepSystem };
+          const patched = applyStewardPrepareStep(log, steward, step, baseSystem) ?? {};
+          if (typeof patched.system === 'string') log.setSystem(patched.system);
+          return patched;
+        },
+        onStepFinish: ({ usage, toolCalls, toolResults, text }) => {
+          log.advanceStep();
+          addStrategyStepCost(budget, usage, loopModel);
+          stallFingerprints.push(
+            stepFingerprint(
+              { cadence: workingPlan?.cadence, w0: workingPlan?.weeks?.[0]?.theme, s: budget.searchesLeft, d: budget.draftsLeft },
+              toolCalls?.map((tc) => ({ toolName: tc.toolName, input: 'input' in tc ? tc.input : undefined }))
+            )
+          );
+          stepNum += 1;
+          const entry: StrategyAgentStepLog = {
+            step: stepNum,
+            toolCalls: toolCalls?.map((tc) => ({ name: tc.toolName, input: 'input' in tc ? tc.input : undefined })),
+            toolResults: toolResults?.map((tr) => ({ name: tr.toolName, output: 'output' in tr ? tr.output : undefined })),
+            text: text?.trim() || undefined
+          };
+          stepLog.push(entry);
+          if (opts.verbose) {
+            console.log(`\n[strategy-agent] ══ step ${stepNum} ══`);
+            for (const tc of entry.toolCalls ?? []) {
+              console.log(`  → ${tc.name}`, JSON.stringify(tc.input, null, 2).slice(0, 1500));
             }
+            for (const tr of entry.toolResults ?? []) {
+              console.log(`  ← ${tr.name}`, JSON.stringify(tr.output, null, 2).slice(0, 3000));
+            }
+            if (entry.text) console.log(`  · text: ${entry.text.slice(0, 400)}`);
+            console.log(
+              `  · budget: searches=${budget.searchesLeft} drafts=${budget.draftsLeft} repairs=${budget.repairsLeft} usd≈$${budget.usdRemaining.toFixed(2)}`
+            );
           }
-        });
-        session.recordAssistantText(result.text);
-        session.recordUsage(result.totalUsage ?? result.usage);
-        session.finish('finished');
-        return result;
-      } catch (e) {
-        session.finish('failed', e);
-        throw e;
-      } finally {
-        persistHarnessSession(session);
-      }
+        }
+      });
+      return result;
     });
   } catch (e) {
     loopOk = false;
@@ -868,6 +849,26 @@ async function runStrategyAgentInner(opts: StrategyAgentOpts): Promise<StrategyA
       steps: stepLog,
       violations: lastViolations.length ? lastViolations : undefined,
       costUsdEstimate: budget.usdSpent
+    });
+
+    const recorder = createRecorder(Date.now, opts.brandId);
+    for (const step of stepLog) {
+      for (const call of step.toolCalls ?? []) recorder.event('tool_call', { tool: call.name, input: call.input });
+      for (const result of step.toolResults ?? []) recorder.event('tool_result', { tool: result.name, output: result.output });
+      if (step.text) recorder.event('assistant_text', { text: step.text });
+    }
+    await saveAgentSession({
+      brandId: opts.brandId,
+      userId: opts.userId,
+      agent: 'strategy',
+      mode: opts.mode,
+      surface: 'batch',
+      status: finished ? 'finished' : 'failed',
+      model: loopModel.modelId,
+      provider: loopModel.provider,
+      transcript: stepLog.map((s) => s.text).filter(Boolean).join('\n\n'),
+      error: loopError,
+      recorder
     });
   }
 
