@@ -88,7 +88,7 @@ describe('il tool che ha chiesto il lavoro', () => {
 				locals: {}
 			},
 			resolve: async () => {
-				logAiCall({ label: 'planStrategy', provider: 'internal', ms: 1, ok: true });
+				logAiCall({ label: 'planStrategy', provider: 'internal', ms: 1, ok: true, orgId: 'org-1' });
 				return new Response('ok');
 			}
 		} as any);
@@ -98,14 +98,14 @@ describe('il tool che ha chiesto il lavoro', () => {
 	};
 
 	it('finisce sulla riga della spesa che ha causato', async () => {
-		expect((await spendUnder({ 'x-dazero-tool': 'plan_week' })).context).toBe('tool:plan_week');
+		expect((await spendUnder({ 'x-dazero-tool': 'plan_week' })).operation).toBe('planStrategy:tool:plan_week');
 	});
 
 	it('non scrive quello che un nome di tool non è', async () => {
-		expect((await spendUnder({ 'x-dazero-tool': 'DROP TABLE ai_calls' })).context).toBeNull();
+		expect((await spendUnder({ 'x-dazero-tool': 'DROP TABLE ai_calls' })).operation).toBe('planStrategy');
 	});
 
 	it('senza intestazione la riga resta com’era', async () => {
-		expect((await spendUnder({})).context).toBeNull();
+		expect((await spendUnder({})).operation).toBe('planStrategy');
 	});
 });

@@ -8,9 +8,11 @@
 <section class="ads-gate" aria-labelledby="ads-gate-title">
   <h2 id="ads-gate-title">{$_('app.ads.bookCall.title')}</h2>
   <p>{$_('app.ads.bookCall.body')}</p>
-  <a class="cta" href={BOOKING_URL} target="_blank" rel="noopener noreferrer">
-    {$_('app.ads.bookCall.cta')}
-  </a>
+  {#if BOOKING_URL}
+    <a class="cta" href={BOOKING_URL} target="_blank" rel="noopener noreferrer">
+      {$_('app.ads.bookCall.cta')}
+    </a>
+  {/if}
 </section>
 
 <style>

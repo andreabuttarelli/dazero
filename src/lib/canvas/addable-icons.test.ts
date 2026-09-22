@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -35,7 +36,7 @@ describe('le superfici che li mostrano', () => {
     expect(bar).toMatch(/ADDABLE_ICON/);
     // `keyboard` resta un import suo: apre la scheda delle scorciatoie, non aggiunge niente alla
     // tela, quindi non è una voce del registro.
-    expect(bar).not.toMatch(/icons\/(type|image|video|globe)'/);
+    expect(bar).not.toMatch(/icons\/(type|image|video|globe|file-text)'/);
   });
 
   it('il nodo che produce porta la sua targhetta dallo stesso registro', () => {
@@ -50,5 +51,32 @@ describe('le superfici che li mostrano', () => {
 
     expect(frame).toMatch(/ADDABLE_ICON/);
     expect(frame).toMatch(/ADDABLE_LABEL/);
+  });
+
+  it('e il documento, che ha la sua targhetta come gli altri', () => {
+    const doc = read('DocNode.svelte');
+
+    expect(doc).toMatch(/ADDABLE_ICON/);
+    expect(doc).toMatch(/ADDABLE_LABEL/);
+  });
+});
+
+describe('le icone che un componente importa', () => {
+  const require = createRequire(import.meta.url);
+
+  it('esistono davvero in lucide, una per una', () => {
+    const missing: string[] = [];
+
+    for (const name of ['CanvasAddBar.svelte', 'GenNode.svelte', 'IframeNode.svelte', 'DocNode.svelte']) {
+      for (const match of read(name).matchAll(/@lucide\/svelte\/icons\/([a-z0-9-]+)/g)) {
+        try {
+          require.resolve(`@lucide/svelte/icons/${match[1]}`);
+        } catch {
+          missing.push(`${name}: ${match[1]}`);
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
   });
 });

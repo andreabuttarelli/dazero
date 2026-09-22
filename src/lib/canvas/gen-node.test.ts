@@ -6,6 +6,7 @@ import {
   isGenMedium,
   promptTooLong,
   runStateOf,
+  unlockRun,
   type GenNode,
   type ModelChoice
 } from './gen-node';
@@ -107,5 +108,22 @@ describe('la misura di un nodo sulla tela', () => {
   it('immagine e video sono alti abbastanza da mostrare quel che producono', () => {
     expect(genNodeSize('image').h).toBeGreaterThan(300);
     expect(genNodeSize('video').h).toBeGreaterThan(300);
+  });
+});
+
+describe('un giro fallito non chiude il nodo', () => {
+  it('lo stato dice che è fallito, non che è ancora in corso', () => {
+    expect(runStateOf(node({ error: 'store_failed' }))).toBe('failed');
+    expect(runStateOf(node({ refId: 'media-1', error: 'store_failed' }))).toBe('failed');
+  });
+
+  it('sbloccare toglie la corsa e l errore: si può rifare', () => {
+    const stuck = node({ running: true, error: 'render_failed', refId: 'media-1' });
+    const free = unlockRun(stuck);
+
+    expect(free.running).toBe(false);
+    expect(free.error).toBeNull();
+    expect(free.refId).toBe('media-1');
+    expect(runStateOf(free)).toBe('done');
   });
 });

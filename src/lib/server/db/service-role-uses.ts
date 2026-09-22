@@ -29,7 +29,7 @@ export const SERVICE_ROLE_USES: readonly ServiceRoleUse[] = [
     tables: ['api_keys']
   },
   {
-    path: 'i worker a tempo, src/routes/api/v1/cron/** (non ancora scritti: fase 3 e 5)',
+    path: 'src/routes/api/v1/canvas/runs/tick/+server.ts — expireStuckRuns; i worker a tempo per scheduled_posts restano da scrivere (fase 5)',
     why: "Un cron non ha una sessione: nessun utente ha cliccato. Prende le righe già scadute (run in corso, consegne da pubblicare) attraverso tutte le org per costruzione, e l'org_id lo LEGGE dalla riga che ha preso — non lo riceve mai da fuori.",
     tables: ['node_runs', 'scheduled_posts', 'nodes']
   },
@@ -39,8 +39,18 @@ export const SERVICE_ROLE_USES: readonly ServiceRoleUse[] = [
     tables: ['scheduled_posts', 'node_runs', 'ai_calls']
   },
   {
-    path: 'la prima org di un utente nuovo (non ancora scritta: fase 2)',
-    why: "Alla creazione non esiste ancora una riga in orgs_members, quindi auth_org_ids() è vuoto e la policy rifiuterebbe l'insert della org e del suo primo membro. È l'unico punto in cui la RLS non può funzionare per costruzione: l'appartenenza sta nascendo.",
-    tables: ['orgs', 'orgs_members', 'profiles']
+    path: 'src/lib/server/tenancy/bootstrap.ts — createFirstOrg',
+    why: "Alla creazione non esiste ancora una riga in orgs_members, quindi auth_org_ids() è vuoto e la policy rifiuterebbe l'insert della org e del suo primo membro. È l'unico punto in cui la RLS non può funzionare per costruzione: l'appartenenza sta nascendo. Non accetta un org_id da chi chiama — lo crea, e il membro è sempre l'utente della sessione.",
+    tables: ['orgs', 'orgs_members']
+  },
+  {
+    path: 'src/lib/server/tenancy/bootstrap.ts — acceptInvite',
+    why: "Chi accetta non è ancora membro di quell'org: auth_org_ids() non la contiene, e la policy org_isolation su orgs_invites nasconderebbe l'invito proprio a chi lo sta usando. L'org_id non arriva da fuori, si LEGGE dalla riga trovata per impronta del token; il token in chiaro non è mai salvato e scaduto, inesistente o già speso rispondono tutti allo stesso modo.",
+    tables: ['orgs_invites', 'orgs_members']
+  },
+  {
+    path: 'src/lib/server/org-data/auth.ts — resolveApiKey (MCP e CLI su /api/v1/org/**)',
+    why: "Una chiave API `dazero_…` va risolta in un utente e un'org PRIMA di sapere chi è: non esiste un JWT su cui far girare auth_org_ids(). Dopo la risoluzione l'org_id NON arriva più da chi chiama: è quello della riga trovata per key_hash, imposto su ogni lettura e scrittura successiva da org-data/query-tool.ts e write-tool.ts — mai un filtro facoltativo.",
+    tables: ['api_keys']
   }
 ] as const;

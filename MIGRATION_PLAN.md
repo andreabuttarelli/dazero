@@ -29,51 +29,37 @@ entrambi, ma con colonne diverse — un `select *` compila e mente.
 
 ---
 
-## Fase 0 — Chiudere quello che è aperto (mezza giornata)
+## Fase 0 — Chiudere quello che è aperto (mezza giornata) ✅
 
-Nulla del lavoro fatto oggi è committato: **200.000+ righe di cancellazioni vivono solo nel
-working tree**. È il rischio più alto del progetto in questo momento.
+- [x] Sistemare le 3 rotture rimaste
+- [x] Commit su `refactor/strip-legacy-chat-and-marketing` (`7d5be19d`)
+- [x] `git tag pre-new-db` sul commit
 
-- [ ] Sistemare le 3 rotture rimaste (orfani delle rimozioni, tutte meccaniche)
-- [ ] Decidere su `settings` — 27 sottopagine, tenuto perché non era in nessuna delle due liste
-- [ ] **Commit su `refactor/strip-legacy-chat-and-marketing`**, anche imperfetto: un commit si
-      riscrive, un working tree perso no
-- [ ] `git tag pre-new-db` sul commit: il punto a cui tornare
+## Fase 1 — Le fondamenta del dato (1-2 giorni) ✅
 
-## Fase 1 — Le fondamenta del dato (1-2 giorni)
-
-Nessuna UI. Solo il modo di parlare col database nuovo, e i test che lo tengono onesto.
-
-- [ ] **Tipi generati**, non scritti a mano: `supabase gen types typescript` sul progetto nuovo →
-      `src/lib/database.types.ts`. Da qui il compilatore vede le colonne che esistono davvero, ed
-      è ciò che rende visibile ogni chiamata vecchia.
-- [ ] **Un client solo**, tipizzato, che sostituisce quelli sparsi.
-- [ ] **Repository per aggregato**, non query sparse nei componenti: `canvas`, `nodes`, `assets`,
-      `posts`, `publishing`, `billing`. È il confine che il CLAUDE.md chiede — un componente non
-      parla col database.
-- [ ] **I test di tenancy per primi.** `no-cross-tenant-writes.test.ts` esiste perché la fuga fra
-      tenant è già successa: va riscritto sul nuovo schema **prima** del codice che dovrebbe
-      rispettarlo, non dopo.
+- [x] **Tipi generati** → `src/lib/database.types.ts` (+ `npm run db:types`)
+- [x] **Un client solo**, tipizzato: `src/lib/server/db/client.ts` —
+      `createServiceRoleDb(use)` esige una voce del registro
+- [x] **Repository per aggregato**: `src/lib/server/repos/{orgs,projects,canvas,assets,publishing,profiles,invites}.ts`
+- [x] **I test di tenancy per primi**: `src/lib/server/repos/tenancy.test.ts`
 
 ⚠️ La RLS è attiva su 26 tabelle: **il codice che usa la service-role key la scavalca**. Ogni punto
 che la usa va giustificato in una riga, o diventa il buco da cui si esce dal tenant.
 
-## Fase 2 — Il canvas, verticale e funzionante (3-5 giorni)
+## Fase 2 — Il canvas, verticale e funzionante (3-5 giorni) ✅
 
-Il primo pezzo di prodotto vero. Verticale, non a strati: meglio un canvas che funziona di sei
-livelli che non si parlano.
+- [x] `orgs` / `orgs_members` / invito (`tenancy/bootstrap.ts`, `repos/invites.ts`)
+- [x] `projects` + `canvases` (progetto senza brand: è il caso normale)
+- [x] `nodes` + `nodes_connections`, con `src/lib/canvas/`
+- [x] Realtime: `postgres_changes` su `nodes`/`nodes_connections`
+- [x] Presence sul canale `canvas:<id>` (`presence-peers.ts`)
+- [x] `assets` + upload su Storage (`canvas/upload.ts`, bucket `canvas-assets`)
+- [x] Pagina `/p/[projectId]/c/[canvasId]` con 8 action e 500 risolto
 
-- [ ] `orgs` / `orgs_members` / invito: senza tenant non esiste nient'altro
-- [ ] `projects` + `canvases` (progetto senza brand: è il caso normale)
-- [ ] `nodes` + `nodes_connections`, con `src/lib/canvas/` — **3.048 righe già scritte e testate**,
-      il pezzo più pronto del repo
-- [ ] Realtime: `postgres_changes` su `nodes`/`nodes_connections` (publication già configurata)
-- [ ] Presence sul canale `canvas:<id>` — riusare `presence-peers.ts`, che risolve già "tre tab
-      sono una persona"
-- [ ] `assets` + upload su Storage
+**Fine fase 2 = `npm run eval:canvas` (NON ancora eseguito da me — scrive sul DB vero):** presence, insert che arriva al collaboratore,
+move che arriva, outsider che non legge, outsider respinto dal canale privato.
 
-**Fine fase 2 = si apre una tela, si creano nodi, li si muove, e un'altra persona lo vede.**
-Nessun nodo generativo ancora.
+Mancano alla pagina, non alla fase: i modelli (fase 3) e l'edizione ricca del nodo `text`.
 
 ## Fase 3 — I nodi che generano (3-4 giorni)
 

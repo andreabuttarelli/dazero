@@ -212,18 +212,24 @@ type StoredDrawing = {
   height: number | null;
 };
 
+export type DrawingStoreFailure = { reason: string };
+
 /**
  * I byte nel bucket privato, e nient'altro: né una riga, né un id. Il primo segmento del percorso
  * è ciò che le policy dello storage guardano, quindi è sempre lo user — con o senza un brand
  * sotto, il file resta suo.
+ *
+ * L'esito porta SEMPRE il motivo del fornitore, `dataUrlBytes` a parte: un bucket assente e una
+ * scrittura respinta sono due difetti diversi, e schiacciarli sullo stesso `null` è quanto
+ * rendeva `store_failed` indebuggabile dall'interfaccia.
  */
 async function storeDrawing(
   supabase: SupabaseClient,
   folder: string,
   dataUrl: string
-): Promise<StoredDrawing | null> {
+): Promise<StoredDrawing | DrawingStoreFailure> {
   const decoded = dataUrlBytes(dataUrl);
-  if (!decoded) return null;
+  if (!decoded) return { reason: 'the model returned no image data' };
 
   // Marcata sintetica prima di toccare lo storage: un'immagine di modello che gira senza la sua
   // provenienza è un problema che non si ripara a valle.
@@ -233,12 +239,18 @@ async function storeDrawing(
   const storagePath = `${folder}/${fileName}`;
 
   const stored = await storeBrandMediaBytes(supabase, storagePath, bytes, decoded.mime);
-  if (stored.error) return null;
+  if (stored.error) return { reason: stored.error };
 
   const { width, height } = await probeImageDimensions(bytes);
 
   return { storagePath, fileName, mime: decoded.mime, bytes: bytes.length, width, height };
 }
+
+function isStoredDrawing(result: StoredDrawing | DrawingStoreFailure): result is StoredDrawing {
+  return 'storagePath' in result;
+}
+
+type DepositOutcome = { ok: true; media: GeneratedMedia } | { ok: false; reason: string };
 
 /**
  * Un'immagine generata finisce nel bucket privato della libreria, non fra i media pubblici dei
@@ -248,11 +260,11 @@ async function depositImage(
   supabase: SupabaseClient,
   opts: { brandId: string; userId: string; prompt: string; title?: string },
   dataUrl: string
-): Promise<GeneratedMedia | null> {
+): Promise<DepositOutcome> {
   const drawn = await storeDrawing(supabase, `${opts.userId}/${opts.brandId}/media`, dataUrl);
-  if (!drawn) return null;
+  if (!isStoredDrawing(drawn)) return { ok: false, reason: drawn.reason };
 
-  const { row } = await insertBrandMedia(supabase, {
+  const { row, error } = await insertBrandMedia(supabase, {
     brandId: opts.brandId,
     userId: opts.userId,
     storagePath: drawn.storagePath,
@@ -264,15 +276,18 @@ async function depositImage(
     source: 'generate',
     title: opts.title?.trim() || opts.prompt.slice(0, 80)
   });
-  if (!row) return null;
+  if (!row) return { ok: false, reason: error ?? 'the library row could not be written' };
 
   return {
-    id: row.id,
-    kind: row.kind,
-    mime: drawn.mime,
-    width: drawn.width,
-    height: drawn.height,
-    url: mediaUrl(row.short_code)
+    ok: true,
+    media: {
+      id: row.id,
+      kind: row.kind,
+      mime: drawn.mime,
+      width: drawn.width,
+      height: drawn.height,
+      url: mediaUrl(row.short_code)
+    }
   };
 }
 
@@ -286,24 +301,27 @@ async function handOverImage(
   supabase: SupabaseClient,
   opts: { userId: string },
   dataUrl: string
-): Promise<GeneratedMedia | null> {
+): Promise<DepositOutcome> {
   const drawn = await storeDrawing(supabase, `${opts.userId}/media`, dataUrl);
-  if (!drawn) return null;
+  if (!isStoredDrawing(drawn)) return { ok: false, reason: drawn.reason };
 
   // Senza un id, la firma è l'UNICO modo di raggiungere il file: consegnarla nulla lascerebbe chi
   // legge `ok` con un render pagato e niente da aprire.
   const signed = await signKnowledgePaths(supabase, [drawn.storagePath]);
   const url = signed.get(drawn.storagePath);
-  if (!url) return null;
+  if (!url) return { ok: false, reason: 'the file was stored but could not be signed for reading' };
 
   return {
-    id: null,
-    kind: 'image',
-    mime: drawn.mime,
-    width: drawn.width,
-    height: drawn.height,
-    url,
-    storage_path: drawn.storagePath
+    ok: true,
+    media: {
+      id: null,
+      kind: 'image',
+      mime: drawn.mime,
+      width: drawn.width,
+      height: drawn.height,
+      url,
+      storage_path: drawn.storagePath
+    }
   };
 }
 
@@ -344,7 +362,7 @@ export type ImageJobResult =
        */
       costUsd: number | null;
     }
-  | { ok: false; error: 'render_failed' | 'store_failed' | 'source_not_found' }
+  | { ok: false; error: 'render_failed' | 'store_failed' | 'source_not_found'; reason?: string }
   | SourceTooLarge
   | { ok: false; error: 'model_not_for_slot'; allowed: string[] };
 
@@ -478,9 +496,9 @@ async function runImageJob(
     const filed = job.brandId
       ? await depositImage(supabase, { ...job, brandId: job.brandId }, dataUrl)
       : await handOverImage(supabase, job, dataUrl);
-    if (!filed) return { ok: false, error: 'store_failed' };
+    if (!filed.ok) return { ok: false, error: 'store_failed', reason: filed.reason };
 
-    media.push(filed);
+    media.push(filed.media);
   }
 
   // Nessuna alternativa prodotta è un fallimento, non un successo vuoto: chi legge `ok` deve poter

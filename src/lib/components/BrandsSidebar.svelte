@@ -78,7 +78,7 @@
   <Sidebar.Content class="flex-1 overflow-y-auto p-4 group-data-[collapsible=icon]:p-3 group-data-[collapsible=icon]:overflow-visible">
     <!-- New brand button -->
     <div class="mb-3 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
-      <Button href="/app/onboarding" size="sm" class="w-full gap-2 group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:px-2">
+      <Button href="/app" size="sm" class="w-full gap-2 group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:px-2">
         <Plus class="size-4 shrink-0" strokeWidth={2} />
         <span class="group-data-[collapsible=icon]:hidden">{$_('app.brands.newBrand')}</span>
       </Button>

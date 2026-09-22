@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest';
  * li ha visti.
  */
 const page = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'routes', 'app', '[brand]', 'workbench', '+page.svelte'),
+  join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'routes', 'p', '[projectId]', 'workbench', '+page.svelte'),
   'utf8'
 );
 

@@ -3,6 +3,14 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { gatewayRate } from '$lib/server/openrouter-models';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { GEMINI_FLASH, geminiFlash, isGeminiFlashId, isKieFlashId, kieFlashId, NANO_BANANA_PRO, isNanoBananaProId, geminiVisualCreditShare } from '$lib/server/google-models';
+import type { Database } from '$lib/database.types';
+
+type AiCallInsert = Database['public']['Tables']['ai_calls']['Insert'];
+
+// The DB check constraint (`status in ('ok','error','timeout','refused')`, NEW_DATABASE_STRUCTURE.md)
+// isn't in the generated Row type (Supabase doesn't emit check-constraint enums), so it's declared
+// here next to the only place that writes it.
+type AiCallStatus = 'ok' | 'error' | 'timeout' | 'refused';
 
 // Fire-and-forget observability: one ai_calls row per LLM call, written from the shared
 // chokepoints. NEVER throws and never awaited — a missing table or a dead DB must not break AI.
@@ -42,17 +50,31 @@ function cachedBrandPlan(brandId: string): string | null | undefined {
   return hit.plan;
 }
 
-async function resolveBrandPlan(brandId: string): Promise<string | null> {
-  const cached = cachedBrandPlan(brandId);
-  if (cached !== undefined) return cached;
+// `ai_calls.org_id` is NOT NULL — every row needs one, even a brand-attributed row that never
+// passed `orgId` explicitly. Same TTL and shape as the plan cache, keyed the same way, because
+// both come off the same `brands` row and a brand's org never changes under it.
+const orgIdCache = new Map<string, { orgId: string | null; at: number }>();
+
+function cachedBrandOrgId(brandId: string): string | null | undefined {
+  const hit = orgIdCache.get(brandId);
+  if (!hit || Date.now() - hit.at >= PLAN_CACHE_TTL_MS) return undefined;
+  return hit.orgId;
+}
+
+async function resolveBrandPlanAndOrgId(brandId: string): Promise<{ plan: string | null; orgId: string | null }> {
+  const cachedPlan = cachedBrandPlan(brandId);
+  const cachedOrgId = cachedBrandOrgId(brandId);
+  if (cachedPlan !== undefined && cachedOrgId !== undefined) return { plan: cachedPlan, orgId: cachedOrgId };
   try {
     const admin = createAdminClient();
-    const { data } = await admin.from('brands').select('plan').eq('id', brandId).maybeSingle();
+    const { data } = await admin.from('brands').select('plan, org_id').eq('id', brandId).maybeSingle();
     const plan = (data?.plan as string | null | undefined) ?? null;
+    const orgId = (data?.org_id as string | null | undefined) ?? null;
     rememberBrandPlan(brandId, plan);
-    return plan;
+    orgIdCache.set(brandId, { orgId, at: Date.now() });
+    return { plan, orgId };
   } catch {
-    return null;
+    return { plan: null, orgId: null };
   }
 }
 
@@ -232,6 +254,13 @@ export type AiCallLog = {
   userId?: string;
   threadId?: string;
   context?: string;
+  /** Esplicito vince sullo scope: una riga di progetto porta l'org anche quando c'è un brand. */
+  orgId?: string;
+  /** Come è stata causata la chiamata. Assente = `user`. Un agente passa `agent` + `agentKey`. */
+  actorKind?: 'user' | 'agent' | 'system';
+  actorId?: string | null;
+  agentKey?: string | null;
+  projectId?: string | null;
 };
 
 // USD per 1M tokens. cachedTokens are a SUBSET of inputTokens, billed at the cache rate.
@@ -387,6 +416,45 @@ export function promptHash(prompt: string | undefined): string | null {
   return createHash('sha1').update(prompt).digest('hex').slice(0, 10);
 }
 
+/**
+ * `context` non è più una colonna (schema klnswzhhgrqvbfjzioul): era il dettaglio fine di una
+ * chiamata (`music:pro:30s`, un endpoint, una durata) sopra `label`, che è già grezzo com'è
+ * `operation` oggi (`renderImage`, `strategy-agent`, `db_query` — un nome di funzione, non un
+ * enum). Le due informazioni restano entrambe, concatenate in `operation`: la query che prima
+ * leggeva `context like 'tool:%'` diventa `operation like '%:tool:%'`, senza una colonna che il
+ * deploy non aggiungerebbe comunque.
+ */
+function operationTag(entry: AiCallLog): string {
+  const context = entry.context ?? toolTag();
+  return context ? `${entry.label}:${context}` : entry.label;
+}
+
+function statusFor(entry: AiCallLog): AiCallStatus {
+  return entry.ok ? 'ok' : 'error';
+}
+
+function sumTokens(entry: AiCallLog): number | null {
+  const parts = [entry.inputTokens, entry.outputTokens, entry.thinkingTokens];
+  if (parts.every((p) => p == null)) return null;
+  return parts.reduce((n: number, p) => n + (p ?? 0), 0);
+}
+
+/**
+ * `ai_calls.org_id` è NOT NULL: ogni riga ne ha bisogno, anche quella attribuita a un brand.
+ * Esplicito vince, poi lo scope (`withOrgContext`), poi il brand (`brands.org_id`, cache TTL
+ * come il piano). Se nessuno dei tre risponde la riga non si scrive — meglio un buco loggato
+ * forte che un vincolo NOT NULL violato in silenzio da PostgREST.
+ */
+async function resolveOrgId(entry: AiCallLog, brandId: string | null): Promise<string | null> {
+  if (entry.orgId) return entry.orgId;
+  const fromScope = getOrgContext();
+  if (fromScope) return fromScope;
+  if (!brandId) return null;
+  const cached = cachedBrandOrgId(brandId);
+  if (cached !== undefined) return cached;
+  return (await resolveBrandPlanAndOrgId(brandId)).orgId;
+}
+
 export function logAiCall(entry: AiCallLog): void {
   try {
     // La fattura vera del gateway, se questo turno ne ha lasciata una. Si ritira QUI, sincrono:
@@ -404,48 +472,58 @@ export function logAiCall(entry: AiCallLog): void {
 
     const admin = createAdminClient();
     const brandId = entry.brandId ?? getBrandContext();
-    // Un brand c'è: la somma dell'organizzazione lo raggiunge dal join, e scrivere anche l'org
-    // aprirebbe due risposte alla stessa domanda. Nessun brand: la riga se la porta scritta.
-    const orgId = brandId ? null : getOrgContext();
     const planFromAls = getBrandPlanContext();
-    // Letto QUI, sincrono, come il brand: dopo il primo await lo scope è di chi ha aspettato.
-    const context = entry.context ?? toolTag() ?? null;
+    // Letti QUI, sincroni, come il brand: dopo il primo await lo scope è di chi ha aspettato.
+    const operation = operationTag(entry);
+    const status = statusFor(entry);
     void (async () => {
+      const orgId = await resolveOrgId(entry, brandId);
+      if (!orgId) {
+        console.error(
+          `[ai-log] no org_id resolved for operation "${operation}" (brandId=${brandId ?? 'null'}) — row NOT written, cost is unbilled and invisible.`
+        );
+        return;
+      }
       const plan =
-        planFromAls !== undefined ? planFromAls : brandId ? await resolveBrandPlan(brandId) : null;
+        planFromAls !== undefined
+          ? planFromAls
+          : brandId
+            ? (await resolveBrandPlanAndOrgId(brandId)).plan
+            : null;
       // Il listino serve PRIMA di prezzare, e solo per le righe che possono averne bisogno: la
       // prima chiamata del processo lo carica, le altre lo trovano in memoria.
       if (entry.provider === 'llm' && entry.flatCostUsd == null) {
         const { ensureGatewayModels } = await import('$lib/server/openrouter-models');
         await ensureGatewayModels();
       }
-      const { error } = await admin.from('ai_calls').insert({
-        label: entry.label,
+      const row: AiCallInsert = {
+        org_id: orgId,
+        brand_id: brandId,
+        project_id: entry.projectId ?? null,
         provider: entry.provider,
         model: entry.model ?? null,
-        prompt_hash: promptHash(entry.prompt),
-        prompt_chars: entry.prompt ? entry.prompt.length : null,
-        ms: Math.round(entry.ms),
-        ok: entry.ok,
-        error: entry.error ? String(entry.error).slice(0, 500) : null,
-        input_tokens: entry.inputTokens ?? null,
-        output_tokens: entry.outputTokens ?? null,
+        operation,
+        prompt_tokens: entry.inputTokens ?? null,
+        completion_tokens: entry.outputTokens ?? null,
+        reasoning_tokens: entry.thinkingTokens ?? null,
         cached_tokens: entry.cachedTokens ?? null,
-        thinking_tokens: entry.thinkingTokens ?? null,
-        grounding_queries: entry.groundingQueries ?? null,
+        total_tokens: sumTokens(entry),
         cost_usd: computeCostUsd(entry, plan),
         provider_credits: entry.providerCredits ?? null,
-        service_tier: entry.serviceTier ?? null,
-        // Fallback allo scope: attribuisce anche i chokepoint che non passano brandId. Esplicito vince.
-        brand_id: brandId,
-        org_id: orgId,
-        user_id: entry.userId ?? null,
-        thread_id: entry.threadId ?? null,
-        // Il call site vince: sa più di noi su cosa fosse quella chiamata. Il tool riempie il
-        // silenzio, che è dove oggi la domanda «chi l'ha causata» non ha risposta.
-        context
-      });
-      if (error) console.warn('[ai-log] insert failed:', error.message);
+        status,
+        error: entry.error ? String(entry.error).slice(0, 500) : null,
+        latency_ms: Math.round(entry.ms),
+        actor_kind: entry.actorKind ?? 'user',
+        actor_id: entry.actorId ?? entry.userId ?? null,
+        agent_key: entry.agentKey ?? null,
+        thread_id: entry.threadId ?? null
+      };
+      // Tipizzata contro AiCallInsert (generato da database.types.ts): una colonna sbagliata qui
+      // è un errore di compilazione, non più un console.warn scoperto in produzione.
+      const { error } = await admin.from('ai_calls').insert(row);
+      if (error) {
+        console.error(`[ai-log] insert failed for operation "${operation}":`, error.message, row);
+      }
     })();
   } catch {
     // no admin client (missing env) — observability is optional, AI keeps working

@@ -1,8 +1,6 @@
-// Single source of truth for outbound links shared across the marketing site
-// and the app, so a CTA and the floating widget can't drift apart.
+import { env } from '$env/dynamic/public';
 
-/** Marco's "book a call" Calendly — used by MarcoWidget and the landing CTAs. */
-export const BOOKING_URL = 'https://calendly.com/marco-dazero/call-conoscitiva-dazero';
+export const BOOKING_URL = env.PUBLIC_BOOKING_URL?.trim() || null;
 
 /**
  * Where an author writes to have their post taken off the public wall.

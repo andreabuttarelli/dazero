@@ -55,6 +55,8 @@ export type GenRun = {
   prompt: string;
   model: string | null;
   createdAt: string;
+  /** Il testo generato, quando il giro ha prodotto testo: l'immagine non ha nulla da mettere qui. */
+  text?: string | null;
 };
 
 export type GenNode = {
@@ -75,18 +77,30 @@ export type GenNode = {
    */
   runs: GenRun[];
   running?: boolean;
+  /** Perché l'ultimo giro non è atterrato. Null quando non c'è nulla da dire. */
+  error?: string | null;
 };
 
 /**
  * `running` VINCE SU TUTTO, anche su un nodo che ha già prodotto: chi sta rifacendo un'immagine
  * deve vedere che sta girando, non il risultato di prima con un bottone che invita a rilanciare.
  */
-export type RunState = 'empty' | 'ready' | 'running' | 'done';
+export type RunState = 'empty' | 'ready' | 'running' | 'done' | 'failed';
 
 export function runStateOf(node: GenNode): RunState {
   if (node.running) return 'running';
+  if (node.error) return 'failed';
   if (node.refId) return 'done';
   return node.prompt.trim() ? 'ready' : 'empty';
+}
+
+/**
+ * Sblocca un nodo rimasto in corsa. Il video parte e torna dopo: se la risposta non arriva più,
+ * `running` resterebbe alzato per sempre e il bottone spento — l'utente deve poter riprendere.
+ * L'errore si toglie insieme: o si riparte, o si torna a prima del giro.
+ */
+export function unlockRun(node: GenNode): GenNode {
+  return { ...node, running: false, error: null };
 }
 
 /**

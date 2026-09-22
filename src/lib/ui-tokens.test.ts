@@ -49,17 +49,17 @@ function collectDefinitions(): Set<string> {
 // uno (sostituendolo con un token vero di UI_TOKENS), togli la riga: il test fallisce
 // apposta se una voce non è più stray, così la lista non mente mai.
 const LEGACY_STRAYS = [
-  '--bg src/routes/app/[brand]/ads/library/+page.svelte',
+  '--bg src/routes/p/[projectId]/ads/library/+page.svelte',
   '--border src/lib/components/studio/BrandMemoryPanel.svelte',
   '--card src/lib/components/studio/FontPicker.svelte',
-  '--card src/routes/app/[brand]/settings/facebook/+page.svelte',
-  '--card src/routes/app/[brand]/settings/linkedin/+page.svelte',
+  '--card src/routes/p/[projectId]/settings/facebook/+page.svelte',
+  '--card src/routes/p/[projectId]/settings/linkedin/+page.svelte',
   '--danger src/lib/components/GrowthReadiness.svelte',
   '--hover src/lib/components/studio/FontPicker.svelte',
   '--muted src/lib/components/AdsOverview.svelte',
-  '--muted src/routes/app/[brand]/ads/google/+page.svelte',
-  '--muted src/routes/app/[brand]/ads/library/+page.svelte',
-  '--muted src/routes/app/[brand]/ads/social/+page.svelte',
+  '--muted src/routes/p/[projectId]/ads/google/+page.svelte',
+  '--muted src/routes/p/[projectId]/ads/library/+page.svelte',
+  '--muted src/routes/p/[projectId]/ads/social/+page.svelte',
   '--panel src/lib/components/AdsOverview.svelte',
   '--sidebar-border src/lib/components/SettingsSidebar.svelte',
   '--sidebar-border src/lib/components/ui/sidebar/sidebar-menu-button.svelte',

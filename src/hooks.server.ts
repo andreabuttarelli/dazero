@@ -3,6 +3,7 @@ import { json, redirect, text } from '@sveltejs/kit';
 import * as Sentry from '@sentry/sveltekit';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { markRlsScoped } from '$lib/server/rls-client';
+import { createUserDb, type Db } from '$lib/server/db/client';
 import { env as publicEnv } from '$env/dynamic/public';
 import type { Handle } from '@sveltejs/kit';
 import { withBrandContext, withToolContext } from '$lib/server/ai-log';
@@ -123,6 +124,18 @@ export const handle: Handle = sequence(csrf, Sentry.sentryHandle(), async ({ eve
   };
   event.locals.safeGetSession = () => (cachedSession ??= getSession());
 
+  // Il database NUOVO, accanto al vecchio e non al posto suo: 103 file leggono ancora
+  // `locals.supabase`, e spegnerlo qui vorrebbe dire non compilare più. Questo è tipizzato su
+  // `database.types.ts` e porta il JWT della sessione, quindi la RLS gira sull'utente vero.
+  // Pigro: una richiesta che non tocca il nuovo schema non paga niente.
+  let cachedDb: Db | null | undefined;
+  event.locals.db = async () => {
+    if (cachedDb !== undefined) return cachedDb;
+    const { session } = await event.locals.safeGetSession();
+    cachedDb = session ? createUserDb(session.access_token) : null;
+    return cachedDb;
+  };
+
   // Meta click id → first-party cookies, written server-side. The browser pixel is deferred (first
   // interaction or 10s, see $lib/analytics) and consent/adblock can drop it entirely, so on an ad
   // click `_fbc` was only ever written for ~2% of visits — leaving every downstream conversion
@@ -171,7 +184,7 @@ export const handle: Handle = sequence(csrf, Sentry.sentryHandle(), async ({ eve
       transformPageChunk: ({ html }) => {
         let out = html;
         // Keep in sync with +layout.svelte — scopes landing.css away from /app on SSR too.
-        if (event.url.pathname.startsWith('/app')) {
+        if (event.url.pathname.startsWith('/app') || event.url.pathname.startsWith('/c')) {
           out = out.replace('<html', '<html data-shell="app"');
         }
         return out;

@@ -3,9 +3,9 @@
  *
  * Due registri, e non è disordine: sono due cose diverse.
  *
- *   IL TESTO viene dal centralino (`openrouter-models`), dove un modello è definito da finestra di
- *   contesto e capacità di chiamare tool — e dove l'elenco cambia da sé quando il gateway pubblica
- *   qualcosa di nuovo, senza che nessuno tocchi questo repo.
+ *   IL TESTO viene dal centralino (`openrouter-models`), l'INTERO listino del gateway: un nodo
+ *   che scrive testo non ha bisogno di saper chiamare tool o leggere immagini, e un modello
+ *   nuovo pubblicato dal gateway compare da sé senza che nessuno tocchi questo repo.
  *
  *   IMMAGINE E VIDEO vengono dal registro dei media (`media-model-slots`), che è l'unico posto a
  *   sapere in quali formati un modello disegna, quanto può durare una clip, quanti riferimenti
@@ -16,7 +16,7 @@
  * una foto che dichiara una durata, un modello di testo che dichiara un formato — cioè dire che
  * quei campi esistono e valgono zero. Il nodo chiede il catalogo del SUO medium e basta.
  */
-import { usableGatewayModels, ensureGatewayModels } from './openrouter-models';
+import { gatewayModels, ensureGatewayModels } from './openrouter-models';
 import { MEDIA_MODEL_SLOTS, slotChoices } from '$lib/media-model-slots';
 import type { GenMedium, ModelChoice } from '$lib/canvas/gen-node';
 
@@ -53,7 +53,7 @@ export async function canvasModelCatalogue(): Promise<Record<GenMedium, ModelCho
   await ensureGatewayModels().catch(() => {});
 
   return {
-    text: usableGatewayModels().map((m) => ({ id: m.id, label: m.label, aspectRatios: [] })),
+    text: gatewayModels().map((m) => ({ id: m.id, label: m.label, aspectRatios: [] })),
     image: mediaChoices(SLOT_FOR.image),
     video: mediaChoices(SLOT_FOR.video)
   };

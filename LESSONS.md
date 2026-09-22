@@ -1791,3 +1791,29 @@ test possiede quel valore.
   maiuscola, e la formula Homebrew non è coperta da test perché non è codice che gira qui — si
   sarebbe rotta al primo `brew install`. Dopo una rinomina case-preserving, ricontrolla le
   posizioni dove la maiuscola è sintassi: dichiarazioni di classe, componenti, costanti.
+
+### Un bucket Storage creato a mano nel dashboard non esiste sul prossimo progetto
+Ogni run immagine del canvas falliva `store_failed`, sempre — il modello rispondeva (40-70s
+reali), il deposito no. `select id from storage.buckets` sul progetto nuovo
+(`klnswzhhgrqvbfjzioul`) tornava **zero righe**: né `brand-knowledge` (la cui migration,
+`0021_brand_documents.sql`, è scritta per il database vecchio e non è mai stata riapplicata al
+nuovo) né `canvas-assets` (mai avuta una migration — creato a mano nel dashboard secondo
+MIGRATION_PLAN.md fase 2, lo stesso difetto che `20260905140000_storage_tenant_isolation.sql`
+documenta già per `media` ed `email-assets`). Un `create bucket` dal dashboard vive SOLO su quel
+progetto: la prossima volta che qualcuno punta il codice a un progetto Supabase pulito — un nuovo
+ambiente, un branch di sviluppo, un progetto ricreato dopo un incidente — ogni scrittura che
+presume quel bucket fallisce dal primo secondo, silenziosamente se l'errore non è propagato (v.
+sotto). Segnale: OGNI operazione su un percorso torna lo stesso errore generico, e
+`select * from storage.buckets` (letto in sola lettura, zero rischio) torna una riga in meno di
+quante ce ne aspetti. Mossa: `insert into storage.buckets (...) on conflict do nothing` +
+le sue policy vanno SEMPRE in una migration versionata, mai solo nel dashboard — è la stessa
+regola di ogni altro oggetto dello schema, e qui costa un prodotto che sembra funzionare
+(il turno termina, nessuna eccezione) e non produce mai niente.
+
+**E l'errore di storage va propagato, non schiacciato su un token generico.** La catena
+`storeBrandMediaBytes → storeDrawing → handOverImage/depositImage → runImageJob` restituiva
+`{ error: message }` al primo livello e un `null` nudo a ogni livello sopra: un bucket assente,
+una scrittura respinta dalla RLS e un campo del provider mancante finivano tutti sullo stesso
+`store_failed`, e da UI erano indistinguibili. Mossa: ogni funzione che può fallire per più di un
+motivo torna QUALE motivo, fino al punto che lo scrive per chi guarda — un token enum senza un
+messaggio accanto è debuggabile solo da chi ha il database aperto.

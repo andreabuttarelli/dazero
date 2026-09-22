@@ -14,7 +14,6 @@
   // e sbatte sul login.
   import { page } from '$app/stores';
   import { _ } from 'svelte-i18n';
-  import AgentAvatar from '$lib/components/AgentAvatar.svelte';
 
   const status = $derived($page.status);
   const loggedIn = $derived(Boolean($page.data?.session));
@@ -25,7 +24,6 @@
   const kind = $derived(
     status === 404 ? 'notFound' : status === 401 || status === 403 ? 'denied' : 'generic'
   );
-  const face = $derived(kind === 'notFound' ? 'curious' : kind === 'denied' ? 'squint' : 'sad');
 </script>
 
 <svelte:head>
@@ -37,11 +35,6 @@
   <!-- Classi prefissate `err-`: app.css ha già `.card`, `.body` & co. come classi globali,
        e Svelte scopa le PROPRIE regole ma non impedisce a quelle globali di applicarsi. -->
   <div class="err-card">
-    <div class="err-face" aria-hidden="true">
-      <!-- L'elemento di casa: lo sguardo segue il puntatore. `follow` si spegne da solo con
-           prefers-reduced-motion (vedi AgentAvatar), quindi qui non serve un secondo guard. -->
-      <AgentAvatar {face} color="theme" size={72} follow="pointer" />
-    </div>
     <p class="err-code">{status}</p>
     <h1>{$_(`error.${kind}.title`)}</h1>
     <p class="err-body">{$_(`error.${kind}.body`)}</p>
@@ -72,11 +65,6 @@
     border: 1px solid var(--line);
     border-radius: 24px;
     padding: 44px 32px 40px;
-  }
-  .err-face {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 24px;
   }
   .err-code {
     font-family: var(--mono);

@@ -12,21 +12,15 @@
     CircleUserRound,
     CreditCard,
     Fingerprint,
-    FolderOpen,
-    Globe,
     KeyRound,
     Link2,
     Moon,
     BookOpen,
-    Newspaper,
     Package,
     Palette,
-    Paintbrush,
-    Plug,
     SlidersHorizontal,
     Sun,
     Trash2,
-    UserRound,
     Users,
     Megaphone,
     Gift,
@@ -34,11 +28,7 @@
   } from '@lucide/svelte';
   import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
   import { materialPress } from '$lib/actions/material-press.js';
-  import {
-    SETTINGS_BLOG_SECTIONS,
-    SETTINGS_BRAND_SECTIONS,
-  } from '$lib/components/settings/platforms';
-  import { hasBlogCustomDomain, hasBlogIntegrations } from '$lib/plans';
+  import { SETTINGS_BRAND_SECTIONS } from '$lib/components/settings/platforms';
 
   let {
     brandName = 'Brand',
@@ -61,20 +51,6 @@
   const path = $derived($page.url.pathname);
   /** Global FEATURE_ADS kill switch, from app/[brand]/+layout.server.ts. */
   const adsOn = $derived(!!$page.data.flags?.ads);
-  /** FEATURE_CONNECTORS kill switch (defaults on), from app/[brand]/+layout.server.ts. */
-  const brandPlan = $derived(($page.data.brand?.plan as string | null | undefined) ?? null);
-  const customDomainHref = $derived(
-    hasBlogCustomDomain(brandPlan)
-      ? `${settingsBase}/blog-domain`
-      : '/app/billing'
-  );
-  const integrationsHref = $derived(
-    hasBlogIntegrations(brandPlan)
-      ? `${settingsBase}/blog-integrations`
-      : hasBlogCustomDomain(brandPlan)
-        ? `${settingsBase}/blog-domain`
-        : '/app/billing'
-  );
   /** Full-page map instead of the closed/open Sheet dance. */
   const asMobileMap = $derived(sidebar.isMobile && forceOpenMobile);
 
@@ -132,39 +108,6 @@
     },
   ]);
 
-  const blogItems = $derived<SettingsNavItem[]>([
-    {
-      id: 'blog-appearance',
-      href: `${settingsBase}/blog-appearance`,
-      label: $_('app.settings.blog.appearance'),
-      icon: Paintbrush,
-    },
-    {
-      id: 'blog-authors',
-      href: `${settingsBase}/blog-authors`,
-      label: $_('app.settings.blog.authors'),
-      icon: UserRound,
-    },
-    {
-      id: 'blog-categories',
-      href: `${settingsBase}/blog-categories`,
-      label: $_('app.settings.blog.categories'),
-      icon: FolderOpen,
-    },
-    {
-      id: 'blog-domain',
-      href: customDomainHref,
-      label: $_('app.settings.blog.domain'),
-      icon: Globe,
-    },
-    {
-      id: 'blog-integrations',
-      href: integrationsHref,
-      label: $_('app.settings.blog.integrations'),
-      icon: Plug,
-    },
-  ]);
-
   const adsItems = $derived<SettingsNavItem[]>([
     {
       id: 'ads-accounts',
@@ -187,13 +130,6 @@
       collapsible: true,
       icon: Fingerprint,
       items: brandItems,
-    },
-    {
-      id: 'blog',
-      label: $_('app.nav.site'),
-      collapsible: true,
-      icon: Newspaper,
-      items: blogItems,
     },
     ...(adsOn
       ? [
@@ -291,18 +227,12 @@
       path.replace(/\/$/, '').endsWith('/settings/library') ||
       path.replace(/\/$/, '').endsWith('/settings/demo-account')
   );
-  const blogSectionActive = $derived(
-    (SETTINGS_BLOG_SECTIONS as readonly string[]).some((s) =>
-      path.replace(/\/$/, '').endsWith(`/settings/${s}`)
-    )
-  );
   const adsSectionActive = $derived(
     /\/settings\/ads(\/|$)/.test(path.replace(/\/$/, ''))
   );
 
   function sectionHasActive(section: SettingsNavSection) {
     if (section.id === 'brand') return brandSectionActive;
-    if (section.id === 'blog') return blogSectionActive;
     if (section.id === 'ads') return adsSectionActive;
     return section.items.some((i) => isItemActive(i));
   }
@@ -318,20 +248,15 @@
       : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:bg-[var(--paper)]';
   }
 
-  let openSections = $state<Record<string, boolean>>({ brand: true, blog: true, ads: true });
-  // Auto-open Brand/Blog/Ads when a child route is active. Must untrack openSections —
+  let openSections = $state<Record<string, boolean>>({ brand: true, ads: true });
+  // Auto-open Brand/Ads when a child route is active. Must untrack openSections —
   // spreading it while writing a new object re-triggers the effect forever
   // (effect_update_depth_exceeded), which kills the settings shell + mobile drawer
-  // on pages like /settings/blog-appearance and /settings/products.
+  // on pages like /settings/products.
   $effect(() => {
     if (!brandSectionActive) return;
     if (untrack(() => openSections.brand)) return;
     openSections = { ...untrack(() => openSections), brand: true };
-  });
-  $effect(() => {
-    if (!blogSectionActive) return;
-    if (untrack(() => openSections.blog)) return;
-    openSections = { ...untrack(() => openSections), blog: true };
   });
   $effect(() => {
     if (!adsSectionActive) return;

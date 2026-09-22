@@ -19,7 +19,7 @@ const root = join(dir, '..', 'components', 'canvas');
 const flow = readFileSync(join(root, 'CanvasFlow.svelte'), 'utf8');
 const tileComponent = readFileSync(join(root, 'CanvasTile.svelte'), 'utf8');
 const workbench = readFileSync(
-  join(dir, '..', '..', 'routes', 'app', '[brand]', 'workbench', '+page.svelte'),
+  join(dir, '..', '..', 'routes', 'p', '[projectId]', 'workbench', '+page.svelte'),
   'utf8'
 );
 

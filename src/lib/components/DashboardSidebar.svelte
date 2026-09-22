@@ -64,10 +64,10 @@
     tourKey?: string;
     todo?: boolean;
     key?: string;
+    /** board = tela (oggetto che si apre), page = pagina. Manca → page. */
+    kind?: 'board' | 'page';
     /** Shows an affordance that this row navigates to another page (not a submenu). */
     linkOut?: boolean;
-    /** La lettera di `g <lettera>` che apre questa pagina. Viene dal registro delle scorciatoie
-     *  ($lib/shortcuts), mai scritta a mano: se la lettera cambia là, la riga la segue. */
   }
   export interface NavGroup {
     label?: string;
@@ -82,6 +82,10 @@
     tourKey?: string;
     /** Hub landing active even when Overview is omitted from children. */
     active?: boolean;
+    /** Riga quieta quando `items` è vuoto: la sezione dice qualcosa invece di restare vuota. */
+    emptyLabel?: string;
+    /** Lista a altezza massima: molte righe non spingono fuori il footer. */
+    scroll?: boolean;
     items: NavItem[];
   }
 
@@ -157,7 +161,9 @@
   const mobile = $derived(sidebar.isMobile);
   const iconClass = $derived(mobile ? 'size-4 shrink-0' : 'size-3.5 shrink-0');
   const labelClass = $derived(
-    mobile ? 'truncate text-[14.5px] font-medium leading-tight' : 'truncate text-[13px]'
+    mobile
+      ? 'min-w-0 truncate text-[14.5px] font-medium leading-tight'
+      : 'min-w-0 truncate text-[13px] leading-tight'
   );
   // Mobile rows need a comfortable tap target without looking oversized next to desktop.
   const menuBtnMobileClass = $derived(
@@ -165,15 +171,16 @@
       ? 'h-auto! min-h-10! gap-2! rounded-lg! px-2.5! py-2! text-[14.5px]! leading-tight! [&_svg]:size-4! touch-manipulation'
       : ''
   );
-  // Riga di nav SELEZIONATA: pastiglia in velo d'accento + etichetta in `--accent-ink` (5,3:1 in
-  // chiaro, 10,5:1 in scuro). L'etichetta in `--accent` da sola stava a 2,58:1 su carta, sotto AA.
+  // Riga di nav SELEZIONATA: pastiglia in velo d'accento + binario sinistro + etichetta in
+  // `--accent-ink` (5,3:1 in chiaro, 10,5:1 in scuro). L'etichetta in `--accent` da sola stava a
+  // 2,58:1 su carta, sotto AA. Il binario dice "sei qui" anche a chi non distingue il velo.
   // Utility e NON regola nel blocco di stile: tailwind.css importa Tailwind con `important`, e per
   // le dichiarazioni !important l'ordine dei layer si inverte — un CSS di componente perderebbe
   // contro `data-[active=true]:bg-transparent` della base. Qui twMerge cancella la classe base.
   const navOnClass =
-    'font-semibold data-[active=true]:bg-[color:var(--nav-on)] data-[active=true]:hover:bg-[color:var(--nav-on-hover)] active:bg-[var(--paper)]';
-  /** Vertical spacing between sidebar nav rows. */
-  const navMenuGapClass = $derived(mobile ? 'gap-1.5' : 'gap-2');
+    'font-semibold data-[active=true]:bg-[color:var(--nav-on)] data-[active=true]:hover:bg-[color:var(--nav-on-hover)] data-[active=true]:shadow-[inset_2px_0_0_0_var(--accent)] active:bg-[var(--paper)]';
+  /** Vertical spacing between sidebar nav rows (4px desktop / 6px mobile). */
+  const navMenuGapClass = $derived(mobile ? 'gap-1.5' : 'gap-1');
   const activateHref = '/app/billing';
   /**
    * Le istruzioni per collegare il proprio agente. Stanno in fondo alla barra e non nella home
@@ -186,7 +193,7 @@
    * stesse istruzioni, e quando cambiano cambiano per entrambi.
    */
   let installOpen = $state(false);
-  const showUpgrade = $derived(!!brandSlug && !isPaidPlan(brandPlan));
+  const showUpgrade = $derived(!isPaidPlan(brandPlan));
 
   // Quale pannello era aperto sopravvive alla navigazione: la barra sta nel layout, quindi
   // cambiare pagina non deve riportare l'utente su un pannello che non aveva scelto.
@@ -270,9 +277,11 @@
 {#snippet navItem(item: NavItem)}
     {@const pending = isNavPending(item.href)}
     {@const active = pending || (item.active && !pendingPath)}
+    {@const board = item.kind === 'board'}
     <Sidebar.MenuItem>
       <Sidebar.MenuButton
         isActive={active}
+        isPending={pending}
         tooltipContent={item.label}
         size={mobile ? 'default' : 'sm'}
         class={cn(
@@ -287,6 +296,8 @@
           <a
             href={item.href}
             {...props}
+            title={sidebar.state === 'collapsed' && !mobile ? item.label : undefined}
+            aria-current={active ? 'page' : undefined}
             onclick={(e: MouseEvent) => {
               if (onNavClick) {
                 e.preventDefault();
@@ -295,7 +306,7 @@
             }}
           >
             {#if item.icon}
-              <item.icon class={iconClass} strokeWidth={1.7} />
+              <item.icon class={iconClass} strokeWidth={board ? 1.9 : 1.7} />
             {/if}
             <span class={cn(labelClass, 'group-data-[collapsible=icon]:hidden')}>{item.label}</span>
             {#if item.linkOut}
@@ -319,6 +330,17 @@
             {#if item.todo}
               <Badge class={cn('ml-auto py-0 uppercase tracking-wide group-data-[collapsible=icon]:hidden', mobile ? 'text-[10px] px-1.5' : 'text-[9px] px-1.5')} style="background: var(--accent-solid, #7c5cff); color: #fff;">{$_('app.nav.todo')}</Badge>
             {/if}
+            {#if board && !item.badge && !item.todo && item.pct === undefined}
+              <!-- Oggetto, non pagina: il quadratino cavo è la tacca di "si apre", senza una
+                   seconda lingua visiva accanto alle righe di pagina. -->
+              <span
+                class={cn(
+                  'ml-auto h-1.5 w-1.5 shrink-0 rounded-[2px] border border-current opacity-30 group-data-[collapsible=icon]:hidden',
+                  active && 'opacity-50'
+                )}
+                aria-hidden="true"
+              ></span>
+            {/if}
           </a>
         {/snippet}
       </Sidebar.MenuButton>
@@ -336,15 +358,30 @@
           </Sidebar.Menu>
         {:else if group.section}
           {#if mobile || sidebar.state !== 'collapsed'}
-            <div class="px-1.5 {gi > 0 ? (mobile ? 'mt-2' : 'mt-2.5') : ''} mb-0.5">
-              <span class={cn('font-medium text-muted-foreground/70 uppercase tracking-wider', mobile ? 'text-[10.5px]' : 'text-[9.5px]')}>{group.label}</span>
+            <div class={cn('mb-1 px-2', gi > 0 && (mobile ? 'mt-3' : 'mt-4'))}>
+              <span class={cn(
+                'block font-semibold uppercase leading-none text-[var(--ink-soft)]',
+                mobile ? 'text-[10px] tracking-[0.12em]' : 'text-[9.5px] tracking-[0.14em]'
+              )}>{group.label}</span>
             </div>
           {/if}
-          <Sidebar.Menu class={navMenuGapClass}>
-            {#each group.items as item}
-              {@render navItem(item)}
-            {/each}
-          </Sidebar.Menu>
+          {#if group.items.length === 0}
+            {#if group.emptyLabel && (mobile || sidebar.state !== 'collapsed')}
+              <p class={cn('px-2 py-1 leading-snug text-[var(--ink-faint)]', mobile ? 'text-[13px]' : 'text-[12px]')}>
+                {group.emptyLabel}
+              </p>
+            {/if}
+          {:else}
+            <Sidebar.Menu class={cn(
+              navMenuGapClass,
+              group.scroll && (mobile ? 'max-h-72' : 'max-h-56'),
+              group.scroll && 'overflow-y-auto overflow-x-hidden overscroll-contain'
+            )}>
+              {#each group.items as item}
+                {@render navItem(item)}
+              {/each}
+            </Sidebar.Menu>
+          {/if}
         {:else}
           <!-- La sezione È una voce: il clic apre la landing del hub, nella modal (l'ancora
                normale la prende l'interceptor). Un solo ramo per collassata ed espansa. -->
@@ -376,7 +413,7 @@
   <!-- Il selettore del brand non sta più in cima: su 47 account, 45 hanno UN brand — la riga più
        preziosa della sidebar era spesa per un'azione che il 96% non fa mai. Dire SEMPRE su quale
        brand si lavora (qui l'AI pubblica su account veri) è passato alla riga utente in fondo. -->
-  {#if brandSlug}
+  {#if true}
     <!-- La riga d'ingresso è un HEADER, non la prima voce della lista: stessa altezza della top
          bar delle pagine (`shell-top-header`, cioè `--shell-top-h`) e stesso filo, così i due
          bordi sono una riga sola che attraversa la finestra invece di due tratti sfalsati.
@@ -407,8 +444,7 @@
         <!-- A destra nell'header, non sopra la lista: il controllo sta sulla riga che già esiste
              invece di rubare una fascia di altezza al contenuto. Sul rail collassato sparisce —
              tre segmenti in 3.25rem non ci stanno. -->
-        {#if brandSlug}
-          <div class="ml-auto min-w-0 group-data-[collapsible=icon]:hidden">
+        <div class="ml-auto min-w-0 group-data-[collapsible=icon]:hidden">
             <SegmentedControl
               bind:value={pane}
               ariaLabel={$_('landing.nav.brandAria')}
@@ -419,7 +455,6 @@
               ]}
             />
           </div>
-        {/if}
       </div>
     </Sidebar.Header>
   {/if}
@@ -428,18 +463,16 @@
     <!-- I tre pannelli restano MONTATI e si nascondono con CSS: il pannello della chat tiene uno
          stream aperto e la cronologia caricata, e smontarlo a ogni cambio di segmento
          chiuderebbe la connessione a metà risposta. -->
-    <div class="flex min-h-0 flex-1 flex-col" class:hidden={brandSlug && pane !== 'pages'}>
+    <div class="flex min-h-0 flex-1 flex-col" class:hidden={pane !== 'pages'}>
       {@render navGroupsSection()}
     </div>
 
-    {#if brandSlug}
-      <div class="flex min-h-0 flex-1 flex-col group-data-[collapsible=icon]:hidden" class:hidden={pane !== 'chat'}>
-        <ChatPanel {brandSlug} />
-      </div>
-      <div class="flex min-h-0 flex-1 flex-col group-data-[collapsible=icon]:hidden" class:hidden={pane !== 'assets'}>
-        <AssetsPanel {brandSlug} />
-      </div>
-    {/if}
+    <div class="flex min-h-0 flex-1 flex-col group-data-[collapsible=icon]:hidden" class:hidden={pane !== 'chat'}>
+      <ChatPanel {brandSlug} />
+    </div>
+    <div class="flex min-h-0 flex-1 flex-col group-data-[collapsible=icon]:hidden" class:hidden={pane !== 'assets'}>
+      <AssetsPanel {brandSlug} />
+    </div>
   </Sidebar.Content>
 
   <Sidebar.Footer class="gap-2 border-t border-sidebar-border px-2.5 py-3 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2.5">
@@ -554,7 +587,7 @@
                   <!-- Sempre la home del brand: un deep link cross-brand (post, thread, id) non
                        esiste nell'altro brand e finirebbe in 404. -->
                   <a
-                    href={`/app/${b.slug}`}
+                    href={b.href ?? `/app/${b.slug}`}
                     class={cn('um-link um-brand-row', on && 'on')}
                     data-sveltekit-preload-data="hover"
                     aria-current={on ? 'true' : undefined}
@@ -575,7 +608,7 @@
               {/each}
             </div>
             <DropdownMenu.Item class="um-item p-0">
-              <a href="/app/onboarding" class="um-link um-link-muted">
+              <a href="/app" class="um-link um-link-muted">
                 <Plus class="size-4" strokeWidth={1.7} />
                 <span>{$_('app.brands.add')}</span>
               </a>

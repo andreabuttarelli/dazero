@@ -12,12 +12,19 @@ import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
 type Row = Record<string, unknown>;
 
 function fakeSupabase(accounts: Row[]) {
-  const q = {
-    select: () => q,
-    eq: () => q,
+  const socialQ = {
+    select: () => socialQ,
+    eq: () => socialQ,
     order: async () => ({ data: accounts })
   };
-  return { from: () => q };
+  const projectQ = {
+    select: () => projectQ,
+    eq: () => projectQ,
+    maybeSingle: async () => ({ data: { id: 'project-1' } })
+  };
+  return {
+    from: (table: string) => (table === 'projects' ? projectQ : socialQ)
+  };
 }
 
 const BRAND = { id: 'brand-1', slug: 'demo', plan: 'pro', status: 'active' };
@@ -104,7 +111,7 @@ describe('GET /api/v1/brands/:slug/social/accounts', () => {
 
     expect(body.platform_choices).toContain('linkedin');
     expect(body.manage_url).toBe(
-      'https://dazero.test/app/demo/settings/connected-accounts'
+      'https://dazero.test/p/project-1/settings/connected-accounts'
     );
   });
 

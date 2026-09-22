@@ -1,5 +1,6 @@
 import type { Db } from '$lib/server/db/client';
 import type { Database } from '$lib/database.types';
+import { actorCols, edgeActorCols, type Actor } from './actor';
 
 /**
  * IL CANVAS: TELE, NODI, ARCHI.
@@ -184,6 +185,24 @@ export async function listNodes(
   return (data ?? []).map(toNode);
 }
 
+export async function findNode(
+  db: Db,
+  input: { orgId: string; nodeId: string }
+): Promise<CanvasNodeRecord | null> {
+  const { data, error } = await db
+    .from('nodes')
+    .select(NODE_COLUMNS)
+    .eq('org_id', input.orgId)
+    .eq('id', input.nodeId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  return data ? toNode(data) : null;
+}
+
 export async function createNode(
   db: Db,
   input: {
@@ -195,6 +214,7 @@ export async function createNode(
     y: number;
     displayName?: string | null;
     data?: Record<string, unknown>;
+    actor?: Actor;
   }
 ): Promise<CanvasNodeRecord> {
   const { data, error } = await db
@@ -207,7 +227,8 @@ export async function createNode(
       display_name: input.displayName ?? null,
       x: input.x,
       y: input.y,
-      data: (input.data ?? {}) as Json
+      data: (input.data ?? {}) as Json,
+      ...actorCols(input.actor)
     })
     .select(NODE_COLUMNS)
     .single();
@@ -225,13 +246,13 @@ export async function createNode(
  */
 export async function moveNode(
   db: Db,
-  input: { orgId: string; nodeId: string; x: number; y: number; z?: number }
+  input: { orgId: string; nodeId: string; x: number; y: number; z?: number; actor?: Actor }
 ): Promise<CanvasNodeRecord | null> {
   const position = input.z === undefined ? { x: input.x, y: input.y } : { x: input.x, y: input.y, z: input.z };
 
   const { data, error } = await db
     .from('nodes')
-    .update({ ...position, updated_at: new Date().toISOString() })
+    .update({ ...position, ...actorCols(input.actor), updated_at: new Date().toISOString() })
     .eq('id', input.nodeId)
     .eq('org_id', input.orgId)
     .select(NODE_COLUMNS)
@@ -269,6 +290,7 @@ export async function writeNodeData(
     nodeId: string;
     data: Record<string, unknown>;
     expectedVersion: number;
+    actor?: Actor;
   }
 ): Promise<DataWrite> {
   const { data, error } = await db
@@ -276,6 +298,7 @@ export async function writeNodeData(
     .update({
       data: input.data as Json,
       version: input.expectedVersion + 1,
+      ...actorCols(input.actor),
       updated_at: new Date().toISOString()
     })
     .eq('id', input.nodeId)
@@ -296,11 +319,11 @@ export async function writeNodeData(
 /** Soft delete: l'arco verso un nodo non svanisce mentre qualcuno lo guarda, e l'undo ha cosa riportare. */
 export async function deleteNode(
   db: Db,
-  input: { orgId: string; nodeId: string }
+  input: { orgId: string; nodeId: string; actor?: Actor }
 ): Promise<void> {
   const { error } = await db
     .from('nodes')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: new Date().toISOString(), ...actorCols(input.actor) })
     .eq('id', input.nodeId)
     .eq('org_id', input.orgId);
 
@@ -335,6 +358,7 @@ export async function createConnection(
     targetNodeId: string;
     sourceHandle?: string | null;
     targetHandle?: string | null;
+    actor?: Actor;
   }
 ): Promise<Connection> {
   const { data, error } = await db
@@ -345,7 +369,8 @@ export async function createConnection(
       source_node_id: input.sourceNodeId,
       target_node_id: input.targetNodeId,
       source_handle: input.sourceHandle ?? null,
-      target_handle: input.targetHandle ?? null
+      target_handle: input.targetHandle ?? null,
+      ...edgeActorCols(input.actor)
     })
     .select(CONNECTION_COLUMNS)
     .single();

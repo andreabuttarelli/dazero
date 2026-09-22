@@ -24,7 +24,7 @@ const flow = canvasSrc('CanvasFlow.svelte');
 const keys = canvasSrc('CanvasKeys.svelte');
 
 const workbench = (name: string) =>
-  readFileSync(join(dir, '..', '..', 'routes', 'app', '[brand]', 'workbench', name), 'utf8');
+  readFileSync(join(dir, '..', '..', 'routes', 'p', '[projectId]', 'workbench', name), 'utf8');
 
 const page = workbench('+page.svelte');
 const server = workbench('+page.server.ts');

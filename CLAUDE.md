@@ -35,6 +35,68 @@ dazero web <slug>                                # Blog articles (drafts too)
 dazero studio <slug> add-note --text "..."       # Add knowledge
 ```
 
+## Lo schema del database (26 tabelle, progetto `klnswzhhgrqvbfjzioul`)
+
+Il prodotto è una **tela infinita**: nodi tipizzati che una persona, la chat in sidebar o un agente
+esterno via MCP lavorano insieme. Il disegno completo, con le ragioni di ogni scelta, sta in
+[`NEW_DATABASE_STRUCTURE.md`](NEW_DATABASE_STRUCTURE.md); qui stanno i nomi e i vincoli che
+servono per non sbagliare una query.
+
+**La gerarchia, e dove sta il brand:**
+
+```
+org ──┬── brands            voce, palette, account: serve a PUBBLICARE
+      └── projects ──┬── canvases ── nodes ── nodes_connections
+                     │                 └── node_runs (una generazione)
+                     └── assets       testo/immagini/video/documenti
+```
+
+`projects.brand_id` è **nullable, ed è il caso normale**: si apre una tela per esplorare e si
+sceglie il brand solo quando il materiale diventa qualcosa da pubblicare. Tutto il canvas
+funziona senza brand; chiederlo prima trasformerebbe un foglio bianco in un modulo da compilare.
+
+**Il post non appartiene al progetto.** `posts.brand_id` è NOT NULL, `posts` non ha `project_id`:
+il calendario è per brand, e un post assembla materiale da tele diverse. Il legame con l'origine
+è `post_sources` (molti-a-molti verso `nodes`), l'unica tabella senza `org_id` — il tenant lo
+porta il padre.
+
+| Gruppo | Tabelle |
+|---|---|
+| Tenant | `orgs` `orgs_members` `orgs_invites` `profiles` `api_keys` |
+| Tela | `projects` `canvases` `nodes` `nodes_connections` `node_runs` `assets` `canvas_events` |
+| Brand | `brands` `products` `social_accounts` |
+| Contenuto | `posts` `post_sources` `scheduled_posts` |
+| Ads (solo Meta) | `ad_accounts` `ad_campaigns` `ad_creatives` `competitor_ads` |
+| Sorgenti | `social_posts` (feed scaricati) |
+| Agenti | `chat_threads` `chat_messages` `ai_calls` |
+
+**I vincoli che non si scoprono leggendo i nomi:**
+
+- **`org_id` su ogni tabella** (tranne `post_sources`), e la RLS è attiva su tutte e 26 con
+  `auth_org_ids()`. **La service-role key la scavalca**: ogni uso va dichiarato in
+  `src/lib/server/db/service-role-uses.ts`, che è un argomento obbligatorio di
+  `createServiceRoleDb`.
+- **`nodes.data jsonb`** porta il payload per tipo (`text` `image` `video` `doc` `iframe`
+  `social_account_feed` `social_post_mockup` `products` `ads`). Una tabella sola: i campi per
+  tipo sarebbero ~40, quasi tutti NULL, e il mockup è un albero.
+- **`nodes.version`**: la posizione è last-write-wins, `data` va in concorrenza ottimistica
+  (`where version = $atteso`; zero righe = conflitto, mai un successo silenzioso).
+- **`nodes.deleted_at`**: cancellazione morbida, e ogni lettura filtra `deleted_at is null`.
+- **`actor_kind` / `actor_id` / `agent_key`** ovunque si registri un'azione. Per un agente
+  `actor_id` è **l'utente per conto del quale agisce** — `api_keys.user_id` è NOT NULL proprio
+  perché dietro un agente c'è sempre chi paga.
+- **`nodes_connections.target_handle`**: un video con frame iniziale e finale ha due ingressi.
+  Senza saperlo l'arco non si può eseguire.
+- **Realtime** pubblica `nodes`, `nodes_connections`, `canvases`, `node_runs` con
+  `replica identity full` — senza, un DELETE arriva con la sola chiave primaria.
+- **Storage**: bucket `brand-knowledge` (`${userId}/media/...`) e `canvas-assets`
+  (`${orgId}/${projectId}/...`), entrambi privati. Nascono da una migration: erano mancanti sul
+  progetto nuovo e ogni generazione immagine falliva con `store_failed`.
+
+I tipi vengono **generati** (`npm run db:types` → `src/lib/database.types.ts`), mai scritti a
+mano: sono ciò che trasforma una colonna sbagliata in un errore di compilazione invece che in un
+`console.warn` che nessuno legge.
+
 ## Architecture (this repo — the server side of the CLI)
 
 - **API** (`src/routes/api/v1/`) — REST endpoints the CLI calls. Adding a CLI command usually

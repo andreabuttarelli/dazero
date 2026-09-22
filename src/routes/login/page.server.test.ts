@@ -26,10 +26,19 @@ function run(path: string) {
 }
 
 describe('login page load', () => {
-  it('keeps a website URL for an authenticated user', async () => {
+  // L'onboarding non esiste più: entrare è un bootstrap silenzioso, e /app è l'unica porta.
+  // I parametri che servivano a preparare il modulo non hanno più un modulo da preparare.
+  it('manda chi è già dentro all app, qualunque parametro porti', async () => {
     await expect(run('/login?website=acme.example')).resolves.toEqual({
       status: 303,
-      location: '/app/onboarding?website=acme.example'
+      location: '/app'
+    });
+  });
+
+  it('non fa eccezione per next=onboarding, che non porta più da nessuna parte', async () => {
+    await expect(run('/login?next=onboarding')).resolves.toEqual({
+      status: 303,
+      location: '/app'
     });
   });
 });

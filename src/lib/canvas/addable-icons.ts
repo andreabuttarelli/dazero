@@ -15,6 +15,7 @@ import Type from '@lucide/svelte/icons/type';
 import Image from '@lucide/svelte/icons/image';
 import Video from '@lucide/svelte/icons/video';
 import Globe from '@lucide/svelte/icons/globe';
+import FileText from '@lucide/svelte/icons/file-text';
 import type { Component } from 'svelte';
 import type { Addable } from './addable';
 
@@ -22,5 +23,6 @@ export const ADDABLE_ICON: Record<Addable, Component> = {
   text: Type,
   image: Image,
   video: Video,
-  iframe: Globe
+  iframe: Globe,
+  doc: FileText
 };

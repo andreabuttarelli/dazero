@@ -24,9 +24,7 @@ export const SEQUENCE_TIMEOUT_MS = 1200;
 export const GO_TARGETS: readonly { key: string; path: string }[] = [
   { key: 'c', path: '/calendar' },
   { key: 'l', path: '/media' },
-  { key: 's', path: '/site' },
-  { key: 'u', path: '/studio' },
-  { key: 'e', path: '/web' }
+  { key: 'u', path: '/studio' }
 ];
 
 /** L'etichetta di una destinazione `g`, presa dalla nav vera. null = non è più nella nav. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   HUB_TABS,
+  NAV_SECTION,
   NAV_TEAM_SPACES,
   NAV_OFF_SIDEBAR,
   WORKBENCH_HUBS
@@ -25,12 +26,7 @@ describe('la nav del brand', () => {
       ],
       ads: [
         { key: 'social', path: '/ads/social', adsOnly: true },
-        { key: 'google', path: '/ads/google', adsOnly: true },
         { key: 'library', path: '/ads/library', adsOnly: true }
-      ],
-      web: [
-        { key: 'overview', path: '/web' },
-        { key: 'blog', path: '/site' }
       ],
       designer: [{ key: 'mediaLibrary', path: '/media' }]
     });
@@ -45,21 +41,26 @@ describe('la nav del brand', () => {
   });
 
   it('il nuovo albero non inventa hub: ogni voce usa chiavi i18n esistenti o nav2', () => {
+    const icons = new Set<string>();
     for (const t of [...NAV_TEAM_SPACES, ...NAV_OFF_SIDEBAR]) {
       expect(t.labelKey).toMatch(/^app\.(hub|nav2)\./);
       expect(t.path === '' || t.path.startsWith('/')).toBe(true);
+      expect(t.icon, `icona mancante: ${t.path}`).toBeTruthy();
+      icons.add(t.icon);
     }
-    // La home apre gli Spazi, ed è la sola voce senza segmento: `path` vuoto = `/app/<slug>`.
+    // Un token per riga, non un indice: SPACE_ICONS[i] si slittava da solo a ogni voce aggiunta.
+    expect(icons.size).toBe(7);
+    // La home apre gli Spazi, ed è la sola voce senza segmento: `path` vuoto = `/p/<projectId>`.
     expect(NAV_TEAM_SPACES[0].path).toBe('');
     // Sanità: le liste non si sovrappongono (una pagina, una casa).
     const spaces = NAV_TEAM_SPACES.map((t) => t.path);
     const tools = NAV_OFF_SIDEBAR.map((t) => t.path);
     expect(spaces.filter((p) => tools.includes(p))).toEqual([]);
-    expect(WORKBENCH_HUBS.length).toBe(5);
+    expect(WORKBENCH_HUBS.length).toBe(4);
   });
 
   /**
-   * La sidebar per intero: cinque righe, in quest'ordine, più l'ingranaggio in fondo (che non è
+   * La sidebar per intero: quattro righe, in quest'ordine, più l'ingranaggio in fondo (che non è
    * una voce e quindi non sta qui). È l'unica cosa che un test può tenere ferma di una barra —
    * l'inventario lo sorveglia il caso qui sopra, l'aspetto nessuno.
    */
@@ -68,8 +69,7 @@ describe('la nav del brand', () => {
       ['', 'app.nav2.home'],
       ['/media', 'app.nav2.materials'],
       ['/calendar', 'app.hub.publish.calendar'],
-      ['/studio', 'app.hub.brand.identity'],
-      ['/site', 'app.nav2.site']
+      ['/studio', 'app.hub.brand.identity']
     ]);
   });
 
@@ -82,10 +82,8 @@ describe('la nav del brand', () => {
    */
   it('sa esattamente quali destinazioni hanno perso la riga in sidebar', () => {
     expect(NAV_OFF_SIDEBAR.map((t) => t.path)).toEqual([
-      '/web',
       '/manual-posting',
       '/ads/social',
-      '/ads/google',
       '/ads/library'
     ]);
   });
@@ -94,5 +92,13 @@ describe('la nav del brand', () => {
     const everywhere = [...NAV_TEAM_SPACES, ...NAV_OFF_SIDEBAR];
     expect(everywhere.map((t) => t.path)).not.toContain('/workbench');
     expect(NAV_TEAM_SPACES[0].also).toContain('/workbench');
+  });
+
+  it('le sezioni della nav progetto si chiamano Tele e Pagine', () => {
+    expect(NAV_SECTION).toEqual({
+      boards: 'Tele',
+      pages: 'Pagine',
+      boardsEmpty: 'Nessuna tela'
+    });
   });
 });

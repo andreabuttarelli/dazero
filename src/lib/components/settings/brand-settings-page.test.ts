@@ -5,7 +5,7 @@ import { SETTINGS_GROUPS, SETTINGS_SECTIONS } from './platforms';
 
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 const routeDir = (section: string) =>
-  fileURLToPath(new URL(`../../../routes/app/[brand]/settings/${section}`, import.meta.url));
+  fileURLToPath(new URL(`../../../routes/p/[projectId]/settings/${section}`, import.meta.url));
 
 /** Le quattro che erano rotte e adesso sono sezioni della stessa pagina. */
 const MERGED = ['platforms', 'hashtags', 'voice-examples', 'timezone'];
@@ -35,7 +35,7 @@ describe('le impostazioni del brand sono una pagina sola', () => {
   });
 
   it('mostra le quattro sezioni del contratto nella pagina che resta', () => {
-    const page = read('../../../routes/app/[brand]/settings/brand/+page.svelte');
+    const page = read('../../../routes/p/[projectId]/settings/brand/+page.svelte');
 
     expect(page).toContain("'brand', 'platforms', 'hashtags', 'voice-examples'");
     expect(page).toContain('<BrandTimezone');
@@ -50,7 +50,7 @@ describe('le impostazioni del brand sono una pagina sola', () => {
     const sources = [
       read('../../warnings.ts'),
       ...['hashtags', 'platforms', 'voice-examples'].map((s) =>
-        read(`../../../routes/app/[brand]/studio/${s}/+page.server.ts`)
+        read(`../../../routes/p/[projectId]/studio/${s}/+page.server.ts`)
       )
     ];
 
@@ -63,7 +63,7 @@ describe('le impostazioni del brand sono una pagina sola', () => {
 
   it('manda ogni rimando legacy all’ancora della sua sezione, non in cima alla pagina', () => {
     for (const section of ['hashtags', 'platforms', 'voice-examples']) {
-      const source = read(`../../../routes/app/[brand]/studio/${section}/+page.server.ts`);
+      const source = read(`../../../routes/p/[projectId]/studio/${section}/+page.server.ts`);
       // `?query` prima di `#hash`, o il fragment si porta dentro la query.
       expect(source).toContain(`/settings/brand${'${qs ? `?${qs}` : \'\'}'}#${section}`);
     }

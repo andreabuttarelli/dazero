@@ -138,7 +138,7 @@
         <div class="plan-cta">
           {#if customCta}
             {@render customCta()}
-          {:else}
+          {:else if BOOKING_URL}
             <a class="pcta is-ghost" href={BOOKING_URL} target="_blank" rel="noopener">
               {$_('pricing.card.customCta')}
             </a>

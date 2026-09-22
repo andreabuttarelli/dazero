@@ -103,8 +103,8 @@ describe('il doppio clic su Genera', () => {
     expect(canStartRun(node())).toBe(true);
   });
 
-  it('un nodo di testo non parte: non c è dove depositare quel che produce', () => {
-    expect(canStartRun(node({ medium: 'text' }))).toBe(false);
+  it('un nodo di testo parte come gli altri: il testo atterra su un asset', () => {
+    expect(canStartRun(node({ medium: 'text' }))).toBe(true);
   });
 });
 
@@ -116,17 +116,15 @@ describe('perché un nodo non parte', () => {
     expect(blockedReason(node({ model: null }))).toMatch(/modello/i);
   });
 
-  it('per il testo dice che il nodo non gira ancora, non che manca un modello', () => {
-    expect(blockedReason(node({ medium: 'text', model: null, prompt: '' }))).toMatch(/testo/i);
+  it('per il testo senza modello dice di sceglierlo, come per gli altri', () => {
+    expect(blockedReason(node({ medium: 'text', model: null, prompt: 'x' }))).toMatch(/modello/i);
   });
 
   it('un nodo che può partire non ha niente da spiegare', () => {
     expect(blockedReason(node())).toBeNull();
   });
 
-  it('i medium che girano davvero sono quelli che hanno una libreria dove atterrare', () => {
-    // `brand_media.kind` ammette solo image e video: un testo non ha una riga in cui depositarsi,
-    // quindi il suo nodo non gira finché quel posto non esiste.
-    expect(RUNNABLE_MEDIUMS).toEqual(['image', 'video']);
+  it('girano tutti e tre i medium che producono: il testo atterra su un asset', () => {
+    expect(RUNNABLE_MEDIUMS).toEqual(['text', 'image', 'video']);
   });
 });

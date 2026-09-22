@@ -14,10 +14,9 @@
    *
    * Quale sia la domanda lo decide `homeHeadline`, che è puro e sotto test: qui si disegna e basta.
    */
-  let { overview, brandSlug }: { overview: HomeOverview; brandSlug: string } = $props();
+  let { overview, base }: { overview: HomeOverview; base: string } = $props();
 
   const TK = 'app.home.head';
-  const base = $derived(`/app/${brandSlug}`);
   const head = $derived(homeHeadline(overview));
 
   /**

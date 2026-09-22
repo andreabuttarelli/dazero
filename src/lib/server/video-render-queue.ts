@@ -18,6 +18,7 @@ import {
 	type VideoPersistOpts
 } from '$lib/server/video';
 import { withBrandContext, withOrgContext } from '$lib/server/ai-log';
+import { projectIdOfBrand } from '$lib/server/tenancy/brand-slug';
 
 /** Il nome del trasporto nei messaggi di resa: chi apre il registro deve sapere dove guardare. */
 const VIDEO_TRANSPORT = 'openrouter';
@@ -330,18 +331,13 @@ async function landClip(
 async function notifyThread(admin: SupabaseClient, row: VideoRenderRow, outcome: string) {
 	if (!row.thread_id || !row.brand_id) return;
 	try {
-		const { data: brand } = await admin
-			.from('brands')
-			.select('slug')
-			.eq('id', row.brand_id)
-			.maybeSingle();
-		const slug = (brand?.slug as string) ?? '';
+		const projectId = await projectIdOfBrand(admin, row.brand_id);
 
 		const { sendPushToUser } = await import('$lib/server/web-push');
 		await sendPushToUser(admin, row.user_id, {
 			title: 'dazero',
 			body: `Video: ${outcome}`,
-			url: slug && row.post_id ? `/app/${slug}/calendar?post=${row.post_id}` : '/',
+			url: projectId && row.post_id ? `/p/${projectId}/calendar?post=${row.post_id}` : '/',
 			tag: `video-render-${row.id}`,
 			skipIfFocused: true
 		});

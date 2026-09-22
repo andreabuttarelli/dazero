@@ -34,11 +34,6 @@ export const SETTINGS_SECTIONS = [
   'ads',
   'ads-accounts',
   'video',
-  'blog-appearance',
-  'blog-authors',
-  'blog-categories',
-  'blog-domain',
-  'blog-integrations',
   'language',
   'api-keys',
   'team',
@@ -54,15 +49,6 @@ export const SETTINGS_BRAND_SECTIONS = [
   'brand',
   'products',
   'people'
-] as const;
-
-/** Blog settings under Settings → Blog. */
-export const SETTINGS_BLOG_SECTIONS = [
-  'blog-appearance',
-  'blog-authors',
-  'blog-categories',
-  'blog-domain',
-  'blog-integrations'
 ] as const;
 
 /** Ads settings under Settings → Ads. */
@@ -93,16 +79,6 @@ export const SETTINGS_GROUPS: readonly {
       { section: 'people', labelKey: 'app.studio.tabs.people' },
       { section: 'library', labelKey: 'app.hub.web.library' },
       { section: 'demo-account', labelKey: 'app.settings.demoAccount.nav' }
-    ]
-  },
-  {
-    labelKey: 'app.nav.site',
-    items: [
-      { section: 'blog-appearance', labelKey: 'app.settings.blog.appearance' },
-      { section: 'blog-authors', labelKey: 'app.settings.blog.authors' },
-      { section: 'blog-categories', labelKey: 'app.settings.blog.categories' },
-      { section: 'blog-domain', labelKey: 'app.settings.blog.domain' },
-      { section: 'blog-integrations', labelKey: 'app.settings.blog.integrations' }
     ]
   },
   {

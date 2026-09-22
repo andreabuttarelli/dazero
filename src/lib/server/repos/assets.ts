@@ -145,3 +145,10 @@ export async function insertAsset(
   }
   return toAsset(data);
 }
+
+export async function deleteAsset(db: Db, input: { orgId: string; assetId: string }): Promise<void> {
+  const { error } = await db.from('assets').delete().eq('org_id', input.orgId).eq('id', input.assetId);
+  if (error) {
+    throw error;
+  }
+}

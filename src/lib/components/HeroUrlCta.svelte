@@ -91,8 +91,8 @@
 
   function buildHref(url: string): string {
     const qs = new URLSearchParams({ website: url });
-    // Onboarding sta dietro il login: /app/onboarding manda l'anonimo a /login e riprende di lì.
-    return `/app/onboarding?${qs}`;
+    // L'app sta dietro il login: /app manda l'anonimo a /login e riprende di lì.
+    return `/app?${qs}`;
   }
 
   function submit(e: Event) {

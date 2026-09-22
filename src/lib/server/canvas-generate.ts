@@ -19,7 +19,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { GenMedium, GenParams } from '$lib/canvas/gen-node';
-import { RUNNABLE_MEDIUMS } from '$lib/canvas/gen-history';
+/** Il vecchio deposito (`brand_media`) ammette solo image e video: il testo non ci atterra. */
+const LIBRARY_MEDIUMS = ['image', 'video'] as const;
 
 export type RunGenNode = {
   brandId: string;
@@ -51,7 +52,7 @@ type AspectRatio = NonNullable<Parameters<typeof import('./media-generate').gene
  * bottone lo aggira: un browser vecchio, una richiesta rifatta a mano, un agente.
  */
 function refuse(input: RunGenNode): string | null {
-  if (!(RUNNABLE_MEDIUMS as readonly string[]).includes(input.medium)) return 'medium_not_runnable';
+  if (!(LIBRARY_MEDIUMS as readonly string[]).includes(input.medium)) return 'medium_not_runnable';
   if (!input.prompt.trim()) return 'prompt_required';
   if (!input.model) return 'model_required';
   return null;

@@ -13,12 +13,10 @@ export function workbenchTabLabel(
   const seg = rest.split('/')[0] ?? '';
 
   const map: Record<string, string> = {
-    web: 'app.hub.web.label',
     calendar: 'app.hub.publish.calendar',
     'manual-posting': 'app.hub.publish.manualPosting',
     ads: 'app.hub.ads.label',
     studio: 'app.hub.brand.identity',
-    site: 'app.hub.web.blog',
     settings: 'app.nav.settings',
     media: 'app.hub.designer.mediaLibrary',
     workbench: 'app.home.workbench.title'
@@ -31,16 +29,14 @@ export function workbenchTabLabel(
 
   const key = map[seg];
   if (key) return t(key);
-  // Nested editors e.g. site/edit/…
-  if (seg === 'site' && rest.includes('/edit')) return t('app.hub.web.blog');
   return seg ? seg.charAt(0).toUpperCase() + seg.slice(1) : t('app.shell.tabHome');
 }
 
-export type WorkbenchPageHub = 'publish' | 'brand' | 'web' | 'designer' | 'ads';
+export type WorkbenchPageHub = 'publish' | 'brand' | 'designer' | 'ads';
 
 export type WorkbenchPageDef = {
   hub: WorkbenchPageHub;
-  /** Path segment under /app/{slug}/ */
+  /** Path segment under /p/{projectId}/ */
   segment: string;
   labelKey: string;
   /** Requires the ads entitlement (Starter and up) — free/Go land on Settings › Ads instead. */
@@ -54,14 +50,11 @@ export const WORKBENCH_PAGES: WorkbenchPageDef[] = [
   { hub: 'publish', segment: 'manual-posting', labelKey: 'app.hub.publish.manualPosting' },
   // Paid lives in its own hub: channels + Meta Ad Library research.
   { hub: 'ads', segment: 'ads/social', labelKey: 'app.hub.ads.social', adsOnly: true },
-  { hub: 'ads', segment: 'ads/google', labelKey: 'app.hub.ads.google', adsOnly: true },
   { hub: 'ads', segment: 'ads/library', labelKey: 'app.hub.ads.library', adsOnly: true },
-  { hub: 'web', segment: 'web', labelKey: 'app.hub.web.label' },
-  { hub: 'web', segment: 'site', labelKey: 'app.hub.web.blog' },
   { hub: 'designer', segment: 'media', labelKey: 'app.hub.designer.mediaLibrary' }
 ];
 
-export const WORKBENCH_HUBS: WorkbenchPageHub[] = ['brand', 'publish', 'web', 'ads', 'designer'];
+export const WORKBENCH_HUBS: WorkbenchPageHub[] = ['brand', 'publish', 'ads', 'designer'];
 
 /**
  * Sotto-pagine di ogni hub (sidebar). Le chiavi combaciano con `app.hub.{hub}.{key}`.
@@ -75,12 +68,7 @@ export const HUB_TABS: Partial<Record<WorkbenchPageHub, { key: string; path: str
   // No 'overview' entry: the section is its channels + Meta Ad Library; /ads redirects to social.
   ads: [
     { key: 'social', path: '/ads/social', adsOnly: true },
-    { key: 'google', path: '/ads/google', adsOnly: true },
     { key: 'library', path: '/ads/library', adsOnly: true }
-  ],
-  web: [
-    { key: 'overview', path: '/web' },
-    { key: 'blog', path: '/site' }
   ],
   designer: [{ key: 'mediaLibrary', path: '/media' }]
 };
@@ -105,10 +93,21 @@ export function workbenchPageHref(
 // l'albero e garantisce che OGNI destinazione dell'inventario (HUB_TABS qui sopra) resti
 // raggiungibile — cambia la gerarchia, non l'inventario.
 
+/** Token icona: il componente resta nel layout, l'inventario resta puro. */
+export type NavIconId =
+  | 'home'
+  | 'images'
+  | 'calendar'
+  | 'palette'
+  | 'send'
+  | 'megaphone'
+  | 'library';
+
 export type NavTeamItem = {
-  /** Path sotto /app/{slug} (con lo slash iniziale, come HUB_TABS). Vuoto = la home del brand. */
+  /** Path sotto /p/{projectId} (con lo slash iniziale, come HUB_TABS). Vuoto = la home del progetto. */
   path: string;
   labelKey: string;
+  icon: NavIconId;
   /** Altri path che tengono attiva la voce (rotte sorelle/legacy che atterrano qui). */
   also?: string[];
   /** Badge dinamico del layout (stessi contatori della nav legacy). */
@@ -116,31 +115,36 @@ export type NavTeamItem = {
   adsOnly?: boolean;
 };
 
+/** Le due regioni della nav progetto e il suo vuoto. Italiano, come le etichette di sezione. */
+export const NAV_SECTION = {
+  boards: 'Tele',
+  pages: 'Pagine',
+  boardsEmpty: 'Nessuna tela'
+} as const;
+
 /**
  * SPAZI — le destinazioni con una riga propria nella sidebar, in quest'ordine.
  */
 export const NAV_TEAM_SPACES: NavTeamItem[] = [
-  // La home del brand: `/app/<slug>` rimanda al workbench, quindi sta fra gli `also` o la voce
-  // si spegnerebbe appena atterrati.
-  { path: '', labelKey: 'app.nav2.home', also: ['/workbench'] },
-  { path: '/media', labelKey: 'app.nav2.materials' },
-  { path: '/calendar', labelKey: 'app.hub.publish.calendar', badge: 'content' },
-  { path: '/studio', labelKey: 'app.hub.brand.identity' },
-  { path: '/site', labelKey: 'app.nav2.site' }
+  // La home del progetto: `/p/<projectId>` rimanda al workbench, quindi sta fra gli `also` o la
+  // voce si spegnerebbe appena atterrati.
+  { path: '', labelKey: 'app.nav2.home', icon: 'home', also: ['/workbench'] },
+  { path: '/media', labelKey: 'app.nav2.materials', icon: 'images' },
+  { path: '/calendar', labelKey: 'app.hub.publish.calendar', icon: 'calendar', badge: 'content' },
+  { path: '/studio', labelKey: 'app.hub.brand.identity', icon: 'palette' }
 ];
 
 /**
- * FUORI DALLA SIDEBAR — le destinazioni che esistono, hanno un'etichetta e si aprono da ⌘K e dai
- * link degli agenti, ma NON hanno una riga propria nella barra laterale.
+ * FUORI DALLA SIDEBAR DEL BRAND — le destinazioni che esistono, hanno un'etichetta e si aprono da
+ * ⌘K e dai link degli agenti, ma NON hanno una riga propria nella barra di `/app`. La nav del
+ * PROGETTO le mostra tutte: sono pagine del progetto, non hub del brand.
  *
  * L'elenco resta perché è ancora l'inventario: `goTargetLabelKey` ci prende le etichette delle
  * scorciatoie `g <lettera>`, e il test lo confronta con HUB_TABS — una pagina nuova che non
  * finisce né qui né fra gli Spazi fa fallire la suite, invece di sparire in silenzio.
  */
 export const NAV_OFF_SIDEBAR: NavTeamItem[] = [
-  { path: '/web', labelKey: 'app.hub.web.label' },
-  { path: '/manual-posting', labelKey: 'app.hub.publish.manualPosting' },
-  { path: '/ads/social', labelKey: 'app.hub.ads.social', adsOnly: true },
-  { path: '/ads/google', labelKey: 'app.hub.ads.google', adsOnly: true },
-  { path: '/ads/library', labelKey: 'app.hub.ads.library', adsOnly: true }
+  { path: '/manual-posting', labelKey: 'app.hub.publish.manualPosting', icon: 'send' },
+  { path: '/ads/social', labelKey: 'app.hub.ads.social', icon: 'megaphone', adsOnly: true },
+  { path: '/ads/library', labelKey: 'app.hub.ads.library', icon: 'library', adsOnly: true }
 ];

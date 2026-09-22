@@ -166,7 +166,23 @@ describe('disegnare senza un brand', () => {
 
     const out = await generateImagesWithoutBrand(supabaseThatHasNoBrands(), job);
 
-    expect(out).toEqual({ ok: false, error: 'store_failed' });
+    expect(out).toMatchObject({ ok: false, error: 'store_failed' });
+  });
+
+  /**
+   * IL DIFETTO VERO dietro «ogni run immagine del canvas finisce store_failed»: il bucket non
+   * esiste sul progetto nuovo (klnswzhhgrqvbfjzioul, `select * from storage.buckets` torna zero
+   * righe), quindi `storeBrandMediaBytes` rifiuta con un messaggio del fornitore — che prima di
+   * questa correzione `storeDrawing` scartava in un `null` nudo, e `runImageJob` rispondeva sempre
+   * con lo stesso `store_failed` senza dire perché. Un bucket assente, una scrittura respinta e un
+   * campo mancante diventavano indistinguibili da UI.
+   */
+  it('un bucket assente porta il SUO motivo, non il token generico e basta', async () => {
+    storeBrandMediaBytes.mockResolvedValue({ error: 'Bucket not found' });
+
+    const out = await generateImagesWithoutBrand(supabaseThatHasNoBrands(), job);
+
+    expect(out).toMatchObject({ ok: false, error: 'store_failed', reason: 'Bucket not found' });
   });
 
   it('un render che non torna niente è un fallimento, non un successo vuoto', async () => {

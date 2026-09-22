@@ -1113,6 +1113,8 @@ export type Database = {
           lock_at: string | null
           org_id: string
           project_id: string
+          public_expires_at: string | null
+          public_token_hash: string | null
           type: string
           updated_at: string
           version: number
@@ -1138,6 +1140,8 @@ export type Database = {
           lock_at?: string | null
           org_id: string
           project_id: string
+          public_expires_at?: string | null
+          public_token_hash?: string | null
           type: string
           updated_at?: string
           version?: number
@@ -1163,6 +1167,8 @@ export type Database = {
           lock_at?: string | null
           org_id?: string
           project_id?: string
+          public_expires_at?: string | null
+          public_token_hash?: string | null
           type?: string
           updated_at?: string
           version?: number

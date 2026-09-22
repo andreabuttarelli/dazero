@@ -7,16 +7,14 @@
   import { upcomingFeed } from '$lib/home-upcoming';
 
   let {
-    brandSlug,
+    base,
     overview,
     launchedAt = null,
   }: {
-    brandSlug: string;
+    base: string;
     overview: HomeOverview;
     launchedAt?: string | null;
   } = $props();
-
-  const base = $derived(`/app/${brandSlug}`);
 
   const socialAccounts = $derived(overview.setup.socialAccounts);
 
@@ -26,10 +24,6 @@
     return t.length > n ? `${t.slice(0, n)}…` : t;
   }
 
-  const pendingBlogCount = $derived(
-    Math.max(overview.blog.pending, overview.blog.articles.length)
-  );
-  const scheduledPostCount = $derived(overview.queue.scheduled);
   const upcoming = $derived(upcomingFeed(overview.queue.upcoming ?? [], overview.blog.upcoming ?? []));
   // Le cose da fare in cima: la SELEZIONE e l'ORDINE stanno in `$lib/home-todos`, puro e sotto
   // test; qui si aggiunge solo ciò che quel modulo non può sapere — l'href col brand e la
@@ -182,27 +176,6 @@
         {/each}
       </ul>
     {/if}
-  </section>
-
-  <!-- Web -->
-  <section class="ov-section">
-    <div class="ov-section-head">
-      <div class="ov-section-copy">
-        <h3>{$_('app.home.overview.webTitle')}</h3>
-      </div>
-      <a class="ov-link" href={`${base}/web`}>{$_('app.home.overview.openWeb')} →</a>
-    </div>
-    <div class="metric-grid metric-grid-wide">
-      <a class="metric-card" href={`${base}/site`}>
-        <span class="metric-n"><AnimatedNum value={overview.blog.published} /></span>
-        <span class="metric-l">{$_('app.home.overview.blogPublished')}</span>
-        {#if pendingBlogCount > 0}
-          <span class="metric-sub"
-            >{$_('app.home.overview.blogPending', { values: { n: pendingBlogCount } })}</span
-          >
-        {/if}
-      </a>
-    </div>
   </section>
 
   <!-- Performance -->
@@ -498,44 +471,6 @@
     white-space: nowrap;
   }
 
-  /* ── Metrics / web ────────────────────────────────────────── */
-  .metric-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-  @container workbench (min-width: 640px) {
-    .metric-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-    .metric-grid-wide {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-  .metric-card {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    padding: 14px 14px 12px;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: var(--paper);
-    text-decoration: none;
-    color: var(--ink);
-    min-width: 0;
-  }
-  .metric-card:hover {
-    background: var(--paper-2);
-    border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
-  }
-  .metric-card.accent {
-    border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
-    background: linear-gradient(
-      160deg,
-      color-mix(in srgb, var(--accent) 9%, var(--paper)) 0%,
-      var(--paper) 48%
-    );
-  }
   .metric-n {
     font-size: 22px;
     font-weight: 700;
@@ -547,10 +482,6 @@
     font-size: 12.5px;
     font-weight: 600;
     color: var(--ink-soft);
-  }
-  .metric-sub {
-    font-size: 11.5px;
-    color: var(--ink-faint);
   }
   /* ── Performance ──────────────────────────────────────────── */
   .perf-layout {

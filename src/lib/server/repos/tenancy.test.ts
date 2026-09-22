@@ -16,6 +16,7 @@ import { SERVICE_ROLE_USES } from '$lib/server/db/service-role-uses';
  * produzione.
  */
 const REPOS = fileURLToPath(new URL('.', import.meta.url));
+const PROJECT_AGENT = fileURLToPath(new URL('../project-agent/', import.meta.url));
 
 const TENANT_FILTER = /\.eq\(\s*['"]org_id['"]/;
 const SCOPED_BY_CHILD = /\.eq\(\s*['"](project_id|canvas_id|node_id|post_id|brand_id)['"]/;
@@ -24,12 +25,15 @@ const WRITE = /\.(insert|update|upsert|delete)\(/;
 const ORG_IN_PAYLOAD = /org_id:/;
 
 /**
- * Le tabelle senza `org_id`, in un posto solo. Sono tabelle ponte: la loro chiave primaria è
- * fatta delle due FK, e il tenant lo porta il genitore — che una policy difende. Chiedere
+ * Le tabelle senza `org_id`, in un posto solo, con accanto CHI le difende al posto suo. Chiedere
  * `org_id` qui vorrebbe dire una colonna che non esiste, quindi la regola lo dichiara invece di
  * inciampare. Una tabella nuova senza `org_id` è una riga in più QUI, e una decisione presa.
+ *
+ *   post_sources  il genitore: chiave primaria fatta delle due FK, e una policy difende il post
+ *   profiles      l'utente: la policy è `id = auth.uid()`, il tenant è la persona, non l'org
+ *   orgs          sé stessa: la policy è `id in auth_org_ids()`, la colonna org_id sarebbe id
  */
-const TENANT_BY_PARENT = new Set(['post_sources']);
+const TENANT_BY_OTHER_MEANS = new Set(['post_sources', 'profiles', 'orgs']);
 const TABLE = /\.from\(\s*['"]([a-z_]+)['"]/;
 
 function tableOf(chain: string): string {
@@ -57,7 +61,7 @@ export function readsAcrossOrgs(file: string, src: string): Finding[] {
     if (!READ.test(chain) || WRITE.test(chain)) continue;
     if (!SCOPED_BY_CHILD.test(chain)) continue;
     if (TENANT_FILTER.test(chain)) continue;
-    if (TENANT_BY_PARENT.has(tableOf(chain))) continue;
+    if (TENANT_BY_OTHER_MEANS.has(tableOf(chain))) continue;
 
     out.push(finding(file, src, at, chain));
   }
@@ -72,7 +76,7 @@ export function writesAcrossOrgs(file: string, src: string): Finding[] {
   const out: Finding[] = [];
   for (const { at, chain } of chainsFrom(src)) {
     if (!WRITE.test(chain)) continue;
-    if (TENANT_BY_PARENT.has(tableOf(chain))) continue;
+    if (TENANT_BY_OTHER_MEANS.has(tableOf(chain))) continue;
     if (/\.insert\(/.test(chain)) {
       if (ORG_IN_PAYLOAD.test(chain)) continue;
       out.push(finding(file, src, at, chain));
@@ -86,9 +90,12 @@ export function writesAcrossOrgs(file: string, src: string): Finding[] {
 }
 
 function repoFiles(): string[] {
-  return readdirSync(REPOS)
-    .filter((n) => n.endsWith('.ts') && !n.includes('.test.'))
-    .map((n) => join(REPOS, n));
+  const from = (dir: string) =>
+    readdirSync(dir)
+      .filter((n) => n.endsWith('.ts') && !n.includes('.test.'))
+      .map((n) => join(dir, n));
+
+  return [...from(REPOS), ...from(PROJECT_AGENT)];
 }
 
 const report = (findings: Finding[]) =>
@@ -186,5 +193,17 @@ describe('ogni uso della service role è dichiarato', () => {
     const offenders = repoFiles().filter((f) => /createServiceRoleClient|createAdminClient/.test(readFileSync(f, 'utf-8')));
 
     expect(offenders, 'un repository riceve il client, non lo sceglie').toEqual([]);
+  });
+
+  it('il report dei file in project-agent non esce dall org', () => {
+    const agentFiles = readdirSync(PROJECT_AGENT)
+      .filter((n) => n.endsWith('.ts') && !n.includes('.test.'))
+      .map((n) => join(PROJECT_AGENT, n));
+    const findings = agentFiles.flatMap((f) => [
+      ...readsAcrossOrgs(f, readFileSync(f, 'utf-8')),
+      ...writesAcrossOrgs(f, readFileSync(f, 'utf-8'))
+    ]);
+
+    expect(findings).toEqual([]);
   });
 });

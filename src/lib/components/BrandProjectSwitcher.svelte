@@ -12,6 +12,8 @@
     slug: string;
     logoUrl: string | null;
     status?: BrandStatus;
+    /** Dove porta il clic. Manca → la home del brand (`/app/<slug>`). */
+    href?: string;
   };
 
   let {
@@ -153,7 +155,7 @@
 
       <div class="bps-footer">
         <DropdownMenu.Item class="bps-item p-0 focus:bg-transparent">
-          <a href="/app/onboarding" class="bps-action">
+          <a href="/app" class="bps-action">
             <Plus class="size-3.5 shrink-0" strokeWidth={1.7} />
             <span>{$_('app.brands.newBrand')}</span>
           </a>

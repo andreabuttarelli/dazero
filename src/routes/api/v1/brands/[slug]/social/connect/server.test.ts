@@ -14,12 +14,19 @@ import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/ser
 type Row = Record<string, unknown>;
 
 function fakeSupabase(accounts: Row[]) {
-  const q = {
-    select: () => q,
-    eq: () => q,
+  const socialQ = {
+    select: () => socialQ,
+    eq: () => socialQ,
     order: async () => ({ data: accounts })
   };
-  return { from: () => q };
+  const projectQ = {
+    select: () => projectQ,
+    eq: () => projectQ,
+    maybeSingle: async () => ({ data: { id: 'project-1' } })
+  };
+  return {
+    from: (table: string) => (table === 'projects' ? projectQ : socialQ)
+  };
 }
 
 const BRAND = { id: 'brand-1', slug: 'demo', plan: 'pro', status: 'active' };
@@ -62,7 +69,7 @@ describe('POST /api/v1/brands/:slug/social/connect', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('location')).toBeNull();
     expect(body.ok).toBe(true);
-    expect(body.url).toBe('https://dazero.test/app/demo/settings/connect/instagram');
+    expect(body.url).toBe('https://dazero.test/p/project-1/settings/connect/instagram');
     expect(body.already_connected).toBe(false);
   });
 
@@ -109,7 +116,7 @@ describe('POST /api/v1/brands/:slug/social/connect', () => {
     expect(res.status).toBe(409);
     expect(body.error).toBe('account_limit');
     expect(body.slots.used).toBeGreaterThanOrEqual(body.slots.limit);
-    expect(body.manage_url).toBe('https://dazero.test/app/demo/settings/connected-accounts');
+    expect(body.manage_url).toBe('https://dazero.test/p/project-1/settings/connected-accounts');
   });
 
   it('una chiave di sola lettura non conia niente', async () => {

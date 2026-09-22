@@ -74,9 +74,9 @@ export async function socialConnections(
 }
 
 /** Dove una persona collega una piattaforma. Non è un OAuth: è una pagina dietro la sua login. */
-export const connectPath = (slug: string, platform: string): string =>
-  `/app/${encodeURIComponent(slug)}/settings/connect/${encodeURIComponent(platform)}`;
+export const connectPath = (projectId: string, platform: string): string =>
+  `/p/${encodeURIComponent(projectId)}/settings/connect/${encodeURIComponent(platform)}`;
 
 /** Dove una persona sincronizza o scollega. Nessun tool scollega: si attraversa, non si esegue. */
-export const managePath = (slug: string): string =>
-  `/app/${encodeURIComponent(slug)}/settings/connected-accounts`;
+export const managePath = (projectId: string): string =>
+  `/p/${encodeURIComponent(projectId)}/settings/connected-accounts`;

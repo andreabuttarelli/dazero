@@ -34,6 +34,7 @@
     onchange,
     onrun,
     onshow,
+    onunlock,
     result
   }: {
     node: GenNode;
@@ -45,8 +46,10 @@
     onrun?: () => void;
     /** Rimettere in vetrina un giro di prima. Il nodo non sa scrivere: chiede a chi lo usa. */
     onshow?: (runId: string) => void;
+    /** Sblocca una corsa che non torna più. Senza, il bottone resta spento per sempre. */
+    onunlock?: () => void;
     /** Come si disegna quel che è uscito. Il nodo non sa da dove venga l'URL firmato. */
-    result?: import('svelte').Snippet<[{ refId: string }]>;
+    result?: import('svelte').Snippet<[{ refId: string; text: string | null }]>;
   } = $props();
 
   const choice = $derived(choices.find((c) => c.id === node.model) ?? choices[0]);
@@ -74,7 +77,8 @@
     empty: 'Scrivi cosa vuoi',
     ready: 'Pronto',
     running: 'Sta lavorando…',
-    done: 'Fatto'
+    done: 'Fatto',
+    failed: 'Non è riuscito'
   };
 
   const TypeIcon = $derived(ADDABLE_ICON[node.medium]);
@@ -155,9 +159,20 @@
        e video li disegna chi usa il nodo, che sa da dove viene l'URL firmato. -->
   <div class="gen-body">
     {#if state === 'running'}
-      <span class="gen-dots" aria-label={LABEL.running}><i></i><i></i><i></i></span>
+      <div class="gen-busy">
+        <span class="gen-dots" aria-label={LABEL.running}><i></i><i></i><i></i></span>
+        <button type="button" class="gen-unlock" onclick={() => onunlock?.()}>Sblocca</button>
+      </div>
+    {:else if state === 'failed'}
+      <div class="gen-fail" role="alert">
+        <p class="gen-fail-title">{LABEL.failed}</p>
+        {#if node.error}
+          <p class="gen-fail-why">{node.error}</p>
+        {/if}
+        <button type="button" class="gen-unlock" onclick={() => onrun?.()} disabled={!canRun}>Riprova</button>
+      </div>
     {:else if node.refId && result}
-      {@render result({ refId: node.refId })}
+      {@render result({ refId: node.refId, text: node.runs.find((r) => r.mediaId === node.refId)?.text ?? null })}
     {:else}
       <p class="gen-hint">{LABEL[state]}</p>
     {/if}
@@ -362,6 +377,55 @@
     font-size: 12px;
     text-align: center;
     color: var(--ink-soft, #6e6e73);
+  }
+
+  .gen-busy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .gen-fail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .gen-fail-title {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 650;
+    color: var(--ink, #1d1d1f);
+  }
+  .gen-fail-why {
+    margin: 0;
+    max-width: 28ch;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--ink-soft, #6e6e73);
+    overflow-wrap: anywhere;
+  }
+
+  .gen-unlock {
+    padding: 4px 12px;
+    font: inherit;
+    font-size: 11.5px;
+    border: 1px solid var(--line-2, #d2d2d7);
+    border-radius: 8px;
+    background: var(--paper, #fff);
+    color: var(--ink, #1d1d1f);
+    cursor: pointer;
+  }
+  .gen-unlock:hover {
+    background: var(--paper-2, #f9f9f9);
+  }
+  .gen-unlock:disabled {
+    opacity: 0.35;
+    cursor: default;
   }
 
   .gen-foot {

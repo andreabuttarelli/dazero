@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { authenticate, checkApiKeyWriteAccess, loadBrandForUser } from '$lib/server/cli-auth';
 import { appOrigin } from '$lib/server/app-url';
 import { connectPath, managePath, socialConnections } from '$lib/server/social-connections';
+import { projectIdOfBrand } from '$lib/server/tenancy/brand-slug';
 import { SOCIAL_CONNECT_LINK, TARGET_PLATFORMS, statusForFailure } from '@dazero/api-contracts';
 
 /**
@@ -41,7 +42,11 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
 
   const { platform } = parsed.data;
   const origin = appOrigin(url);
-  const manageUrl = `${origin}${managePath(brand.slug)}`;
+  const projectId = await projectIdOfBrand(supabase, brand.id);
+  if (!projectId) {
+    return json({ error: 'no_project' }, { status: 409 });
+  }
+  const manageUrl = `${origin}${managePath(projectId)}`;
   const state = await socialConnections(supabase, brand);
 
   if (!state.canConnect) {
@@ -70,7 +75,7 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
   return json({
     ok: true,
     platform,
-    url: `${origin}${connectPath(brand.slug, platform)}`,
+    url: `${origin}${connectPath(projectId, platform)}`,
     already_connected: alreadyConnected,
     slots: state.slots,
     manage_url: manageUrl

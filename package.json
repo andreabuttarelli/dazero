@@ -35,7 +35,10 @@
     "test:constraints": "node scripts/constraint-harness.mjs",
     "test:storage-policies": "node scripts/storage-policy-harness.mjs",
     "test:privileges": "node scripts/privilege-harness.mjs",
-    "db:types": "supabase gen types typescript --project-id klnswzhhgrqvbfjzioul > src/lib/database.types.ts"
+    "db:types": "supabase gen types typescript --project-id klnswzhhgrqvbfjzioul > src/lib/database.types.ts",
+    "eval:canvas": "vite-node --config scripts/vite-node.config.ts scripts/eval/canvas.ts",
+    "eval:image-node": "vite-node --config scripts/vite-node.config.ts scripts/eval/image-node.ts",
+    "eval:bootstrap": "vite-node --config scripts/vite-node.config.ts scripts/eval/bootstrap.ts"
   },
   "devDependencies": {
     "@internationalized/date": "^3.12.0",

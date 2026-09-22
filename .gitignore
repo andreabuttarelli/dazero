@@ -97,3 +97,4 @@ vite.config.ts.timestamp-*.mjs
 # Vercel builds with `npm ci`: un secondo lockfile diverge in silenzio e fa installare
 # versioni che nessuno ha scelto.
 bun.lock
+.playwright-mcp/
