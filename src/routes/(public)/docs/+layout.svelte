@@ -38,22 +38,8 @@
     ]},
     { label: $_('docs.layout.s6'), items: [
       { title: $_('docs.layout.s8'), href: '/docs/studio', icon: 'palette' },
-      { title: $_('docs.layout.s9'), href: '/docs/post-history', icon: 'clock' },
-      { title: $_('docs.layout.s10'), href: '/docs/thematic-calendar', icon: 'calendar' },
-    ]},
-    { label: $_('docs.layout.s11'), items: [
-      { title: $_('docs.layout.s12'), href: '/docs/research', icon: 'target' },
-      { title: $_('docs.layout.s14'), href: '/docs/brand-memory', icon: 'database' },
-      { title: $_('docs.layout.s15'), href: '/docs/weekly-recap', icon: 'mail' },
-    ]},
-    { label: $_('docs.layout.s16'), items: [
-      { title: $_('docs.layout.s17'), href: '/docs/geo-audit', icon: 'globe' },
-      { title: $_('docs.layout.s18'), href: '/docs/seo-advisor', icon: 'search' },
-      { title: $_('docs.layout.s19'), href: '/docs/content-library', icon: 'book-open' },
-      { title: $_('docs.layout.s20'), href: '/docs/radar', icon: 'radio' },
     ]},
     { label: $_('docs.layout.s21'), items: [
-      { title: $_('docs.layout.s22'), href: '/docs/blog-hosting', icon: 'globe' },
       { title: $_('docs.layout.s23'), href: '/docs/shopify', icon: 'shopping-bag', siIcon: siShopify },
       { title: $_('docs.layout.s24'), href: '/docs/webflow', icon: 'layout', siIcon: siWebflow },
       { title: $_('docs.layout.s25'), href: '/docs/wix', icon: 'layout', siIcon: siWix },
@@ -72,10 +58,8 @@
     { label: $_('docs.layout.s31'), items: [
       { title: $_('docs.layout.s32'), href: '/docs/api/brands', icon: 'layers' },
       { title: $_('docs.layout.s33'), href: '/docs/api/posts', icon: 'file-text' },
-      { title: $_('docs.layout.s35'), href: '/docs/api/studio', icon: 'palette' },
       { title: $_('docs.layout.s37'), href: '/docs/api/analytics', icon: 'bar-chart' },
       { title: $_('docs.layout.s38'), href: '/docs/api/products', icon: 'package' },
-      { title: $_('docs.layout.s39'), href: '/docs/api/articles', icon: 'file-text' },
     ]},
   ]);
 

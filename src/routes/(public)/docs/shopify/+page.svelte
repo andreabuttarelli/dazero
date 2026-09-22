@@ -81,9 +81,3 @@
   <li><strong>{$_('docs.shopify.s62')}</strong> {@html $_('docs.shopify.s63')}</li>
   <li><strong>{$_('docs.shopify.s64')}</strong> {$_('docs.shopify.s65')}</li>
 </ul>
-
-<h2>{$_('docs.shopify.s66')}</h2>
-<ul>
-  <li><a href={'/docs/seo-advisor'}>{$_('docs.shopify.s67')}</a> {$_('docs.shopify.s68')}</li>
-  <li><a href={'/docs/content-library'}>{$_('docs.shopify.s69')}</a> {$_('docs.shopify.s70')}</li>
-</ul>

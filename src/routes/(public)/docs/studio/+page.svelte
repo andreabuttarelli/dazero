@@ -6,9 +6,6 @@
     toc.set([
     { title: $_('docs.studio.s0'), href: '#brand-kit' },
     { title: $_('docs.studio.s1'), href: '#products' },
-    { title: $_('docs.studio.s2'), href: '#knowledge' },
-    { title: $_('docs.studio.s3'), href: '#people' },
-    { title: $_('docs.studio.s4'), href: '#competitors' },
   ]);
   });
 </script>
@@ -35,24 +32,3 @@
   <li><strong>{$_('docs.studio.s16')}</strong> {$_('docs.studio.s17')}</li>
   <li><strong>{$_('docs.studio.s18')}</strong> {$_('docs.studio.s19')}</li>
 </ul>
-
-<h2 id="knowledge">{$_('docs.studio.s20')}</h2>
-<p>{$_('docs.studio.s21')}</p>
-<ul>
-  <li>{$_('docs.studio.s22')}</li>
-  <li>{$_('docs.studio.s23')}</li>
-  <li>{$_('docs.studio.s24')}</li>
-  <li>{$_('docs.studio.s25')}</li>
-</ul>
-<p>{$_('docs.studio.s26')}</p>
-
-<h2 id="people">{$_('docs.studio.s27')}</h2>
-<p>{$_('docs.studio.s28')}</p>
-<ul>
-  <li><strong>{$_('docs.studio.s29')}</strong> {$_('docs.studio.s30')}</li>
-  <li><strong>{$_('docs.studio.s31')}</strong> {$_('docs.studio.s32')}</li>
-</ul>
-
-<h2 id="competitors">{$_('docs.studio.s33')}</h2>
-<p>{$_('docs.studio.s34')}</p>
-<p>{$_('docs.studio.s35')}</p>

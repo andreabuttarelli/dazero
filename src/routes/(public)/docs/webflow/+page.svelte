@@ -76,5 +76,4 @@
 <h2>{$_('docs.webflow.s50')}</h2>
 <ul>
   <li><a href={'/docs/shopify'}>{$_('docs.webflow.s51')}</a> {$_('docs.webflow.s52')}</li>
-  <li><a href={'/docs/seo-advisor'}>{$_('docs.webflow.s53')}</a> {$_('docs.webflow.s54')}</li>
 </ul>
