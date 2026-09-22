@@ -7,7 +7,6 @@ import { isVideoUrl } from '$lib/content-formats';
 import {
   VIDEO_MODEL_CHOICES as SHARED_VIDEO_MODEL_CHOICES,
   isKnownVideoModelId,
-  isSeedance25Model,
   clampVideoPrompt,
   videoModelCaps,
   videoModelForRole,
@@ -110,35 +109,11 @@ export const MIN_DURATION = 10;
 // Ultima spiaggia, quando non si sa nient'altro. NON è il default di prodotto: si preferisce
 // sempre `suggestVideoDuration` o una durata esplicita.
 export const DEFAULT_VIDEO_DURATION = 13;
-/**
- * Talking UGC ceilings.
- * - Organic / feed: {@link UGC_ORGANIC_MAX_DURATION} (15s) on any model.
- * - Paid UGC ads (`ugcAd`): {@link UGC_AD_DURATION} (22s) **only** on Seedance 2.5 —
- *   other models, including the default Grok Imagine, fall back to the organic cap.
- *   The ad flag never picks the model: the selected/brand/default model runs the job.
- */
-export const UGC_ORGANIC_MAX_DURATION = 15;
-export const UGC_AD_DURATION = 22;
-/** @deprecated Prefer {@link UGC_ORGANIC_MAX_DURATION} — kept as alias for organic UGC. */
-export const UGC_MAX_DURATION = UGC_ORGANIC_MAX_DURATION;
-
-export type UgcDurationOpts = { ugc?: boolean; /** Paid UGC ad → 22s on Seedance 2.5. */ ugcAd?: boolean };
-
-/** Effective UGC duration ceiling for this model + flags. `null` when not UGC. */
-export function ugcDurationCap(
-  model: string | null | undefined,
-  opts?: UgcDurationOpts
-): number | null {
-  if (!opts?.ugc) return null;
-  if (opts.ugcAd && isSeedance25Model(model)) return UGC_AD_DURATION;
-  return UGC_ORGANIC_MAX_DURATION;
-}
-
 /** I gradini offerti in Settings, filtrati su ciò che `model` sa davvero produrre. */
 export function videoDurationOptions(model?: string | null): number[] {
   const caps = videoModelCaps(model?.trim() || envModelI2V());
   const floor = caps.minDuration;
-  const candidates = [10, 13, 15, 20, 22, 30];
+  const candidates = [10, 13, 15, 20, 30];
   const opts = candidates.filter((s) => s >= floor && s <= caps.maxDuration);
   // Il tetto del modello resta sempre scegliibile, anche se non è uno dei gradini.
   if (!opts.includes(caps.maxDuration) && caps.maxDuration >= floor) opts.push(caps.maxDuration);
@@ -180,33 +155,12 @@ export function spokenWordCount(script: string | null | undefined): number {
  * La durata dal copione parlato. Il gradino più CORTO che regge tutte le parole, mai quello vicino
  * ma troppo breve: quello tronca a metà frase.
  */
-export function suggestVideoDuration(
-  script: string | null | undefined,
-  model?: string | null,
-  opts?: UgcDurationOpts
-): number {
-  const ugcCap = ugcDurationCap(model, opts);
-  const optsList = videoDurationOptions(model).filter((s) =>
-    ugcCap != null ? s <= ugcCap : true
-  );
-  // La durata dell'ad UGC deve restare scegliibile anche se non coincide con un gradino.
-  if (ugcCap != null && !optsList.includes(ugcCap) && ugcCap >= (optsList[0] ?? MIN_DURATION)) {
-    const caps = videoModelCaps(model?.trim() || envModelI2V());
-    if (ugcCap <= caps.maxDuration) optsList.push(ugcCap);
-    optsList.sort((a, b) => a - b);
-  }
+export function suggestVideoDuration(script: string | null | undefined, model?: string | null): number {
+  const optsList = videoDurationOptions(model);
   const floor = optsList[0] ?? MIN_DURATION;
   const words = spokenWordCount(script);
-  if (!words) {
-    // Gli ad partono dalla finestra piena, così Demo e Proof hanno spazio; l'organico sta al minimo.
-    if (opts?.ugc && opts.ugcAd && ugcCap != null) return ugcCap;
-    return floor;
-  }
-  if (!optsList.length) {
-    const raw = Math.ceil(words / (WORDS_PER_SECOND * SCRIPT_FIT_RATIO));
-    const clamped = clampVideoDuration(raw, model);
-    return ugcCap != null ? Math.min(clamped, ugcCap) : clamped;
-  }
+  if (!words) return floor;
+  if (!optsList.length) return clampVideoDuration(Math.ceil(words / (WORDS_PER_SECOND * SCRIPT_FIT_RATIO)), model);
   const fitting = optsList.find((s) => maxWordsForDuration(s) >= words);
   if (fitting != null) return fitting;
   // Copione più lungo del tetto: si usa il massimo, e `fitScriptToDuration` taglia.
@@ -215,28 +169,24 @@ export function suggestVideoDuration(
 
 /**
  * Richiesta esplicita → suggerimento dal copione → ultima spiaggia. Una preferenza di Settings si
- * passa come `requested`. Fuori dall'UGC, una durata esplicita troppo corta per il parlato CRESCE
- * fino a `suggestVideoDuration` invece di troncare.
+ * passa come `requested`. Una durata esplicita troppo corta per il parlato CRESCE fino a
+ * `suggestVideoDuration` invece di troncare.
  */
 export function resolveVideoDuration(
   requested: unknown,
   script: string | null | undefined,
-  model?: string | null,
-  opts?: UgcDurationOpts
+  model?: string | null
 ): number {
   const hasScript = spokenWordCount(script) > 0;
-  const ugcCap = ugcDurationCap(model, opts);
-  const cap = (s: number) => (ugcCap != null ? Math.min(s, ugcCap) : s);
 
   if (requested != null && requested !== '' && Number.isFinite(Number(requested))) {
-    const clamped = cap(clampVideoDuration(requested, model));
-    if (!hasScript || opts?.ugc) return clamped;
+    const clamped = clampVideoDuration(requested, model);
+    if (!hasScript) return clamped;
     if (spokenWordCount(script) <= maxWordsForDuration(clamped)) return clamped;
-    return suggestVideoDuration(script, model, opts);
+    return suggestVideoDuration(script, model);
   }
-  if (hasScript) return suggestVideoDuration(script, model, opts);
-  if (opts?.ugc && opts.ugcAd && ugcCap != null) return ugcCap;
-  return cap(clampVideoDuration(undefined, model));
+  if (hasScript) return suggestVideoDuration(script, model);
+  return clampVideoDuration(undefined, model);
 }
 
 /** Pick an aspect ratio the active model accepts; unknown → 9:16. */
@@ -283,32 +233,17 @@ export type RenderVideoOpts = {
   visualStyle?: string | null;
   // Font dei sottotitoli impressi: quello del brand vale solo se libass ce l'ha sull'host di render.
   captionFont?: string;
-  // Genere UGC a mano invece del default cinematografico. Lo stile visivo del brand qui NON si
-  // applica, di proposito — vedi buildVideoPrompt.
-  ugc?: boolean;
-  /**
-   * Paid UGC ad mode. When true with `ugc`, asks for {@link UGC_AD_DURATION} (22s) — which only
-   * Seedance 2.5 holds (identity + speech in one pass); other models clamp to the organic
-   * {@link UGC_ORGANIC_MAX_DURATION} (15s). The flag never picks the model.
-   */
-  ugcAd?: boolean;
   // Presente → clip PARLATA: audio e lip-sync nativi si pilotano CITANDO la riga dentro il prompt.
   // Assente → b-roll muto.
   script?: string | null;
   // Shipping resolution from the brand's Settings → Video ('480p' | '720p'). Unset → 480p.
   resolution?: string | null;
   /**
-   * AI-authored creative brief for THIS clip. When set, replaces hardcoded UGC / cinematic MOTION
-   * templates — chat can fully direct camera, energy, genre. Safety rails (clean frame, spoken
+   * AI-authored creative brief for THIS clip. When set, replaces the hardcoded cinematic MOTION
+   * template — chat can fully direct camera, energy, genre. Safety rails (clean frame, spoken
    * line lock, cover anchor) still apply.
    */
   prompt?: string | null;
-  /**
-   * Structured Seedance shot brief (subject/camera/audio/timeline). Used in UGC mode when
-   * `prompt` is absent. Callers pass formatUgcShotBrief(buildUgcShotBrief(...)); otherwise
-   * renderVideo builds a default brief.
-   */
-  shotBrief?: string | null;
   // Model id override (brand Settings → Video, or an AI tool choice). Unset → env default.
   // Duration is clamped against THIS model's caps, not a global ceiling.
   /** Le preferenze del brand: `resolveVideoModel` ne legge quella del mestiere che questo job e'. */
@@ -331,9 +266,9 @@ export type RenderVideoOpts = {
    */
   abortSignal?: AbortSignal;
   /**
-   * Override burned-in (ffmpeg) captions. Default: !!script && !ugc.
-   * Remakes of existing reels pass false so a UGC script rewrite cannot add subtitles
-   * the original clip never had.
+   * Override burned-in (ffmpeg) captions. Default: !!script.
+   * Remakes of existing reels pass false so a script rewrite cannot add subtitles the original
+   * clip never had.
    */
   burnCaptions?: boolean;
 };
@@ -389,9 +324,8 @@ const CLEAN_FRAME_RULE =
 // reimmaginano la scena da capo. L'image-to-video vuole un brief di MOVIMENTO ancorato alla cover;
 // il text-to-video vuole la scena PIÙ la direzione di movimento e lo stile del brand.
 //
-// Tre modi creativi, vince il primo: `prompt` esplicito → freeform; `ugc` → template UGC;
-// altrimenti cinematografico leggero. Le protezioni (frame pulito, riga parlata bloccata) valgono
-// sempre quando c'è dialogo.
+// Due modi creativi, vince il primo: `prompt` esplicito → freeform; altrimenti cinematografico
+// leggero. Le protezioni (frame pulito, riga parlata bloccata) valgono sempre quando c'è dialogo.
 /**
  * Il prompt, più le note del modello che lo renderà.
  *
@@ -421,21 +355,13 @@ function composeVideoPrompt(
     hasCover: boolean;
     visualStyle?: string | null;
     script?: string | null;
-    ugc?: boolean;
     /** Brand / AI free-text clip direction. Trimmed to the stored ceiling. */
     instructions?: string | null;
     /**
-     * AI-authored creative brief. When non-empty, replaces hardcoded MOTION/genre templates so
-     * chat can choose look, camera, energy freely.
+     * AI-authored creative brief. When non-empty, replaces the hardcoded cinematic MOTION
+     * template so chat can choose look, camera, energy freely.
      */
     prompt?: string | null;
-    /**
-     * Structured Seedance shot brief (subject/camera/audio/timeline). When set on a UGC clip,
-     * replaces the default timeline/camera blocks while keeping performance + spoken-line rails.
-     */
-    shotBrief?: string | null;
-    /** Clip length — scales the default UGC timeline when no shotBrief is passed. */
-    durationSeconds?: number | null;
     /**
      * Il modello che renderà la clip. Serve SOLO a scegliere le note di mestiere: i modelli
      * sbagliano cose diverse (Seedance aggiunge watermark, Grok ignora le esclusioni, Kling
@@ -468,17 +394,12 @@ function composeVideoPrompt(
             ? `\n\nBRAND VISUAL STYLE to match: ${opts.visualStyle.trim().replace(/\s+/g, ' ').slice(0, 500)}`
             : ''
         }`;
-    const ugcSpeechRail =
-      opts.ugc && line
-        ? 'SPEECH COMPLETE — every word of the spoken line must be fully audible before the clip ends. Fast natural spoken pace (MASTER UGC): full sentences, not telegram fragments; blink every ~2–3 seconds; one micro pause / gaze break OK — never polished ad delivery, never cut mid-word. CTA trails off in energy but still finishes. Keep clear headroom above the hair. Keep real skin texture — no beauty filter. NEVER add subtitles or on-screen text.'
-        : '';
     return [
       clean,
       anchor,
-      `CREATIVE BRIEF (follow this — it overrides default motion/genre templates):\n${free}`,
+      `CREATIVE BRIEF (follow this — it overrides the default motion template):\n${free}`,
       speech,
       pronunciation,
-      ugcSpeechRail,
       brandDirection,
       // Il frame pulito si ripete per ultimo: col dialogo il modello tende ai sottotitoli.
       line || free ? clean : ''
@@ -487,71 +408,6 @@ function composeVideoPrompt(
       .join('\n\n');
   }
 
-  // L'UGC è un GENERE diverso, non una manopola di stile: il brief cinematografico qui sotto gli
-  // rema contro, quindi il prompt si sostituisce invece di aggiustarsi.
-  // La regola del frame pulito è dichiarata DUE volte, in testa e in coda: col dialogo nel prompt
-  // il modello aggiunge sottotitoli per default, e una sola menzione a metà prompt non lo ferma —
-  // poi storpia le lettere, che è peggio di nessun sottotitolo. I nostri si imprimono dopo, dove
-  // controlliamo font e ortografia.
-  if (opts.ugc) {
-    // `ugc.ts` non si importa qui: creerebbe un ciclo (ugc importa già SCRIPT_FIT_RATIO da questo
-    // file), quindi il brief lo passa il chiamante.
-    const shotBlock = opts.shotBrief?.trim() ?? '';
-
-    const defaultShot = [
-      'SHOT BRIEF — Seedance blocks (Hook→Problem→Demo→Proof→CTA; pain moment + desire under):',
-      'REFERENCES: @Image 1 = speaker face/hair/build/wardrobe/room from the cover — do not invent a different person',
-      `CAMERA: handheld front-camera selfie, chest-up with headroom, ${'natural micro-shakes, drifting frames, hunting autofocus, uneven light'} — no tripod, no cinematic move; keep real skin texture (no beauty filter)`,
-      'LOOK: visible pores, under-eye shadows, flat grading, faint sensor noise — no doll/porcelain skin',
-      'STYLE: talking-head UGC; expressive pain→relief; product must NOT lead the first ~8s',
-      'AUDIO: phone-mic room tone + one quiet ambient event. No music, no studio VO',
-      'STAGES:',
-      '- 00:00–~15%: HOOK call-out — PAIN MOMENT + desire underneath; brows knit, lean in; NO product yet',
-      '- ~15%–~35%: PROBLEM — deepen cost (time/money/stress/shame); face stays worked up; blink ~2–3s; behavioral beats',
-      '- ~35%–~60%: DEMO — give away the mechanic out loud in one concrete step; product may appear casually',
-      '- ~60%–~80%: PROOF — relief shift (shoulders drop, softer eyes); one concrete proof detail',
-      '- ~80%–end: CTA — qualify then soft action, trailing off; every spoken word finishes',
-      'CONSTRAINTS: NO subtitles/captions/UI text/logos; NO beauty filter; SPEECH COMPLETE'
-    ].join('\n');
-
-    const delivery = line
-      ? [
-          shotBlock || defaultShot,
-          '',
-          'PERFORMANCE — expressive pain→relief UGC ad, never a polished commercial:',
-          '- Social context truth: mid-conversation / thinking out loud — never presenting.',
-          '- PAIN + DESIRE: hook names a concrete painful moment; the desire underneath (comfort / respect / less fear) must be felt on the face.',
-          '- EXPRESSIVE ARC (mandatory): HOOK/PROBLEM = brows knit, lean in; DEMO = show the mechanic; PROOF = visible relief (shoulders drop, softer eyes); CTA trails off. Not deadpan. Not constant hype.',
-          '- Micro-expressions: eyebrow movement on the pain, lip tension then release on the proof. Blink every ~2–3 seconds.',
-          '- Thought-while-talking: fast natural speech, light slang if in the line, one real pause. No telegram fragments.',
-          '- Alive environment + UGC flaws: micro-shakes, hunting focus, uneven light, room tone.',
-          '- BEHAVIORAL BEATS — pick 2–3 (if the shot brief names them, do THOSE): glance away • lean back • shrug • adjust phone grip • react to a sound • half-laugh at own sentence.',
-          '- Lips stay synced. Same face and real skin texture as the first frame — no beauty filter.',
-          '- NO SUBTITLES / NO readable UI text — ever. Spoken audio only.',
-          '- Do NOT add, drop or rewrite any word of the spoken line.',
-          'SPEECH COMPLETE — every word audible. Fast natural spoken pace with regular blinks; never cut mid-word. CTA trails off but still finishes.',
-          '',
-          speech,
-          pronunciation,
-          'Not a presenter — someone venting a problem who found a fix and kept filming.'
-        ].join('\n')
-      : [
-          shotBlock || defaultShot,
-          '',
-          'MOTION: natural handheld movement only — subject shifting slightly, blinking every ~2–3s, expressive face, alive background. Keep skin texture and identity from the first frame. AUDIO: phone-mic room tone only, no music. NO subtitles.'
-        ].join('\n');
-    // Talking head puro: identità bloccata per tutta la ripresa.
-    const fidelity =
-      'FIDELITY: same face, skin texture, clothes and location throughout. No morphing, no scene change, no new people, no flicker, no beauty filter.';
-    return [
-      clean,
-      'Unedited raw footage from a handheld phone front camera. The attached photograph is the first frame — keep the same person, room, wardrobe and skin texture.',
-      delivery,
-      fidelity,
-      brandDirection,
-      clean
-    ].filter(Boolean).join('\n\n');
-  }
   // Una clip parlata ha bisogno che le LABBRA si muovano: il brief da b-roll muto permette solo
   // movimento ambientale e combatterebbe il dialogo.
   const motion = line
@@ -741,43 +597,20 @@ export async function prepareVideoRender(
   const hasRefs =
     referenceVideoUrls.length > 0 || referenceAudioUrls.length > 0 || referenceImageUrls.length > 0;
   // Prima il modello: i tetti di durata e ratio sono proprietà di QUESTO modello, non globali.
-  // L'ad UGC non impone il modello: 22s solo su Seedance 2.5 (`ugcDurationCap`), altrimenti tetto
-  // organico 15s sul default (Grok Imagine).
   const model = resolveVideoModel({ model: opts.model, prefs: opts.prefs, hasCover: !!cover || hasRefs });
 
-  const durationSeconds = resolveVideoDuration(
-    opts.duration ?? (opts.ugc && opts.ugcAd ? UGC_AD_DURATION : undefined),
-    opts.script,
-    model,
-    { ugc: !!opts.ugc, ugcAd: !!opts.ugcAd }
-  );
+  const durationSeconds = resolveVideoDuration(opts.duration, opts.script, model);
   const aspectRatio = clampVideoAspectRatio(opts.aspectRatio ?? '9:16', model);
 
   const resolution = clampVideoResolution(opts.resolution ?? DEFAULT_RESOLUTION);
   // Si taglia solo se il copione supera ancora la durata dopo la risoluzione.
   const script = opts.script?.trim() ? fitScriptToDuration(opts.script, durationSeconds) : undefined;
-  let shotBrief = opts.shotBrief?.trim() || undefined;
-  if (!shotBrief && opts.ugc && !opts.prompt?.trim()) {
-    try {
-      const { buildUgcShotBrief, formatUgcShotBrief } = await import('$lib/server/ugc');
-      const brief = buildUgcShotBrief({
-        seconds: durationSeconds,
-        hook: script?.slice(0, 160),
-        script
-      });
-      shotBrief = formatUgcShotBrief(brief, { script });
-    } catch {
-      shotBrief = undefined;
-    }
-  }
   const prompt = buildVideoPrompt(imagePrompt, {
     hasCover: !!cover || hasRefs,
     visualStyle: opts.visualStyle,
     script,
-    ugc: opts.ugc,
     instructions: opts.instructions,
     prompt: opts.prompt,
-    shotBrief,
     durationSeconds,
     // Il modello è già stato risolto sopra: le note di mestiere sono sue, non del brief.
     model
@@ -796,9 +629,7 @@ export async function prepareVideoRender(
     referenceAudioUrls,
     referenceImageUrls,
     persistOpts: {
-      // MAI sull'UGC. Le altre clip parlate sì, per chi guarda muto; il b-roll non ha niente da
-      // imprimere.
-      captions: opts.burnCaptions !== undefined ? !!opts.burnCaptions && !!script : !!script && !opts.ugc,
+      captions: opts.burnCaptions !== undefined ? !!opts.burnCaptions && !!script : !!script,
       fontName: opts.captionFont,
       // Il taglio del vuoto vale su ogni clip parlata; il b-roll muto si lascia stare.
       tighten: !!script
@@ -954,8 +785,8 @@ export async function submitVideoRender(
         aspectRatio: p.aspectRatio,
         imageUrl: p.cover,
         lastFrameUrl: p.lastFrame,
-        // Come sul percorso inline: senza, una clip UGC inviata in asincrono perde l'ancoraggio
-        // e nessuno se ne accorge finché non la guarda.
+        // Come sul percorso inline: senza, una clip inviata in asincrono perde l'ancoraggio ai
+        // riferimenti e nessuno se ne accorge finché non la guarda.
         referenceImageUrls: p.referenceImageUrls,
         referenceAudioUrls: p.referenceAudioUrls,
         referenceVideoUrls: p.referenceVideoUrls
