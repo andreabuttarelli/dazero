@@ -91,6 +91,13 @@ export type UpstreamNode = {
   text?: string | null;
   /** L'URL usabile dal renderer, quando questo nodo produce un'immagine o un video. */
   mediaUrl?: string | null;
+  /** TUTTE le immagini di un nodo che ne porta più di una — oggi solo `influencer`: un volto ha
+   *  più viste (frontale, profilo, corpo intero), non un'immagine sola. GIÀ nell'ordine giusto
+   *  (`sort_order`, letto da chi costruisce `UpstreamNode`): questo file non ordina, consuma.
+   *  Assente o vuoto = niente da dare, come `mediaUrl` mancante. Quando presente, sostituisce
+   *  `mediaUrl` come sorgente per ogni connettore che questo nodo alimenta — un influencer non ha
+   *  anche un `mediaUrl` singolo da cui scegliere. */
+  mediaUrls?: string[];
 };
 
 export type UpstreamEdge = {
@@ -309,11 +316,20 @@ export function resolveUpstreamInputs(
       continue;
     }
 
+    // Un nodo con più viste (oggi solo `influencer`) porta tutte le sue immagini su questo arco:
+    // stessa fonte di verità di `mediaUrl`, solo con più di un valore. `sourceUrls` è quella lista
+    // per ogni nodo — un elemento solo quando il nodo è `mediaUrl` singolo, com'era prima.
+    const sourceUrls = source.mediaUrls?.length ? source.mediaUrls : source.mediaUrl ? [source.mediaUrl] : [];
+
     if (connector === 'first_frame' || connector === 'last_frame') {
-      if (!source.mediaUrl) {
+      if (!sourceUrls.length) {
         rejected.push({ nodeId: source.id, why: 'nodo immagine non ancora girato: niente da dare' });
         continue;
       }
+
+      // Uno slot porta un valore solo: un nodo a più viste dà la PRIMA, come `referenceImageUrl`
+      // fa per la lista di riferimenti — la stessa idea, un fotogramma non ha una seconda scelta.
+      const frameUrl = sourceUrls[0];
 
       // DUE IMMAGINI SULLO STESSO SLOT SONO UN CONFLITTO: uno slot porta un valore solo, e
       // scegliere in silenzio quale delle due vince è il difetto che si scopre nel video
@@ -323,39 +339,44 @@ export function resolveUpstreamInputs(
           rejected.push({ nodeId: source.id, why: `due immagini collegate a ${FIRST_FRAME_HANDLE}: solo una può esserlo` });
           continue;
         }
-        startFrameUrl = source.mediaUrl;
+        startFrameUrl = frameUrl;
         startFrameSourceId = source.id;
       } else {
         if (endFrameUrl && endFrameSourceId !== source.id) {
           rejected.push({ nodeId: source.id, why: `due immagini collegate a ${LAST_FRAME_HANDLE}: solo una può esserlo` });
           continue;
         }
-        endFrameUrl = source.mediaUrl;
+        endFrameUrl = frameUrl;
         endFrameSourceId = source.id;
       }
       continue;
     }
 
     // I tre connettori a valore multiplo: images, videos, audios.
-    if (!source.mediaUrl) {
+    if (!sourceUrls.length) {
       rejected.push({ nodeId: source.id, why: `nodo ${CONNECTOR_LABEL[connector]} non ancora girato: niente da dare` });
       continue;
     }
 
     const room = listCapacity(connector, targetKind, target.model ?? null);
-    const count = used[connector] ?? 0;
-    if (count >= room) {
-      rejected.push({
-        nodeId: source.id,
-        why: room === 0 ? `questo modello non prende ${CONNECTOR_LABEL[connector]} di riferimento` : `al massimo ${room} ${CONNECTOR_LABEL[connector]} in ingresso`
-      });
-      continue;
-    }
-    used[connector] = count + 1;
+    const bucket = connector === 'images' ? referenceImageUrls : connector === 'videos' ? referenceVideoUrls : referenceAudioUrls;
 
-    if (connector === 'images') referenceImageUrls.push(source.mediaUrl);
-    else if (connector === 'videos') referenceVideoUrls.push(source.mediaUrl);
-    else referenceAudioUrls.push(source.mediaUrl);
+    // OGNI VISTA CONTA COME UN RIFERIMENTO SEPARATO contro il tetto del modello — un nodo che ne
+    // porta più di uno non è un filo, sono molti fili sullo stesso arco. Quelle che eccedono si
+    // rifiutano CON LO STESSO nodeId, ripetuto: chi legge `rejected` vede da quale nodo vengono,
+    // non un conteggio anonimo, anche quando la fonte è una sola invece di molte.
+    for (const url of sourceUrls) {
+      const count = used[connector] ?? 0;
+      if (count >= room) {
+        rejected.push({
+          nodeId: source.id,
+          why: room === 0 ? `questo modello non prende ${CONNECTOR_LABEL[connector]} di riferimento` : `al massimo ${room} ${CONNECTOR_LABEL[connector]} in ingresso`
+        });
+        continue;
+      }
+      used[connector] = count + 1;
+      bucket.push(url);
+    }
   }
 
   return {

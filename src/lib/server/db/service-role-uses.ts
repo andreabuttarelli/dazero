@@ -35,8 +35,8 @@ export const SERVICE_ROLE_USES: readonly ServiceRoleUse[] = [
   },
   {
     path: 'le callback dei provider, src/routes/api/v1/webhooks/** (non ancora scritte: fase 3 e 5)',
-    why: 'Zernio e i provider di generazione chiamano senza una sessione utente. La riga da aggiornare si trova dal loro id esterno, che è già legato a una org; la firma della richiesta è ciò che autentica, non un JWT.',
-    tables: ['scheduled_posts', 'node_runs', 'ai_calls']
+    why: 'Zernio e i provider di generazione chiamano senza una sessione utente. La riga da aggiornare si trova dal loro id esterno, che è già legato a una org; la firma della richiesta è ciò che autentica, non un JWT. Programmazione e stato di pubblicazione si leggono da Zernio, non da una tabella nostra (scheduled_posts è stata rimossa, 2026-09-22): un eventuale webhook scriverebbe solo posts.zernio_post_ids.',
+    tables: ['posts', 'node_runs', 'ai_calls']
   },
   {
     path: 'src/lib/server/tenancy/bootstrap.ts — createFirstOrg',
@@ -52,5 +52,10 @@ export const SERVICE_ROLE_USES: readonly ServiceRoleUse[] = [
     path: 'src/lib/server/org-data/auth.ts — resolveApiKey (MCP e CLI su /api/v1/org/**)',
     why: "Una chiave API `dazero_…` va risolta in un utente e un'org PRIMA di sapere chi è: non esiste un JWT su cui far girare auth_org_ids(). Dopo la risoluzione l'org_id NON arriva più da chi chiama: è quello della riga trovata per key_hash, imposto su ogni lettura e scrittura successiva da org-data/query-tool.ts e write-tool.ts — mai un filtro facoltativo.",
     tables: ['api_keys']
+  },
+  {
+    path: 'scripts/import-anomalia-talents.ts',
+    why: "Uno script una tantum, senza sessione utente: scrive il catalogo globale (`influencers.org_id = null`), che la RLS vieta a qualunque JWT per costruzione — le policy di scrittura richiedono `org_id is not null`. Legge anche dal progetto Supabase VECCHIO (`OLD_DAZERO_*`), un database diverso su cui questa distinzione non si applica.",
+    tables: ['influencers', 'influencer_views']
   }
 ] as const;

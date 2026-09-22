@@ -72,6 +72,10 @@ alter table public.nodes add constraint nodes_data_shape_check check (
       '{"type":"object","required":["mode","country"],"properties":{"mode":{"type":"string","enum":["page","search"]},"country":{"type":"string"}}}',
       data
     )
+    when 'influencer' then extensions.json_matches_schema(
+      '{"type":"object","required":["influencer_id"],"properties":{"influencer_id":{"type":"string"}}}',
+      data
+    )
     else false
   end
 );

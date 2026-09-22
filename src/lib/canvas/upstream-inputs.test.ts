@@ -459,3 +459,71 @@ describe('resolveUpstreamInputs — un\'immagine caricata, non generata', () => 
     expect(out.startFrameUrl).toBe('https://cdn/upload.png');
   });
 });
+
+describe('resolveUpstreamInputs — un influencer porta tutte le sue viste, non una sola', () => {
+  // Un influencer non è un'immagine sola: `mediaUrls` porta ogni vista, già nell'ordine di
+  // `sort_order` (compito del chiamante, non di questo file — vedi il commento su `mediaUrls`).
+  // Un solo arco, molte immagini di riferimento: la stessa maniglia che per un nodo `image`
+  // porterebbe un filo solo qui ne porta quanti la vista ne conta, fino al tetto del modello.
+  it('le viste di un influencer diventano tutte immagini di riferimento, nel loro ordine', () => {
+    const nodes = [
+      node({ id: 'i1', type: 'image', model: 'qwen3-pro' }),
+      node({ id: 'inf1', type: 'influencer', mediaUrls: ['https://cdn/front.png', 'https://cdn/profile.png'] })
+    ];
+    const edges = [edge({ id: 'e1', sourceNodeId: 'inf1', targetNodeId: 'i1' })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'i1', TEXT_IMAGE);
+
+    expect(out.referenceImageUrls).toEqual(['https://cdn/front.png', 'https://cdn/profile.png']);
+    expect(out.referenceImageUrl).toBe('https://cdn/front.png');
+    expect(out.rejected).toEqual([]);
+  });
+
+  it('le viste oltre il tetto del modello si rifiutano una per una, con il motivo', () => {
+    const nodes = [
+      node({ id: 'i1', type: 'image' }),
+      node({ id: 'inf1', type: 'influencer', mediaUrls: ['https://cdn/a.png', 'https://cdn/b.png'] })
+    ];
+    const edges = [edge({ id: 'e1', sourceNodeId: 'inf1', targetNodeId: 'i1' })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'i1', TEXT_IMAGE);
+
+    expect(out.referenceImageUrls).toEqual(['https://cdn/a.png']);
+    expect(out.rejected).toEqual([{ nodeId: 'inf1', why: expect.any(String) }]);
+  });
+
+  it('un influencer collegato a un modello senza connettore immagini si rifiuta come un\'immagine', () => {
+    const nodes = [
+      node({ id: 'i1', type: 'image' }),
+      node({ id: 'inf1', type: 'influencer', mediaUrls: ['https://cdn/a.png'] })
+    ];
+    const edges = [edge({ id: 'e1', sourceNodeId: 'inf1', targetNodeId: 'i1' })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'i1', TEXT_ONLY);
+
+    expect(out.referenceImageUrls).toEqual([]);
+    expect(out.rejected).toEqual([{ nodeId: 'inf1', why: expect.stringContaining('connettore') }]);
+  });
+
+  it('un influencer senza viste ancora caricate non alimenta niente', () => {
+    const nodes = [node({ id: 'i1', type: 'image' }), node({ id: 'inf1', type: 'influencer' })];
+    const edges = [edge({ id: 'e1', sourceNodeId: 'inf1', targetNodeId: 'i1' })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'i1', TEXT_IMAGE);
+
+    expect(out.referenceImageUrls).toEqual([]);
+    expect(out.rejected).toEqual([{ nodeId: 'inf1', why: expect.stringContaining('non ancora') }]);
+  });
+
+  it('un influencer collegato al fotogramma iniziale porta solo la prima vista', () => {
+    const nodes = [
+      node({ id: 'v1', type: 'video' }),
+      node({ id: 'inf1', type: 'influencer', mediaUrls: ['https://cdn/front.png', 'https://cdn/profile.png'] })
+    ];
+    const edges = [edge({ id: 'e1', sourceNodeId: 'inf1', targetNodeId: 'v1', targetHandle: FIRST_FRAME_HANDLE })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'v1', TEXT_IMAGE_VIDEO_AUDIO);
+
+    expect(out.startFrameUrl).toBe('https://cdn/front.png');
+  });
+});

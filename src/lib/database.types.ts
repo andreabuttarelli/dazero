@@ -1003,6 +1003,154 @@ export type Database = {
           },
         ]
       }
+      influencer_views: {
+        Row: {
+          created_at: string
+          height: number | null
+          id: string
+          influencer_id: string
+          label: string
+          mime_type: string | null
+          org_id: string | null
+          sort_order: number
+          storage_path: string
+          view_key: string
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          height?: number | null
+          id?: string
+          influencer_id: string
+          label: string
+          mime_type?: string | null
+          org_id?: string | null
+          sort_order?: number
+          storage_path: string
+          view_key: string
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          height?: number | null
+          id?: string
+          influencer_id?: string
+          label?: string
+          mime_type?: string | null
+          org_id?: string | null
+          sort_order?: number
+          storage_path?: string
+          view_key?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_views_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "influencer_views_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      influencers: {
+        Row: {
+          actor_id: string | null
+          actor_kind: string
+          age: number | null
+          body_type: string | null
+          builder: Json | null
+          consent: boolean
+          created_at: string
+          deleted_at: string | null
+          ethnicity: string | null
+          gender: string | null
+          height_band: string | null
+          id: string
+          name: string
+          org_id: string | null
+          slug: string
+          source: string
+          summary: string | null
+          template_of: string | null
+          traits: Json
+          updated_at: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_kind?: string
+          age?: number | null
+          body_type?: string | null
+          builder?: Json | null
+          consent?: boolean
+          created_at?: string
+          deleted_at?: string | null
+          ethnicity?: string | null
+          gender?: string | null
+          height_band?: string | null
+          id?: string
+          name: string
+          org_id?: string | null
+          slug: string
+          source?: string
+          summary?: string | null
+          template_of?: string | null
+          traits?: Json
+          updated_at?: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_kind?: string
+          age?: number | null
+          body_type?: string | null
+          builder?: Json | null
+          consent?: boolean
+          created_at?: string
+          deleted_at?: string | null
+          ethnicity?: string | null
+          gender?: string | null
+          height_band?: string | null
+          id?: string
+          name?: string
+          org_id?: string | null
+          slug?: string
+          source?: string
+          summary?: string | null
+          template_of?: string | null
+          traits?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencers_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "influencers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "influencers_template_of_fkey"
+            columns: ["template_of"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       node_runs: {
         Row: {
           actor_id: string | null

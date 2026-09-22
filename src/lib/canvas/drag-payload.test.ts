@@ -3,6 +3,7 @@ import {
   DRAG_NODE_KIND,
   assetDrag,
   brandFieldDrag,
+  influencerDrag,
   parseFilledNodeDrag,
   serializeFilledNodeDrag,
   staticDocData,
@@ -114,6 +115,20 @@ describe('cosa diventa un nodo trascinato da fuori la tela', () => {
 
     it('un content assente non si trascina: non c\'è niente da mettere nel documento', () => {
       expect(brandFieldDrag({ ...brand, content: null }, 'content')).toBeNull();
+    });
+  });
+
+  describe('influencerDrag: nasce sempre pieno, un influencer esiste già', () => {
+    it('diventa un nodo influencer con solo influencer_id, valido per il CHECK', () => {
+      const drag = influencerDrag({ id: 'inf-1' });
+      expect(drag.type).toBe('influencer');
+      expect(drag.data).toEqual({ influencer_id: 'inf-1' });
+      expect(validateNodeData('influencer', drag.data).ok).toBe(true);
+    });
+
+    it('serializza e riparsa come ogni altro nodo pieno', () => {
+      const drag = influencerDrag({ id: 'inf-1' });
+      expect(parseFilledNodeDrag(serializeFilledNodeDrag(drag))).toEqual(drag);
     });
   });
 });

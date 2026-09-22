@@ -1,5 +1,5 @@
 /**
- * LE 26 TABELLE DEL NUOVO SCHEMA, quelle che `orgs_members` porta sotto `org_isolation`.
+ * LE TABELLE DEL NUOVO SCHEMA, quelle che `orgs_members` porta sotto `org_isolation`.
  *
  * Non generato da `supabase/migrations/`: quella cartella è ancora lo schema vecchio (brand →
  * organizations → brand_members), mentre questo database (klnswzhhgrqvbfjzioul) è già il nuovo —
@@ -10,7 +10,9 @@
  *
  * La lista qui sotto è quella di `src/lib/database.types.ts` — generato dal database vero — e
  * `org-tables.test.ts` la confronta con quel file, così una tabella nuova o rinominata fa fallire
- * il test invece di lasciare l'agente cieco.
+ * il test invece di lasciare l'agente cieco. `influencers`/`influencer_views` restano un'eccezione
+ * dichiarata finché `20260922_influencers.sql` non è applicata: quel test resta rosso apposta,
+ * come promemoria, non un difetto da silenziare.
  */
 export const ORG_TABLES = [
   'ad_accounts',
@@ -25,6 +27,8 @@ export const ORG_TABLES = [
   'chat_messages',
   'chat_threads',
   'competitor_ads',
+  'influencer_views',
+  'influencers',
   'node_runs',
   'nodes',
   'nodes_connections',

@@ -30,6 +30,8 @@ export const ORG_TABLE_CHECKS: Record<string, string> = {
   chat_threads_surface_check: "surface in ('sidebar', 'mcp', 'cli')",
   competitor_ads_found_via_check: "found_via in ('page', 'search')",
   competitor_ads_platform_check: "platform = 'meta'",
+  influencers_source_check: "source in ('catalogue', 'generated', 'upload')",
+  influencers_actor_kind_check: "actor_kind in ('user', 'agent', 'system')",
   node_runs_actor_kind_check: "actor_kind in ('user', 'agent', 'system')",
   node_runs_status_check: "status in ('running', 'finishing', 'done', 'failed', 'expired')",
   nodes_actor_kind_check: "actor_kind in ('user', 'agent', 'system')",
@@ -37,7 +39,7 @@ export const ORG_TABLE_CHECKS: Record<string, string> = {
   nodes_connections_check: 'source_node_id <> target_node_id',
   nodes_lock_actor_kind_check: "lock_actor_kind in ('user', 'agent', 'system')",
   nodes_type_check:
-    "type in ('text', 'image', 'video', 'doc', 'iframe', 'social_account_feed', 'social_post_mockup', 'products', 'ads')",
+    "type in ('text', 'image', 'video', 'doc', 'iframe', 'social_account_feed', 'social_post_mockup', 'products', 'ads', 'influencer')",
   orgs_invites_role_check: "role in ('owner', 'admin', 'member')",
   orgs_members_role_check: "role in ('owner', 'admin', 'member')",
   post_sources_role_check: "role in ('caption', 'media', 'reference')",

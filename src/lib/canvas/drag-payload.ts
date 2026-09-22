@@ -63,6 +63,19 @@ export function staticDocData(content: string): StaticDocData {
   return { content, public: false };
 }
 
+export type InfluencerData = { influencer_id: string };
+
+export function influencerNodeData(influencerId: string): InfluencerData {
+  return { influencer_id: influencerId };
+}
+
+/** Alto quanto un'immagine (`genNodeSize('image')`): un influencer mostra un volto, non testo. */
+const INFLUENCER_NODE_SIZE = { w: 360, h: 460 };
+
+export function influencerNodeSize(): { w: number; h: number } {
+  return { ...INFLUENCER_NODE_SIZE };
+}
+
 /**
  * IL TIPO MIME CON CUI UN NODO GIÀ PIENO VIAGGIA DA FUORI LA TELA — dalla libreria asset o dalla
  * lista brand, un `dragstart` su una card, non sul menù `+` della tela. `CANVAS_DRAG_MEDIUM`
@@ -76,7 +89,7 @@ export function staticDocData(content: string): StaticDocData {
 export const CANVAS_DRAG_FILLED_NODE = 'application/x-dazero-filled-node';
 
 export type FilledNodeDrag = {
-  type: 'image' | 'video' | 'text' | 'doc';
+  type: 'image' | 'video' | 'text' | 'doc' | 'influencer';
   data: Record<string, unknown>;
   w: number;
   h: number;
@@ -145,17 +158,28 @@ export function brandFieldDrag(
   return { type: 'doc', data: staticDocData(brand.content), ...docNodeSize() };
 }
 
+/**
+ * UN INFLUENCER TRASCINATO DAL PANNELLO — di catalogo o proprio dell'org, la stessa card in
+ * entrambi i casi: il nodo porta solo `influencer_id`, le viste il server le legge da
+ * `influencer_views` quando la tila si disegna (`InfluencerNode.svelte`), la stessa dottrina di
+ * `ProductsNode`. Nessun caso `null`: un influencer esiste già per costruzione, a differenza di un
+ * asset senza url firmato o un campo brand vuoto.
+ */
+export function influencerDrag(influencer: { id: string }): FilledNodeDrag {
+  return { type: 'influencer', data: influencerNodeData(influencer.id), ...influencerNodeSize() };
+}
+
 export function serializeFilledNodeDrag(drag: FilledNodeDrag): string {
   return JSON.stringify(drag);
 }
+
+const FILLED_NODE_DRAG_TYPES = new Set<FilledNodeDrag['type']>(['image', 'video', 'text', 'doc', 'influencer']);
 
 export function parseFilledNodeDrag(raw: string): FilledNodeDrag | null {
   try {
     const parsed = JSON.parse(raw) as Partial<FilledNodeDrag>;
     if (!parsed || typeof parsed !== 'object') return null;
-    if (parsed.type !== 'image' && parsed.type !== 'video' && parsed.type !== 'text' && parsed.type !== 'doc') {
-      return null;
-    }
+    if (!parsed.type || !FILLED_NODE_DRAG_TYPES.has(parsed.type)) return null;
     if (!parsed.data || typeof parsed.data !== 'object') return null;
     if (typeof parsed.w !== 'number' || typeof parsed.h !== 'number') return null;
     return { type: parsed.type, data: parsed.data, w: parsed.w, h: parsed.h };

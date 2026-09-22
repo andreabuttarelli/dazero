@@ -3,7 +3,7 @@
  * un posto solo, accanto al modello che la governa, così il tipo decimo è una riga e non un `if`
  * sparso in cinque file.
  *
- * `nodes.type` ha un CHECK (`nodes_type_check`, vedi `org-data/checks.ts`) che ammette 9 valori.
+ * `nodes.type` ha un CHECK (`nodes_type_check`, vedi `org-data/checks.ts`) che ammette 10 valori.
  * Il CHECK ferma il `type` sbagliato; `data` è `jsonb` e Postgres accetta qualunque JSON — nessun
  * vincolo lo controlla. Un agente che chiama `insert_row('nodes', …)` doveva INDOVINARE la forma:
  * questo file è quella forma, e `validateNodeData` è la funzione che la applica.
@@ -184,6 +184,17 @@ const adsSchema = adsBase.superRefine((v, ctx) => {
 });
 
 /**
+ * `influencer`: nasce già pieno, come `products` — la riga in `influencers` esiste prima che il
+ * nodo la referenzi, `influencer_id` è l'unico campo che il CHECK impone. `data` non porta le
+ * viste (sarebbero decine di URL che viaggiano a ogni evento realtime, lo stesso motivo per cui
+ * `products` non porta il catalogo): il server le legge da `influencer_views` e le passa come
+ * prop a `InfluencerNode.svelte`, la stessa dottrina di `ProductsNode.svelte`.
+ */
+const influencerSchema = z.object({
+  influencer_id: z.string()
+});
+
+/**
  * LA TABELLA — un tipo nuovo è una riga qui, non un `if` in `write-tool.ts`. `nodes_type_check`
  * (vedi `org-data/checks.ts`) deve restare la stessa lista, e `node-data.test.ts` lo verifica.
  */
@@ -196,7 +207,8 @@ export const NODE_DATA_SCHEMAS = {
   social_account_feed: socialAccountFeedSchema,
   social_post_mockup: socialPostMockupSchema,
   products: productsSchema,
-  ads: adsSchema
+  ads: adsSchema,
+  influencer: influencerSchema
 } as const;
 
 export type NodeType = keyof typeof NODE_DATA_SCHEMAS;
@@ -211,7 +223,7 @@ export type NodeDataVerdict = { ok: true; data: Record<string, unknown> } | { ok
 
 /**
  * LA STESSA TABELLA, VERSO L'ESTERNO — un agente che chiama `insert_row('nodes', …)` non deve
- * indovinare la forma di `data`: qui la chiede per tipo, o per tutti i nove insieme.
+ * indovinare la forma di `data`: qui la chiede per tipo, o per tutti e dieci insieme.
  *
  * `z.toJSONSchema` deriva lo schema DA `NODE_DATA_SCHEMAS`, mai una copia scritta a mano: le due
  * cose sono la stessa riga letta due volte, e non possono divergere al prossimo campo aggiunto.

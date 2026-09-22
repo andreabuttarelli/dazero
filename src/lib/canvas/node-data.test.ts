@@ -11,8 +11,8 @@ import {
 
 const GEN_STATE = { status: 'idle' as const };
 
-describe('NODE_DATA_SCHEMAS — una riga per tipo, tutti i 9 valori di nodes_type_check coperti', () => {
-  it('ha esattamente i 9 tipi che il CHECK del database ammette', () => {
+describe('NODE_DATA_SCHEMAS — una riga per tipo, tutti i 10 valori di nodes_type_check coperti', () => {
+  it('ha esattamente i 10 tipi che il CHECK del database ammette', () => {
     const types = Object.keys(NODE_DATA_SCHEMAS).sort();
     expect(types).toEqual(
       [
@@ -20,6 +20,7 @@ describe('NODE_DATA_SCHEMAS — una riga per tipo, tutti i 9 valori di nodes_typ
         'doc',
         'iframe',
         'image',
+        'influencer',
         'products',
         'social_account_feed',
         'social_post_mockup',
@@ -236,6 +237,19 @@ describe('validateNodeData — ads: country obbligatorio, due modi mutuamente es
   });
 });
 
+describe('validateNodeData — influencer', () => {
+  it('accetta il solo campo required', () => {
+    const out = validateNodeData('influencer', { influencer_id: '737f5c5c-0466-46d7-9557-706614ad2b3b' });
+    expect(out.ok).toBe(true);
+  });
+
+  it('rifiuta un nodo senza influencer_id', () => {
+    const out = validateNodeData('influencer', {});
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.error).toMatch(/influencer_id/);
+  });
+});
+
 describe('validateNodeData — un tipo sconosciuto è rifiutato, non passa silenziosamente', () => {
   it('un type fuori da nodes_type_check torna un errore che lo nomina', () => {
     const out = validateNodeData('carousel' as NodeType, {});
@@ -257,7 +271,7 @@ describe('describeNodeType / describeNodeTypes — la forma verso l\'esterno, de
     expect(shape).not.toHaveProperty('$schema');
   });
 
-  it('copre tutti e nove i tipi, la stessa lista di NODE_TYPES', () => {
+  it('copre tutti e dieci i tipi, la stessa lista di NODE_TYPES', () => {
     const all = describeNodeTypes();
     expect(Object.keys(all).sort()).toEqual([...NODE_TYPES].sort());
   });
