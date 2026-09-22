@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { POST_STATUSES, POST_CONTENT_TYPES, POST_SOURCES } from './contracts/post-tools';
 import { SITE_TYPES } from './brand-fields';
 
 /**
@@ -50,9 +49,6 @@ function allowedByTheDatabase(constraint: string): string[] {
 }
 
 const VOCABULARIES = [
-  { constraint: 'posts_status_check', declared: POST_STATUSES },
-  { constraint: 'posts_content_type_check', declared: POST_CONTENT_TYPES },
-  { constraint: 'posts_source_check', declared: POST_SOURCES },
   { constraint: 'brand_kit_site_type_check', declared: SITE_TYPES }
 ] as const;
 

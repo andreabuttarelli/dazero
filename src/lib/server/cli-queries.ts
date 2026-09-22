@@ -72,127 +72,6 @@ export async function getBrandDetail(supabase: SupabaseClient, brandId: string) 
   };
 }
 
-// ── Posts ───────────────────────────────────────────────────────────────
-
-export async function getPosts(supabase: SupabaseClient, brandId: string, status?: string) {
-  let query = supabase
-    .from('posts')
-    .select('id, brand_id, platform, platforms, caption, image_prompt, slot, media_url, status, content_type, scheduled_for, published_url, product_name, revisions_count, pillar, format, created_at')
-    .eq('brand_id', brandId);
-
-  if (status && status !== 'all') {
-    query = query.eq('status', status);
-  }
-
-  const { data } = await query.order('created_at', { ascending: false }).limit(50);
-  return data ?? [];
-}
-
-// ── Analytics ───────────────────────────────────────────────────────────
-
-export async function getAnalytics(supabase: SupabaseClient, brandId: string, brandTimezone: string) {
-  const [postsRes, upcomingRes, logsRes, historyRes, productsRes, accountsRes] = await Promise.all([
-    supabase.from('posts').select('platform, status').eq('brand_id', brandId),
-    supabase.from('posts').select('id, platform, caption, slot, media_url, scheduled_for')
-      .eq('brand_id', brandId).eq('status', 'scheduled')
-      .gte('scheduled_for', new Date().toISOString())
-      .lte('scheduled_for', new Date(Date.now() + 7 * 86400000).toISOString())
-      .order('scheduled_for', { ascending: true }).limit(10),
-    supabase.from('publish_logs')
-      .select('id, post_id, platform, status, error, created_at, posts ( caption, media_url )')
-      .eq('brand_id', brandId).order('created_at', { ascending: false }).limit(8),
-    supabase.from('social_post_history')
-      .select('id, platform, content, thumbnail_url, platform_post_url, published_at, metrics')
-      .eq('brand_id', brandId).order('published_at', { ascending: false }).limit(200),
-    supabase.from('products').select('id', { count: 'exact', head: true }).eq('brand_id', brandId),
-    supabase.from('social_accounts').select('id', { count: 'exact', head: true })
-      .eq('brand_id', brandId).eq('status', 'active'),
-  ]);
-
-  // Status counts
-  const statusCounts = new Map<string, number>();
-  for (const row of postsRes.data ?? []) statusCounts.set(row.status, (statusCounts.get(row.status) ?? 0) + 1);
-
-  // Platform counts
-  const platformCounts = new Map<string, number>();
-  for (const row of postsRes.data ?? []) {
-    if (row.platform) platformCounts.set(row.platform, (platformCounts.get(row.platform) ?? 0) + 1);
-  }
-
-  // Social performance per platform
-  const byPlat = new Map<string, { views: number; likes: number; comments: number; shares: number; count: number }>();
-  for (const p of historyRes.data ?? []) {
-    const m = (p.metrics ?? {}) as Record<string, number>;
-    const cur = byPlat.get(p.platform ?? '') ?? { views: 0, likes: 0, comments: 0, shares: 0, count: 0 };
-    byPlat.set(p.platform ?? '', {
-      views: cur.views + (m.views ?? 0),
-      likes: cur.likes + (m.likes ?? 0),
-      comments: cur.comments + (m.comments ?? 0),
-      shares: cur.shares + (m.shares ?? 0),
-      count: cur.count + 1,
-    });
-  }
-
-  // Top posts by weighted engagement
-  const topPosts = [...(historyRes.data ?? [])]
-    .map(p => {
-      const m = (p.metrics ?? {}) as Record<string, number>;
-      return {
-        id: p.id,
-        platform: p.platform,
-        content: p.content,
-        thumbnail_url: p.thumbnail_url,
-        url: p.platform_post_url,
-        published_at: p.published_at,
-        metrics: m,
-        score: (m.likes ?? 0) + (m.comments ?? 0) * 2 + (m.shares ?? 0) * 3 + (m.views ?? 0) * 0.01,
-      };
-    })
-    .filter(p => p.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 6);
-
-  return {
-    total: (postsRes.data ?? []).length,
-    scheduled: statusCounts.get('scheduled') ?? 0,
-    pending: statusCounts.get('pending_user') ?? 0,
-    failed: statusCounts.get('failed') ?? 0,
-    platforms: [...platformCounts.entries()].sort((a, b) => b[1] - a[1]),
-    upcomingPosts: (upcomingRes.data ?? []).map(p => ({
-      id: p.id,
-      platform: p.platform,
-      caption: p.caption,
-      scheduled_for: p.scheduled_for,
-      slot: p.slot,
-    })),
-    recentActivity: (logsRes.data ?? []).map(l => ({
-      id: l.id,
-      post_id: l.post_id,
-      platform: l.platform,
-      status: l.status,
-      caption: (l.posts as any)?.caption ?? null,
-      error: l.error,
-      created_at: l.created_at,
-    })),
-    socialPerformance: [...byPlat.entries()].map(([platform, d]) => ({
-      platform,
-      posts: d.count,
-      totals: { views: d.views, likes: d.likes, comments: d.comments, shares: d.shares },
-    })).sort((a, b) => b.posts - a.posts),
-    topPosts: topPosts.map(p => ({
-      id: p.id,
-      platform: p.platform,
-      caption: p.content,
-      thumbnail_url: p.thumbnail_url,
-      url: p.url,
-      published_at: p.published_at,
-      metrics: p.metrics,
-    })),
-    products: productsRes.count ?? 0,
-    accounts: accountsRes.count ?? 0,
-  };
-}
-
 // ── Voice ───────────────────────────────────────────────────────────────
 
 export async function getVoice(supabase: SupabaseClient, brandId: string) {
@@ -226,6 +105,10 @@ export async function getVoice(supabase: SupabaseClient, brandId: string) {
 }
 
 // ── Calendar ────────────────────────────────────────────────────────────
+//
+// Kept for `shared-views.ts` (public /share/<token> links): a snapshot built on the OLD posts
+// schema (platform, media_url, scheduled_for, slot). It is its own dead-schema fix, out of scope
+// for the publishing-subsystem rebuild — deleting it here would break shared links today.
 
 function isoDate(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -290,65 +173,6 @@ function localeForLanguage(language: string | null): string {
     pt: 'pt-PT'
   };
   return locales[base] ?? 'en-US';
-}
-
-// ── Approve ─────────────────────────────────────────────────────────────
-
-export async function approvePost(supabase: SupabaseClient, brandId: string, postId: string, brandTimezone: string, actorId?: string) {
-  const { data: post, error } = await supabase
-    .from('posts').select('*').eq('id', postId).eq('brand_id', brandId).maybeSingle();
-  if (error || !post) return { error: 'Post not found' };
-
-  if (post.status !== 'pending_user') return { error: `Post is ${post.status}, not pending_user` };
-
-  // Import publish logic dynamically
-  const { publishApprovedPost } = await import('$lib/server/publish');
-  try {
-    const res = await publishApprovedPost(supabase, post, brandTimezone, { by: actorId });
-    // Nothing scheduled but something failed → over-limit caption or Zernio rejection. Surface the
-    // reason instead of a false "published" so the CLI/AI don't think it worked.
-    if (res.scheduled === 0 && res.failed > 0) {
-      return { error: res.error ?? 'Publish failed — the post did not meet platform requirements.' };
-    }
-    // Nothing scheduled and nothing failed → no connected account for the post's platform. The post
-    // stays 'approved', waiting for the connection: reporting 'published' here is a false success
-    // the CLI/AI would repeat back to the user.
-    if (res.noAccount) {
-      return { ok: true, status: 'approved', noAccount: true, message: 'Approved, but not scheduled: no connected account for this platform yet.' };
-    }
-    return { ok: true, status: 'published' };
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Publish failed' };
-  }
-}
-
-export async function approveAllPosts(supabase: SupabaseClient, brandId: string, brandTimezone: string, actorId?: string) {
-  // Never bulk-publish Director-flagged posts (needs_attention) — same rule as the token page.
-  const { data: pending } = await supabase
-    .from('posts').select('*').eq('brand_id', brandId).eq('status', 'pending_user')
-    .or('needs_attention.is.null,needs_attention.eq.false')
-    .order('slot', { ascending: true, nullsFirst: false });
-
-  if (!pending?.length) return { results: [], message: 'No pending posts' };
-
-  const { publishApprovedPost } = await import('$lib/server/publish');
-  const results: { id: string; ok: boolean; error?: string; noAccount?: boolean }[] = [];
-
-  for (const post of pending) {
-    try {
-      const res = await publishApprovedPost(supabase, post, brandTimezone, { by: actorId });
-      if (res.scheduled === 0 && res.failed > 0) {
-        results.push({ id: post.id, ok: false, error: res.error ?? 'Did not meet platform requirements' });
-      } else {
-        // Same rule as approvePost: approved but unscheduled (no connected account) is not a publish.
-        results.push({ id: post.id, ok: true, ...(res.noAccount ? { noAccount: true } : {}) });
-      }
-    } catch (e) {
-      results.push({ id: post.id, ok: false, error: e instanceof Error ? e.message : 'Failed' });
-    }
-  }
-
-  return { results };
 }
 
 // ── Web ────────────────────────────────────────────────────────────────

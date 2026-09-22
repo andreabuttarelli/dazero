@@ -3,12 +3,7 @@ import { ADS_ACTION, ADS_REMIX } from './ads';
 import { BILLING_PORTAL_LINK, CHECKOUT_LINK } from './billing';
 import { QUERY_DATABASE } from './query';
 import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from './write';
-import {
-  CREATE_POST,
-  EDIT_POST,
-  IMPORT_MEDIA_URL,
-  RESCHEDULE_POST,
-} from './posts';
+import { IMPORT_MEDIA_URL } from './posts';
 import { SET_BRAND_SETTINGS } from './brand-settings';
 import { GET_MEDIA_MODELS, SET_MEDIA_MODEL } from './media-models';
 import { SOCIAL_CONNECT_LINK } from './social';
@@ -81,16 +76,13 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   ADS_REMIX,
   BILLING_PORTAL_LINK,
   CHECKOUT_LINK,
-  CREATE_POST,
   CREATE_SHARE,
-  EDIT_POST,
   ENHANCE_PROMPT,
   GET_MEDIA_MODELS,
   IMPORT_MEDIA_URL,
   DELETE_ROW,
   INSERT_ROW,
   QUERY_DATABASE,
-  RESCHEDULE_POST,
   REVOKE_SHARE,
   SET_BRAND_SETTINGS,
   SET_MEDIA_MODEL,
@@ -131,10 +123,7 @@ export function statusForFailure(
 export {
   ADS_ACTION,
   ADS_REMIX,
-  CREATE_POST,
-  EDIT_POST,
   IMPORT_MEDIA_URL,
-  RESCHEDULE_POST,
 };
 /**
  * Gli schemi delle letture ritirate da MCP. La rotta REST resta e continua a validare con questi;
@@ -174,7 +163,6 @@ export type { AutomationJob } from './automations';
 export { SOCIAL_CONNECT_LINK } from './social';
 export { BILLING_PORTAL_LINK, CHECKOUT_LINK };
 export type { BillingPortalLinkResult, CheckoutLinkInput, CheckoutLinkResult } from './billing';
-export type { CreatePostInput, CreatePostResult } from './posts';
 export type { CreateShareInput, CreateShareResult, SharedViewType } from './shares';
 export { INSERT_ROW, UPDATE_ROW, DELETE_ROW, UPDATE_MAX_ROWS, DELETE_MAX_ROWS } from './write';
 export { TABLE_CHECKS, WRITABLE_COLUMNS } from './write-rules';

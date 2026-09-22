@@ -140,11 +140,6 @@ const REST_ONLY = [
   'ads',
   'api-keys',
   'api-keys/[id]',
-  'calendar',
-  'posts/[id]/approve',
-  'posts/[id]/publish',
-  'posts/[id]/revoke',
-  'posts/approve-all',
   'products',
   // `update_product` era un update di una riga e nient'altro: `update_row` lo fa con la RLS di
   // chi chiama. Il tool esce, la rotta resta — il CLI la chiama ancora.

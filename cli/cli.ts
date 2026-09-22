@@ -17,7 +17,6 @@ program
 Esempi:
   $ dazero brands                   Lista tutti i brand
   $ dazero dashboard my-brand       Dashboard completa
-  $ dazero approve my-brand --all   Approva tutti i post pending
 
 Documentazione completa: cli/README.md
 `);
@@ -66,16 +65,6 @@ program
   });
 
 program
-  .command('approve <slug>')
-  .description('Approva e pubblica i post pending di un brand')
-  .option('--all', 'Approva senza chiedere conferma')
-  .option('--dry', 'Mostra i post senza approvarli')
-  .action(async (slug: string, opts: { all?: boolean; dry?: boolean }) => {
-    const { cmdApprove } = await import('./commands/approve.ts');
-    await cmdApprove(slug, opts);
-  });
-
-program
   .command('dashboard <slug>')
   .description('Dashboard completa di un brand: stats, pipeline, stato autopilot')
   .action(async (slug: string) => {
@@ -89,47 +78,6 @@ program
   .action(async (slug: string, action: string | undefined) => {
     const { cmdProducts } = await import('./commands/products.ts');
     await cmdProducts(slug, { action: action ?? 'list' });
-  });
-
-program
-  .command('content <slug>')
-  .description('Content Library: tutti i post con filtri per status')
-  .option('--status <status>', 'Filtra per status: all, pending_user, approved, scheduled, published, failed')
-  .option('--clear <status>', 'Elimina in blocco i post con questo status (es. pending_user)')
-  .action(async (slug: string, opts: { status?: string; clear?: string }) => {
-    const { cmdContent } = await import('./commands/content.ts');
-    await cmdContent(slug, opts);
-  });
-
-program
-  .command('calendar <slug>')
-  .description('Calendario mensile dei post schedulati')
-  .option('--month <YYYY-MM>', 'Mese da visualizzare (default: mese corrente)')
-  .action(async (slug: string, opts: { month?: string }) => {
-    const { cmdCalendar } = await import('./commands/calendar.ts');
-    await cmdCalendar(slug, opts);
-  });
-
-program
-  .command('post <slug> <postId> [action]')
-  .description('Post singolo: show, edit, render, approve, publish, reject, reschedule')
-  .option('--caption <text>', 'Nuova caption')
-  .option('--title <text>', 'Titolo (Reddit, carosello, link post)')
-  .option('--link <url>', 'URL del link post ("" per rimuoverlo)')
-  .option('--subreddit <name>', 'Subreddit di destinazione')
-  .option('--firstComment <text>', 'Primo commento (hashtag / CTA)')
-  .option('--imagePrompt <text>', 'Nuovo prompt immagine')
-  .option('--media <url>', 'Media URL ("" per renderlo text-only)')
-  .option('--format <format>', 'single_image | carousel | text_post | link_post | video')
-  .option('--platforms <list>', 'Piattaforme (separata da virgola)')
-  .option('--platformCaption <pair>', 'Caption per piattaforma: x="testo" (ripetibile)', (v: string, acc: string[]) => [...acc, v], [] as string[])
-  .option('--contentType <type>', 'Tipo contenuto')
-  .option('--slot <datetime>', 'Data/ora slot')
-  .option('--product <name>', 'Prodotto associato')
-  .option('--scheduledFor <datetime>', 'Nuova data programmazione (reschedule)')
-  .action(async (slug: string, postId: string, action: string | undefined, opts: Record<string, unknown>) => {
-    const { cmdPost } = await import('./commands/post.ts');
-    await cmdPost(slug, postId, { action: action ?? 'show', ...opts as any });
   });
 
 program

@@ -132,82 +132,12 @@ export type BrandDetail = {
   logoUrl: string | null;
 };
 
-export type Post = {
-  id: string;
-  brand_id: string;
-  platform: string | null;
-  platforms: string[] | null;
-  caption: string | null;
-  image_prompt: string | null;
-  slot: string | null;
-  media_url: string | null;
-  status: string;
-  content_type: string | null;
-  scheduled_for: string | null;
-  published_url: string | null;
-  product_name: string | null;
-  revisions_count: number | null;
-  pillar: string | null;
-  format: string | null;
-  created_at: string;
-};
-
-export type CalendarData = {
-  posts: Record<string, unknown>[];
-  year: number;
-  month: number;
-  monthLabel: string;
-  prevYM: string;
-  nextYM: string;
-  timezone: string;
-};
-
-/** Every scalar field the post editor can write. `media_url: null` clears the image (text-only). */
-export type PostPatch = {
-  caption?: string; image_prompt?: string; platforms?: string[]; content_type?: string;
-  format?: string; slot?: string; product_name?: string; first_comment?: string;
-  title?: string; link_url?: string | null; subreddit?: string;
-  media_url?: string | null; platform_captions?: Record<string, string> | null;
-};
-
 // ── API methods ─────────────────────────────────────────────────────────
 
 export const api = {
   // Brands
   listBrands: (t: string) => get<BrandSummary[]>('/api/v1/brands', t),
   getBrand: (t: string, slug: string) => get<BrandDetail>(`/api/v1/brands/${slug}`, t),
-
-  // Posts
-  getPosts: (t: string, slug: string, status?: string) =>
-    get<Post[]>(`/api/v1/brands/${slug}/posts${status ? `?status=${status}` : ''}`, t),
-
-  // Calendar
-  getCalendar: (t: string, slug: string, month?: string) =>
-    get<CalendarData>(`/api/v1/brands/${slug}/calendar${month ? `?month=${month}` : ''}`, t),
-
-  // Actions
-  approvePost: (t: string, slug: string, postId: string) =>
-    post<{ ok?: boolean; error?: string }>(`/api/v1/brands/${slug}/posts/${postId}/approve`, t),
-
-  approveAll: (t: string, slug: string) =>
-    post<{ results: { id: string; ok: boolean; error?: string }[] }>(`/api/v1/brands/${slug}/posts/approve-all`, t),
-
-  // ── Post editing ──────────────────────────────────────────────────────
-
-  updatePost: (t: string, slug: string, postId: string, data: PostPatch) =>
-    request<{ ok: boolean }>(`/api/v1/brands/${slug}/posts/${postId}`, t, { method: 'PUT', body: JSON.stringify(data) }),
-
-  deletePost: (t: string, slug: string, postId: string) =>
-    request<{ ok: boolean }>(`/api/v1/brands/${slug}/posts/${postId}`, t, { method: 'DELETE' }),
-
-  reschedulePost: (t: string, slug: string, postId: string, scheduled_for: string) =>
-    post<{ ok: boolean; scheduled_for: string }>(`/api/v1/brands/${slug}/posts/${postId}/reschedule`, t, { scheduled_for }),
-
-  renderPost: (t: string, slug: string, postId: string) =>
-    post<{ ok: boolean; url: string | null; error?: string | null }>(`/api/v1/brands/${slug}/posts/${postId}/render`, t),
-
-  publishPost: (t: string, slug: string, postId: string) =>
-    post<{ ok: boolean; status: string }>(`/api/v1/brands/${slug}/posts/${postId}/publish`, t),
 
   // ── Products ──────────────────────────────────────────────────────────
   listProducts: (t: string, slug: string) =>
@@ -220,9 +150,6 @@ export const api = {
       synced: number;
       rejected: { title: string; reason: string }[];
     }>(`/api/v1/brands/${slug}/products`, t),
-
-  deletePostsByStatus: (t: string, slug: string, status: string) =>
-    request<{ ok: boolean; deleted: number }>(`/api/v1/brands/${slug}/posts?status=${encodeURIComponent(status)}`, t, { method: 'DELETE' }),
 
   // ── Ads ───────────────────────────────────────────────────────────────
 

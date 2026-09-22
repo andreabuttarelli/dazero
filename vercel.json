@@ -40,10 +40,6 @@
   ],
   "crons": [
     {
-      "path": "/api/v1/posts/prepublish/tick",
-      "schedule": "*/5 * * * *"
-    },
-    {
       "path": "/api/v1/ai-models/sync",
       "schedule": "0 */6 * * *"
     },
