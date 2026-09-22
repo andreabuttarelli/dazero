@@ -124,7 +124,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   const runs = await loadGenRuns(db, { orgId, canvasId });
   const { products, socialPosts } = await loadDownloaded(db, { orgId, canvasId, nodes });
 
-  return { canvas, nodes, connections, catalogue, runs, products, socialPosts, projectId: params.projectId };
+  return { canvas, nodes, connections, catalogue, runs, products, socialPosts, projectId: params.projectId, orgId };
 };
 
 /** Un numero che arriva da un form: finito, o la riga nasce con `NaN` dentro una colonna numerica. */

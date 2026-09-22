@@ -68,7 +68,7 @@
       >
         <Icon size={17} strokeWidth={1.7} />
       </button>
-      <span class="tooltip" role="tooltip">{ADDABLE_LABEL[what]}</span>
+      <span class="add-tip" role="tooltip">{ADDABLE_LABEL[what]}</span>
     </span>
   {/each}
 
@@ -76,7 +76,7 @@
     <button type="button" title="Carica file" aria-label="Carica file" onclick={pickFile}>
       <Upload size={17} strokeWidth={1.7} />
     </button>
-    <span class="tooltip" role="tooltip">Carica file</span>
+    <span class="add-tip" role="tooltip">Carica file</span>
   </span>
   <input
     bind:this={fileInput}
@@ -97,7 +97,7 @@
     >
       <Keyboard size={17} strokeWidth={1.7} />
     </button>
-    <span class="tooltip" role="tooltip">Scorciatoie da tastiera</span>
+    <span class="add-tip" role="tooltip">Scorciatoie da tastiera</span>
   </span>
 
   {#if showKeys}
@@ -164,7 +164,7 @@
     color: var(--ink-soft, #6e6e73);
   }
 
-  .tooltip {
+  .add-tip {
     position: absolute;
     z-index: 13;
     bottom: calc(100% + 8px);
@@ -182,12 +182,12 @@
     pointer-events: none;
     transition: opacity 120ms ease;
   }
-  .tool:hover .tooltip,
-  .tool:focus-within .tooltip {
+  .tool:hover .add-tip,
+  .tool:focus-within .add-tip {
     opacity: 1;
   }
   @media (prefers-reduced-motion: reduce) {
-    .tooltip {
+    .add-tip {
       transition: none;
     }
   }

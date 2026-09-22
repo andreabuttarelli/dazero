@@ -23,6 +23,9 @@
   import DocNode from '$lib/components/canvas/DocNode.svelte';
   import ProductsNode from '$lib/components/canvas/ProductsNode.svelte';
   import SocialFeedNode from '$lib/components/canvas/SocialFeedNode.svelte';
+  import UploadedNode from '$lib/components/canvas/UploadedNode.svelte';
+  import { verdictForUpload, canvasUploadPrefix } from '$lib/canvas/upload-kind';
+  import { isUploadedNodeRow, uploadedNodeOf } from '$lib/canvas/uploaded-node';
   import { genNodeSize, type GenNode as GenNodeState, type GenMedium, type ModelChoice } from '$lib/canvas/gen-node';
   import { iframeNodeSize, type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
   import { docNodeSize, shareUrlOf } from '$lib/canvas/doc-node';
@@ -275,19 +278,35 @@
   }
 
   /**
-   * Un nodo nuovo. Compare SUBITO con l'id che il server gli darà? No: l'id lo conia il database,
-   * quindi la tile nasce quando la riga torna. È mezzo secondo di attesa su un gesto che non si
-   * ripete a raffica, e in cambio non esiste mai una tile senza riga dietro — quella su cui il
-   * primo prompt scritto finirebbe su un id che non esiste.
+   * UN FILE VA DRITTO NELLO STORAGE DAL BROWSER, e solo il percorso arriva al server: lo stesso
+   * schema di `StudioPage.svelte::handleImageUpload`, per la stessa ragione — un video o un
+   * documento normale supera facilmente il corpo che un'azione SvelteKit regge su Vercel.
+   *
+   * Il nodo nasce SOLO quando la riga torna, come `create`: niente tile senza riga dietro.
    */
-  async function upload(event: Event) {
-    const input = event.currentTarget as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) { return; }
-    const result = await post('upload', { file, x: 0, y: 0 });
+  const supabase = createSupabaseBrowserClient();
+
+  async function upload(file: File) {
+    const verdict = verdictForUpload(file.type, file.name, file.size);
+    if (!verdict.ok) {
+      failed = verdict.why;
+      return;
+    }
+
+    const path = `${canvasUploadPrefix(data.orgId, data.projectId)}${crypto.randomUUID()}-${file.name}`;
+    const up = await supabase.storage
+      .from('canvas-assets')
+      .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+    if (up.error) {
+      failed = up.error.message;
+      return;
+    }
+
+    const result = await post('upload', {
+      path, file_name: file.name, mime_type: file.type, bytes: file.size, x: 0, y: 0
+    });
     const created = result?.node as CanvasNodeRecord | undefined;
     if (created) { nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created)]; }
-    input.value = '';
   }
 
   function sizeForAddable(what: Addable): { w: number; h: number } {
@@ -553,14 +572,13 @@
 <svelte:head><title>dazero — {data.canvas.name}</title></svelte:head>
 
 <div class="canvas">
-  <label class="upload">Carica file<input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,video/mp4,video/webm,video/quicktime,application/pdf,text/plain" onchange={upload} /></label>
   {#if peers.length}
     <div class="peers" aria-label="Persone sulla tela">{peers.map((peer) => peer.name).join(', ')}</div>
   {/if}
   {#if failed}
     <!-- Un salvataggio perso in silenzio si scopre alla prossima apertura, quando quel che si era
          scritto non c'è più e nessuno sa perché. -->
-    <p class="warning" role="status">{failed}</p>
+    <p class="warning" role="alert">{failed}</p>
   {/if}
 
   <CanvasFlow
@@ -571,6 +589,7 @@
     onDelete={remove}
     onEdgeDelete={disconnect}
     onCreate={create}
+    onUpload={upload}
   >
     {#snippet tile({ id, selected })}
       {@const row = nodes.find((n) => n.id === id)}
@@ -580,16 +599,9 @@
         {@const doc = docOf(row)}
         {@const catalog = productsOf(row)}
         {@const feed = socialFeedOf(row)}
-        {#if typeof row.data.assetId === 'string'}
-          <div class="asset">
-            {#if row.type === 'image'}
-              <img src={String(row.data.url)} alt={String(row.data.name ?? '')} />
-            {:else if row.type === 'video'}
-              <video src={String(row.data.url)} controls playsinline><track kind="captions" /></video>
-            {:else}
-              <a href={String(row.data.url)} target="_blank" rel="noreferrer">{String(row.data.name ?? 'Documento')}</a>
-            {/if}
-          </div>
+        {@const uploaded = isUploadedNodeRow(row) ? uploadedNodeOf(row) : null}
+        {#if uploaded}
+          <UploadedNode node={uploaded} medium={row.type === 'video' ? 'video' : 'image'} />
         {:else if gen}
           <GenNode
             node={{ ...gen, runs: runsByNode[row.id] ?? [] }}
@@ -651,11 +663,7 @@
     overflow: hidden;
   }
 
-  .upload { position: absolute; z-index: 10; top: 16px; left: 16px; background: white; padding: 8px; }
-  .upload input { max-width: 200px; }
-  .asset { width: 100%; height: 100%; background: white; padding: 12px; }
   .gen-text { width: 100%; height: 100%; margin: 0; padding: 12px; overflow: auto; white-space: pre-wrap; font: inherit; }
-  .asset img, .asset video { width: 100%; height: 100%; object-fit: contain; }
 
   .peers { position: absolute; z-index: 10; right: 16px; top: 16px; }
 
@@ -671,6 +679,6 @@
     color: #c0392b;
     background: var(--paper, #fff);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 999px;
+    border-radius: 0;
   }
 </style>
