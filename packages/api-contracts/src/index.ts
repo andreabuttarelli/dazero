@@ -6,12 +6,7 @@ import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from './write';
 import {
   CREATE_POST,
   EDIT_POST,
-  GENERATE_CAROUSEL,
-  GENERATE_IMAGE,
-  GENERATE_VIDEO,
-  GENERATE_MEDIA,
   IMPORT_MEDIA_URL,
-  REFINE_MEDIA,
   RESCHEDULE_POST,
 } from './posts';
 import { SET_BRAND_SETTINGS } from './brand-settings';
@@ -90,15 +85,11 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   CREATE_SHARE,
   EDIT_POST,
   ENHANCE_PROMPT,
-  GENERATE_CAROUSEL,
-  GENERATE_IMAGE,
-  GENERATE_VIDEO,
   GET_MEDIA_MODELS,
   IMPORT_MEDIA_URL,
   DELETE_ROW,
   INSERT_ROW,
   QUERY_DATABASE,
-  REFINE_MEDIA,
   RESCHEDULE_POST,
   REVOKE_SHARE,
   SET_BRAND_SETTINGS,
@@ -141,20 +132,15 @@ export {
   ADS_ACTION,
   ADS_REMIX,
   CREATE_POST,
-  GENERATE_CAROUSEL,
-  GENERATE_IMAGE,
-  GENERATE_VIDEO,
   EDIT_POST,
-  GENERATE_MEDIA,
   IMPORT_MEDIA_URL,
-  REFINE_MEDIA,
   RESCHEDULE_POST,
 };
 /**
  * Gli schemi delle letture ritirate da MCP. La rotta REST resta e continua a validare con questi;
  * nessuno di essi e' un endpoint del registry, quindi nessuno diventa un tool.
  */
-export { CHECK_MEDIA_JOB_READ, LIST_MEDIA_READ } from './posts';
+export { LIST_MEDIA_READ } from './posts';
 export { LIST_SHARES_READ } from './shares';
 export { LIST_SOCIAL_ACCOUNTS_READ } from './social';
 
@@ -189,7 +175,6 @@ export { SOCIAL_CONNECT_LINK } from './social';
 export { BILLING_PORTAL_LINK, CHECKOUT_LINK };
 export type { BillingPortalLinkResult, CheckoutLinkInput, CheckoutLinkResult } from './billing';
 export type { CreatePostInput, CreatePostResult } from './posts';
-export { MAX_MEDIA_ALTERNATIVES } from './posts';
 export type { CreateShareInput, CreateShareResult, SharedViewType } from './shares';
 export { INSERT_ROW, UPDATE_ROW, DELETE_ROW, UPDATE_MAX_ROWS, DELETE_MAX_ROWS } from './write';
 export { TABLE_CHECKS, WRITABLE_COLUMNS } from './write-rules';
