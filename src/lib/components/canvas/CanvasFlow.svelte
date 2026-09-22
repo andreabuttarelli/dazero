@@ -25,7 +25,7 @@
    * che si colora e il menù dei versi, e tre copie diverrebbero diverse al primo caso nuovo.
    */
   import { untrack } from 'svelte';
-  import { SvelteFlow, Background, Controls, MiniMap, type Node } from '@xyflow/svelte';
+  import { SvelteFlow, Background, type Node } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
   import CanvasTile from './CanvasTile.svelte';
   import CanvasPointer from './CanvasPointer.svelte';
@@ -70,6 +70,7 @@
     onEdgeDelete,
     onEdgeRetype,
     onCreate,
+    onUpload,
     tile
   }: {
     tiles?: Tile[];
@@ -95,6 +96,8 @@
     onEdgeRetype?: (edgeId: string, kind: CanvasEdgeKind) => void;
     /** Una tile nuova chiesta col doppio clic, col punto già in unità di tela. */
     onCreate?: (what: Addable, at: { x: number; y: number }) => void;
+    /** Un file scelto dalla barra: la tela non lo carica da sé, lo passa a chi la monta. */
+    onUpload?: (file: File) => void;
     /** Cosa disegnare dentro una tile. La tela non sa cosa mostra: lo decide chi la usa. */
     tile: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
   } = $props();
@@ -358,11 +361,6 @@
     <CanvasPointer onready={(fn) => (toFlow = fn)} />
     <CanvasKeys onadd={addAtCentre} onmove={onMove} ondelete={dropSelection} />
     <Background gap={24} />
-    <Controls position="bottom-right" orientation="horizontal" />
-    <!-- Accanto ai controlli e piccola: la mappa serve a sapere DOVE si è, non a leggere quel che
-         c'è dentro — a 200×150 copriva un angolo intero della tela per un'informazione che si
-         coglie in un colpo d'occhio. -->
-    <MiniMap position="bottom-right" width={132} height={92} pannable zoomable />
   </SvelteFlow>
 
   {#if refusal}
@@ -372,7 +370,7 @@
   {/if}
 
   {#if onCreate}
-    <CanvasAddBar onpick={addAtCentre} />
+    <CanvasAddBar onpick={addAtCentre} onupload={onUpload} />
   {/if}
 
   {#if picked && (onEdgeRetype || onEdgeDelete)}
@@ -458,19 +456,6 @@
     --xy-background-color: var(--paper, #fff);
     --xy-background-pattern-color: var(--line-2, #d2d2d7);
 
-    --xy-controls-button-background-color: var(--paper, #fff);
-    --xy-controls-button-background-color-hover: var(--paper-2, #f9f9f9);
-    --xy-controls-button-color: var(--ink, #1d1d1f);
-    --xy-controls-button-color-hover: var(--ink, #1d1d1f);
-    --xy-controls-button-border-color: var(--line-2, #d2d2d7);
-    --xy-controls-box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
-
-    --xy-minimap-background-color: var(--paper, #fff);
-    --xy-minimap-node-background-color: var(--line-2, #d2d2d7);
-    --xy-minimap-node-stroke-color: var(--line, #e5e5e5);
-    --xy-minimap-mask-background-color: color-mix(in srgb, var(--paper-2, #f9f9f9) 72%, transparent);
-    --xy-minimap-mask-stroke-color: var(--line-2, #d2d2d7);
-
     /* L'attribuzione resta — nasconderla è del piano Pro — quindi almeno si veste come il resto,
        invece di essere l'unico riquadro bianco su una tela scura. */
     --xy-attribution-background-color: color-mix(in srgb, var(--paper, #fff) 70%, transparent);
@@ -519,26 +504,6 @@
   .gen-menu button:hover,
   .gen-menu button:focus-visible {
     background: var(--paper-2, #f9f9f9);
-  }
-
-  /* La minimappa e i controlli restano riquadri dell'app: stesso bordo e stesso raggio del resto. */
-  .wrap :global(.svelte-flow__minimap),
-  .wrap :global(.svelte-flow__controls) {
-    border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-
-  /* Stanno nello STESSO angolo, quindi vanno impilati a mano: la libreria li ancora entrambi in
-     basso a destra e si sovrapporrebbero. La mappa sopra, i controlli sotto — l'ordine in cui si
-     guardano, e i controlli restano dove la mano li cerca. Il margine tiene conto della barra per
-     aggiungere, che sta in mezzo in basso. */
-  .wrap :global(.svelte-flow__minimap) {
-    /* 12 di bordo + 28 di controlli (bottoni da 26px più il bordo) + 6 di respiro fra i due. */
-    margin: 0 12px 46px 0;
-  }
-  .wrap :global(.svelte-flow__controls) {
-    margin: 0 12px 12px 0;
   }
 
   /* Il motivo del rifiuto, sotto lo sguardo di chi sta tirando la linea e non in un angolo:
