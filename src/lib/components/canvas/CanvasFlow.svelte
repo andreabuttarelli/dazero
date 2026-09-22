@@ -198,7 +198,8 @@
     const connector = targetHandle as ConnectorType | null | undefined;
     const connectors = connectorsOf.get(target);
     if (connector && connectors?.includes(connector)) {
-      const free = connectorAccepts(edges, target, connector, isListValued(connector));
+      const portEdges = edges.map((e) => ({ id: e.id, target: e.target, targetHandle: e.targetHandle ?? null }));
+      const free = connectorAccepts(portEdges, target, connector, isListValued(connector));
       if (!free) {
         refusal = `porta ${connector} già occupata`;
         return false;

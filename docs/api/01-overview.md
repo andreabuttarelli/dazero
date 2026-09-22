@@ -50,24 +50,13 @@ Gli endpoint che spendono AI richiedono **piano a pagamento + crediti** e scope 
 
 | Endpoint | Azione |
 |---|---|
-| `POST /brands/:slug/editorial-plan/propose` | Genera proposta piano editoriale |
-| `POST /brands/:slug/editorial-plan/revise` | Revisione piano con feedback |
-| `POST /brands/:slug/editorial-plan/replan-week` | Rigenera una settimana |
-| `POST /brands/:slug/weekly-plan/plan` | Genera seeds settimanali |
-| `POST /brands/:slug/weekly-plan/produce` | Produce i post dai seeds |
-| `POST /brands/:slug/weekly-plan/render` | Batch render immagini |
 | `POST /brands/:slug/posts/:id/render` | Render immagine singola |
-| `POST /brands/:slug/brands/[slug]/tick` | Tick manuale autopilot |
-| `POST /brands/:slug/seo` | Audit/piano/initiative/asset/article |
-| `POST /brands/:slug/geo` | Audit/fix GEO |
-| `POST /brands/:slug/keywords` | Rigenera keyword research |
-| `POST /brands/:slug/backlinks` | Rigenera opportunità backlink |
-| `POST /brands/:slug/market/field` | Passata field watch (scopri → smonta → distilla) |
-| `POST /brands/:slug/studio/competitors/research` | Ricerca competitor AI |
-| `POST /brands/:slug/studio/people` (kind `ai`) | Ritratti AI |
 | `POST /brands/:slug/ads/remix` | Remix brief da ad competitor |
-| `POST /brands/:slug/rubrics/propose` | Batch rubriche AI |
-| `POST /brands/:slug/web` (generate/optimize) | Articoli blog AI |
+| `POST /brands/:slug/media/generate` | Genera media (immagine o video) |
+| `POST /brands/:slug/media/images` | Genera immagine |
+| `POST /brands/:slug/media/videos` | Genera video |
+| `POST /brands/:slug/media/carousel` | Genera carosello |
+| `POST /brands/:slug/media/refine` | Modifica un asset esistente |
 
 **Non gated, di proposito**: `POST /brands/:slug/billing/portal` e
 `POST /brands/:slug/billing/checkout` ([10-billing](10-billing.md)) non chiamano `gateAiAction` e
@@ -92,13 +81,9 @@ checkout. Restano scope `write`: il link porta anche a un bottone di disdetta.
 
 | Pagina | Area |
 |---|---|
-| [02 — Brand core](02-brands-core.md) | `brands`, detail, analytics, calendar, bio, publishing, tick, doctor, goals |
-| [03 — Posts](03-posts.md) | Lista, edit, approve, publish, reschedule, render, media, revoke |
-| [04 — Studio](04-studio.md) | Kit, colors, memory, people, documents, competitors, history sync |
-| [05 — Editorial plan](05-editorial-plan.md) | Propose, approve, discard, revise, update, save-brief, replan-week |
-| [06 — Weekly plan](06-weekly-plan.md) | Plan, produce, render, save |
-| [07 — Growth: SEO/GEO/web](07-growth-seo-geo.md) | SEO, GEO, keywords, backlinks, web, articles, GSC, ranks, library, video review |
-| [08 — Ads, voice, GTM e gestione](08-ads-voice-gtm-misc.md) | Ads, remix, voice, GTM, rubrics, products, api-keys, ideas, field watch, radar diagnose |
+| [02 — Brand core](02-brands-core.md) | `brands`, detail, calendar, publishing, media |
+| [03 — Posts](03-posts.md) | Lista, edit, approve, publish, reschedule, render, revoke |
+| [08 — Ads e gestione](08-ads-voice-gtm-misc.md) | Ads, remix, products, api-keys |
 
 ## Note
 

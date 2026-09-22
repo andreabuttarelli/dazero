@@ -34,6 +34,7 @@
   import { isGenAddable, type Addable } from '$lib/canvas/addable';
   import { tileNode } from '$lib/canvas/connect-rules';
   import { planDelete } from '$lib/canvas/delete-plan';
+  import { connectorsFor, type ConnectorType } from '$lib/canvas/connectors';
   import {
     docData,
     docOf,
@@ -163,8 +164,17 @@
     )
   );
 
+  const mediumCatalogue = $derived(
+    (data.catalogue ?? {
+      text: { choices: [], synced: true },
+      image: { choices: [], synced: false },
+      video: { choices: [], synced: false }
+    }) as Record<GenMedium, { choices: ModelChoice[]; synced: boolean }>
+  );
   const catalogue = $derived(
-    (data.catalogue ?? { text: [], image: [], video: [] }) as Record<GenMedium, ModelChoice[]>
+    Object.fromEntries(
+      Object.entries(mediumCatalogue).map(([medium, { choices }]) => [medium, choices])
+    ) as Record<GenMedium, ModelChoice[]>
   );
 
   /**
@@ -174,6 +184,19 @@
    */
   const productsByNode = $derived((data.products ?? {}) as Record<string, Product[]>);
   const socialPostsByNode = $derived((data.socialPosts ?? {}) as Record<string, SocialPost[]>);
+
+  /**
+   * LE PORTE DI UN NODO CHE PRODUCE, dal modello scelto — mai un elenco scritto a mano. Un
+   * modello assente dal catalogo (non sincronizzato: `offerableModels` non lo offre) disegna
+   * ZERO porte piuttosto che indovinare: `choice` è `undefined` e la funzione torna `[]`.
+   */
+  function connectorsOfNode(n: Tile): ConnectorType[] | undefined {
+    if (n.type !== 'text' && n.type !== 'image' && n.type !== 'video') { return undefined; }
+    const model = typeof n.data.model === 'string' ? n.data.model : null;
+    const choice = model ? catalogue[n.type]?.find((c) => c.id === model) : null;
+    if (n.type !== 'text' && !choice) { return []; }
+    return connectorsFor(n.type, { input: choice?.inputModalities ?? [] });
+  }
 
   /**
    * Quel che `CanvasFlow` disegna. `node` è ciò che serve a dire NO a un arco prima che nasca:
@@ -188,6 +211,7 @@
       w: n.w,
       h: n.h,
       connectable: true,
+      connectors: connectorsOfNode(n),
       node: tileNode({
         id: n.id,
         medium: n.type === 'iframe' || n.type === 'document' || n.type === 'doc' ? null : (n.type as 'text' | 'image' | 'video'),
@@ -606,7 +630,8 @@
           <GenNode
             node={{ ...gen, runs: runsByNode[row.id] ?? [] }}
             {selected}
-            choices={catalogue[gen.medium]}
+            choices={mediumCatalogue[gen.medium].choices}
+            catalogueSynced={mediumCatalogue[gen.medium].synced}
             onchange={(patch) => write(id, genData({ ...gen, ...patch }))}
             onrun={() => run(id, gen)}
             onunlock={() => unlock(id)}
