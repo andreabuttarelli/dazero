@@ -4,9 +4,6 @@ import { TRANSITIONS_COOKBOOK, detectWowMechanisms } from '$lib/motion-video/tra
 import { compileMotionSource } from '$lib/motion-video/compile';
 import { findStaticTails } from '$lib/motion-video/easing';
 import { checkVoicePlacement } from '$lib/motion-video/voice-gate';
-import { htmlToSatori } from '$lib/design/html-to-satori';
-import { defaultGraphicHtml } from '$lib/design/graphic-source';
-import { inspectGraphicTree, MIN_TEXT_RATIO } from '$lib/design/graphic-check';
 
 /**
  * La regola di questo file: una skill vale solo se il gate che dichiara boccia davvero il caso
@@ -49,8 +46,6 @@ describe('default skills — form', () => {
 describe('default skills — scoping and read_memory shape', () => {
 	it('shows each craft only to the agents that can execute it', () => {
 		const keys = (agent: string | null) => defaultSkillsFor(agent).map((s) => s.key);
-		// `content` scrive sia Remotion sia grafiche: vede tutto. `motion` non ha le tool delle
-		// grafiche, e un trigger che non può eseguire si paga a ogni turno senza mai servire.
 		expect(keys('content')).toHaveLength(DEFAULT_SKILLS.length);
 		expect(keys('motion').every((k) => k.startsWith('motion-'))).toBe(true);
 		expect(keys('motion').length).toBeGreaterThan(0);
@@ -158,92 +153,6 @@ export default function V() {
 			expect(skill.value, `skill no longer names ${name}`).toContain(name);
 			expect(detectWowMechanisms(entry(name)).fullCanvasScale, name).toBe(true);
 		}
-	});
-
-	// LE DUE SKILL DELLE GRAFICHE. Il gate legge l'albero che satori rasterizza (htmlToSatori),
-	// quindi questi test passano dallo stesso parser del renderer: se il parser cambia, il gate
-	// cambia con lui e il test lo dice.
-	const canvas = (body: string, style = '') =>
-		htmlToSatori(
-			`<div class="canvas" data-graphic data-width="1080" data-height="1350" style="display:flex;flex-direction:column;background-color:#ffffff;${style}">${body}</div>`
-		);
-
-	it('graphic-feed-legibility: text under the feed floor blocks the write', () => {
-		const { tree, width } = canvas(
-			'<div style="display:flex;font-size:18px;color:#111111">Iscriviti alla newsletter</div>'
-		);
-		const issues = inspectGraphicTree(tree, { width });
-		const floor = issues.find((i) => i.rule === 'text_below_feed_floor');
-		expect(floor?.blocking).toBe(true);
-		expect(floor?.detail).toContain('18px');
-		expect(floor?.detail).toContain(`${Math.round(1080 * MIN_TEXT_RATIO)}px`);
-	});
-
-	it('graphic-feed-legibility: the starter canvas the product ships passes its own gate', () => {
-		// La skill cita le proporzioni di `defaultGraphicHtml` per nome. Se qualcuno le abbassa,
-		// la skill insegnerebbe numeri che il gate boccia — e il test cade qui, non in produzione.
-		const { tree, width } = htmlToSatori(
-			defaultGraphicHtml({ headline: 'A short headline', brandName: 'Acme', accent: '#c485fe' })
-		);
-		const issues = inspectGraphicTree(tree, { width, brandColors: ['#c485fe'] });
-		expect(issues.filter((i) => i.blocking)).toEqual([]);
-		// L'unico avviso noto: il kicker grigio Apple, 3.44:1 su carta chiara. È un difetto vero
-		// del template, non un falso positivo — quando verrà scurito, questa riga va tolta.
-		expect(issues.map((i) => i.rule)).toEqual(['low_contrast']);
-	});
-
-	it('graphic-feed-legibility: three sizes within a whisker of each other warn, never block', () => {
-		const { tree, width } = canvas(
-			['64px', '56px', '52px']
-				.map((fs) => `<div style="display:flex;font-size:${fs};color:#111111">Riga</div>`)
-			.join('')
-		);
-		const issues = inspectGraphicTree(tree, { width });
-		const flat = issues.find((i) => i.rule === 'hierarchy_flat');
-		expect(flat?.blocking).toBe(false);
-		expect(flat?.detail).toContain('1.14×');
-	});
-
-	it('graphic-feed-legibility: contrast is skipped when a photo sits behind the type', () => {
-		// Dietro una foto il colore di fondo dichiarato non è quello che l'occhio vede: il gate
-		// tace invece di bocciare alla cieca. È la ragione per cui il contrasto non blocca mai.
-		const { tree, width } = canvas(
-			'<img src="https://x/p.jpg" style="position:absolute;width:1080px;height:1350px" /><div style="display:flex;font-size:40px;color:#f2f2f2">Sopra la foto</div>'
-		);
-		expect(inspectGraphicTree(tree, { width }).some((i) => i.rule === 'low_contrast')).toBe(false);
-	});
-
-	it('graphic-palette-discipline: an invented colour is reported, and never blocks', () => {
-		const { tree, width } = canvas(
-			'<div style="display:flex;font-size:80px;color:#111111;background-color:#ff0000">Offerta</div>'
-		);
-		const issues = inspectGraphicTree(tree, { width, brandColors: ['#c485fe'] });
-		const off = issues.find((i) => i.rule === 'off_palette');
-		expect(off?.blocking).toBe(false);
-		expect(off?.detail).toContain('#c485fe');
-		// Un colore del brand, e uno che gli somiglia a occhio, non vanno segnalati.
-		const ok = canvas('<div style="display:flex;font-size:80px;color:#c485fe">Offerta</div>');
-		expect(
-			inspectGraphicTree(ok.tree, { width: ok.width, brandColors: ['#c485fe'] }).map((i) => i.rule)
-		).not.toContain('off_palette');
-	});
-
-	it('graphic-palette-discipline: a fourth non-neutral colour is an accumulation, not a decision', () => {
-		const { tree, width } = canvas(
-			['#ff0000', '#00ff00', '#0000ff', '#ffcc00']
-				.map((c) => `<div style="display:flex;font-size:60px;color:${c}">Riga</div>`)
-			.join('')
-		);
-		const issues = inspectGraphicTree(tree, { width });
-		expect(issues.find((i) => i.rule === 'too_many_colors')?.blocking).toBe(false);
-	});
-
-	it('graphic skills declare which rule has teeth and which is only on the record', () => {
-		const legibility = DEFAULT_SKILLS.find((s) => s.key === 'graphic-feed-legibility')!;
-		const palette = DEFAULT_SKILLS.find((s) => s.key === 'graphic-palette-discipline')!;
-		expect(legibility.value).toContain('ENFORCED IN CODE');
-		expect(palette.value).toContain('ADVISORY, NOT BLOCKED');
-		expect(palette.gate).toContain('advisory');
 	});
 
 	it('motion-screenshot-legibility declares itself judged, not statically gated', () => {

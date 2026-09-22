@@ -383,6 +383,27 @@ export async function requireZernioCancellation(
   return result;
 }
 
+// A scheduled post that gets edited must re-sync with Zernio: cancel the stale campaign and
+// re-approve from the fresh row, so the platform ends up publishing what the edit actually saved.
+export async function reschedIfNeeded(
+  supabase: App.Locals['supabase'],
+  brandId: string,
+  postId: string,
+  tz: string
+) {
+  const { data: cur } = await supabase.from('posts').select('status').eq('id', postId).eq('brand_id', brandId).maybeSingle();
+  if (cur?.status !== 'scheduled') return;
+  await requireZernioCancellation(supabase, postId);
+  const { data: updated } = await supabase.from('posts').select(EDITOR_POST_COLS).eq('id', postId).maybeSingle();
+  if (updated) {
+    try {
+      await publishApprovedPost(supabase, updated as ApprovablePost, tz);
+    } catch {
+      /* best-effort re-sync; the edit itself already persisted */
+    }
+  }
+}
+
 // Esito condiviso di "elimina un post". Ogni superficie che cancella una riga di `posts`
 // (reject dell'editor, calendario, piano, API) passa da qui.
 export type PostDeletionResult =

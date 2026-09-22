@@ -14,9 +14,9 @@ vi.mock('$lib/server/cli-auth', () => ({
 }));
 vi.mock('$lib/server/post-editing', () => ({
   applyPostEdits: (...a: unknown[]) => applyPostEdits(...(a as [])),
-  deletePostCancellingZernio: vi.fn()
+  deletePostCancellingZernio: vi.fn(),
+  reschedIfNeeded: async () => undefined
 }));
-vi.mock('$lib/server/post-editor/post-editor-tools', () => ({ reschedIfNeeded: async () => undefined }));
 
 function fakeSupabase() {
   const q: Record<string, unknown> = {

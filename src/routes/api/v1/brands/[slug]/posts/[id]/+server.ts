@@ -1,8 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
-import { applyPostEdits, deletePostCancellingZernio } from '$lib/server/post-editing';
-import { reschedIfNeeded } from '$lib/server/post-editor/post-editor-tools';
+import { applyPostEdits, deletePostCancellingZernio, reschedIfNeeded } from '$lib/server/post-editing';
 import { isContentFormat } from '$lib/content-formats';
 
 // Every scalar field the web editor can write. `media_url: null` clears the image (text-only);

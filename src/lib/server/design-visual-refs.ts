@@ -10,9 +10,8 @@ import { listTalents } from '$lib/server/talent';
 import { fetchSocialProfile } from '$lib/server/scrapecreators';
 import { archiveImageToBucket, signKnowledgePaths } from '$lib/server/media-archive';
 import { isUrlSafe } from '$lib/server/brand-analysis';
-import type { AvailableGraphicImage } from '$lib/server/design-compose';
 
-export type VisualRef = AvailableGraphicImage;
+export type VisualRef = { url: string; label?: string | null };
 
 const SOCIAL_THUMB_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const SOCIAL_THUMB_SIGN_TTL_S = 7 * 24 * 60 * 60;
@@ -152,9 +151,9 @@ export async function fetchSocialVisualRefs(
 
 /** Append refs into an available-images catalog (dedupe by URL). */
 export function pushVisualRefs(
-  available: AvailableGraphicImage[],
+  available: VisualRef[],
   refs: VisualRef[]
-): AvailableGraphicImage[] {
+): VisualRef[] {
   const seen = new Set(available.map((a) => a.url));
   for (const r of refs) {
     if (!r.url || seen.has(r.url)) continue;
