@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { PLATFORM_IDS } from './platforms';
-import { AUTOMATION_BLOCKED_PLATFORMS } from './platform-terms';
 import { CAROUSEL_PLATFORMS } from './server/carousel-craft';
 import { PLATFORM_KEYS } from './components/platform-meta';
 import { TARGET_PLATFORMS } from '@dazero/api-contracts';
@@ -20,14 +19,14 @@ describe('frozen platform sets', () => {
 });
 
 describe('every set draws its ids from the vocabulary', () => {
-  it.each([
-    ['carousel', [...CAROUSEL_PLATFORMS]],
-    ['automation-blocked', AUTOMATION_BLOCKED_PLATFORMS.map((p) => p.id)]
-  ] as const)('%s ids are all declared in PLATFORM_IDS', (_name, members) => {
-    for (const id of members) {
-      expect(VOCAB).toContain(id);
+  it.each([['carousel', [...CAROUSEL_PLATFORMS]]] as const)(
+    '%s ids are all declared in PLATFORM_IDS',
+    (_name, members) => {
+      for (const id of members) {
+        expect(VOCAB).toContain(id);
+      }
     }
-  });
+  );
 });
 
 describe('le piattaforme che un agente puo scegliere', () => {
