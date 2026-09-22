@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PLATFORM_IDS } from './platforms';
 import { AUTOMATION_BLOCKED_PLATFORMS } from './platform-terms';
-import { CAROUSEL_PLATFORMS } from './server/content-preview';
+import { CAROUSEL_PLATFORMS } from './server/carousel-craft';
 import { PLATFORM_KEYS } from './components/platform-meta';
 import { TARGET_PLATFORMS } from '@dazero/api-contracts';
 
