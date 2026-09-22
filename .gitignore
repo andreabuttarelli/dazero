@@ -39,10 +39,13 @@ tmp/
 !.vscode/extensions.json
 .vercel
 
-# Claude Code local config (skills travel with the repo)
+# Claude Code local config (skills and hooks travel with the repo)
 .claude/*
 !.claude/skills/
 !.claude/skills/**
+!.claude/hooks/
+!.claude/hooks/**
+!.claude/settings.json
 
 # Sentry Config File
 .env.sentry-build-plugin
