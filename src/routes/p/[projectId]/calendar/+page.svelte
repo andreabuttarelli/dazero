@@ -3,7 +3,6 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import PageHead from '$lib/components/PageHead.svelte';
-  import CreateContentModal from '$lib/components/CreateContentModal.svelte';
   import { captionViolations } from '$lib/platform-limits';
   import { siInstagram, siTiktok, siFacebook, siX, siThreads, siYoutube, siBluesky, siReddit } from 'simple-icons';
   import { _ } from 'svelte-i18n';
@@ -135,14 +134,6 @@
   function closePanel() {
     void goto(hrefWith({ post: null }), { noScroll: true, keepFocus: true });
   }
-
-  // "Crea contenuto" — same single user-briefed create modal as Content.
-  let createOpen = $state(false);
-  let createdFlash = $state<'' | 'photo' | 'video' | 'videoFallback'>('');
-  function onSingleCreated(r: { contentType: string; videoFallback: boolean }) {
-    createdFlash = r.videoFallback ? 'videoFallback' : r.contentType.includes('video') ? 'video' : 'photo';
-  }
-  const usageFull = $derived((data.usage as { postsRemaining: number }).postsRemaining <= 0);
 
   // Delete confirmation (second click confirms) — mirrors Content.
   let confirmId = $state<string | null>(null);
@@ -381,28 +372,8 @@
     <PageHead title={$_('app.calendar.title')}>
       {#snippet actions()}
         <a class="cal-plan-link" href={`/p/${page.params.projectId}/manual-posting`}>{$_('app.hub.publish.manualPosting')}</a>
-        <button class="create-single" type="button" onclick={() => (createOpen = true)} disabled={usageFull}>
-          ＋ {$_('app.content.single.button')}
-        </button>
       {/snippet}
     </PageHead>
-
-    <CreateContentModal
-      bind:open={createOpen}
-      brandSlug={brand.slug}
-      platforms={data.targetPlatforms ?? []}
-      onDone={onSingleCreated}
-    />
-
-    {#if createdFlash}
-      <div class="flash ok">
-        {createdFlash === 'video'
-          ? $_('app.content.single.createdVideo')
-          : createdFlash === 'videoFallback'
-            ? $_('app.content.single.createdVideoFallback')
-            : $_('app.content.single.createdPhoto')}
-      </div>
-    {/if}
 
     {#if form?.noAccount}
       <a class="flash bad noacct" href={`/p/${page.params.projectId}/settings`}>
@@ -1019,7 +990,7 @@
   .rowfilter a { margin-left: auto; color: var(--accent); font-weight: 600; text-decoration: none; }
   .rowfilter a:hover { text-decoration: underline; }
 
-  /* ── Buttons (mirror Content's mini/approve-all/create-single) ──────────────────────────── */
+  /* ── Buttons (mirror Content's mini/approve-all) ──────────────────────────── */
   .mini { font-size: 12px; font-weight: 600; padding: 6px 12px; cursor: pointer;
     border: 1px solid transparent; line-height: 1; text-decoration: none; display: inline-flex; align-items: center; }
   .mini:disabled { opacity: 0.55; cursor: default; }
@@ -1037,10 +1008,6 @@
   .approve-all.ghost { background: var(--paper); border: 1px solid var(--line-2); color: var(--ink-soft); }
   .approve-all.ghost:hover { background: var(--paper-2); color: var(--ink); }
   .approve-all[disabled] { opacity: 0.6; cursor: default; }
-  .create-single { font-size: 13px; font-weight: 600; padding: 9px 16px; cursor: pointer;
-    border: 1px solid transparent; background: var(--accent); color: #fff; }
-  .create-single:hover { opacity: 0.88; }
-  .create-single[disabled] { opacity: 0.5; cursor: default; }
   .cal-plan-link {
     font-size: 13px; font-weight: 500; color: var(--ink-soft); text-decoration: none;
     padding: 9px 4px; white-space: nowrap;
