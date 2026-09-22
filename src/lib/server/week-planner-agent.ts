@@ -7,6 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { env } from '$env/dynamic/private';
 import { logAiCall, withBrandContext } from '$lib/server/ai-log';
 import { persistAgentRun } from '$lib/server/agent-runs';
+import { createRecorder, saveAgentSession } from '$lib/server/agent-sessions';
 import { loadActivePlan } from '$lib/server/editorial-plan';
 import type { WeeklyStrategy, PostSeed } from '$lib/server/content-preview';
 import { draftWeekSeeds } from '$lib/server/content-preview';
@@ -563,6 +564,26 @@ ${knownSubreddits.length ? `\n${knownSubredditsBlock(knownSubreddits)}` : ''}`;
       steps: stepLog.length ? stepLog : undefined,
       violations: lastViolations.length ? lastViolations : undefined,
       costUsdEstimate: budget.usdSpent
+    });
+
+    const recorder = createRecorder(Date.now, opts.brandId);
+    for (const step of stepLog) {
+      for (const call of step.toolCalls ?? []) recorder.event('tool_call', { tool: call.name, input: call.input });
+      for (const result of step.toolResults ?? []) recorder.event('tool_result', { tool: result.name, output: result.output });
+      if (step.text) recorder.event('assistant_text', { text: step.text });
+    }
+    await saveAgentSession({
+      brandId: opts.brandId,
+      userId: opts.userId,
+      agent: 'week_planner',
+      mode: String(opts.weekIndex ?? 'unknown'),
+      surface: 'batch',
+      status: finished ? 'finished' : 'failed',
+      model: loopModel.modelId,
+      provider: loopModel.provider,
+      transcript: stepLog.map((s) => s.text).filter(Boolean).join('\n\n'),
+      error: loopError,
+      recorder
     });
   }
 

@@ -9,16 +9,15 @@ import {
   type ModelMessage
 } from 'ai';
 import { generateText } from 'ai';
-import { createHarnessSession } from '$lib/server/harness/session';
-import { persistHarnessSession } from '$lib/server/harness/persist';
-import { wrapTools } from '$lib/server/harness/pipeline';
-import { applyStewardPrepareStep, createSessionSteward } from '$lib/server/harness/steward';
+import { AgentToolLog, applyStewardPrepareStep, createAgentSteward } from '$lib/server/agent-steward';
+import { wrapAgentTools } from '$lib/server/agent-tools';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
 import { fetchImagePart } from '$lib/server/brand-context';
 import { extractSdkUsage, logAiCall, withBrandContext } from '$lib/server/ai-log';
 import { llmConfigured, llmDefaultModel, llmLanguageModel } from '$lib/server/llm';
 import { persistAgentRun, type AgentStepLog } from '$lib/server/agent-runs';
+import { createRecorder, saveAgentSession } from '$lib/server/agent-sessions';
 import { groundedText } from '$lib/server/research';
 import { analyzePostHistory, historyInsightsDigest } from '$lib/server/post-history-insights';
 import { loadOwnPostHistory } from '$lib/server/own-post-history';
@@ -125,6 +124,40 @@ export type ProduceAgentOpts = {
 
 function llmFallback(): { model: LanguageModel; provider: 'llm'; modelId: string } {
   return { model: llmLanguageModel(), provider: 'llm', modelId: llmDefaultModel() };
+}
+
+async function recordAgentSession(opts: {
+  brandId: string;
+  userId: string;
+  agent: string;
+  mode: string;
+  status: 'finished' | 'failed';
+  model?: string;
+  provider?: string;
+  systemPrompt?: string;
+  steps: AgentStepLog[];
+  error?: string;
+}): Promise<void> {
+  const recorder = createRecorder(Date.now, opts.brandId);
+  for (const step of opts.steps) {
+    for (const call of step.toolCalls ?? []) recorder.event('tool_call', { tool: call.name, input: call.input });
+    for (const result of step.toolResults ?? []) recorder.event('tool_result', { tool: result.name, output: result.output });
+    if (step.text) recorder.event('assistant_text', { text: step.text });
+  }
+  await saveAgentSession({
+    brandId: opts.brandId,
+    userId: opts.userId,
+    agent: opts.agent,
+    mode: opts.mode,
+    surface: 'batch',
+    status: opts.status,
+    model: opts.model,
+    provider: opts.provider,
+    systemPrompt: opts.systemPrompt,
+    transcript: opts.steps.map((s) => s.text).filter(Boolean).join('\n\n'),
+    error: opts.error,
+    recorder
+  });
 }
 
 function resolveModel() {
@@ -639,19 +672,10 @@ ${CAPTION_FAILURE_MODES}
 ${ownerEditPairsBlock(opts.prefs)}${winners}${visuals}Seeds (${opts.strategy.seeds.length}):
 ${seedBrief(opts.strategy)}`;
 
-  const session = createHarnessSession({
-    brandId: opts.brandId,
-    userId: opts.userId,
-    agent: 'produce',
-    mode: opts.provider,
-    model: opts.modelId,
-    provider: opts.provider,
-    surface: 'batch'
-  });
-  session.captureRequest({ system: baseSystem, messages: opts.messages });
-
-  const steward = createSessionSteward(session, Object.keys(tools));
-  const watchedTools = wrapTools(session, tools, steward.pipeline());
+  const log = new AgentToolLog('produce');
+  log.setSystem(baseSystem);
+  const steward = createAgentSteward(log, Object.keys(tools));
+  const watchedTools = wrapAgentTools(log, tools, steward.pipeline());
 
   let result;
   try {
@@ -672,12 +696,12 @@ ${seedBrief(opts.strategy)}`;
         const step = {
           system: `${baseSystem}\n\n[budget] searches_used=${searches}/${SEARCH_BUDGET}; submitted=${!!submitted.current}; remaining_sec≈${remaining}`
         };
-        const patched = applyStewardPrepareStep(session, steward, step, baseSystem) ?? {};
-        session.capturePrepareStep(patched);
+        const patched = applyStewardPrepareStep(log, steward, step, baseSystem) ?? {};
+        if (typeof patched.system === 'string') log.setSystem(patched.system);
         return patched;
       },
       onStepFinish: (event) => {
-        session.recordStep(event);
+        log.advanceStep();
         const { toolCalls, toolResults, text } = event;
         steps.push({
           step: steps.length + 1,
@@ -690,14 +714,7 @@ ${seedBrief(opts.strategy)}`;
         });
       }
     });
-    session.recordAssistantText(result.text);
-    session.recordUsage(result.totalUsage ?? result.usage);
-    session.finish('finished');
-  } catch (e) {
-    session.finish('failed', e);
-    throw e;
   } finally {
-    persistHarnessSession(session);
     logAiCall({
       label: 'produce-agent',
       provider: opts.provider,
@@ -832,7 +849,10 @@ Rendered images (if any) follow this text. Labels (POST i / POST i slide j) are 
 Approve only if these assets would help the brand grow organically AND pass hashtag/Reddit hygiene; otherwise request_changes with concrete feedback.`;
 
   let result;
-  let session: ReturnType<typeof createHarnessSession> | undefined;
+  const log = new AgentToolLog('produce_reviewer');
+  log.setSystem(REVIEWER_SYSTEM);
+  const steward = createAgentSteward(log, Object.keys(tools));
+  const watchedTools = wrapAgentTools(log, tools, steward.pipeline());
   try {
     const imageContent: Array<
       { type: 'text'; text: string } | { type: 'image'; image: string }
@@ -845,20 +865,6 @@ Approve only if these assets would help the brand grow organically AND pass hash
       });
     }
     const messages = [{ role: 'user' as const, content: imageContent }];
-    session = createHarnessSession({
-      brandId: opts.brandId,
-      userId: opts.userId,
-      agent: 'produce_reviewer',
-      mode: opts.provider,
-      model: opts.modelId,
-      provider: opts.provider,
-      surface: 'batch'
-    });
-    session.captureRequest({ system: REVIEWER_SYSTEM, messages });
-
-    const steward = createSessionSteward(session, Object.keys(tools));
-    const watchedTools = wrapTools(session, tools, steward.pipeline());
-    const reviewerSession = session;
 
     result = await generateText({
       model: opts.model,
@@ -868,8 +874,8 @@ Approve only if these assets would help the brand grow organically AND pass hash
       allowSystemInMessages: true,
       tools: watchedTools,
       prepareStep: () => {
-        const patched = applyStewardPrepareStep(reviewerSession, steward, {}, REVIEWER_SYSTEM) ?? {};
-        reviewerSession.capturePrepareStep(patched);
+        const patched = applyStewardPrepareStep(log, steward, {}, REVIEWER_SYSTEM) ?? {};
+        if (typeof patched.system === 'string') log.setSystem(patched.system);
         return patched;
       },
       stopWhen: [
@@ -884,7 +890,7 @@ Approve only if these assets would help the brand grow organically AND pass hash
       // giudizio: il verdetto è ancorato alle immagini e alle regole, non alla temperatura.
       temperature: 0.3,
       onStepFinish: (event) => {
-        reviewerSession.recordStep(event);
+        log.advanceStep();
         const { toolCalls, toolResults, text } = event;
         steps.push({
           step: steps.length + 1,
@@ -894,14 +900,7 @@ Approve only if these assets would help the brand grow organically AND pass hash
         });
       }
     });
-    session.recordAssistantText(result.text);
-    session.recordUsage(result.totalUsage ?? result.usage);
-    session.finish('finished');
-  } catch (e) {
-    session?.finish('failed', e);
-    throw e;
   } finally {
-    if (session) persistHarnessSession(session);
     logAiCall({
       label: 'produce-reviewer',
       provider: opts.provider,
@@ -1101,6 +1100,28 @@ ${'feedback' in review ? review.feedback : ''}`
       notes: `rounds=${rounds}; ${batchJustification.slice(0, 500)}; review=${reviewSummary.slice(0, 400)}`,
       steps: [...produceSteps, ...reviewSteps]
     });
+    await recordAgentSession({
+      brandId: opts.brandId,
+      userId: opts.userId,
+      agent: 'produce',
+      mode: 'execute_review_loop',
+      status: 'finished',
+      model: modelId,
+      provider,
+      steps: produceSteps
+    });
+    if (reviewSteps.length) {
+      await recordAgentSession({
+        brandId: opts.brandId,
+        userId: opts.userId,
+        agent: 'produce_reviewer',
+        mode: 'execute_review_loop',
+        status: 'finished',
+        model: modelId,
+        provider,
+        steps: reviewSteps
+      });
+    }
 
     // Attach batch justification on first post for downstream visibility.
     if (posts[0]) posts[0].batchJustification = batchJustification;
@@ -1125,6 +1146,17 @@ ${'feedback' in review ? review.feedback : ''}`
       finishedOk: false,
       notes: e instanceof Error ? e.message.slice(0, 500) : 'error',
       steps: produceSteps
+    });
+    await recordAgentSession({
+      brandId: opts.brandId,
+      userId: opts.userId,
+      agent: 'produce',
+      mode: 'execute_review_loop',
+      status: 'failed',
+      model: modelId,
+      provider,
+      steps: produceSteps,
+      error: e instanceof Error ? e.message : String(e)
     });
     return null;
   }

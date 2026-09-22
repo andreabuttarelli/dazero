@@ -105,7 +105,10 @@ vi.mock('$lib/server/supabase-admin', () => ({
     from: (table: string) => ({
       insert: (row: Record<string, unknown>) => {
         if (table === 'agent_sessions') agentSessionWrites.push({ op: 'insert', ...row });
-        return Promise.resolve({ error: null });
+        return {
+          select: () => ({ maybeSingle: async () => ({ data: { id: 'session-1' }, error: null }) }),
+          then: (resolve: (v: { error: null }) => void) => resolve({ error: null })
+        };
       },
       upsert: (row: Record<string, unknown>) => {
         if (table === 'agent_sessions') agentSessionWrites.push({ op: 'upsert', ...row });

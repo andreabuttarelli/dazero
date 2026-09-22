@@ -170,7 +170,7 @@ export type AgentSessionInsert = {
   /** Il ruolo del sotto-agente: research | execute | verify | sandbox. */
   mode: string;
   surface: string;
-  status: 'ok' | 'error' | 'cancelled';
+  status: 'ok' | 'error' | 'cancelled' | 'finished' | 'failed';
   model?: string | null;
   provider?: string | null;
   systemPrompt?: string | null;
