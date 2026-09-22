@@ -18,15 +18,6 @@ export type Cycle = 'month' | 'year';
 // dall'eurozona, con prezzi Stripe in USD dedicati invece dell'Adaptive Pricing su un importo EUR.
 export type Currency = 'eur' | 'usd';
 
-// Features shown on a plan card, grouped under short category headers for scannability.
-// Plain strings = included (check). `{ text, missing: true }` = not on this tier (minus).
-export type FeatItem = string | { text: string; missing: true };
-export type FeatGroup = { label: string; items: FeatItem[] };
-
-export function featText(f: FeatItem): string {
-  return typeof f === 'string' ? f : f.text;
-}
-
 // Stima marketing per "fino a ~N video HD" sulla card: 100 crediti = $1 di budget AI, e una clip
 // HD a $0,38 costa 38 crediti. L'output reale varia con durata, risoluzione e altra spesa AI.
 export const VIDEO_COST_USD_HD = 0.38;
@@ -78,11 +69,6 @@ export type Plan = {
    * `pricing.plans.{key}.highlights` (pipe-separated) — keep in sync with `en.json`.
    */
   highlights: string[];
-  /**
-   * Longer grouped feature catalog (English). Not rendered on pricing cards today;
-   * prefer i18n if/when surfaced in UI.
-   */
-  feats: FeatGroup[];
   /** Social channels offered — keys of PLATFORM_META. */
   platforms: string[];
   /**
@@ -96,8 +82,6 @@ export type Plan = {
   postsPerMonth: number;
   /** Monthly blog-article hard ceiling — must match `BLOG_ARTICLES_PER_MONTH`. */
   articlesPerMonth: number;
-  /** Default blog cadence (articles/week) for pricing — must match `BLOG_ARTICLES_PER_WEEK`. */
-  articlesPerWeek: number;
 };
 
 export const PLANS: Plan[] = [
@@ -123,51 +107,7 @@ export const PLANS: Plan[] = [
     aiSurfaces: ['chatgpt', 'claude', 'gemini', 'perplexity', 'copilot', 'grok', 'deepseek', 'google', 'bing'],
     postsPerMonth: 15,
     articlesPerMonth: 15,
-    articlesPerWeek: 3,
-    feats: [
-      {
-        label: 'Strategy & voice',
-        items: [
-          'A growth strategy & editorial plan, built for your brand',
-          'Learns your voice, your offer and your brand',
-          'AI chat with 256k tokens of context per conversation',
-          { text: "Chat on the model's full context window (up to 1M tokens)", missing: true }
-        ]
-      },
-      {
-        label: 'Content',
-        items: [
-          'Plans posts for your socials — you copy & publish',
-          'Caption + image + video export, ready to post in one tap',
-          'Approve or tweak from your phone in seconds',
-          { text: 'Auto-publish to connected social accounts', missing: true }
-        ]
-      },
-      {
-        label: 'SEO & blog',
-        items: [
-          'Grows website traffic with SEO & GEO analysis',
-          'Blog hosting on dazero',
-          'Custom domain for your blog',
-          { text: 'CMS integrations (Webflow, Shopify, …)', missing: true },
-          { text: 'Backlink network across dazero brands', missing: true }
-        ]
-      },
-      {
-        label: 'Ads',
-        items: [
-          { text: 'Meta Ads & Google Ads', missing: true }
-        ]
-      },
-      {
-        label: 'Platforms & support',
-        items: [
-          { text: 'Connected social accounts', missing: true },
-          'Export-ready for Instagram, TikTok, LinkedIn, X & more',
-          'Email support'
-        ]
-      }
-    ]
+    articlesPerWeek: 3
   },
   {
     key: 'starter',
@@ -191,49 +131,7 @@ export const PLANS: Plan[] = [
     aiSurfaces: ['chatgpt', 'claude', 'gemini', 'perplexity', 'copilot', 'grok', 'deepseek', 'google', 'bing'],
     postsPerMonth: 30,
     articlesPerMonth: 30,
-    articlesPerWeek: 7,
-    feats: [
-      {
-        label: 'Strategy & voice',
-        items: [
-          'A growth strategy & editorial plan, built for your brand',
-          'Learns your voice, your offer and your brand',
-          "AI chat on the model's full context window (up to 1M tokens) — ~4x longer conversations before they compact"
-        ]
-      },
-      {
-        label: 'Content & posting',
-        items: [
-          'Plans and posts to your socials on autopilot',
-          'Posts at peak times, optimized for each platform',
-          'Approve or tweak from your phone in seconds',
-          'Turns real-time news into fresh posts & articles'
-        ]
-      },
-      {
-        label: 'SEO & blog',
-        items: [
-          'Grows website traffic with SEO & GEO analysis',
-          'Publishes blog articles built to rank on Google',
-          'Backlink network across dazero brands'
-        ]
-      },
-      {
-        label: 'Ads',
-        items: [
-          'Boost winning posts on Meta Ads (Facebook & Instagram)',
-          'Create Google Ads & Meta campaigns — you approve every euro of spend'
-        ]
-      },
-      {
-        label: 'Platforms & support',
-        items: [
-          '2 social channels of your choice — Instagram, TikTok, LinkedIn, X, Reddit & more',
-          '2 connected social accounts',
-          'Email support'
-        ]
-      }
-    ]
+    articlesPerWeek: 7
   },
   {
     key: 'pro',
@@ -258,51 +156,7 @@ export const PLANS: Plan[] = [
     aiSurfaces: ['chatgpt', 'claude', 'gemini', 'perplexity', 'copilot', 'grok', 'deepseek', 'google', 'bing'],
     postsPerMonth: 90,
     articlesPerMonth: 90,
-    articlesPerWeek: 21,
-    feats: [
-      {
-        label: 'Strategy & voice',
-        items: [
-          'A growth strategy & editorial plan, built for your brand',
-          'Learns your voice, your offer and your brand',
-          "AI chat on the model's full context window (up to 1M tokens) — ~4x longer conversations before they compact"
-        ]
-      },
-      {
-        label: 'Content & posting',
-        items: [
-          'Plans and posts to your socials on autopilot',
-          'Posts at peak times, optimized for each platform',
-          'Approve or tweak from your phone in seconds',
-          'Turns real-time news into fresh posts & articles'
-        ]
-      },
-      {
-        label: 'SEO & blog',
-        items: [
-          'Grows website traffic with SEO & GEO analysis',
-          'Publishes blog articles built to rank on Google',
-          'Backlink network across dazero brands'
-        ]
-      },
-      {
-        label: 'Ads',
-        items: [
-          'Boost winning posts on Meta Ads (Facebook & Instagram)',
-          'Create Google Ads & Meta campaigns — you approve every euro of spend'
-        ]
-      },
-      {
-        label: 'Platforms & support',
-        items: [
-          '8 platforms — Instagram, TikTok, LinkedIn, X, Reddit & more',
-          '8 connected social accounts',
-          'Up to 4K images / videos',
-          'Real human support, not a chatbot',
-          'Priority support'
-        ]
-      }
-    ]
+    articlesPerWeek: 21
   }
 ];
 
@@ -382,26 +236,6 @@ export function hasSocialPublishing(plan: string | null | undefined): boolean {
   return plan === 'starter' || plan === 'pro' || plan === 'scale';
 }
 
-/** CMS blog sync (Webflow / Shopify / Wix) — not on Go/free (hosting only). */
-export function hasBlogIntegrations(plan: string | null | undefined): boolean {
-  return plan === 'starter' || plan === 'pro' || plan === 'scale';
-}
-
-/** Custom blog domain (e.g. blog.brand.com) — any paid plan; not free. */
-export function hasBlogCustomDomain(plan: string | null | undefined): boolean {
-  return isPaidPlan(plan);
-}
-
-/**
- * Web hub (SEO, GEO, keywords, blog hosting, library).
- * Free matches Go — unlocked for every brand. Autopublish / social connects / CMS sync /
- * custom domain stay on paid tiers via hasSocialPublishing / hasBlogIntegrations /
- * hasBlogCustomDomain.
- */
-export function hasWebHub(_plan?: string | null): boolean {
-  return true;
-}
-
 // Free / trial / canceled / paused brands must not connect (or keep) Zernio socials.
 // Go is paid but deliberately has zero connected accounts (no Zernio spend).
 export function canConnectSocials(
@@ -418,14 +252,6 @@ export function hasMotionVideo4k(plan: string | null | undefined): boolean {
 
 /** True when the plan may create/boost ads via Zernio (Starter and up; legacy Scale included). */
 export function hasAds(plan: string | null | undefined): boolean {
-  return plan === 'starter' || plan === 'pro' || plan === 'scale';
-}
-
-/**
- * Cross-brand dazero backlink network (+ external boost later).
- * Starter and up — not Free / Go (legacy Scale included).
- */
-export function hasBacklinkNetwork(plan: string | null | undefined): boolean {
   return plan === 'starter' || plan === 'pro' || plan === 'scale';
 }
 

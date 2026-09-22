@@ -4,18 +4,13 @@ import {
   isPaidPlan,
   canConnectSocials,
   hasSocialPublishing,
-  hasBlogIntegrations,
-  hasBlogCustomDomain,
-  hasWebHub,
   hasAds,
-  hasBacklinkNetwork,
   hasMotionVideo4k,
   hasFullChatContext,
   CHAT_CONTEXT_CAP_TOKENS,
   visiblePlans,
   planByKey,
   PLANS,
-  featText,
   videosFromCredits,
   VIDEO_COST_USD_HD,
   VIDEO_COST_CREDITS
@@ -27,12 +22,9 @@ describe('Go plan helpers', () => {
     expect(isPaidPlan('go')).toBe(true);
   });
 
-  it('blocks Zernio connects and CMS sync on Go', () => {
+  it('blocks Zernio connects on Go', () => {
     expect(hasSocialPublishing('go')).toBe(false);
     expect(canConnectSocials('go', 'active')).toBe(false);
-    expect(hasBlogIntegrations('go')).toBe(false);
-    expect(hasBlogCustomDomain('go')).toBe(true);
-    expect(hasWebHub('go')).toBe(true);
   });
 
   it('unlocks Meta & Google Ads from Starter up (not Go/Free)', () => {
@@ -65,21 +57,6 @@ describe('Go plan helpers', () => {
     expect(planByKey('go').highlights.some((h) => /4K/i.test(h))).toBe(false);
   });
 
-  it('unlocks backlink network from Starter up (not Go/Free)', () => {
-    expect(hasBacklinkNetwork(null)).toBe(false);
-    expect(hasBacklinkNetwork('go')).toBe(false);
-    expect(hasBacklinkNetwork('starter')).toBe(true);
-    expect(hasBacklinkNetwork('pro')).toBe(true);
-    expect(hasBacklinkNetwork('scale')).toBe(true);
-    expect(planByKey('starter').highlights.some((h) => /backlink/i.test(h))).toBe(true);
-    expect(planByKey('pro').highlights.some((h) => /backlink/i.test(h))).toBe(true);
-    expect(planByKey('go').highlights.some((h) => /backlink/i.test(h))).toBe(false);
-    const goSeo = planByKey('go').feats.find((g) => g.label === 'SEO & blog')!;
-    expect(goSeo.items.some((f) => typeof f === 'object' && f.missing && /backlink/i.test(f.text))).toBe(
-      true
-    );
-  });
-
   it('keeps pricing cards to a short highlight list', () => {
     for (const p of PLANS) {
       expect(p.highlights.length).toBeGreaterThanOrEqual(4);
@@ -100,28 +77,9 @@ describe('Go plan helpers', () => {
   });
 
 
-  it('lists SEO & GEO on Go (free matches Go web hub)', () => {
-    const go = PLANS.find((p) => p.key === 'go')!;
-    const seoBlog = go.feats.find((g) => g.label === 'SEO & blog');
-    expect(seoBlog).toBeTruthy();
-    expect(seoBlog!.items.some((f) => featText(f).includes('SEO & GEO'))).toBe(true);
-  });
-
-  it('unlocks Web hub on free (match Go)', () => {
-    expect(hasWebHub(null)).toBe(true);
-    expect(hasWebHub(undefined)).toBe(true);
-    expect(hasBlogIntegrations(null)).toBe(false);
-    expect(hasBlogCustomDomain(null)).toBe(false);
+  it('blocks connects with no plan', () => {
     expect(hasSocialPublishing(null)).toBe(false);
     expect(canConnectSocials(null, 'trial')).toBe(false);
-  });
-
-  it('grants custom blog domain on every paid tier', () => {
-    expect(hasBlogCustomDomain('go')).toBe(true);
-    expect(hasBlogCustomDomain('starter')).toBe(true);
-    expect(hasBlogCustomDomain('pro')).toBe(true);
-    expect(hasBlogCustomDomain('scale')).toBe(true);
-    expect(hasBlogCustomDomain(null)).toBe(false);
   });
 
   it('still allows connects on Starter/Pro when active', () => {
