@@ -497,7 +497,6 @@ export type ProposePlanOpts = {
   model?: string;
   // How many parallel proposal variants to generate (default 3). Use 1 for faster onboarding.
   variants?: number;
-  // Strategy agent path — default ON; STRATEGY_AGENT_ENABLED=false → legacy.
   supabase?: SupabaseClient;
   brandId?: string;
   userId?: string;
@@ -638,52 +637,15 @@ export function agentPlanBudget(remainingMs: number): number | null {
   return forAgent >= MIN_AGENT_PLAN_MS ? forAgent : null;
 }
 
-async function invokeEditorialAgent(
-  profile: BrandProfile,
-  opts: ProposePlanOpts,
-  mode: 'propose' | 'propose_next_cycle' | 'revise' | 'replan_week',
-  seedBrief: string,
-  currentPlan?: EditorialPlan,
-  weekIndex?: number
+async function invokeEditorialAgentDisabled(
+  _profile: BrandProfile,
+  _opts: ProposePlanOpts,
+  _mode: 'propose' | 'propose_next_cycle' | 'revise' | 'replan_week',
+  _seedBrief: string,
+  _currentPlan?: EditorialPlan,
+  _weekIndex?: number
 ): Promise<EditorialPlan | null> {
-  const { strategyAgentEnabled, runStrategyAgent } = await import('$lib/server/strategy-agent');
-  if (!strategyAgentEnabled() || !opts.supabase || !opts.brandId) return null;
-  const deadlineMs = opts.remainingMs == null ? undefined : agentPlanBudget(opts.remainingMs);
-  if (deadlineMs === null) {
-    console.warn(
-      `[editorial-plan] ${Math.round(opts.remainingMs! / 1000)}s left: too little for the agent and the fallback, going legacy`
-    );
-    return null;
-  }
-  // null → the caller falls through to the legacy pipeline. The guard lives HERE, in the one place
-  // all four call sites (propose / revise / replan_week / next_cycle) route through: an agent that
-  // ends without a plan must degrade to the pipeline that still works, never take onboarding down.
-  try {
-    const result = await runStrategyAgent({
-      supabase: opts.supabase,
-      userId: opts.userId,
-      brandId: opts.brandId,
-      profile,
-      constraints: {
-        allowedCadences: opts.allowedCadences,
-        platforms: opts.platforms,
-        planTier: opts.planTier ?? null,
-        timezone: opts.timezone
-      },
-      mode,
-      currentPlan,
-      seedBrief,
-      weekIndex,
-      outputLanguage: opts.outputLanguage,
-      planOpts: opts,
-      verbose: opts.agentVerbose,
-      deadlineMs
-    });
-    return result.plan;
-  } catch (e) {
-    console.warn('[editorial-plan] strategy agent failed, falling back to legacy:', e instanceof Error ? e.message : e);
-    return null;
-  }
+  return null;
 }
 
 const PLAN_SYSTEM =
@@ -695,7 +657,7 @@ const PLAN_SYSTEM =
 // onboarding research pipeline (replacing the old immediate post-planning) and on demand for
 // legacy brands from the strategy page.
 export async function proposePlan(profile: BrandProfile, opts: ProposePlanOpts): Promise<EditorialPlan> {
-  const agentPlan = await invokeEditorialAgent(profile, opts, 'propose', buildProposeSeedBrief(opts));
+  const agentPlan = await invokeEditorialAgentDisabled(profile, opts, 'propose', buildProposeSeedBrief(opts));
   if (agentPlan) return agentPlan;
 
   const gtmLine = opts.zeroToOne
@@ -777,7 +739,7 @@ export async function revisePlan(
   profile: BrandProfile,
   opts: ProposePlanOpts
 ): Promise<EditorialPlan> {
-  const agentPlan = await invokeEditorialAgent(profile, opts, 'revise', feedback, current);
+  const agentPlan = await invokeEditorialAgentDisabled(profile, opts, 'revise', feedback, current);
   if (agentPlan) return agentPlan;
 
   const prompt = `Revise this brand's editorial plan based on the client's feedback. Keep everything the feedback does NOT criticise — this is a revision, not a fresh start. Weeks already marked "planned" or "done" have content produced against them: keep their themes stable unless the feedback explicitly targets them.
@@ -811,7 +773,7 @@ export async function replanWeek(
   agentOpts?: Pick<ProposePlanOpts, 'supabase' | 'brandId' | 'userId' | 'platforms' | 'allowedCadences' | 'planTier' | 'benchmark' | 'topPosts' | 'strategyBrief' | 'agentVerbose'>
 ): Promise<PlanWeek> {
   if (agentOpts?.supabase && agentOpts.brandId) {
-    const agentPlan = await invokeEditorialAgent(
+    const agentPlan = await invokeEditorialAgentDisabled(
       profile,
       { ...agentOpts, allowedCadences: agentOpts.allowedCadences ?? ['3/week', '5/week'], platforms: agentOpts.platforms ?? [] },
       'replan_week',
@@ -867,7 +829,7 @@ export async function proposeNextCycle(
   profile: BrandProfile,
   opts: ProposePlanOpts
 ): Promise<EditorialPlan> {
-  const agentPlan = await invokeEditorialAgent(
+  const agentPlan = await invokeEditorialAgentDisabled(
     profile,
     opts,
     'propose_next_cycle',
