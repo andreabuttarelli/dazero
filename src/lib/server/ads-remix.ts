@@ -109,7 +109,6 @@ export function digestToNormalizedAd(ad: MetaAdDigestItem): NormalizedAd {
 // ------------------------------------------------------------------------------------------------
 
 /** Al massimo tre smontaggi per giro: ffmpeg + Gemini per clip, e il resto del pool è testo. */
-export const REMIX_MAX_BREAKDOWNS = 3;
 
 const THIRD_PARTY_MEDIA_HOST =
   /(?:^|\.)(?:fbcdn\.net|facebook\.com|fb\.watch|cdninstagram\.com|instagram\.com|tiktokcdn\.com|tiktokcdn-us\.com|ttwstatic\.com|licdn\.com|akamaized\.net|pinimg\.com|twimg\.com)$/i;
@@ -153,25 +152,6 @@ export function composeRemixVisualPrompt(shotBrief: string | null, modelPrompt: 
   ]
     .join('\n')
     .slice(0, 4000);
-}
-
-/**
- * Smonta i video del pool in TESTO. Best-effort: un fallimento (fetch/ffmpeg/modello) fa
- * semplicemente tornare il brief alla frase dell'agente.
- */
-async function breakdownPoolVideos(pool: NormalizedAd[]): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
-  const targets = pool
-    .filter((a) => typeof a.videoUrl === 'string' && /^https?:\/\//i.test(a.videoUrl))
-    .slice(0, REMIX_MAX_BREAKDOWNS);
-  if (!targets.length) return out;
-  const { breakdownReferenceVideo } = await import('$lib/server/video-breakdown');
-  for (const a of targets) {
-    // In serie: ogni smontaggio è un download + ffmpeg + una chiamata Gemini.
-    const b = await breakdownReferenceVideo(a.videoUrl!).catch((error) => { swallow('breakdown reference video', error); return null; });
-    if (b?.prompt) out.set(a.adArchiveId, b.prompt);
-  }
-  return out;
 }
 
 /** Pure: pick and order the pool the agent sees. Competitor ads first (ranked by position in the
@@ -309,9 +289,7 @@ export async function remixAdsPool(
       .limit(20)
   ]);
 
-  // Smontaggio dei video PRIMA dell'analisi: l'agente deve poter leggere il ritmo reale
-  // dell'annuncio, non dedurlo dalla copy. Solo testo esce da qui (vedi il blocco del vincolo).
-  const breakdowns = await breakdownPoolVideos(pool).catch((error) => { swallow('breakdown ad videos', error); return new Map<string, string>(); });
+  const breakdowns = new Map<string, string>();
 
   const thumbPaths = poolThumbs(pool);
   const signed = await signedThumbUrls(supabase, thumbPaths).catch((error) => { swallow('sign thumb urls', error); return []; });
