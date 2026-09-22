@@ -9,7 +9,6 @@ import {
   isContrastDeviceId,
   isDisruptiveStatus
 } from './disruptive';
-import { buildUgcPlanAgentSystem } from './server/media-generator/ugc-plan-agent';
 
 describe('the contrast devices', () => {
   it('has one entry per id, each with an example, a failure mode and a limit', () => {
@@ -98,8 +97,7 @@ describe('disruptiveBriefSection', () => {
 describe('no quota an agent can turn into a goal criterion', () => {
   const sections: [string, string][] = [
     ['disruptiveSystemSection', disruptiveSystemSection()],
-    ['disruptiveBriefSection', disruptiveBriefSection()],
-    ['buildUgcPlanAgentSystem', buildUgcPlanAgentSystem({ count: 4 })]
+    ['disruptiveBriefSection', disruptiveBriefSection()]
   ];
 
   for (const [name, text] of sections) {

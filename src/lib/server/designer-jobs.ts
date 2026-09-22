@@ -4,7 +4,6 @@
  * drops the HTTP stream can poll it, and a turn that hits the Vercel wall enqueues
  * a NEW job that picks up from persisted work.
  */
-import { CHAT_JOB_STATUS } from '$lib/chat-job-status';
 import { bilingualNoticeLocale } from '$lib/i18n/locale';
 import { swallow } from '$lib/server/swallow';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -25,6 +24,8 @@ import {
 	turnTruncatedNotice
 } from '$lib/server/designer/turn-limits';
 import { DESIGNER_MAX_CONTINUATIONS } from '$lib/designer-limits';
+
+const DESIGNER_JOB_STATUS = { pending: 'pending', running: 'running' } as const;
 
 export const DESIGNER_TOOL_MOTION = 'motion_video';
 export const DESIGNER_TOOL_UGC = 'ugc_batch';
@@ -80,7 +81,6 @@ export function scheduleDesignerKick(platform: Platform, origin: string) {
  * una riga `running` che nessuno sta eseguendo il drain non la raccoglie MAI.
  *
  * `origin` non e` decorativo: il drain si sveglia via HTTP, quindi senza non parte nessuno.
- * Gli stati e cosa significano stanno in `$lib/chat-job-status`.
  */
 export async function queueDesignerJob(
 	supabase: SupabaseClient,
@@ -99,7 +99,7 @@ export async function queueDesignerJob(
 			user_id: opts.userId,
 			tool_name: opts.toolName,
 			...(opts.threadId ? { thread_id: opts.threadId } : {}),
-			status: CHAT_JOB_STATUS.pending,
+			status: DESIGNER_JOB_STATUS.pending,
 			input_params: { ...opts.inputParams, queued: true },
 			partial: { text: '', tools: [], reasoning: '', at: Date.now() }
 		})
@@ -129,7 +129,7 @@ export async function insertDesignerJob(
 			tool_name: opts.toolName,
 			// `running` e non `pending`: qui il turno lo fa il CHIAMANTE, e la riga e` solo lo
 			// specchio del suo avanzamento. Vedi `queueDesignerJob` per il caso opposto.
-			status: CHAT_JOB_STATUS.running,
+			status: DESIGNER_JOB_STATUS.running,
 			input_params: opts.inputParams,
 			partial: { text: '', tools: [], reasoning: '', at: Date.now() }
 		})

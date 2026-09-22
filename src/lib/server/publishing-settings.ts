@@ -18,10 +18,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  *
  * Legacy rows may still carry `content_prefs.publishing.mode` or `social_accounts.auto_publish`.
  * Nothing reads them; they are inert until the columns are dropped.
- *
- * Enforced by the scheduler (src/lib/server/scheduler.ts), which leaves every produced post in
- * `pending_user`, and by publishDueArticles (src/lib/server/blog-generate.ts), which only ever
- * flips articles a human moved to `approved`.
  */
 export const PUBLISHING_POLICY = 'review_required' as const;
 export type PublishingPolicy = typeof PUBLISHING_POLICY;

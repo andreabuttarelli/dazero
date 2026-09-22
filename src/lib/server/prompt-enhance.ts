@@ -19,7 +19,7 @@
  *
  * I CONTROLLI SONO DETERMINISTICI, NON UN SECONDO GIUDIZIO. Un LLM che giudica l'output di un LLM
  * costa un'altra chiamata e sbaglia in modo correlato al primo. Qui: ogni cosa che il brief nomina
- * deve essere ancora nella riscrittura (`tokenize`, lo stesso dei link interni), e le tre regole
+ * deve essere ancora nella riscrittura (`tokenize`), e le tre regole
  * che si vedono con una regex — testo leggibile chiesto, inquadratura dichiarata, lunghezza fuori
  * scala — si controllano così.
  *
@@ -39,7 +39,22 @@ import { imageCraftFor } from '$lib/design/image-craft';
 import { videoCraftFor } from '$lib/design/video-craft';
 import { PHOTO_CRAFT_SPECS } from '$lib/design/photo-craft';
 import { photoModeSpec, type PhotoModeId } from '$lib/design/photo-modes';
-import { tokenize } from '$lib/server/backlink-network';
+
+const STOP = new Set(
+  'the a an and or of to in for on with your you our we is are how what why when come cosa perche gli una uno del della delle dei nel nei alla dai per con che non più sono der die das und oder mit von zu den dem'.split(
+    ' '
+  )
+);
+
+function tokenize(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const w of String(text ?? '')
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)) {
+    if (w.length > 3 && !STOP.has(w)) out.add(w);
+  }
+  return out;
+}
 
 export type EnhanceInput = {
   prompt: string;

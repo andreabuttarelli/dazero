@@ -45,6 +45,20 @@ export function isListValued(connector: ConnectorType): boolean {
   return LIST_VALUED.has(connector);
 }
 
+/**
+ * Come si chiama ogni connettore, per chi guarda — il `title`/`aria-label` di ogni maniglia sulla
+ * tile e il messaggio di rifiuto in `upstream-inputs.ts`. Una tabella sola: quel file importava
+ * una copia propria, e due elenchi a mano sarebbero divergiti al primo nome cambiato.
+ */
+export const CONNECTOR_LABEL: Record<ConnectorType, string> = {
+  text: 'testo',
+  images: 'immagine',
+  videos: 'video',
+  audios: 'audio',
+  first_frame: 'first_frame',
+  last_frame: 'last_frame'
+};
+
 /** Il minimo che `ai-models-sync.ts::ModelModalities` porta — nessun import di codice server qui. */
 export type Modalities = { input: string[] };
 

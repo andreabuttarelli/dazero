@@ -75,7 +75,7 @@
 import { mediumOf, type CanvasNode, type Medium } from './graph';
 import { imageModelSpec } from '$lib/image-models';
 import { videoRefCapacity } from '$lib/video-models';
-import { connectorsFor, type ConnectorType, type GenerativeNodeKind, type Modalities } from './connectors';
+import { connectorsFor, CONNECTOR_LABEL, type ConnectorType, type GenerativeNodeKind, type Modalities } from './connectors';
 
 /** Gli stessi due valori di `frame_type` in `openrouter-video.ts`: un vocabolario solo. */
 export const FIRST_FRAME_HANDLE = 'first_frame';
@@ -248,15 +248,6 @@ function listCapacity(connector: ConnectorType, kind: GenerativeNodeKind, model:
   }
   return 1;
 }
-
-const CONNECTOR_LABEL: Record<ConnectorType, string> = {
-  text: 'testo',
-  images: 'immagine',
-  videos: 'video',
-  audios: 'audio',
-  first_frame: FIRST_FRAME_HANDLE,
-  last_frame: LAST_FRAME_HANDLE
-};
 
 /**
  * QUEL CHE UN NODO RICEVE, RISOLTO. `at` guarda i nodi per id — la stessa forma di `NodeLookup`

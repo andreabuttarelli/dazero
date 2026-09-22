@@ -1,12 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
 import { PUBLISHING_POLICY, getPublishingSettings } from './publishing-settings';
 
 // These tests exist to make removing the human approval gate LOUD. The gate is what the AI Act's
 // Art. 50(2) human-review exemption rests on, so "someone quietly added an auto-publish branch
 // back" has to fail CI rather than ship.
-
-const BLOG = readFileSync('src/lib/server/blog-generate.ts', 'utf8');
 
 describe('publishing policy', () => {
   it('is a constant, not a setting', () => {
@@ -41,15 +38,5 @@ describe('publishing policy', () => {
       accounts: [{ id: 'a1', platform: 'instagram' }]
     });
     expect(calls.join(' ')).not.toMatch(/auto_publish/);
-  });
-});
-
-describe('the approval gate is enforced in code', () => {
-  it('the blog cron only publishes articles a human approved', () => {
-    // publishDueArticles selects status 'approved'; drafts written by the autopilot are 'draft'
-    // and can never be picked up, whatever scheduled_for they carry.
-    expect(BLOG).toMatch(/\.eq\('status', 'approved'\)/);
-    expect(BLOG).toMatch(/status: 'draft'/);
-    expect(BLOG).not.toMatch(/\.in\('status', \['draft', 'approved'\]\)/);
   });
 });
