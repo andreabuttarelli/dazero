@@ -1,50 +1,20 @@
 <script lang="ts">
   import PageHead from '$lib/components/PageHead.svelte';
-  import { genNodeSize } from '$lib/canvas/gen-node';
-  import { docNodeSize } from '$lib/canvas/doc-node';
-  import {
-    DRAG_NODE_KIND,
-    CANVAS_DRAG_FILLED_NODE,
-    serializeFilledNodeDrag,
-    staticDocData,
-    staticMediaData,
-    staticTextData,
-    type DragBrandField
-  } from '$lib/canvas/drag-payload';
+  import { brandFieldDrag, CANVAS_DRAG_FILLED_NODE, serializeFilledNodeDrag, type DragBrandField } from '$lib/canvas/drag-payload';
   import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
   import type { BrandCard } from './+page.server';
 
   let { data } = $props();
 
-  /**
-   * TRE COSE TRASCINABILI PER BRAND — la stessa tabella di `drag-payload.ts::DRAG_NODE_KIND`.
-   * Il logo porta `data.assetId` (materializzato da `+page.server.ts`), i testi diventano il
-   * `prompt` di un nodo `text`, il content diventa il markdown di un nodo `doc`.
-   */
+  /** TRASCINARE UN CAMPO BRAND — `brandFieldDrag` (`drag-payload.ts`) porta la tabella "cosa
+   *  diventa", la stessa che la sidebar del progetto usa per le sue card. */
   function onFieldDragStart(e: DragEvent, brand: BrandCard, field: DragBrandField) {
-    if (!e.dataTransfer) return;
-
-    const nodeType = DRAG_NODE_KIND.brand[field];
-    let nodeData: Record<string, unknown>;
-    if (field === 'logo') {
-      if (!brand.logoAssetId || !brand.logoUrl) return;
-      nodeData = staticMediaData({
-        assetId: brand.logoAssetId,
-        url: brand.logoUrl,
-        name: `${brand.name} logo`,
-        mimeType: 'image/*'
-      });
-    } else if (field === 'text') {
-      nodeData = staticTextData(`${brand.name}\n\n${brand.shortDescription ?? ''}`.trim());
-    } else {
-      nodeData = staticDocData(brand.content ?? '');
-    }
-
-    const size = nodeType === 'doc' ? docNodeSize() : nodeType === 'text' ? genNodeSize('text') : genNodeSize('image');
+    const drag = brandFieldDrag(brand, field);
+    if (!drag || !e.dataTransfer) return;
 
     e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData(CANVAS_DRAG_FILLED_NODE, serializeFilledNodeDrag({ type: nodeType, data: nodeData, ...size }));
-    e.dataTransfer.setData(CANVAS_DRAG_MEDIUM, nodeType);
+    e.dataTransfer.setData(CANVAS_DRAG_FILLED_NODE, serializeFilledNodeDrag(drag));
+    e.dataTransfer.setData(CANVAS_DRAG_MEDIUM, drag.type);
   }
 </script>
 

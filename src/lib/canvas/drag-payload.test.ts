@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   DRAG_NODE_KIND,
+  assetDrag,
+  brandFieldDrag,
   parseFilledNodeDrag,
   serializeFilledNodeDrag,
   staticDocData,
@@ -51,5 +53,67 @@ describe('cosa diventa un nodo trascinato da fuori la tela', () => {
     expect(parseFilledNodeDrag('{}')).toBeNull();
     expect(parseFilledNodeDrag(JSON.stringify({ type: 'audio', data: {}, w: 1, h: 1 }))).toBeNull();
     expect(parseFilledNodeDrag(JSON.stringify({ type: 'image', data: {} }))).toBeNull();
+  });
+
+  describe('assetDrag: lo stesso pacchetto per la libreria del progetto e la barra laterale', () => {
+    it('un\'immagine diventa un nodo image, con l\'url firmato dentro', () => {
+      const drag = assetDrag({ type: 'image', id: 'a1', signedUrl: '/signed', url: 'store/x.png', mimeType: 'image/png', content: null });
+      expect(drag?.type).toBe('image');
+      expect(drag?.data).toMatchObject({ assetId: 'a1', url: '/signed', mimeType: 'image/png' });
+      expect(validateNodeData('image', drag!.data).ok).toBe(true);
+    });
+
+    it('un video diventa un nodo video, un documento un nodo doc col suo content', () => {
+      const video = assetDrag({ type: 'video', id: 'v1', signedUrl: '/signed.mp4', url: 'store/x.mp4', mimeType: 'video/mp4', content: null });
+      expect(video?.type).toBe('video');
+
+      const doc = assetDrag({ type: 'document', id: 'd1', signedUrl: null, url: null, mimeType: null, content: '# Titolo' });
+      expect(doc?.type).toBe('doc');
+      expect(validateNodeData('doc', doc!.data)).toEqual({ ok: true, data: { content: '# Titolo', public: false } });
+    });
+
+    it('un asset senza url firmato non si trascina: non c\'è niente da mettere nel nodo', () => {
+      expect(assetDrag({ type: 'image', id: 'a1', signedUrl: null, url: 'store/x.png', mimeType: 'image/png', content: null })).toBeNull();
+    });
+
+    it('un tipo che non ha un nodo statico (testo generato, ad esempio) non si trascina', () => {
+      expect(assetDrag({ type: 'text', id: 't1', signedUrl: null, url: null, mimeType: null, content: 'ciao' })).toBeNull();
+    });
+  });
+
+  describe('brandFieldDrag: lo stesso pacchetto per la pagina brand e la barra laterale', () => {
+    const brand = {
+      name: 'Acme',
+      logoAssetId: 'logo1',
+      logoUrl: '/logo.png',
+      shortDescription: 'Fa cose',
+      content: 'Contenuto lungo del brand'
+    };
+
+    it('il logo diventa un nodo image con lo stesso assetId', () => {
+      const drag = brandFieldDrag(brand, 'logo');
+      expect(drag?.type).toBe('image');
+      expect(drag?.data).toMatchObject({ assetId: 'logo1' });
+    });
+
+    it('i testi diventano il prompt di un nodo text: nome e descrizione insieme', () => {
+      const drag = brandFieldDrag(brand, 'text');
+      expect(drag?.type).toBe('text');
+      expect(drag?.data.prompt).toBe('Acme\n\nFa cose');
+    });
+
+    it('il content diventa un nodo doc', () => {
+      const drag = brandFieldDrag(brand, 'content');
+      expect(drag?.type).toBe('doc');
+      expect(drag?.data).toMatchObject({ content: 'Contenuto lungo del brand' });
+    });
+
+    it('un logo assente non si trascina', () => {
+      expect(brandFieldDrag({ ...brand, logoAssetId: null }, 'logo')).toBeNull();
+    });
+
+    it('un content assente non si trascina: non c\'è niente da mettere nel documento', () => {
+      expect(brandFieldDrag({ ...brand, content: null }, 'content')).toBeNull();
+    });
   });
 });

@@ -12,6 +12,9 @@
  * `image`/`video` chiede solo quello — `assetId` non è nel CHECK apposta (vedi il commento in
  * `uploaded-node.ts`), ma è lui a far apparire il tag "caricato" invece del pulsante "Genera".
  */
+import { genNodeSize } from './gen-node';
+import { docNodeSize } from './doc-node';
+
 export type DragAssetKind = 'image' | 'video' | 'document';
 export type DragBrandField = 'logo' | 'text' | 'content';
 
@@ -78,6 +81,69 @@ export type FilledNodeDrag = {
   w: number;
   h: number;
 };
+
+/**
+ * LO STESSO PACCHETTO, DA UNA RIGA DI ASSET O DA UN CAMPO BRAND — non riscritto a ogni pannello
+ * che trascina. Prima viveva due volte, dentro `dragstart` di `assets/+page.svelte` e
+ * `brands/+page.svelte`; la sidebar del progetto (`AssetsPanel`) è il terzo posto da cui la
+ * stessa card parte, e una terza copia sarebbe la regola sparsa che CLAUDE.md chiede di non
+ * scrivere. `null` quando non c'è niente da mettere nel nodo — un asset senza url firmato, un
+ * campo brand vuoto — non un nodo che nasce e si scopre rotto al primo sguardo.
+ */
+export function assetDrag(item: {
+  type: string;
+  id: string;
+  signedUrl: string | null;
+  url: string | null;
+  mimeType: string | null;
+  content: string | null;
+}): FilledNodeDrag | null {
+  if (item.type === 'image' || item.type === 'video') {
+    if (!item.signedUrl) return null;
+    const nodeType = item.type;
+    return {
+      type: nodeType,
+      data: staticMediaData({
+        assetId: item.id,
+        url: item.signedUrl,
+        name: item.url?.split('/').pop() ?? item.id,
+        mimeType: item.mimeType ?? ''
+      }),
+      ...genNodeSize(nodeType)
+    };
+  }
+
+  if (item.type === 'document') {
+    return { type: 'doc', data: staticDocData(item.content ?? ''), ...docNodeSize() };
+  }
+
+  return null;
+}
+
+export function brandFieldDrag(
+  brand: { name: string; logoAssetId: string | null; logoUrl: string | null; shortDescription: string | null; content: string | null },
+  field: DragBrandField
+): FilledNodeDrag | null {
+  if (field === 'logo') {
+    if (!brand.logoAssetId || !brand.logoUrl) return null;
+    return {
+      type: 'image',
+      data: staticMediaData({ assetId: brand.logoAssetId, url: brand.logoUrl, name: `${brand.name} logo`, mimeType: 'image/*' }),
+      ...genNodeSize('image')
+    };
+  }
+
+  if (field === 'text') {
+    return {
+      type: 'text',
+      data: staticTextData(`${brand.name}\n\n${brand.shortDescription ?? ''}`.trim()),
+      ...genNodeSize('text')
+    };
+  }
+
+  if (!brand.content) return null;
+  return { type: 'doc', data: staticDocData(brand.content), ...docNodeSize() };
+}
 
 export function serializeFilledNodeDrag(drag: FilledNodeDrag): string {
   return JSON.stringify(drag);

@@ -4,16 +4,7 @@
   import { invalidateAll } from '$app/navigation';
   import { createSupabaseBrowserClient } from '$lib/supabase/client';
   import { verdictForUpload, canvasUploadPrefix } from '$lib/canvas/upload-kind';
-  import { genNodeSize } from '$lib/canvas/gen-node';
-  import { docNodeSize } from '$lib/canvas/doc-node';
-  import {
-    DRAG_NODE_KIND,
-    CANVAS_DRAG_FILLED_NODE,
-    serializeFilledNodeDrag,
-    staticDocData,
-    staticMediaData,
-    type DragAssetKind
-  } from '$lib/canvas/drag-payload';
+  import { assetDrag, CANVAS_DRAG_FILLED_NODE, serializeFilledNodeDrag } from '$lib/canvas/drag-payload';
   import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
 
   let { data } = $props();
@@ -96,40 +87,15 @@
     if (file) void upload(file);
   }
 
-  /**
-   * TRASCINARE UNA TILE VERSO LA TELA — la stessa tabella "cosa diventa" di `drag-payload.ts`.
-   * Un'immagine e un video portano `data.assetId`: lo stesso patto di `uploaded-node.ts`, un
-   * nodo statico nato pieno, non un prompt da far girare. Un documento porta il suo `content`
-   * già convertito in markdown, letto dall'asset invece che riscaricato.
-   */
-  function assetDragKind(type: string): DragAssetKind | null {
-    if (type === 'image' || type === 'video') return type;
-    if (type === 'document') return 'document';
-    return null;
-  }
-
+  /** TRASCINARE UNA TILE VERSO LA TELA — `assetDrag` (`drag-payload.ts`) porta la tabella "cosa
+   *  diventa", la stessa che la sidebar del progetto usa per le sue card. */
   function onTileDragStart(e: DragEvent, item: (typeof data.items)[number]) {
-    const kind = assetDragKind(item.type);
-    if (!kind || !e.dataTransfer) return;
-
-    const nodeType = DRAG_NODE_KIND.asset[kind];
-    const nodeData =
-      nodeType === 'doc'
-        ? staticDocData(item.content ?? '')
-        : staticMediaData({
-            assetId: item.id,
-            url: item.signedUrl ?? '',
-            name: item.url?.split('/').pop() ?? item.id,
-            mimeType: item.mimeType ?? ''
-          });
-    const size = nodeType === 'doc' ? docNodeSize() : genNodeSize(nodeType);
+    const drag = assetDrag(item);
+    if (!drag || !e.dataTransfer) return;
 
     e.dataTransfer.effectAllowed = 'copy';
-    e.dataTransfer.setData(
-      CANVAS_DRAG_FILLED_NODE,
-      serializeFilledNodeDrag({ type: nodeType, data: nodeData, ...size })
-    );
-    e.dataTransfer.setData(CANVAS_DRAG_MEDIUM, nodeType === 'doc' ? 'doc' : nodeType);
+    e.dataTransfer.setData(CANVAS_DRAG_FILLED_NODE, serializeFilledNodeDrag(drag));
+    e.dataTransfer.setData(CANVAS_DRAG_MEDIUM, drag.type);
   }
 </script>
 
@@ -181,7 +147,7 @@
              la tastiera può ancora aprire il nodo dal link "from …" qui sotto. -->
         <div
           class="tile"
-          draggable={Boolean(assetDragKind(item.type))}
+          draggable={Boolean(assetDrag(item))}
           ondragstart={(e) => onTileDragStart(e, item)}
         >
           <span class="badge" class:generated={item.source === 'generated'}>
