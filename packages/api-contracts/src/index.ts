@@ -12,7 +12,6 @@ import {
   GENERATE_MEDIA,
   IMPORT_MEDIA_URL,
   REFINE_MEDIA,
-  RENDER_POST,
   RESCHEDULE_POST,
 } from './posts';
 import { SET_BRAND_SETTINGS } from './brand-settings';
@@ -100,7 +99,6 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   INSERT_ROW,
   QUERY_DATABASE,
   REFINE_MEDIA,
-  RENDER_POST,
   RESCHEDULE_POST,
   REVOKE_SHARE,
   SET_BRAND_SETTINGS,
@@ -150,7 +148,6 @@ export {
   GENERATE_MEDIA,
   IMPORT_MEDIA_URL,
   REFINE_MEDIA,
-  RENDER_POST,
   RESCHEDULE_POST,
 };
 /**

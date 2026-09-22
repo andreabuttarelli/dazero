@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isProduceApproved, markProduceApproved, type PreviewPost } from './content-preview';
+import { isProduceApproved, markProduceApproved, type PreviewPost } from './media-generate.images';
 
 describe('isProduceApproved', () => {
   it('is false for a plain post array', () => {

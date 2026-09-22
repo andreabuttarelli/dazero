@@ -30,7 +30,7 @@ type BrandProfile = any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRec = Record<string, any>;
 
-type PreviewPost = {
+export type PreviewPost = {
   imageUrl?: string;
   imageUrls?: string[];
   person?: string;
