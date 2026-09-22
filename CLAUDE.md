@@ -18,7 +18,6 @@ dazero dashboard <slug>                          # Brand overview
 dazero content <slug> --status pending_user      # Pending posts
 dazero approve <slug> --all                      # Approve all pending
 dazero post <slug> <id> edit --caption "..."     # Edit post
-dazero post <slug> <id> slide --index 1 ...      # Edit one carousel slide
 dazero plan <slug>                               # View editorial plan
 dazero weekly-plan <slug> produce --week 0       # Produce posts
 dazero seo <slug>                                # SEO grade + initiatives
