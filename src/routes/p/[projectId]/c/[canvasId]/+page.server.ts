@@ -16,7 +16,7 @@ import {
   moveNode,
   writeNodeData
 } from '$lib/server/repos/canvas';
-import { isNodeType, docData, productsOf, socialFeedOf } from '$lib/canvas-node-data';
+import { isNodeType, docData, productsOf, socialFeedOf, influencerOf } from '$lib/canvas-node-data';
 import { validateNodeData } from '$lib/canvas/node-data';
 import type { Actor } from '$lib/server/repos/actor';
 import { mintShareToken } from '$lib/canvas/doc-node';
@@ -27,6 +27,7 @@ import { runGenNode, runsOf } from '$lib/server/canvas/generate';
 import { gateOrgAiAction } from '$lib/server/cli-auth';
 import { listNodeProducts } from '$lib/server/repos/products';
 import { listNodeSocialPosts } from '$lib/server/repos/social-posts';
+import { getInfluencer, listInfluencerViewsByIds, signInfluencerViewFiles } from '$lib/server/repos/influencers';
 import { syncProductsNode } from '$lib/server/canvas/products-sync';
 import { syncSocialFeedNode } from '$lib/server/canvas/social-feed-sync';
 import { isProductPlatform } from '$lib/canvas/products-node';
@@ -97,9 +98,14 @@ async function loadGenRuns(
 async function loadDownloaded(
   db: Db,
   scope: { orgId: string; canvasId: string; nodes: Awaited<ReturnType<typeof listNodes>> }
-): Promise<{ products: Record<string, unknown[]>; socialPosts: Record<string, unknown[]> }> {
+): Promise<{
+  products: Record<string, unknown[]>;
+  socialPosts: Record<string, unknown[]>;
+  influencers: Record<string, { name: string; views: { id: string; label: string; url: string | null }[] }>;
+}> {
   const products: Record<string, unknown[]> = {};
   const socialPosts: Record<string, unknown[]> = {};
+  const influencers: Record<string, { name: string; views: { id: string; label: string; url: string | null }[] }> = {};
 
   for (const node of scope.nodes) {
     if (node.type === 'products') {
@@ -110,7 +116,52 @@ async function loadDownloaded(
     }
   }
 
-  return { products, socialPosts };
+  await loadInfluencerViews(db, scope.nodes, influencers);
+
+  return { products, socialPosts, influencers };
+}
+
+/**
+ * LE VISTE DI OGNI NODO `influencer`, firmate in un colpo solo — non una per nodo: una tela con
+ * dieci volti firmerebbe settanta URL a chiamate separate senza questo. `influencer_id` porta a
+ * `influencer_views` (mai a `nodes.data`, vedi `influencer-node.ts`); un influencer cancellato o
+ * di un'org che non è più questa non compare — `getInfluencer` applica la stessa RLS di ogni
+ * altra lettura, senza un controllo qui in più.
+ */
+async function loadInfluencerViews(
+  db: Db,
+  nodes: Awaited<ReturnType<typeof listNodes>>,
+  out: Record<string, { name: string; views: { id: string; label: string; url: string | null }[] }>
+): Promise<void> {
+  const influencerNodes = nodes.filter((n) => n.type === 'influencer');
+  if (!influencerNodes.length) {
+    return;
+  }
+
+  const influencerIds = influencerNodes
+    .map((n) => (typeof n.data.influencer_id === 'string' ? n.data.influencer_id : null))
+    .filter((id): id is string => Boolean(id));
+
+  const [viewsByInfluencer, influencerRows] = await Promise.all([
+    listInfluencerViewsByIds(db, influencerIds),
+    Promise.all(influencerIds.map((id) => getInfluencer(db, id)))
+  ]);
+
+  const allPaths = [...viewsByInfluencer.values()].flatMap((views) => views.map((v) => v.storagePath));
+  const signed = await signInfluencerViewFiles(db, allPaths);
+
+  const nameById = new Map(influencerRows.filter((r) => r !== null).map((r) => [r.id, r.name]));
+
+  for (const node of influencerNodes) {
+    const influencerId = typeof node.data.influencer_id === 'string' ? node.data.influencer_id : null;
+    if (!influencerId) continue;
+
+    const views = viewsByInfluencer.get(influencerId) ?? [];
+    out[node.id] = {
+      name: nameById.get(influencerId) ?? 'Influencer',
+      views: views.map((v) => ({ id: v.id, label: v.label, url: signed.get(v.storagePath) ?? null }))
+    };
+  }
 }
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -123,9 +174,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   ]);
 
   const runs = await loadGenRuns(db, { orgId, canvasId });
-  const { products, socialPosts } = await loadDownloaded(db, { orgId, canvasId, nodes });
+  const { products, socialPosts, influencers } = await loadDownloaded(db, { orgId, canvasId, nodes });
 
-  return { canvas, nodes, connections, catalogue, runs, products, socialPosts, projectId: params.projectId, orgId };
+  return { canvas, nodes, connections, catalogue, runs, products, socialPosts, influencers, projectId: params.projectId, orgId };
 };
 
 /** Un numero che arriva da un form: finito, o la riga nasce con `NaN` dentro una colonna numerica. */
@@ -207,12 +258,12 @@ export const actions: Actions = {
       listNodes(scope.db, scope), listConnections(scope.db, scope)
     ]);
     const runs = await loadGenRuns(scope.db, { orgId: scope.orgId, canvasId: scope.canvasId });
-    const { products, socialPosts } = await loadDownloaded(scope.db, {
+    const { products, socialPosts, influencers } = await loadDownloaded(scope.db, {
       orgId: scope.orgId,
       canvasId: scope.canvasId,
       nodes
     });
-    return { nodes, connections, runs, products, socialPosts };
+    return { nodes, connections, runs, products, socialPosts, influencers };
   },
 
   run: async ({ request, params, locals }) => {

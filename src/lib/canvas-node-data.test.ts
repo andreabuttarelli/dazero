@@ -5,6 +5,7 @@ import {
   docOf,
   frameOf,
   genOf,
+  influencerOf,
   isNodeType,
   newNodeRow,
   productsData,
@@ -15,7 +16,7 @@ import {
 
 describe('cosa una riga di `nodes` può essere', () => {
   it('i tipi che la pagina disegna, e niente che non sappia disegnare', () => {
-    expect(NODE_TYPES).toEqual(['text', 'image', 'video', 'iframe', 'doc', 'products', 'social_account_feed']);
+    expect(NODE_TYPES).toEqual(['text', 'image', 'video', 'iframe', 'doc', 'products', 'social_account_feed', 'influencer']);
   });
 
   it('un tipo che non è dei suoi non si riconosce', () => {
@@ -205,6 +206,23 @@ describe('un nodo products, letto dalla riga', () => {
     })!;
     const written = productsData(node);
     expect(productsOf({ id: 'n1', type: 'products', data: written })).toEqual(node);
+  });
+});
+
+describe('un nodo influencer, letto dalla riga', () => {
+  it('influencer_id viene da `data`', () => {
+    expect(influencerOf({ id: 'n1', type: 'influencer', data: { influencer_id: 'inf-1' } })).toEqual({
+      id: 'n1',
+      influencerId: 'inf-1'
+    });
+  });
+
+  it('una riga senza influencer_id non è un nodo influencer leggibile', () => {
+    expect(influencerOf({ id: 'n1', type: 'influencer', data: {} })).toBeNull();
+  });
+
+  it('un nodo che non è influencer non si legge come tale', () => {
+    expect(influencerOf({ id: 'n1', type: 'doc', data: { influencer_id: 'inf-1' } })).toBeNull();
   });
 });
 

@@ -5,6 +5,7 @@ import type { Addable } from '$lib/canvas/addable';
 import { isProductPlatform, type ProductsNode } from '$lib/canvas/products-node';
 import { isSocialFeedPlatform, type SocialFeedNode } from '$lib/canvas/social-feed-node';
 import { SYNC_STATUSES, type SyncStatus } from '$lib/canvas/sync-state';
+export { influencerNodeOf as influencerOf, type InfluencerNode } from '$lib/canvas/influencer-node';
 
 /**
  * DA UNA RIGA DI `nodes` A QUEL CHE SI DISEGNA, E RITORNO.
@@ -24,7 +25,7 @@ import { SYNC_STATUSES, type SyncStatus } from '$lib/canvas/sync-state';
  * riserva per campo invece di fidarsi — un `prompt` numerico che arriva intatto dentro un
  * `<textarea>` è una pagina che esplode al disegno, cioè il difetto più lontano dalla sua causa.
  */
-export const NODE_TYPES = ['text', 'image', 'video', 'iframe', 'doc', 'products', 'social_account_feed'] as const;
+export const NODE_TYPES = ['text', 'image', 'video', 'iframe', 'doc', 'products', 'social_account_feed', 'influencer'] as const;
 
 function syncStatusOf(v: unknown): SyncStatus {
   return typeof v === 'string' && (SYNC_STATUSES as readonly string[]).includes(v) ? (v as SyncStatus) : 'idle';

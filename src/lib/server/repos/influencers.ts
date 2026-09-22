@@ -49,7 +49,32 @@ const INFLUENCER_COLUMNS =
 
 const VIEW_COLUMNS = 'id, influencer_id, view_key, label, storage_path, mime_type, width, height, sort_order';
 
-function toInfluencer(row: Pick<InfluencerRow, keyof InfluencerRow>): Influencer {
+type InfluencerColumns = Pick<
+  InfluencerRow,
+  | 'id'
+  | 'org_id'
+  | 'template_of'
+  | 'name'
+  | 'slug'
+  | 'gender'
+  | 'age'
+  | 'ethnicity'
+  | 'body_type'
+  | 'height_band'
+  | 'summary'
+  | 'traits'
+  | 'source'
+  | 'builder'
+  | 'consent'
+  | 'created_at'
+>;
+
+type ViewColumns = Pick<
+  InfluencerViewRow,
+  'id' | 'influencer_id' | 'view_key' | 'label' | 'storage_path' | 'mime_type' | 'width' | 'height' | 'sort_order'
+>;
+
+function toInfluencer(row: InfluencerColumns): Influencer {
   return {
     id: row.id,
     orgId: row.org_id,
@@ -70,7 +95,7 @@ function toInfluencer(row: Pick<InfluencerRow, keyof InfluencerRow>): Influencer
   };
 }
 
-function toView(row: Pick<InfluencerViewRow, keyof InfluencerViewRow>): InfluencerView {
+function toView(row: ViewColumns): InfluencerView {
   return {
     id: row.id,
     influencerId: row.influencer_id,
@@ -214,6 +239,32 @@ export type CreateInfluencerViewInput = {
   height?: number | null;
   sortOrder: number;
 };
+
+const INFLUENCER_BUCKET = 'influencers';
+const SIGNED_URL_SECONDS = 300;
+
+/**
+ * FIRMA IN BLOCCO, come `signAssetFiles` per `canvas-assets`: un influencer porta 5-7 viste, e un
+ * pannello che ne elenca dieci firmerebbe settanta URL uno alla volta senza questo. Il bucket è
+ * privato (`public: false`) anche per `catalogue/...` — la lettura resta dietro la RLS di
+ * `storage.objects`, un URL firmato è comunque necessario, solo la policy dietro cambia da
+ * "propria org" a "chiunque abbia una sessione".
+ */
+export async function signInfluencerViewFiles(db: Db, paths: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const clean = [...new Set(paths.filter(Boolean))];
+  if (!clean.length) {
+    return out;
+  }
+
+  const { data } = await db.storage.from(INFLUENCER_BUCKET).createSignedUrls(clean, SIGNED_URL_SECONDS);
+  for (const row of data ?? []) {
+    if (row.signedUrl && row.path) {
+      out.set(row.path, row.signedUrl);
+    }
+  }
+  return out;
+}
 
 export async function insertInfluencerViews(db: Db, views: CreateInfluencerViewInput[]): Promise<InfluencerView[]> {
   if (!views.length) {

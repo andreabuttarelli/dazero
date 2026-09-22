@@ -23,6 +23,7 @@
   import DocNode from '$lib/components/canvas/DocNode.svelte';
   import ProductsNode from '$lib/components/canvas/ProductsNode.svelte';
   import SocialFeedNode from '$lib/components/canvas/SocialFeedNode.svelte';
+  import InfluencerNode from '$lib/components/canvas/InfluencerNode.svelte';
   import UploadedNode from '$lib/components/canvas/UploadedNode.svelte';
   import { verdictForUpload, canvasUploadPrefix } from '$lib/canvas/upload-kind';
   import { isUploadedNodeRow, uploadedNodeOf } from '$lib/canvas/uploaded-node';
@@ -31,6 +32,7 @@
   import { docNodeSize, shareUrlOf } from '$lib/canvas/doc-node';
   import { productsNodeSize } from '$lib/canvas/products-node';
   import { socialFeedNodeSize } from '$lib/canvas/social-feed-node';
+  import { influencerNodeSize } from '$lib/canvas/influencer-node';
   import { isGenAddable, type Addable } from '$lib/canvas/addable';
   import type { FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { tileNode } from '$lib/canvas/connect-rules';
@@ -43,6 +45,7 @@
     frameOf,
     genData,
     genOf,
+    influencerOf,
     newNodeRow,
     productsData,
     productsOf,
@@ -91,6 +94,11 @@
 
     if (node.type === 'social_account_feed') {
       const { w, h } = socialFeedNodeSize();
+      return { w: node.size.width ?? w, h: node.size.height ?? h };
+    }
+
+    if (node.type === 'influencer') {
+      const { w, h } = influencerNodeSize();
       return { w: node.size.width ?? w, h: node.size.height ?? h };
     }
 
@@ -185,6 +193,9 @@
    */
   const productsByNode = $derived((data.products ?? {}) as Record<string, Product[]>);
   const socialPostsByNode = $derived((data.socialPosts ?? {}) as Record<string, SocialPost[]>);
+  const influencersByNode = $derived(
+    (data.influencers ?? {}) as Record<string, { name: string; views: { id: string; label: string; url: string | null }[] }>
+  );
 
   /**
    * LE PORTE DI UN NODO CHE PRODUCE, dal modello scelto — mai un elenco scritto a mano. Un
@@ -647,6 +658,7 @@
         {@const doc = docOf(row)}
         {@const catalog = productsOf(row)}
         {@const feed = socialFeedOf(row)}
+        {@const influencer = influencerOf(row)}
         {@const uploaded = isUploadedNodeRow(row) ? uploadedNodeOf(row) : null}
         {#if uploaded}
           <UploadedNode node={uploaded} medium={row.type === 'video' ? 'video' : 'image'} />
@@ -696,6 +708,11 @@
             posts={socialPosts[id] ?? []}
             onchange={(patch) => write(id, socialFeedData({ ...feed, ...patch }))}
             onsync={() => sync(id)}
+          />
+        {:else if influencer}
+          <InfluencerNode
+            name={influencersByNode[id]?.name ?? 'Influencer'}
+            views={influencersByNode[id]?.views ?? []}
           />
         {/if}
       {/if}
