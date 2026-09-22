@@ -104,15 +104,6 @@
       [`${base}/ads/accounts`]: {
         title: $_('app.settings.ads.accountsTitle')
       },
-      [`${base}/autopilot`]: {
-        title: $_('app.settings.autopilot')
-      },
-      [`${base}/timezone`]: {
-        title: $_('app.settings.postingTimezone')
-      },
-      [`${base}/language`]: {
-        title: $_('app.settings.language')
-      },
       [`${base}/api-keys`]: {
         title: $_('app.settings.apiKeys.title')
       },
@@ -128,19 +119,11 @@
       [`${base}/billing`]: {
         title: $_('app.settings.billing.title')
       },
-      [`${base}/usage`]: {
-        title: $_('app.settings.usage.title')
-      },
       [`${base}/danger`]: {
         title: $_('app.settings.del.title')
       }
     };
-    return (
-      map[p] ??
-      (p.startsWith(`${base}/usage/sessions/`)
-        ? { title: $_('app.settings.usage.sessionTitle') }
-        : { title: $_('app.nav.settings') })
-    );
+    return map[p] ?? { title: $_('app.nav.settings') };
   });
 
   // Legacy `#section` bookmarks → path-based pages (hash can survive the root redirect).

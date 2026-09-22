@@ -1893,7 +1893,6 @@
       "connectViaOauth": "Connect via OAuth",
       "limitReached": "Limit reached",
       "connect": "Connect →",
-      "autopilot": "Autopilot",
       "radar": {
         "nav": "Radar sources",
         "title": "Radar sources",
@@ -1945,7 +1944,6 @@
       "save": "Save",
       "tzSavedToast": "✓ Timezone saved.",
       "languageSection": "Language",
-      "language": "Language",
       "languageDesc": "Choose the language for the dazero interface and emails.",
       "close": "Close",
       "profile": {
@@ -1999,42 +1997,7 @@
         "choosePlan": "Choose a plan →"
       },
       "usage": {
-        "title": "Usage",
-        "period": "Current billing period · {range}",
-        "creditsUsed": "Credits used",
-        "ofQuota": "{quota} quota · {pct}%",
-        "cost": "AI cost",
-        "callsCount": "{count} calls",
-        "tokens": "Tokens",
-        "tokensBreakdown": "{in} in · {out} out",
-        "agentRuns": "Agent runs",
-        "agentCost": "Est. {cost}",
-        "dailyCost": "Daily spend",
-        "dailyCostSub": "USD this period",
-        "byProvider": "By provider",
-        "byProviderSub": "Cost share",
-        "agentsTitle": "Agent sessions",
-        "agentsSub": "Strategy / planner / GTM estimates",
-        "sessionsTitle": "What the model saw",
-        "sessionsSub": "Full transcript of every agent turn",
-        "sessionBack": "← Usage",
-        "sessionTitle": "Agent transcript",
-        "sessionSystem": "System prompt",
-        "sessionTranscript": "Transcript",
-        "sessionEvents": "Structured events",
-        "sessionEmpty": "No model-visible sessions in this billing period yet.",
-        "callsTitle": "Call log",
-        "callsSub": "{total} calls · {failed} failed",
-        "noCalls": "No AI calls in this billing period yet.",
-        "col": {
-          "when": "When",
-          "label": "Call",
-          "provider": "Provider",
-          "tokens": "Tokens in/out",
-          "cost": "Cost",
-          "latency": "Latency",
-          "status": "Status"
-        }
+        "creditsUsed": "Credits used"
       },
       "referrals": {
         "title": "Referrals",
