@@ -16,6 +16,8 @@ import Image from '@lucide/svelte/icons/image';
 import Video from '@lucide/svelte/icons/video';
 import Globe from '@lucide/svelte/icons/globe';
 import FileText from '@lucide/svelte/icons/file-text';
+import ShoppingBag from '@lucide/svelte/icons/shopping-bag';
+import Rss from '@lucide/svelte/icons/rss';
 import type { Component } from 'svelte';
 import type { Addable } from './addable';
 
@@ -24,5 +26,7 @@ export const ADDABLE_ICON: Record<Addable, Component> = {
   image: Image,
   video: Video,
   iframe: Globe,
-  doc: FileText
+  doc: FileText,
+  products: ShoppingBag,
+  social_account_feed: Rss
 };

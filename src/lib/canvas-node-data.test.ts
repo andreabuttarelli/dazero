@@ -6,12 +6,16 @@ import {
   frameOf,
   genOf,
   isNodeType,
-  newNodeRow
+  newNodeRow,
+  productsData,
+  productsOf,
+  socialFeedData,
+  socialFeedOf
 } from '$lib/canvas-node-data';
 
 describe('cosa una riga di `nodes` può essere', () => {
   it('i tipi che la pagina disegna, e niente che non sappia disegnare', () => {
-    expect(NODE_TYPES).toEqual(['text', 'image', 'video', 'iframe', 'doc']);
+    expect(NODE_TYPES).toEqual(['text', 'image', 'video', 'iframe', 'doc', 'products', 'social_account_feed']);
   });
 
   it('un tipo che non è dei suoi non si riconosce', () => {
@@ -131,6 +135,110 @@ describe('con che `data` nasce una riga', () => {
 
   it('un documento nasce vuoto e privato', () => {
     expect(newNodeRow('doc')).toEqual({ content: '', public: false });
+  });
+
+  it('un nodo products nasce su shopify e senza url: la query è da scrivere', () => {
+    expect(newNodeRow('products')).toEqual({
+      type: 'shopify',
+      url: '',
+      limit: 20,
+      after: null,
+      only_first_photo: false
+    });
+  });
+
+  it('un nodo social_account_feed nasce su instagram e senza handle', () => {
+    expect(newNodeRow('social_account_feed')).toEqual({ platform: 'instagram', handle: '', limit: 20 });
+  });
+});
+
+describe('un nodo products, letto dalla riga', () => {
+  it('platform, url e parametri vengono da `data`', () => {
+    const node = productsOf({
+      id: 'n1',
+      type: 'products',
+      data: { type: 'woocommerce', url: 'https://shop.example.com', limit: 50, only_first_photo: true }
+    });
+
+    expect(node).toMatchObject({
+      id: 'n1',
+      platform: 'woocommerce',
+      url: 'https://shop.example.com',
+      limit: 50,
+      onlyFirstPhoto: true
+    });
+  });
+
+  it('una riga appena nata non è una riga rotta: si legge coi suoi vuoti', () => {
+    expect(productsOf({ id: 'n1', type: 'products', data: {} })).toEqual({
+      id: 'n1',
+      platform: 'shopify',
+      url: '',
+      limit: 20,
+      after: null,
+      onlyFirstPhoto: false,
+      syncStatus: 'idle',
+      syncError: null,
+      syncedCount: 0,
+      syncedAt: null
+    });
+  });
+
+  it('legge lo stato di un giro fallito', () => {
+    const node = productsOf({
+      id: 'n1',
+      type: 'products',
+      data: { type: 'shopify', url: 'https://x.com', sync_status: 'failed', sync_error: 'store_unreachable: 404' }
+    });
+    expect(node).toMatchObject({ syncStatus: 'failed', syncError: 'store_unreachable: 404' });
+  });
+
+  it('un nodo che non è products non si legge come tale', () => {
+    expect(productsOf({ id: 'n1', type: 'doc', data: {} })).toBeNull();
+  });
+
+  it('fa il giro di andata e ritorno', () => {
+    const node = productsOf({
+      id: 'n1',
+      type: 'products',
+      data: { type: 'shopify', url: 'https://x.com', limit: 10, sync_status: 'done', synced_count: 3 }
+    })!;
+    const written = productsData(node);
+    expect(productsOf({ id: 'n1', type: 'products', data: written })).toEqual(node);
+  });
+});
+
+describe('un nodo social_account_feed, letto dalla riga', () => {
+  it('platform e handle vengono da `data`', () => {
+    const node = socialFeedOf({ id: 'n1', type: 'social_account_feed', data: { platform: 'tiktok', handle: 'brand' } });
+    expect(node).toMatchObject({ id: 'n1', platform: 'tiktok', handle: 'brand' });
+  });
+
+  it('una riga appena nata non è una riga rotta: si legge coi suoi vuoti', () => {
+    expect(socialFeedOf({ id: 'n1', type: 'social_account_feed', data: {} })).toEqual({
+      id: 'n1',
+      platform: 'instagram',
+      handle: '',
+      limit: 20,
+      syncStatus: 'idle',
+      syncError: null,
+      syncedCount: 0,
+      syncedAt: null
+    });
+  });
+
+  it('un nodo che non è social_account_feed non si legge come tale', () => {
+    expect(socialFeedOf({ id: 'n1', type: 'products', data: {} })).toBeNull();
+  });
+
+  it('fa il giro di andata e ritorno', () => {
+    const node = socialFeedOf({
+      id: 'n1',
+      type: 'social_account_feed',
+      data: { platform: 'instagram', handle: 'brand', sync_status: 'done', synced_count: 12 }
+    })!;
+    const written = socialFeedData(node);
+    expect(socialFeedOf({ id: 'n1', type: 'social_account_feed', data: written })).toEqual(node);
   });
 });
 

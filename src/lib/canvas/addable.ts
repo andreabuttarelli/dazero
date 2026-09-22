@@ -18,7 +18,7 @@
 import { GEN_MEDIUMS, type GenMedium } from './gen-node';
 
 /** L'elenco che il menù e la barra mostrano, nell'ordine in cui si vedono. */
-export const CANVAS_ADDABLE = [...GEN_MEDIUMS, 'iframe', 'doc'] as const;
+export const CANVAS_ADDABLE = [...GEN_MEDIUMS, 'iframe', 'doc', 'products', 'social_account_feed'] as const;
 
 export type Addable = (typeof CANVAS_ADDABLE)[number];
 
@@ -45,5 +45,7 @@ export const ADDABLE_LABEL: Record<Addable, string> = {
   image: 'Immagine',
   video: 'Video',
   iframe: 'Pagina web',
-  doc: 'Documento'
+  doc: 'Documento',
+  products: 'Prodotti',
+  social_account_feed: 'Feed social'
 };

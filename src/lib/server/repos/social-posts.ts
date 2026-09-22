@@ -1,5 +1,5 @@
 import type { Db } from '$lib/server/db/client';
-import type { Database } from '$lib/database.types';
+import type { Database, Json } from '$lib/database.types';
 import type { NormalizedPost } from '$lib/server/scrapecreators';
 
 /**
@@ -79,18 +79,18 @@ export async function listNodeSocialPosts(
   return (data ?? []).map(toSocialPost);
 }
 
-function mediaOf(post: NormalizedPost): Record<string, unknown> {
+function mediaOf(post: NormalizedPost): Json {
   return {
     type: post.mediaType,
     thumbnailUrl: post.thumbnailUrl,
     videoUrl: post.videoUrl ?? null,
     durationMs: post.durationMs ?? null,
     hashtags: post.hashtags ?? []
-  };
+  } as Json;
 }
 
-function metricsOf(post: NormalizedPost): Record<string, unknown> {
-  return post.metrics ?? {};
+function metricsOf(post: NormalizedPost): Json {
+  return (post.metrics ?? {}) as Json;
 }
 
 export async function upsertNodeSocialPosts(

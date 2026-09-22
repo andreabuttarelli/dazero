@@ -1,5 +1,5 @@
 import type { Db } from '$lib/server/db/client';
-import type { Database } from '$lib/database.types';
+import type { Database, Json } from '$lib/database.types';
 import type { FetchedProduct, StorePlatform } from '$lib/server/store-fetch';
 
 /**
@@ -126,7 +126,7 @@ export async function upsertNodeProducts(
     price: p.price,
     currency: p.currency,
     url: p.url,
-    images: p.images,
+    images: p.images as Json,
     available: p.available,
     synced_at: syncedAt
   }));

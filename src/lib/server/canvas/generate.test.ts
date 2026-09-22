@@ -68,6 +68,24 @@ const freshNodeRow = {
 const { generateImagesWithoutBrand } = vi.hoisted(() => ({ generateImagesWithoutBrand: vi.fn() }));
 vi.mock('$lib/server/media-generate', () => ({ generateImagesWithoutBrand }));
 
+// `upstreamInputsFor` chiede sempre le modalità del modello quando il nodo ne ha uno: senza
+// questo mock il test colpirebbe il vero gateway (assente in test) e il modello risulterebbe
+// "sparito", bloccando ogni giro per una ragione estranea al test.
+const { modalitiesOf } = vi.hoisted(() => ({ modalitiesOf: vi.fn() }));
+vi.mock('$lib/server/ai-models-sync', () => ({ modalitiesOf }));
+vi.mock('$lib/server/supabase-admin', () => ({ createAdminClient: () => ({}) }));
+
+const SYNCED_MODALITIES = { input: ['text', 'image'], output: ['image'], synced_at: 'now' };
+
+// Il default per OGNI test: un modello sincronizzato. Un solo describe (quello sul modello
+// sparito) lo sovrascrive nel proprio `beforeEach`, e resta locale a quel blocco — Vitest
+// esegue i `beforeEach` dal più esterno al più interno, quindi quello locale vince sempre per
+// ultimo.
+beforeEach(() => {
+  modalitiesOf.mockReset();
+  modalitiesOf.mockResolvedValue(SYNCED_MODALITIES);
+});
+
 /**
  * IL DIFETTO VERO: `store_failed` senza dire perché.
  *
@@ -113,6 +131,58 @@ describe('un giro immagine che fallisce a depositare dice IL MOTIVO, non un toke
     const lastUpdate = nodeUpdates[nodeUpdates.length - 1];
     expect((lastUpdate?.payload as { data?: { error?: string } })?.data?.error).toContain('Bucket not found');
     expect((lastUpdate?.payload as { data?: { error?: string } })?.data?.error).not.toBe('store_failed');
+  });
+});
+
+/**
+ * UN MODELLO SPARITO DA `ai_models` BLOCCA IL NODO, PRIMA di spendere — mai dopo aver chiesto al
+ * provider. Il caso non è "non ancora sincronizzato" (il selettore offre solo modelli con una riga
+ * sincronizzata): è un modello che il nodo aveva già scelto, e che `ai_models` non conferma più a
+ * questo giro. Il prompt e il `refId` del giro precedente NON si toccano — solo `running`/`error`
+ * cambiano, la stessa disciplina di `giveUp()`.
+ */
+describe('un modello sparito da ai_models blocca il nodo senza toccare il suo stato', () => {
+  const priorRefId = '99999999-9999-9999-9999-999999999999';
+
+  beforeEach(() => {
+    modalitiesOf.mockReset();
+    modalitiesOf.mockResolvedValue(null);
+    generateImagesWithoutBrand.mockReset();
+  });
+
+  it('rifiuta con una ragione che nomina il modello, e non spende nulla', async () => {
+    const priorNodeRow = { ...freshNodeRow, data: { prompt: 'a cat wearing a hat', model: 'openai/gpt-image', refId: priorRefId } };
+
+    const { db, calls } = fakeDb(
+      { nodes: [priorNodeRow] },
+      { updateRows: { nodes: [{ ...priorNodeRow, version: 2 }] } }
+    );
+
+    const result = await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'image',
+      prompt: 'a cat wearing a hat',
+      model: 'openai/gpt-image',
+      params: {},
+      expectedVersion: 1
+    });
+
+    expect(result).toMatchObject({ kind: 'refused', error: expect.stringContaining('openai/gpt-image') });
+    expect(generateImagesWithoutBrand).not.toHaveBeenCalled();
+
+    const nodeUpdates = calls.filter((c) => c.table === 'nodes' && c.op === 'update');
+    const lastUpdate = nodeUpdates[nodeUpdates.length - 1];
+    const data = (lastUpdate?.payload as { data?: Record<string, unknown> })?.data;
+
+    expect(data?.running).toBe(false);
+    expect(data?.error).toContain('openai/gpt-image');
+    // Il prompt e il risultato del giro precedente sopravvivono: solo la generazione si è fermata.
+    expect(data?.prompt).toBe('a cat wearing a hat');
+    expect(data?.refId).toBe(priorRefId);
   });
 });
 
@@ -274,6 +344,18 @@ function statefulNodesDb(initial: { id: string; orgId: string; data: Record<stri
           select: () => ({
             eq: () => ({
               eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) })
+            })
+          })
+        };
+      }
+
+      // `writeNodeData` scrive `canvas_events` a ogni scrittura riuscita: questo scenario non
+      // guarda l'audit trail, solo che la scrittura del contenuto non si perda a un conflitto.
+      if (table === 'canvas_events') {
+        return {
+          insert: (payload: Record<string, unknown>) => ({
+            select: () => ({
+              single: async () => ({ data: { id: 1, created_at: new Date().toISOString(), ...payload }, error: null })
             })
           })
         };

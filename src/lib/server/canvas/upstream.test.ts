@@ -1,12 +1,21 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fakeDb } from '$lib/server/db/fake-db';
 import { upstreamInputsFor } from './upstream';
+
+const { modalitiesOf } = vi.hoisted(() => ({ modalitiesOf: vi.fn() }));
+vi.mock('$lib/server/ai-models-sync', () => ({ modalitiesOf }));
+vi.mock('$lib/server/supabase-admin', () => ({ createAdminClient: () => ({}) }));
 
 const ORG = '11111111-1111-1111-1111-111111111111';
 const CANVAS = '22222222-2222-2222-2222-222222222222';
 const TEXT_NODE = '33333333-3333-3333-3333-333333333333';
 const IMAGE_NODE = '44444444-4444-4444-4444-444444444444';
+const VIDEO_NODE = '66666666-6666-6666-6666-666666666666';
+const SOURCE_VIDEO_NODE = '77777777-7777-7777-7777-777777777777';
 const ASSET = '55555555-5555-5555-5555-555555555555';
+const VIDEO_ASSET = '88888888-8888-8888-8888-888888888888';
+
+const MODEL = 'bytedance/seedance-2-5';
 
 const nodeRow = (id: string, type: string, data: Record<string, unknown>) => ({
   id,
@@ -23,12 +32,17 @@ const nodeRow = (id: string, type: string, data: Record<string, unknown>) => ({
   version: 1
 });
 
+beforeEach(() => {
+  modalitiesOf.mockReset();
+  modalitiesOf.mockResolvedValue({ input: ['text', 'image', 'video', 'audio'], output: ['video'], synced_at: 'now' });
+});
+
 describe('upstreamInputsFor — dal database alla forma pura', () => {
   it('legge il testo dell\'ultimo giro di un nodo testo attraverso il suo asset', async () => {
     const { db } = fakeDb({
       nodes: [
         nodeRow(TEXT_NODE, 'text', { prompt: 'scrivi qualcosa', refId: ASSET }),
-        nodeRow(IMAGE_NODE, 'image', { prompt: '' })
+        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: MODEL })
       ],
       nodes_connections: [
         {
@@ -43,16 +57,17 @@ describe('upstreamInputsFor — dal database alla forma pura', () => {
       assets: [{ id: ASSET, project_id: 'p1', type: 'text', url: null, content: 'ciao mondo', mime_type: 'text/plain', bytes: null, width: null, height: null, duration_s: null, source: 'generated', source_node_id: TEXT_NODE, created_at: 'now' }]
     });
 
-    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE });
+    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE, model: MODEL });
 
     expect(out.text).toEqual(['ciao mondo']);
+    expect(out.blocked).toBeNull();
   });
 
   it('legge il `content` di un `doc` senza passare da un asset', async () => {
     const { db } = fakeDb({
       nodes: [
         nodeRow(TEXT_NODE, 'doc', { content: 'appunti', public: false }),
-        nodeRow(IMAGE_NODE, 'image', { prompt: '' })
+        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: MODEL })
       ],
       nodes_connections: [
         {
@@ -67,12 +82,24 @@ describe('upstreamInputsFor — dal database alla forma pura', () => {
       assets: []
     });
 
-    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE });
+    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE, model: MODEL });
 
     expect(out.text).toEqual(['appunti']);
   });
 
   it('un nodo senza archi in ingresso non riceve niente', async () => {
+    const { db } = fakeDb({
+      nodes: [nodeRow(IMAGE_NODE, 'image', { prompt: '', model: MODEL })],
+      nodes_connections: [],
+      assets: []
+    });
+
+    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE, model: MODEL });
+
+    expect(out).toMatchObject({ text: [], referenceImageUrls: [], rejected: [], blocked: null });
+  });
+
+  it('senza un modello scelto sul nodo, nessun controllo parte e le modalità restano vuote', async () => {
     const { db } = fakeDb({
       nodes: [nodeRow(IMAGE_NODE, 'image', { prompt: '' })],
       nodes_connections: [],
@@ -81,6 +108,86 @@ describe('upstreamInputsFor — dal database alla forma pura', () => {
 
     const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE });
 
-    expect(out).toMatchObject({ text: [], referenceImageUrls: [], rejected: [] });
+    expect(out.blocked).toBeNull();
+    expect(modalitiesOf).not.toHaveBeenCalled();
+  });
+});
+
+describe('upstreamInputsFor — un modello sparito da ai_models blocca il nodo', () => {
+  const videoToVideoDb = () =>
+    fakeDb({
+      nodes: [
+        nodeRow(SOURCE_VIDEO_NODE, 'video', { prompt: 'una clip', refId: VIDEO_ASSET }),
+        nodeRow(VIDEO_NODE, 'video', { prompt: '', model: MODEL })
+      ],
+      nodes_connections: [
+        {
+          id: 'e1',
+          canvas_id: CANVAS,
+          source_node_id: SOURCE_VIDEO_NODE,
+          target_node_id: VIDEO_NODE,
+          source_handle: null,
+          target_handle: null
+        }
+      ],
+      assets: [
+        {
+          id: VIDEO_ASSET,
+          project_id: 'p1',
+          type: 'video',
+          url: 'https://cdn/clip.mp4',
+          content: null,
+          mime_type: 'video/mp4',
+          bytes: null,
+          width: null,
+          height: null,
+          duration_s: 5,
+          source: 'generated',
+          source_node_id: SOURCE_VIDEO_NODE,
+          created_at: 'now'
+        }
+      ]
+    });
+
+  it('un modello sincronizzato risolve normalmente, mai bloccato', async () => {
+    const { db } = videoToVideoDb();
+
+    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: VIDEO_NODE, model: MODEL });
+
+    expect(out.blocked).toBeNull();
+    expect(out.referenceVideoUrls).toEqual(['https://cdn/clip.mp4']);
+  });
+
+  it('un modello che `ai_models` non conferma più blocca il nodo intero, con la ragione', async () => {
+    modalitiesOf.mockResolvedValue(null);
+    const { db } = videoToVideoDb();
+
+    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: VIDEO_NODE, model: MODEL });
+
+    expect(out.blocked).toContain(MODEL);
+    // Bloccato vuol dire NIENTE risolto — non un arco rifiutato, il nodo intero non gira.
+    expect(out.referenceVideoUrls).toEqual([]);
+    expect(out.text).toEqual([]);
+  });
+
+  it('un modello bloccato non legge nemmeno nodi e archi: nessuna query sprecata', async () => {
+    modalitiesOf.mockResolvedValue(null);
+    const { db, calls } = fakeDb({ nodes: [], nodes_connections: [], assets: [] });
+
+    await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: VIDEO_NODE, model: MODEL });
+
+    expect(calls.some((c) => c.table === 'nodes')).toBe(false);
+    expect(calls.some((c) => c.table === 'nodes_connections')).toBe(false);
+  });
+
+  it('un modello che NON prende video (ma esiste) rifiuta solo quell\'arco, non blocca il nodo', async () => {
+    modalitiesOf.mockResolvedValue({ input: ['text', 'image'], output: ['video'], synced_at: 'now' });
+    const { db } = videoToVideoDb();
+
+    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: VIDEO_NODE, model: MODEL });
+
+    expect(out.blocked).toBeNull();
+    expect(out.referenceVideoUrls).toEqual([]);
+    expect(out.rejected).toEqual([{ nodeId: SOURCE_VIDEO_NODE, why: expect.stringContaining('connettore') }]);
   });
 });

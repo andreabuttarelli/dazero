@@ -260,8 +260,19 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
   const upstream = await upstreamInputsFor(db, {
     orgId: input.orgId,
     canvasId: input.canvasId,
-    nodeId: input.nodeId
+    nodeId: input.nodeId,
+    model: input.model
   });
+
+  // UN MODELLO SPARITO DA `ai_models` FERMA IL GIRO PRIMA DI SPENDERE — mai dopo aver chiesto al
+  // provider, che lo scoprirebbe comunque pagando la latenza. `giveUp` è la chiusura giusta: il
+  // `refId` del giro precedente resta, solo `running`/`error` cambiano — il nodo mostra l'alert,
+  // non perde il suo ultimo risultato.
+  if (upstream.blocked) {
+    await giveUp(db, input, version, run, upstream.blocked);
+    return { kind: 'refused', error: upstream.blocked };
+  }
+
   const prompt = [...upstream.text, input.prompt].filter((t) => t.trim()).join('\n\n');
 
   try {
@@ -318,7 +329,9 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
       durationSeconds: input.params.duration,
       baseMediaId: upstream.startFrameUrl ?? undefined,
       lastFrameUrl: upstream.endFrameUrl ?? undefined,
-      referenceImageUrls: upstream.referenceImageUrls
+      referenceImageUrls: upstream.referenceImageUrls,
+      referenceVideoUrls: upstream.referenceVideoUrls,
+      referenceAudioUrls: upstream.referenceAudioUrls
     });
     if (!out.ok) {
       await giveUp(db, input, version, run, out.error);

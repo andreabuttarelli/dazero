@@ -69,16 +69,38 @@ export function readsAcrossOrgs(file: string, src: string): Finding[] {
 }
 
 /**
+ * `insert(rows)`/`upsert(rows, …)` passa un NOME, non un letterale: `org_id:` non compare mai
+ * nella chain — vive dove `rows` nasce, tipicamente `const rows = input.x.map(p => ({ org_id: …
+ * }))` qualche riga sopra. Questa funzione cerca quella definizione e ci guarda dentro, invece di
+ * dichiarare sospetto ogni upsert a lotti — la forma che `content-library.ts::replaceBrandPages`
+ * usa già, e che un batch upsert onesto non può evitare senza costruire l'oggetto due volte.
+ */
+function payloadVariableCarriesOrg(src: string, chain: string): boolean {
+  const name = chain.match(/\((?:const\s+)?([a-zA-Z_$][\w$]*)\s*[,)]/)?.[1];
+  if (!name) return false;
+
+  const def = new RegExp(`const\\s+${name}\\s*[:=][\\s\\S]{0,400}?\\n(?:\\s*(?:const|let|await|return|\\}))`);
+  const match = src.match(def);
+  return match ? ORG_IN_PAYLOAD.test(match[0]) : false;
+}
+
+/**
  * Una scrittura porta l'org nel payload E la ripete nel `WHERE` quando filtra su un id esterno.
  * Senza il `WHERE`, un `org_id` nel `SET` sposta la riga nel tenant nominato da chi chiama.
+ *
+ * `upsert` VALE COME `insert`, non come `update`/`delete`: non ha un `WHERE` — il vincolo unico
+ * decide da sé se scrive o sostituisce — quindi l'unica difesa possibile è la stessa dell'insert,
+ * `org_id` in ogni riga del payload. Trattarlo come `update` cercherebbe un `.eq('org_id', …)`
+ * che un upsert non ha e non può avere, e segnalerebbe come sospetto ogni upsert corretto.
  */
 export function writesAcrossOrgs(file: string, src: string): Finding[] {
   const out: Finding[] = [];
   for (const { at, chain } of chainsFrom(src)) {
     if (!WRITE.test(chain)) continue;
     if (TENANT_BY_OTHER_MEANS.has(tableOf(chain))) continue;
-    if (/\.insert\(/.test(chain)) {
+    if (/\.(insert|upsert)\(/.test(chain)) {
       if (ORG_IN_PAYLOAD.test(chain)) continue;
+      if (payloadVariableCarriesOrg(src, chain)) continue;
       out.push(finding(file, src, at, chain));
       continue;
     }
@@ -124,6 +146,33 @@ describe('la regola riconosce il difetto', () => {
     const src = "await db.from('nodes').insert({ org_id: orgId, project_id: projectId, type, x, y });";
 
     expect(writesAcrossOrgs('canvas.ts', src)).toEqual([]);
+  });
+
+  it('accetta un upsert a lotti il cui payload — costruito prima, non un letterale — porta org_id per riga', () => {
+    const src = [
+      "const rows = input.products.map((p) => ({",
+      '  org_id: input.orgId,',
+      '  node_id: input.nodeId,',
+      '  external_id: p.externalId',
+      '}));',
+      '',
+      "const { error } = await db.from('products').upsert(rows, { onConflict: 'node_id,external_id' });"
+    ].join('\n');
+
+    expect(writesAcrossOrgs('products.ts', src)).toEqual([]);
+  });
+
+  it('segnala un upsert a lotti il cui payload non porta org_id da nessuna parte', () => {
+    const src = [
+      'const rows = input.products.map((p) => ({',
+      '  node_id: input.nodeId,',
+      '  external_id: p.externalId',
+      '}));',
+      '',
+      "const { error } = await db.from('products').upsert(rows, { onConflict: 'node_id,external_id' });"
+    ].join('\n');
+
+    expect(writesAcrossOrgs('products.ts', src)).toHaveLength(1);
   });
 
   it('segnala un update scopato solo sull id', () => {

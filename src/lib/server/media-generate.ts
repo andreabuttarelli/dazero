@@ -71,6 +71,7 @@ export type GenerateMediaOpts = {
    *  percorso senza brand non ha una libreria da cui risolverli per id. */
   referenceImageUrls?: string[];
   referenceAudioUrls?: string[];
+  referenceVideoUrls?: string[];
 };
 
 export type GenerateMediaResult =
@@ -938,6 +939,7 @@ async function startVideo(opts: GenerateMediaOpts): Promise<VideoJobResult> {
       lastFrameUrl: coverUrl ? opts.lastFrameUrl : undefined,
       referenceImageUrls: opts.referenceImageUrls,
       referenceAudioUrls: opts.referenceAudioUrls,
+      referenceVideoUrls: opts.referenceVideoUrls,
       duration: opts.durationSeconds ?? (prefs.videoDuration as number | undefined),
       visualStyle,
       instructions: prefs.videoInstructions as string | null | undefined,

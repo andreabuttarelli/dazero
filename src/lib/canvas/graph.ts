@@ -78,9 +78,11 @@ export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
   // Un'immagine nasce da un prompt, e un'altra immagine collegata è il riferimento da riprodurre
   // fedelmente (`ImageJob.baseMediaId`) — non un prompt in più, quindi resta facoltativa.
   image: { medium: 'image', generated: true, accepts: ['text', 'image'], requires: ['text'] },
-  // Un video nasce dal prompt, e un'immagine è il fotogramma di partenza: facoltativa, perché il
-  // prodotto sa girare una clip dal solo testo e chiederla bloccherebbe quel percorso.
-  video: { medium: 'video', generated: true, accepts: ['text', 'image'], requires: ['text'] },
+  // Un video nasce dal prompt; un'immagine e un altro video sono riferimenti facoltativi — il
+  // prodotto sa girare una clip dal solo testo, e chiederli bloccherebbe quel percorso. Un video
+  // collegato è un riferimento multimodale (`referenceVideoUrls`), non un fotogramma: quello è
+  // ciò che una MANIGLIA esplicita dice, non ciò che ogni immagine porta di default.
+  video: { medium: 'video', generated: true, accepts: ['text', 'image', 'video'], requires: ['text'] },
   // Un post è un contenitore: prende ciò che gli si dà, e il suo medium lo porta il contenuto.
   post: { medium: null, generated: true, accepts: ['text', 'image', 'video'], requires: ['text'] },
   // Le tre righe che esistono già nel database. Niente le genera: sono sorgenti.
@@ -206,11 +208,11 @@ function capacityOf(node: CanvasNode): Record<Medium, number> {
     const caps = videoRefCapacity(node.model);
     // Il prompt è sempre uno: due prompt sono due video, non un video con due prompt.
     //
-    // Sulle immagini vale il tetto del modello e basta. Il primo fotogramma NON si somma qui: il
-    // renderer lo passa per conto suo (`imageUrl`) ed è la prima delle immagini collegate, non una
-    // in più — sommarlo darebbe un limite che il provider poi rifiuta, cioè la peggiore delle
-    // bugie, quella scoperta dopo aver speso. Un modello senza riferimenti tiene comunque quel
-    // fotogramma: è il caso `Math.max(caps.images, 1)`.
+    // Sulle immagini vale il tetto del modello — che sia un fotogramma su una maniglia esplicita
+    // o un riferimento multimodale, entrambi arrivano come immagini collegate a questo nodo, e il
+    // tetto del provider è sullo STESSO campo (`frame_images` + `input_references` condividono il
+    // conto in `video.ts`). Un modello senza riferimenti multimodali tiene comunque un'immagine:
+    // il fotogramma iniziale resta possibile ovunque, è il caso `Math.max(caps.images, 1)`.
     return { text: 1, image: Math.max(caps.images, 1), video: caps.videos };
   }
   // Un post raccoglie ciò che gli si dà: è un contenitore, non un modello con i suoi limiti.

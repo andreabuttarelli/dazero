@@ -21,13 +21,29 @@
   import GenNode from '$lib/components/canvas/GenNode.svelte';
   import IframeNode from '$lib/components/canvas/IframeNode.svelte';
   import DocNode from '$lib/components/canvas/DocNode.svelte';
+  import ProductsNode from '$lib/components/canvas/ProductsNode.svelte';
+  import SocialFeedNode from '$lib/components/canvas/SocialFeedNode.svelte';
   import { genNodeSize, type GenNode as GenNodeState, type GenMedium, type ModelChoice } from '$lib/canvas/gen-node';
   import { iframeNodeSize, type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
   import { docNodeSize, shareUrlOf } from '$lib/canvas/doc-node';
+  import { productsNodeSize } from '$lib/canvas/products-node';
+  import { socialFeedNodeSize } from '$lib/canvas/social-feed-node';
   import { isGenAddable, type Addable } from '$lib/canvas/addable';
   import { tileNode } from '$lib/canvas/connect-rules';
   import { planDelete } from '$lib/canvas/delete-plan';
-  import { docData, docOf, frameData, frameOf, genData, genOf, newNodeRow } from '$lib/canvas-node-data';
+  import {
+    docData,
+    docOf,
+    frameData,
+    frameOf,
+    genData,
+    genOf,
+    newNodeRow,
+    productsData,
+    productsOf,
+    socialFeedData,
+    socialFeedOf
+  } from '$lib/canvas-node-data';
   import {
     EDGE_KIND_LABEL,
     isCanvasEdgeKind,
@@ -35,6 +51,8 @@
     type FlowEdge
   } from '$lib/canvas-edges';
   import type { CanvasNodeRecord, Connection } from '$lib/server/repos/canvas';
+  import type { Product } from '$lib/server/repos/products';
+  import type { SocialPost } from '$lib/server/repos/social-posts';
 
   let { data } = $props();
 
@@ -58,6 +76,16 @@
 
     if (node.type === 'doc') {
       const { w, h } = docNodeSize();
+      return { w: node.size.width ?? w, h: node.size.height ?? h };
+    }
+
+    if (node.type === 'products') {
+      const { w, h } = productsNodeSize();
+      return { w: node.size.width ?? w, h: node.size.height ?? h };
+    }
+
+    if (node.type === 'social_account_feed') {
+      const { w, h } = socialFeedNodeSize();
       return { w: node.size.width ?? w, h: node.size.height ?? h };
     }
 
@@ -137,6 +165,14 @@
   );
 
   /**
+   * IL CATALOGO E IL FEED SCARICATI, per nodo. Come `runsByNode`: `products`/`social_account_feed`
+   * non portano il contenuto in `data.data` — vive in `products`/`social_posts` — quindi arriva
+   * qui, letto dal server in `load` e riletto a ogni `refresh()`.
+   */
+  const productsByNode = $derived((data.products ?? {}) as Record<string, Product[]>);
+  const socialPostsByNode = $derived((data.socialPosts ?? {}) as Record<string, SocialPost[]>);
+
+  /**
    * Quel che `CanvasFlow` disegna. `node` è ciò che serve a dire NO a un arco prima che nasca:
    * senza, `verdictBetween` non sa che tipo sia una tile e — per la sua regola, che è giusta —
    * lascia passare tutto.
@@ -163,6 +199,11 @@
   let snapshotVersion = 0;
   const enqueue = createWriteQueue();
 
+  let productsOverride = $state<Record<string, Product[]> | null>(null);
+  let socialPostsOverride = $state<Record<string, SocialPost[]> | null>(null);
+  const products = $derived(productsOverride ?? productsByNode);
+  const socialPosts = $derived(socialPostsOverride ?? socialPostsByNode);
+
   async function refresh() {
     const version = ++snapshotVersion;
     const snapshot = await post('snapshot', {});
@@ -171,6 +212,8 @@
     }
     nodes = (snapshot.nodes as CanvasNodeRecord[]).map(toTile);
     edges = (snapshot.connections as Connection[]).map(toEdge);
+    productsOverride = (snapshot.products ?? {}) as Record<string, Product[]>;
+    socialPostsOverride = (snapshot.socialPosts ?? {}) as Record<string, SocialPost[]>;
   }
 
   $effect(() => {
@@ -247,9 +290,16 @@
     input.value = '';
   }
 
+  function sizeForAddable(what: Addable): { w: number; h: number } {
+    if (isGenAddable(what)) { return genNodeSize(what); }
+    if (what === 'doc') { return docNodeSize(); }
+    if (what === 'products') { return productsNodeSize(); }
+    if (what === 'social_account_feed') { return socialFeedNodeSize(); }
+    return iframeNodeSize();
+  }
+
   async function create(what: Addable, at: { x: number; y: number }) {
-    const size = isGenAddable(what) ? genNodeSize(what) : what === 'doc' ? docNodeSize() : iframeNodeSize();
-    const { w, h } = size;
+    const { w, h } = sizeForAddable(what);
 
     const res = await post('create', {
       type: what,
@@ -324,6 +374,29 @@
       );
     }
     await post('restore', { node_id: id, run_id: runId });
+    await refresh();
+  }
+
+  /**
+   * SINCRONIZZARE UN NODO `products` O `social_account_feed`. Ottimista sullo stato — "sta
+   * scaricando" appare subito — ma il risultato lo scrive il server: qui non c'è modo di sapere
+   * quanti prodotti o post sono arrivati prima che risponda.
+   */
+  async function sync(id: string) {
+    const before = nodes.find((node) => node.id === id);
+    if (!before) { return; }
+
+    nodes = nodes.map((node) => (node.id === id ? { ...node, data: { ...node.data, sync_status: 'running' } } : node));
+    pending += 1;
+
+    const result = await post('sync', { node_id: id, version: before.version });
+    pending -= 1;
+
+    if (!result) {
+      await refresh();
+      return;
+    }
+
     await refresh();
   }
 
@@ -505,6 +578,8 @@
         {@const gen = genOf(row)}
         {@const frame = frameOf(row)}
         {@const doc = docOf(row)}
+        {@const catalog = productsOf(row)}
+        {@const feed = socialFeedOf(row)}
         {#if typeof row.data.assetId === 'string'}
           <div class="asset">
             {#if row.type === 'image'}
@@ -546,6 +621,20 @@
             node={doc}
             onchange={(patch) => write(id, docData({ ...doc, ...patch }))}
             onshare={(on) => share(id, on)}
+          />
+        {:else if catalog}
+          <ProductsNode
+            node={catalog}
+            products={products[id] ?? []}
+            onchange={(patch) => write(id, productsData({ ...catalog, ...patch }))}
+            onsync={() => sync(id)}
+          />
+        {:else if feed}
+          <SocialFeedNode
+            node={feed}
+            posts={socialPosts[id] ?? []}
+            onchange={(patch) => write(id, socialFeedData({ ...feed, ...patch }))}
+            onsync={() => sync(id)}
           />
         {/if}
       {/if}

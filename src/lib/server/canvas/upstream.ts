@@ -7,19 +7,37 @@ import {
   type UpstreamInputs,
   type UpstreamNode
 } from '$lib/canvas/upstream-inputs';
+import type { Modalities } from '$lib/canvas/connectors';
 
 /**
  * DAL DATABASE ALLA FORMA PURA CHE `upstream-inputs.ts` LEGGE.
  *
- * `resolveUpstreamInputs` non sa cosa sia un `Db`: prende nodi ed archi già risolti. Questo file
- * è l'unico punto che parla al database per farglieli — legge la tela una volta, poi chiede allo
- * stesso testo da monte a ogni giro. `generate.ts` chiama SOLO questa funzione: la forma della
- * query resta qui, non in mezzo alla logica che genera.
+ * `resolveUpstreamInputs` non sa cosa sia un `Db`: prende nodi, archi e le modalità del modello
+ * scelto già risolte. Questo file è l'unico punto che parla al database per farglieli — legge la
+ * tela una volta, poi chiede lo stesso testo da monte a ogni giro. `generate.ts` chiama SOLO
+ * questa funzione: la forma della query resta qui, non in mezzo alla logica che genera.
  *
  * IL TESTO SORGENTE È `data.refId` → `assets.content` per un nodo che genera, `data.content` per
  * un `doc`: la stessa coppia che `canvas-node-data.ts::genOf`/`docOf` legge lato client, perché
  * client e server devono vedere lo stesso nodo nello stesso modo.
+ *
+ * UN MODELLO SPARITO DA `ai_models` BLOCCA IL NODO, PRIMA di risolvere qualunque cosa — non un
+ * arco alla volta, il nodo intero: `modalitiesOf` che torna `null` qui non è "non ancora
+ * sincronizzato" (quel caso non può più accadere — il selettore offre solo modelli con una riga
+ * sincronizzata, decisione di prodotto), è un modello che C'ERA e ora `ai_models` non conferma
+ * più. Chiedere al provider lo scoprirebbe comunque, dopo aver speso la latenza e forse il costo
+ * della chiamata: qui si rifiuta PRIMA, con la stessa ragione che l'alert nel nodo può mostrare.
+ * Il prompt, gli archi e il risultato precedente del nodo non li tocca nessuno — `blocked` ferma
+ * solo la PROSSIMA generazione, la stessa disciplina che tiene `giveUp()` in `generate.ts` lontano
+ * dal cancellare un `refId` prima di sapere l'esito.
  */
+async function modalitiesFor(model: string): Promise<Modalities | null> {
+  const { modalitiesOf } = await import('$lib/server/ai-models-sync');
+  const { createAdminClient } = await import('$lib/server/supabase-admin');
+  const modalities = await modalitiesOf(createAdminClient(), model);
+  return modalities ? { input: modalities.input } : null;
+}
+
 function sourceText(node: CanvasNodeRecord, asset: { content: string | null } | null): string | null {
   if (node.type === 'doc') {
     const content = node.data.content;
@@ -55,6 +73,17 @@ function toUpstreamEdge(connection: Connection): UpstreamEdge {
   };
 }
 
+const BLOCKED_EMPTY: Omit<UpstreamInputs, 'blocked'> = {
+  text: [],
+  referenceImageUrl: null,
+  referenceImageUrls: [],
+  referenceVideoUrls: [],
+  referenceAudioUrls: [],
+  startFrameUrl: null,
+  endFrameUrl: null,
+  rejected: []
+};
+
 /**
  * QUEL CHE `nodeId` RICEVE DA CHI GLI È COLLEGATO SU QUESTA TELA, ADESSO. Una lettura di `nodes`
  * e `nodes_connections`, poi l'asset di ogni sorgente che ne ha uno: N+1 sugli asset, accettabile
@@ -63,8 +92,17 @@ function toUpstreamEdge(connection: Connection): UpstreamEdge {
  */
 export async function upstreamInputsFor(
   db: Db,
-  scope: { orgId: string; canvasId: string; nodeId: string }
+  scope: { orgId: string; canvasId: string; nodeId: string; model?: string | null }
 ): Promise<UpstreamInputs> {
+  const modalities = scope.model ? await modalitiesFor(scope.model) : null;
+
+  if (scope.model && !modalities) {
+    return {
+      ...BLOCKED_EMPTY,
+      blocked: `${scope.model} non è più fra i modelli sincronizzati da OpenRouter — scegli un altro modello per continuare`
+    };
+  }
+
   const [nodeRows, connectionRows] = await Promise.all([
     listNodes(db, { orgId: scope.orgId, canvasId: scope.canvasId }),
     listConnections(db, { orgId: scope.orgId, canvasId: scope.canvasId })
@@ -73,5 +111,5 @@ export async function upstreamInputsFor(
   const nodes = await Promise.all(nodeRows.map((n) => toUpstreamNode(db, scope.orgId, n)));
   const edges = connectionRows.map(toUpstreamEdge);
 
-  return resolveUpstreamInputs(nodes, edges, scope.nodeId);
+  return resolveUpstreamInputs(nodes, edges, scope.nodeId, modalities ?? { input: [] });
 }

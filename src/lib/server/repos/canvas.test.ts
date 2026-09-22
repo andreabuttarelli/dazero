@@ -3,6 +3,7 @@ import {
   createConnection,
   createNode,
   deleteConnection,
+  deleteNode,
   listNodes,
   listNodesByIds,
   moveNode,
@@ -13,15 +14,28 @@ import type { Db } from '$lib/server/db/client';
 /**
  * Il doppio del client: registra le chiamate e restituisce le righe che gli si danno, così il
  * test guarda la QUERY che parte — che è dove sta la tenancy — e non solo il valore che torna.
+ *
+ * `canvas_events` porta sempre una riga: ogni scrittura strutturale (`createNode`, `writeNodeData`,
+ * `deleteConnection`, …) registra un evento subito dopo, e senza una riga da restituire quella
+ * `insert().select().single()` tornerebbe `null` e romperebbe la chiamata vera che sta testando.
  */
 type Call = { table: string; op: string; payload?: unknown; filters: [string, unknown][] };
 
-function fakeDb(rows: Record<string, unknown[]>) {
+/**
+ * `updateRows` separa cosa un `UPDATE ... RETURNING` porta da cosa una `SELECT` precedente vede:
+ * `writeNodeData`/`deleteNode` leggono la riga PRIMA di scriverla (per `before` sull'evento) e poi
+ * scrivono la NUOVA — senza questa distinzione le due letture vedrebbero la stessa riga e
+ * `before`/`after` risulterebbero identici, un difetto del doppio, non del codice vero.
+ */
+function fakeDb(rows: Record<string, unknown[]>, updateRows?: Record<string, unknown[]>) {
   const calls: Call[] = [];
+  const seeded: Record<string, unknown[]> = { canvas_events: [eventRow], ...rows };
+  const written: Record<string, unknown[]> = updateRows ? { canvas_events: [eventRow], ...updateRows } : seeded;
 
   const builder = (table: string, op: string, payload?: unknown) => {
     const call: Call = { table, op, payload, filters: [] };
     calls.push(call);
+    const rowsFor = op === 'update' ? written : seeded;
 
     const chain = {
       eq(column: string, value: unknown) {
@@ -42,10 +56,10 @@ function fakeDb(rows: Record<string, unknown[]>) {
       select() {
         return chain;
       },
-      single: async () => ({ data: (rows[table] ?? [])[0] ?? null, error: null }),
-      maybeSingle: async () => ({ data: (rows[table] ?? [])[0] ?? null, error: null }),
+      single: async () => ({ data: (rowsFor[table] ?? [])[0] ?? null, error: null }),
+      maybeSingle: async () => ({ data: (rowsFor[table] ?? [])[0] ?? null, error: null }),
       then: (resolve: (v: { data: unknown[]; error: null }) => unknown) =>
-        resolve({ data: rows[table] ?? [], error: null })
+        resolve({ data: rowsFor[table] ?? [], error: null })
     };
     return chain;
   };
@@ -87,8 +101,23 @@ const nodeRow = {
   updated_at: '2026-09-21T00:00:00Z'
 };
 
-const filtersOf = (calls: Call[], op: string) =>
-  Object.fromEntries(calls.find((c) => c.op === op)!.filters);
+const eventRow = {
+  id: 1,
+  org_id: ORG,
+  canvas_id: CANVAS,
+  kind: 'node.update',
+  node_id: NODE,
+  edge_id: null,
+  before: null,
+  after: null,
+  actor_kind: 'system',
+  actor_id: null,
+  agent_key: null,
+  created_at: '2026-09-21T00:00:00Z'
+};
+
+const filtersOf = (calls: Call[], op: string, table?: string) =>
+  Object.fromEntries(calls.find((c) => c.op === op && (!table || c.table === table))!.filters);
 
 describe('la lettura non esce dall org', () => {
   it('lista i nodi di un canvas con org_id accanto', async () => {
@@ -258,11 +287,162 @@ describe('la creazione porta sempre l org', () => {
     expect(calls.find((c) => c.op === 'insert')!.payload).toMatchObject({ org_id: ORG, canvas_id: CANVAS });
   });
 
-  it('un arco si cancella dentro la sua org', async () => {
+  it('un arco si cancella (soft) dentro la sua org', async () => {
+    const connectionRow = {
+      id: 'c1',
+      org_id: ORG,
+      canvas_id: CANVAS,
+      source_node_id: NODE,
+      target_node_id: NODE,
+      source_handle: null,
+      target_handle: null
+    };
+    const { db, calls } = fakeDb({ nodes_connections: [connectionRow] });
+
+    await deleteConnection(db, { orgId: ORG, connectionId: 'c1' });
+
+    const update = calls.find((c) => c.op === 'update' && c.table === 'nodes_connections')!;
+    expect(Object.fromEntries(update.filters)).toMatchObject({ id: 'c1', org_id: ORG });
+    expect(update.payload).toHaveProperty('deleted_at');
+  });
+
+  it('un arco non trovato non scrive niente, né la cancellazione né un evento', async () => {
     const { db, calls } = fakeDb({ nodes_connections: [] });
 
     await deleteConnection(db, { orgId: ORG, connectionId: 'c1' });
 
-    expect(filtersOf(calls, 'delete')).toMatchObject({ id: 'c1', org_id: ORG });
+    expect(calls.filter((c) => c.op === 'update' || c.op === 'insert')).toEqual([]);
+  });
+});
+
+describe('ogni gesto strutturale scrive canvas_events', () => {
+  it('node.create porta after con type/posizione/data e l org', async () => {
+    const { db, calls } = fakeDb({ nodes: [nodeRow] });
+
+    await createNode(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, type: 'text', x: 10, y: 20 });
+
+    const event = calls.find((c) => c.table === 'canvas_events' && c.op === 'insert')!;
+    expect(event.payload).toMatchObject({
+      org_id: ORG,
+      canvas_id: CANVAS,
+      kind: 'node.create',
+      node_id: NODE
+    });
+  });
+
+  it('node.update porta before E after, non solo il nuovo valore', async () => {
+    const { db, calls } = fakeDb(
+      { nodes: [nodeRow] },
+      { nodes: [{ ...nodeRow, version: 4, data: { prompt: 'nuovo' } }] }
+    );
+
+    await writeNodeData(db, { orgId: ORG, nodeId: NODE, data: { prompt: 'nuovo' }, expectedVersion: 3 });
+
+    const event = calls.find((c) => c.table === 'canvas_events' && c.op === 'insert')!;
+    expect(event.payload).toMatchObject({
+      kind: 'node.update',
+      node_id: NODE,
+      before: { data: { prompt: 'ciao' } },
+      after: { data: { prompt: 'nuovo' } }
+    });
+  });
+
+  it('un conflitto di versione non scrive nessun evento: niente da raccontare se non si è scritto', async () => {
+    const { db, calls } = fakeDb({ nodes: [] });
+
+    await writeNodeData(db, { orgId: ORG, nodeId: NODE, data: { prompt: 'nuovo' }, expectedVersion: 3 });
+
+    expect(calls.some((c) => c.table === 'canvas_events')).toBe(false);
+  });
+
+  it('node.delete porta before con lo stato intero, quello che restore_node dovrà rimettere', async () => {
+    const { db, calls } = fakeDb({ nodes: [nodeRow] });
+
+    await deleteNode(db, { orgId: ORG, nodeId: NODE });
+
+    const event = calls.find((c) => c.table === 'canvas_events' && c.op === 'insert')!;
+    expect(event.payload).toMatchObject({
+      kind: 'node.delete',
+      node_id: NODE,
+      before: { type: 'text', position: { x: 10, y: 20, z: 0 }, data: { prompt: 'ciao' }, version: 3 }
+    });
+  });
+
+  it('un nodo già sparito non scrive né la cancellazione né un evento', async () => {
+    const { db, calls } = fakeDb({ nodes: [] });
+
+    await deleteNode(db, { orgId: ORG, nodeId: NODE });
+
+    expect(calls.filter((c) => c.op === 'update' || c.table === 'canvas_events')).toEqual([]);
+  });
+
+  it('edge.create porta i due capi dell arco', async () => {
+    const connectionRow = {
+      id: 'c1',
+      org_id: ORG,
+      canvas_id: CANVAS,
+      source_node_id: NODE,
+      target_node_id: NODE,
+      source_handle: null,
+      target_handle: 'prompt'
+    };
+    const { db, calls } = fakeDb({ nodes_connections: [connectionRow] });
+
+    await createConnection(db, { orgId: ORG, canvasId: CANVAS, sourceNodeId: NODE, targetNodeId: NODE, targetHandle: 'prompt' });
+
+    const event = calls.find((c) => c.table === 'canvas_events' && c.op === 'insert')!;
+    expect(event.payload).toMatchObject({
+      kind: 'edge.create',
+      edge_id: 'c1',
+      after: { sourceNodeId: NODE, targetNodeId: NODE, targetHandle: 'prompt' }
+    });
+  });
+
+  it('edge.delete porta i due capi in before, per poterlo ricreare', async () => {
+    const connectionRow = {
+      id: 'c1',
+      org_id: ORG,
+      canvas_id: CANVAS,
+      source_node_id: NODE,
+      target_node_id: NODE,
+      source_handle: null,
+      target_handle: 'prompt'
+    };
+    const { db, calls } = fakeDb({ nodes_connections: [connectionRow] });
+
+    await deleteConnection(db, { orgId: ORG, connectionId: 'c1' });
+
+    const event = calls.find((c) => c.table === 'canvas_events' && c.op === 'insert')!;
+    expect(event.payload).toMatchObject({
+      kind: 'edge.delete',
+      edge_id: 'c1',
+      before: { sourceNodeId: NODE, targetNodeId: NODE, targetHandle: 'prompt' }
+    });
+  });
+
+  it('senza actor, l evento porta system — mai un null muto', async () => {
+    const { db, calls } = fakeDb({ nodes: [nodeRow] });
+
+    await createNode(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, type: 'text', x: 0, y: 0 });
+
+    const event = calls.find((c) => c.table === 'canvas_events' && c.op === 'insert')!;
+    expect(event.payload).toMatchObject({ actor_kind: 'system', actor_id: null });
+  });
+
+  it('con un actor agente, l evento porta la tripla intera', async () => {
+    const { db, calls } = fakeDb({ nodes: [nodeRow] });
+
+    await createNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      type: 'text',
+      x: 0,
+      y: 0,
+      actor: { kind: 'agent', id: 'user-1', agentKey: 'mcp:claude' }
+    });
+
+    const event = calls.find((c) => c.table === 'canvas_events' && c.op === 'insert')!;
+    expect(event.payload).toMatchObject({ actor_kind: 'agent', actor_id: 'user-1', agent_key: 'mcp:claude' });
   });
 });

@@ -16,13 +16,20 @@ import {
   moveNode,
   writeNodeData
 } from '$lib/server/repos/canvas';
-import { isNodeType, docData } from '$lib/canvas-node-data';
+import { isNodeType, docData, productsOf, socialFeedOf } from '$lib/canvas-node-data';
+import type { Actor } from '$lib/server/repos/actor';
 import { mintShareToken } from '$lib/canvas/doc-node';
 import { clearDocShare, setDocShare } from '$lib/server/repos/doc-share';
 import { isCanvasEdgeKind } from '$lib/canvas-edges';
 import { canvasModelCatalogue } from '$lib/server/canvas-catalogue';
 import { runGenNode, runsOf } from '$lib/server/canvas/generate';
 import { gateOrgAiAction } from '$lib/server/cli-auth';
+import { listNodeProducts } from '$lib/server/repos/products';
+import { listNodeSocialPosts } from '$lib/server/repos/social-posts';
+import { syncProductsNode } from '$lib/server/canvas/products-sync';
+import { syncSocialFeedNode } from '$lib/server/canvas/social-feed-sync';
+import { isProductPlatform } from '$lib/canvas/products-node';
+import { isSocialFeedPlatform } from '$lib/canvas/social-feed-node';
 
 // L'azione `run` aspetta la generazione DENTRO la richiesta — un'immagine ci mette fino a un
 // minuto, e il default della piattaforma è sotto quella soglia. Senza, la richiesta muore a metà
@@ -42,6 +49,11 @@ export const config = { maxDuration: 300 };
  * rispetta quella divisione invece di uniformarla.
  */
 type Scope = { db: Db; orgId: string; canvasId: string; canvas: Canvas; userId: string };
+
+/** Ogni gesto della tela che passa da qui è di una persona, mai un `system` muto: `canvas_events` deve saperlo. */
+function userActor(scope: { userId: string }): Actor {
+  return { kind: 'user', id: scope.userId };
+}
 
 async function scopeFor(locals: App.Locals, canvasId: string): Promise<Scope> {
   const { session, user } = await locals.safeGetSession();
@@ -76,6 +88,30 @@ async function loadGenRuns(
   return runs;
 }
 
+/**
+ * IL CATALOGO E IL FEED SCARICATI, per nodo: `products`/`social_account_feed` non portano il
+ * contenuto in `data` — vive in `products`/`social_posts` — quindi la pagina lo legge qui, come
+ * `loadGenRuns` legge `node_runs` per il nodo che produce.
+ */
+async function loadDownloaded(
+  db: Db,
+  scope: { orgId: string; canvasId: string; nodes: Awaited<ReturnType<typeof listNodes>> }
+): Promise<{ products: Record<string, unknown[]>; socialPosts: Record<string, unknown[]> }> {
+  const products: Record<string, unknown[]> = {};
+  const socialPosts: Record<string, unknown[]> = {};
+
+  for (const node of scope.nodes) {
+    if (node.type === 'products') {
+      products[node.id] = await listNodeProducts(db, { orgId: scope.orgId, nodeId: node.id });
+    }
+    if (node.type === 'social_account_feed') {
+      socialPosts[node.id] = await listNodeSocialPosts(db, { orgId: scope.orgId, nodeId: node.id });
+    }
+  }
+
+  return { products, socialPosts };
+}
+
 export const load: PageServerLoad = async ({ params, locals }) => {
   const { db, orgId, canvasId, canvas } = await scopeFor(locals, params.canvasId);
 
@@ -86,8 +122,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   ]);
 
   const runs = await loadGenRuns(db, { orgId, canvasId });
+  const { products, socialPosts } = await loadDownloaded(db, { orgId, canvasId, nodes });
 
-  return { canvas, nodes, connections, catalogue, runs, projectId: params.projectId };
+  return { canvas, nodes, connections, catalogue, runs, products, socialPosts, projectId: params.projectId };
 };
 
 /** Un numero che arriva da un form: finito, o la riga nasce con `NaN` dentro una colonna numerica. */
@@ -97,6 +134,46 @@ function coord(value: FormDataEntryValue | null): number | null {
   }
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+type SyncNodeOutcome = { ok: true; synced: number; extra?: Record<string, unknown> } | { ok: false; error: string };
+
+/** `products`: `type`/`url`/`limit`/`after`/`only_first_photo` sono la query — `productsOf` li legge già validati. */
+async function syncProducts(db: Db, orgId: string, projectId: string | null, node: { id: string; data: Record<string, unknown> }): Promise<SyncNodeOutcome> {
+  const parsed = productsOf({ id: node.id, type: 'products', data: node.data });
+  if (!parsed || !isProductPlatform(parsed.platform) || !parsed.url.trim()) {
+    return { ok: false, error: 'invalid_url: this node has no store URL to sync' };
+  }
+
+  const outcome = await syncProductsNode(db, {
+    orgId,
+    projectId,
+    nodeId: node.id,
+    platform: parsed.platform,
+    storeUrl: parsed.url,
+    limit: parsed.limit,
+    after: parsed.after,
+    onlyFirstPhoto: parsed.onlyFirstPhoto
+  });
+
+  return outcome.ok ? { ok: true, synced: outcome.synced, extra: { after: outcome.after } } : outcome;
+}
+
+/** `social_account_feed`: `platform`/`handle`/`limit` sono la query. */
+async function syncSocialFeed(db: Db, orgId: string, projectId: string | null, node: { id: string; data: Record<string, unknown> }): Promise<SyncNodeOutcome> {
+  const parsed = socialFeedOf({ id: node.id, type: 'social_account_feed', data: node.data });
+  if (!parsed || !isSocialFeedPlatform(parsed.platform) || !parsed.handle.trim()) {
+    return { ok: false, error: 'missing_handle: this node has no handle to sync' };
+  }
+
+  return syncSocialFeedNode(db, {
+    orgId,
+    projectId,
+    nodeId: node.id,
+    platform: parsed.platform,
+    handle: parsed.handle,
+    limit: parsed.limit
+  });
 }
 
 export const actions: Actions = {
@@ -121,7 +198,12 @@ export const actions: Actions = {
       listNodes(scope.db, scope), listConnections(scope.db, scope)
     ]);
     const runs = await loadGenRuns(scope.db, { orgId: scope.orgId, canvasId: scope.canvasId });
-    return { nodes, connections, runs };
+    const { products, socialPosts } = await loadDownloaded(scope.db, {
+      orgId: scope.orgId,
+      canvasId: scope.canvasId,
+      nodes
+    });
+    return { nodes, connections, runs, products, socialPosts };
   },
 
   run: async ({ request, params, locals }) => {
@@ -167,6 +249,65 @@ export const actions: Actions = {
     return out;
   },
   /**
+   * SINCRONIZZARE UN NODO `products` O `social_account_feed`. Non è `run`: non c'è un provider
+   * asincrono da rincorrere, il giro finisce dentro questa stessa richiesta — quindi lo stato si
+   * scrive due volte, "sta scaricando" prima di chiamare il fetcher e il risultato dopo, invece
+   * di aprire una `node_runs` per un giro che non ha bisogno di sopravvivere alla richiesta.
+   *
+   * `projectId` PASSA AL REPO ANCHE QUANDO NULLO: `products`/`social_posts` sono indipendenti da
+   * un brand, ma restano del progetto che le ha scaricate — un `project_id` nullo è una riga che
+   * la libreria del progetto non trova più.
+   */
+  sync: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const nodeId = String(fd.get('node_id') ?? '');
+    const version = coord(fd.get('version'));
+    if (!nodeId || version === null || !Number.isInteger(version) || version < 1) {
+      return fail(400, { error: 'richiesta non valida' });
+    }
+
+    const node = await findNode(scope.db, { orgId: scope.orgId, nodeId });
+    if (!node || (node.type !== 'products' && node.type !== 'social_account_feed')) {
+      return fail(404, { error: 'nodo non trovato' });
+    }
+
+    const running = await writeNodeData(scope.db, {
+      orgId: scope.orgId,
+      nodeId,
+      expectedVersion: version,
+      data: { ...node.data, sync_status: 'running', sync_error: null },
+      actor: userActor(scope)
+    });
+    if (running.outcome === 'conflict') {
+      return fail(409, { conflict: true });
+    }
+
+    const outcome =
+      node.type === 'products'
+        ? await syncProducts(scope.db, scope.orgId, scope.canvas.projectId, node)
+        : await syncSocialFeed(scope.db, scope.orgId, scope.canvas.projectId, node);
+
+    const patch = outcome.ok
+      ? { sync_status: 'done', sync_error: null, synced_count: outcome.synced, synced_at: new Date().toISOString(), ...outcome.extra }
+      : { sync_status: 'failed', sync_error: outcome.error };
+
+    const written = await writeNodeData(scope.db, {
+      orgId: scope.orgId,
+      nodeId,
+      expectedVersion: running.node.version,
+      data: { ...running.node.data, ...patch },
+      actor: userActor(scope)
+    });
+    if (written.outcome === 'conflict') {
+      return fail(409, { conflict: true });
+    }
+
+    return { node: written.node };
+  },
+
+  /**
    * RIMETTERE IN VETRINA UN GIRI DI PRIMA. La storia non si tocca: è uno sguardo, non una
    * cancellazione — e il `refId` che resta è l'unica cosa che sopravvive a una ricarica.
    */
@@ -200,7 +341,8 @@ export const actions: Actions = {
         runId: run.id,
         running: false,
         error: null
-      }
+      },
+      actor: userActor(scope)
     });
     if (shown.outcome === 'conflict') {
       return fail(409, { conflict: true });
@@ -236,7 +378,8 @@ export const actions: Actions = {
       type,
       x,
       y,
-      data
+      data,
+      actor: userActor(scope)
     });
 
     return { node };
@@ -262,7 +405,7 @@ export const actions: Actions = {
       return fail(404, { error: 'nodo non trovato' });
     }
 
-    const node = await moveNode(scope.db, { orgId: scope.orgId, nodeId, x, y });
+    const node = await moveNode(scope.db, { orgId: scope.orgId, nodeId, x, y, actor: userActor(scope) });
     if (!node) {
       return fail(404, { error: 'nodo non trovato' });
     }
@@ -302,7 +445,8 @@ export const actions: Actions = {
       orgId: scope.orgId,
       nodeId,
       data,
-      expectedVersion: version
+      expectedVersion: version,
+      actor: userActor(scope)
     });
 
     if (written.outcome === 'conflict') {
@@ -377,7 +521,8 @@ export const actions: Actions = {
       canvasId: scope.canvasId,
       sourceNodeId,
       targetNodeId,
-      sourceHandle: kind
+      sourceHandle: kind,
+      actor: userActor(scope)
     });
 
     return { connection };
@@ -395,7 +540,7 @@ export const actions: Actions = {
     if (!(await listConnections(scope.db, scope)).some((edge) => edge.id === connectionId)) {
       return fail(404, { error: 'linea non trovata' });
     }
-    await deleteConnection(scope.db, { orgId: scope.orgId, connectionId });
+    await deleteConnection(scope.db, { orgId: scope.orgId, connectionId, actor: userActor(scope) });
 
     return { disconnected: true };
   },
@@ -426,10 +571,10 @@ export const actions: Actions = {
       .map((edge) => edge.id);
 
     for (const connectionId of connectionIds) {
-      await deleteConnection(scope.db, { orgId: scope.orgId, connectionId });
+      await deleteConnection(scope.db, { orgId: scope.orgId, connectionId, actor: userActor(scope) });
     }
     for (const nodeId of nodeIds) {
-      await deleteNode(scope.db, { orgId: scope.orgId, nodeId });
+      await deleteNode(scope.db, { orgId: scope.orgId, nodeId, actor: userActor(scope) });
     }
 
     return { removed: true };

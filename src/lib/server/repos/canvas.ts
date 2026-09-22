@@ -2,6 +2,7 @@ import type { Db } from '$lib/server/db/client';
 import type { Database } from '$lib/database.types';
 import type { NarrowedDatabase } from '$lib/server/db/typed-database';
 import { actorCols, edgeActorCols, type Actor } from './actor';
+import { recordEvent } from './canvas-events';
 
 /**
  * IL CANVAS: TELE, NODI, ARCHI.
@@ -16,6 +17,17 @@ import { actorCols, edgeActorCols, type Actor } from './actor';
  *   due mani sullo stesso nodo si contendono il mouse e nessuno perde lavoro. Il contenuto no: se
  *   A riscrive il prompt e B cambia il modello, l'ultimo che arriva butta via l'altro senza dirlo.
  *   Per questo `data` passa dalla versione attesa e zero righe è un conflitto, non un successo.
+ *
+ *   OGNI GESTO STRUTTURALE SCRIVE `canvas_events` — create/update/delete di un nodo, create/delete
+ *   di un arco, MAI `moveNode`/`resizeNode` (la posizione vive già su `nodes.x/y/z`, e un evento
+ *   per fotogramma sarebbe il 90% delle righe e la meno interessante da rileggere). Questo file lo
+ *   fa da sé, non i chiamanti: `before` deve essere popolato SEMPRE, anche quando chi chiama non
+ *   passa un `actor` e quindi non potrà mai riguardarlo — è il registro che permette di recuperare
+ *   un nodo cancellato per sbaglio, non il meccanismo di undo (quello sta nello stack del client,
+ *   `$lib/canvas/undo-plan.ts`). Se la scrittura sul database fallisce non si scrive l'evento; se
+ *   `recordEvent` fallisce dopo una scrittura riuscita, l'errore sale lo stesso — un evento perso
+ *   è un buco nell'audit trail, mai un motivo per far credere a chi chiama che la scrittura vera
+ *   non sia andata a buon fine.
  */
 type NodeInsert = NarrowedDatabase['public']['Tables']['nodes']['Insert'];
 type NodeUpdate = NarrowedDatabase['public']['Tables']['nodes']['Update'];
@@ -266,7 +278,18 @@ export async function createNode(
   if (error) {
     throw error;
   }
-  return toNode(data);
+  const node = toNode(data);
+
+  await recordEvent(db, {
+    orgId: input.orgId,
+    canvasId: input.canvasId,
+    kind: 'node.create',
+    nodeId: node.id,
+    after: { type: node.type, position: node.position, data: node.data },
+    actor: input.actor
+  });
+
+  return node;
 }
 
 /**
@@ -312,6 +335,11 @@ export async function resizeNode(
 /**
  * Il contenuto: concorrenza ottimistica. Zero righe non è "niente da fare" — è qualcun altro che
  * è arrivato prima, e chi chiama rilegge e riapplica invece di credere di aver scritto.
+ *
+ * `before` PER L'EVENTO VIENE DA UNA LETTURA A PARTE, prima dello `UPDATE`: la riga che
+ * `RETURNING` restituisce è già quella NUOVA, e l'evento deve raccontare cosa c'era prima, non
+ * cosa c'è adesso. Se nel frattempo la versione non torna più (conflitto), quella lettura non è
+ * comunque sprecata: è la stessa domanda che il conflitto avrebbe comunque richiesto.
  */
 export async function writeNodeData(
   db: Db,
@@ -323,6 +351,8 @@ export async function writeNodeData(
     actor?: Actor;
   }
 ): Promise<DataWrite> {
+  const before = await findNode(db, { orgId: input.orgId, nodeId: input.nodeId });
+
   /** Stesso confine di `createNode`: `data` arriva senza `type` qui, quindi non può provare di
    *  essere la forma giusta — chi valida la coppia è `write-tool.ts`, non questo repo. */
   const patch: NodeUpdate = {
@@ -347,7 +377,19 @@ export async function writeNodeData(
   if (!data) {
     return { outcome: 'conflict' };
   }
-  return { outcome: 'written', node: toNode(data) };
+  const node = toNode(data);
+
+  await recordEvent(db, {
+    orgId: input.orgId,
+    canvasId: node.canvasId,
+    kind: 'node.update',
+    nodeId: node.id,
+    before: { data: before?.data ?? null },
+    after: { data: node.data },
+    actor: input.actor
+  });
+
+  return { outcome: 'written', node };
 }
 
 /** Soft delete: l'arco verso un nodo non svanisce mentre qualcuno lo guarda, e l'undo ha cosa riportare. */
@@ -355,6 +397,11 @@ export async function deleteNode(
   db: Db,
   input: { orgId: string; nodeId: string; actor?: Actor }
 ): Promise<void> {
+  const before = await findNode(db, { orgId: input.orgId, nodeId: input.nodeId });
+  if (!before) {
+    return;
+  }
+
   const { error } = await db
     .from('nodes')
     .update({ deleted_at: new Date().toISOString(), ...actorCols(input.actor) })
@@ -364,6 +411,76 @@ export async function deleteNode(
   if (error) {
     throw error;
   }
+
+  await recordEvent(db, {
+    orgId: input.orgId,
+    canvasId: before.canvasId,
+    kind: 'node.delete',
+    nodeId: before.id,
+    before: { type: before.type, position: before.position, size: before.size, data: before.data, version: before.version },
+    actor: input.actor
+  });
+}
+
+/**
+ * L'INVERSA DI `deleteNode`: rimette in vita un nodo soft-deleted con lo stato che aveva prima —
+ * per l'undo del client (`$lib/canvas/undo-plan.ts::inverseOf` → `restore_node`). `before` è
+ * quello che `deleteNode` ha scritto su `canvas_events.before`: `type`, `position`, `size`,
+ * `data`, `version`. `type` non si riscrive — non cambia mai per un nodo che esiste già — ma il
+ * resto sì, perché un ripristino deve tornare esattamente dove il nodo era, non dove capita.
+ */
+export async function restoreNode(
+  db: Db,
+  input: {
+    orgId: string;
+    nodeId: string;
+    position: { x: number; y: number; z: number };
+    size: { width: number | null; height: number | null };
+    data: Record<string, unknown>;
+    actor?: Actor;
+  }
+): Promise<CanvasNodeRecord | null> {
+  const patch: NodeUpdate = {
+    deleted_at: null,
+    x: input.position.x,
+    y: input.position.y,
+    z: input.position.z,
+    width: input.size.width,
+    height: input.size.height,
+    data: input.data,
+    ...actorCols(input.actor),
+    updated_at: new Date().toISOString()
+  } as NodeUpdate;
+
+  const { data, error } = await db
+    .from('nodes')
+    .update(patch)
+    .eq('id', input.nodeId)
+    .eq('org_id', input.orgId)
+    .select(NODE_COLUMNS)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  if (!data) {
+    return null;
+  }
+  const node = toNode(data);
+
+  // Niente `node.restore` nel CHECK di `kind` (NEW_DATABASE_STRUCTURE.md §7): un ripristino è
+  // scritto come `node.create` perché la forma di `after` è la stessa e la riga rinasce visibile
+  // — un `kind` in più andrebbe aggiunto con una migrazione sua, non inventato di nascosto qui.
+  await recordEvent(db, {
+    orgId: input.orgId,
+    canvasId: node.canvasId,
+    kind: 'node.create',
+    nodeId: node.id,
+    after: { type: node.type, position: node.position, data: node.data },
+    actor: input.actor
+  });
+
+  return node;
 }
 
 export async function listConnections(
@@ -412,20 +529,116 @@ export async function createConnection(
   if (error) {
     throw error;
   }
-  return toConnection(data);
+  const connection = toConnection(data);
+
+  await recordEvent(db, {
+    orgId: input.orgId,
+    canvasId: input.canvasId,
+    kind: 'edge.create',
+    edgeId: connection.id,
+    after: {
+      sourceNodeId: connection.sourceNodeId,
+      targetNodeId: connection.targetNodeId,
+      sourceHandle: connection.sourceHandle,
+      targetHandle: connection.targetHandle
+    },
+    actor: input.actor
+  });
+
+  return connection;
 }
 
+/**
+ * Soft delete, non hard: `nodes_connections.deleted_at` esiste per lo stesso motivo di
+ * `nodes.deleted_at` — un arco cancellato per sbaglio, o annullato da chi lo ha tolto, deve poter
+ * tornare. `listConnections` già filtra `deleted_at is null`; una riga soft-deleted resta
+ * invisibile alla tela finché nessuno la ripristina.
+ */
 export async function deleteConnection(
   db: Db,
-  input: { orgId: string; connectionId: string }
+  input: { orgId: string; connectionId: string; actor?: Actor }
 ): Promise<void> {
+  const { data: before, error: readError } = await db
+    .from('nodes_connections')
+    .select(CONNECTION_COLUMNS)
+    .eq('id', input.connectionId)
+    .eq('org_id', input.orgId)
+    .maybeSingle();
+
+  if (readError) {
+    throw readError;
+  }
+  if (!before) {
+    return;
+  }
+
   const { error } = await db
     .from('nodes_connections')
-    .delete()
+    .update({ deleted_at: new Date().toISOString(), ...edgeActorCols(input.actor) })
     .eq('id', input.connectionId)
     .eq('org_id', input.orgId);
 
   if (error) {
     throw error;
   }
+
+  const connection = toConnection(before);
+  await recordEvent(db, {
+    orgId: input.orgId,
+    canvasId: connection.canvasId,
+    kind: 'edge.delete',
+    edgeId: connection.id,
+    before: {
+      sourceNodeId: connection.sourceNodeId,
+      targetNodeId: connection.targetNodeId,
+      sourceHandle: connection.sourceHandle,
+      targetHandle: connection.targetHandle
+    },
+    actor: input.actor
+  });
+}
+
+/**
+ * L'INVERSA DI `deleteConnection`: rimette in vita un arco soft-deleted, per l'undo del client
+ * (`$lib/canvas/undo-plan.ts::inverseOf` → `restore_edge`). Un `INSERT` nuovo darebbe un `id`
+ * diverso — il gesto da annullare parlava di QUESTO arco, non di uno equivalente — quindi qui si
+ * pulisce `deleted_at` sulla riga che c'è già.
+ */
+export async function restoreConnection(
+  db: Db,
+  input: { orgId: string; connectionId: string; actor?: Actor }
+): Promise<Connection | null> {
+  const { data, error } = await db
+    .from('nodes_connections')
+    .update({ deleted_at: null, ...edgeActorCols(input.actor) })
+    .eq('id', input.connectionId)
+    .eq('org_id', input.orgId)
+    .select(CONNECTION_COLUMNS)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  if (!data) {
+    return null;
+  }
+  const connection = toConnection(data);
+
+  // Stesso ragionamento di restoreNode: niente `edge.restore` nel CHECK, `edge.create` racconta
+  // lo stesso fatto — l'arco torna visibile.
+  await recordEvent(db, {
+    orgId: input.orgId,
+    canvasId: connection.canvasId,
+    kind: 'edge.create',
+    edgeId: connection.id,
+    after: {
+      sourceNodeId: connection.sourceNodeId,
+      targetNodeId: connection.targetNodeId,
+      sourceHandle: connection.sourceHandle,
+      targetHandle: connection.targetHandle
+    },
+    actor: input.actor
+  });
+
+  return connection;
 }

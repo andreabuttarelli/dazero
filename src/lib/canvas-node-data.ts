@@ -2,6 +2,9 @@ import { GEN_MEDIUMS, type GenMedium, type GenNode, type GenParams } from '$lib/
 import { sourceOf, type IframeNode } from '$lib/canvas/iframe-node';
 import type { DocNode } from '$lib/canvas/doc-node';
 import type { Addable } from '$lib/canvas/addable';
+import { isProductPlatform, type ProductsNode } from '$lib/canvas/products-node';
+import { isSocialFeedPlatform, type SocialFeedNode } from '$lib/canvas/social-feed-node';
+import { SYNC_STATUSES, type SyncStatus } from '$lib/canvas/sync-state';
 
 /**
  * DA UNA RIGA DI `nodes` A QUEL CHE SI DISEGNA, E RITORNO.
@@ -21,7 +24,15 @@ import type { Addable } from '$lib/canvas/addable';
  * riserva per campo invece di fidarsi — un `prompt` numerico che arriva intatto dentro un
  * `<textarea>` è una pagina che esplode al disegno, cioè il difetto più lontano dalla sua causa.
  */
-export const NODE_TYPES = ['text', 'image', 'video', 'iframe', 'doc'] as const;
+export const NODE_TYPES = ['text', 'image', 'video', 'iframe', 'doc', 'products', 'social_account_feed'] as const;
+
+function syncStatusOf(v: unknown): SyncStatus {
+  return typeof v === 'string' && (SYNC_STATUSES as readonly string[]).includes(v) ? (v as SyncStatus) : 'idle';
+}
+
+function num(v: unknown, fallback: number): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+}
 
 export type NodeType = (typeof NODE_TYPES)[number];
 
@@ -87,6 +98,48 @@ export function docOf(row: NodeRow): DocNode | null {
   };
 }
 
+/** Il nodo `products` dietro una riga, o null quando quella riga è un'altra cosa. */
+export function productsOf(row: NodeRow): ProductsNode | null {
+  if (row.type !== 'products') {
+    return null;
+  }
+
+  const platform = row.data.type;
+
+  return {
+    id: row.id,
+    platform: typeof platform === 'string' && isProductPlatform(platform) ? platform : 'shopify',
+    url: str(row.data.url),
+    limit: num(row.data.limit, 20),
+    after: nullableStr(row.data.after),
+    onlyFirstPhoto: row.data.only_first_photo === true,
+    syncStatus: syncStatusOf(row.data.sync_status),
+    syncError: nullableStr(row.data.sync_error),
+    syncedCount: num(row.data.synced_count, 0),
+    syncedAt: nullableStr(row.data.synced_at)
+  };
+}
+
+/** Il nodo `social_account_feed` dietro una riga, o null quando quella riga è un'altra cosa. */
+export function socialFeedOf(row: NodeRow): SocialFeedNode | null {
+  if (row.type !== 'social_account_feed') {
+    return null;
+  }
+
+  const platform = row.data.platform;
+
+  return {
+    id: row.id,
+    platform: typeof platform === 'string' && isSocialFeedPlatform(platform) ? platform : 'instagram',
+    handle: str(row.data.handle),
+    limit: num(row.data.limit, 20),
+    syncStatus: syncStatusOf(row.data.sync_status),
+    syncError: nullableStr(row.data.sync_error),
+    syncedCount: num(row.data.synced_count, 0),
+    syncedAt: nullableStr(row.data.synced_at)
+  };
+}
+
 /**
  * Con che contenuto una riga nasce. Vuoto in entrambi i casi, e per lo stesso motivo: scegliere
  * un modello o un indirizzo al posto di chi aggiunge il nodo è una decisione presa per lui — e
@@ -99,6 +152,14 @@ export function newNodeRow(what: Addable): Record<string, unknown> {
 
   if (what === 'doc') {
     return { content: '', public: false };
+  }
+
+  if (what === 'products') {
+    return { type: 'shopify', url: '', limit: 20, after: null, only_first_photo: false };
+  }
+
+  if (what === 'social_account_feed') {
+    return { platform: 'instagram', handle: '', limit: 20 };
   }
 
   return { prompt: '', model: null, params: {}, refId: null };
@@ -122,4 +183,36 @@ export function frameData(node: IframeNode): Record<string, unknown> {
 
 export function docData(node: DocNode): Record<string, unknown> {
   return { content: node.content, public: node.public };
+}
+
+/**
+ * Quel che di un nodo `products` si scrive. Lo stato di sincronizzazione (`syncStatus`…) VIAGGIA
+ * col resto — a differenza di `runs` sul nodo che produce, qui non c'è una tabella `node_runs`
+ * separata per questi due tipi: un solo giro alla volta, il risultato precedente non è "storia"
+ * da tenere, è lo stato corrente che il prossimo giro sovrascrive.
+ */
+export function productsData(node: ProductsNode): Record<string, unknown> {
+  return {
+    type: node.platform,
+    url: node.url,
+    limit: node.limit,
+    after: node.after,
+    only_first_photo: node.onlyFirstPhoto,
+    sync_status: node.syncStatus,
+    sync_error: node.syncError,
+    synced_count: node.syncedCount,
+    synced_at: node.syncedAt
+  };
+}
+
+export function socialFeedData(node: SocialFeedNode): Record<string, unknown> {
+  return {
+    platform: node.platform,
+    handle: node.handle,
+    limit: node.limit,
+    sync_status: node.syncStatus,
+    sync_error: node.syncError,
+    synced_count: node.syncedCount,
+    synced_at: node.syncedAt
+  };
 }
