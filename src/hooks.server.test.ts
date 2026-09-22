@@ -80,9 +80,9 @@ describe('il tool che ha chiesto il lavoro', () => {
 		aiCalls.length = 0;
 		await handle({
 			event: {
-				request: new Request('http://localhost/api/v1/brands/demo/weekly-plan/plan', { headers }),
-				url: new URL('http://localhost/api/v1/brands/demo/weekly-plan/plan'),
-				route: { id: '/api/v1/brands/[slug]/weekly-plan/plan' },
+				request: new Request('http://localhost/api/v1/brands/demo/posts', { headers }),
+				url: new URL('http://localhost/api/v1/brands/demo/posts'),
+				route: { id: '/api/v1/brands/[slug]/posts' },
 				params: {},
 				cookies: { getAll: () => [], get: () => undefined, set: vi.fn() },
 				locals: {}
