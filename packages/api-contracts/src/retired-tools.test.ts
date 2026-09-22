@@ -63,7 +63,13 @@ const RETIRED = [
   'regenerate_slide',
   'reorder_slides',
   'produce_week',
-  'list_brands'
+  'list_brands',
+  'render_post',
+  'generate_image',
+  'generate_video',
+  'generate_carousel',
+  'refine_media',
+  'generate_media'
 ] as const;
 
 /**
@@ -79,11 +85,6 @@ const KEPT_ON_PURPOSE: Record<string, string> = {
     'revoca la schedulazione su Zernio PRIMA di cancellare, e se la revoca fallisce non cancella: `delete_row` toglierebbe la riga lasciando viva la schedulazione — il post esce e non resta nulla che lo racconti (incidente luglio 2026)',
   create_post: 'deposita la copy scritta fuori come post in attesa, senza modello e senza crediti',
   edit_post: 'riscrive la copy di un post che esiste, senza modello e senza crediti',
-  generate_image: 'il modello interno è Nano Banana: un agente di testo non disegna',
-  generate_video: 'il modello interno è Seedance/Kling: un agente di testo non gira clip',
-  generate_carousel: 'rende le slide, non la copy che ci sta sopra',
-  refine_media: 'modifica un\'immagine o una clip che esiste: pixel, non parole',
-  render_post: 'trasforma un post in immagine finita',
   enhance_prompt:
     'il testo che produce non lo legge una persona ma un modello di immagini, e la forma che serve a ciascuno (sezioni etichettate, paragrafo unico, comando) sta in una guida per modello che vive qui: un agente esterno non sa con quale modello stai per rendere né come vuole essere parlato. Rifiuta di suo le riscritture che inventano un soggetto, quindi non è una seconda stesura del brief'
 };
