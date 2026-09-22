@@ -1,11 +1,12 @@
-import { error, redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { error, fail, redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
 import { listMemberships } from '$lib/server/repos/orgs';
 import { findProjectForUser } from '$lib/server/projects/lookup';
 import { listProjectAssets, type Asset } from '$lib/server/repos/assets';
 import { listNodesByIds } from '$lib/server/repos/canvas';
 import { signAssetFiles } from '$lib/server/repos/asset-storage';
 import { signKnowledgePaths } from '$lib/server/media-archive';
+import { registerUploadedAsset, UploadError } from '$lib/server/canvas/upload';
 import { parseAssetSourceFilter } from './asset-filter';
 
 /**
@@ -89,8 +90,61 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
   });
 
   return {
+    orgId,
     project: { id: project.id, name: project.name, slug: project.slug },
     items,
     filter: source ?? 'all'
   };
+};
+
+/**
+ * L'UPLOAD DI QUESTA PAGINA REGISTRA SOLO L'ASSET — niente nodo, niente tela: la libreria del
+ * progetto esiste anche senza che nessuno abbia aperto un canvas. Il file arriva già nello
+ * Storage (`canvasUploadPrefix`, lato client), qui arriva solo il percorso — stessa strada di
+ * `registerCanvasUpload`, vedi il commento lì per il perché.
+ */
+export const actions: Actions = {
+  upload: async ({ request, params, locals }) => {
+    const { session, user } = await locals.safeGetSession();
+    if (!session || !user) {
+      throw redirect(303, '/login');
+    }
+
+    const db = await locals.db();
+    if (!db) {
+      throw error(500, 'sessione senza client');
+    }
+
+    const memberships = await listMemberships(db, user.id);
+    const found = await findProjectForUser(db, { projectId: params.projectId ?? '', memberships });
+    if (!found) {
+      throw error(404, 'questo progetto non esiste, o non è tuo');
+    }
+
+    const fd = await request.formData();
+    const path = String(fd.get('path') ?? '');
+    const fileName = String(fd.get('file_name') ?? '');
+    const mimeType = String(fd.get('mime_type') ?? '');
+    const bytes = Number(fd.get('bytes'));
+    if (!path || !fileName || !mimeType || !Number.isFinite(bytes)) {
+      return fail(400, { error: 'richiesta non valida' });
+    }
+
+    try {
+      const { asset } = await registerUploadedAsset(db, {
+        orgId: found.orgId,
+        projectId: found.project.id,
+        path,
+        fileName,
+        mimeType,
+        bytes
+      });
+      return { asset };
+    } catch (cause) {
+      if (cause instanceof UploadError) {
+        return fail(cause.status, { error: cause.message });
+      }
+      throw cause;
+    }
+  }
 };

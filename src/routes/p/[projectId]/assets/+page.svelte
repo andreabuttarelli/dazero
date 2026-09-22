@@ -1,5 +1,20 @@
 <script lang="ts">
   import PageHead from '$lib/components/PageHead.svelte';
+  import { deserialize } from '$app/forms';
+  import { invalidateAll } from '$app/navigation';
+  import { createSupabaseBrowserClient } from '$lib/supabase/client';
+  import { verdictForUpload, canvasUploadPrefix } from '$lib/canvas/upload-kind';
+  import { genNodeSize } from '$lib/canvas/gen-node';
+  import { docNodeSize } from '$lib/canvas/doc-node';
+  import {
+    DRAG_NODE_KIND,
+    CANVAS_DRAG_FILLED_NODE,
+    serializeFilledNodeDrag,
+    staticDocData,
+    staticMediaData,
+    type DragAssetKind
+  } from '$lib/canvas/drag-payload';
+  import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
 
   let { data } = $props();
 
@@ -21,6 +36,101 @@
     if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
     return `${(n / (1024 * 1024)).toFixed(1)} MB`;
   }
+
+  /**
+   * UN FILE VA DRITTO NELLO STORAGE DAL BROWSER, e solo il percorso arriva al server — lo stesso
+   * schema di `[canvasId]/+page.svelte::upload`. Un documento arriva già convertito in markdown
+   * quando la pagina ricarica: `registerUploadedAsset` lo fa lato server, questa pagina non
+   * sa niente di conversione.
+   */
+  const supabase = createSupabaseBrowserClient();
+  let uploading = $state(false);
+  let uploadError = $state<string | null>(null);
+  let fileInput = $state<HTMLInputElement | null>(null);
+
+  async function upload(file: File) {
+    uploadError = null;
+    const verdict = verdictForUpload(file.type, file.name, file.size);
+    if (!verdict.ok) {
+      uploadError = verdict.why;
+      return;
+    }
+
+    uploading = true;
+    try {
+      const path = `${canvasUploadPrefix(data.orgId, data.project.id)}${crypto.randomUUID()}-${file.name}`;
+      const up = await supabase.storage
+        .from('canvas-assets')
+        .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+      if (up.error) {
+        uploadError = up.error.message;
+        return;
+      }
+
+      const body = new FormData();
+      body.set('path', path);
+      body.set('file_name', file.name);
+      body.set('mime_type', file.type);
+      body.set('bytes', String(file.size));
+
+      const res = await fetch('?/upload', {
+        method: 'POST',
+        headers: { 'x-sveltekit-action': 'true' },
+        body
+      });
+      const result = deserialize(await res.text());
+      if (result.type !== 'success') {
+        uploadError = 'non caricato';
+        return;
+      }
+      await invalidateAll();
+    } finally {
+      uploading = false;
+    }
+  }
+
+  function onFilePicked(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) void upload(file);
+  }
+
+  /**
+   * TRASCINARE UNA TILE VERSO LA TELA — la stessa tabella "cosa diventa" di `drag-payload.ts`.
+   * Un'immagine e un video portano `data.assetId`: lo stesso patto di `uploaded-node.ts`, un
+   * nodo statico nato pieno, non un prompt da far girare. Un documento porta il suo `content`
+   * già convertito in markdown, letto dall'asset invece che riscaricato.
+   */
+  function assetDragKind(type: string): DragAssetKind | null {
+    if (type === 'image' || type === 'video') return type;
+    if (type === 'document') return 'document';
+    return null;
+  }
+
+  function onTileDragStart(e: DragEvent, item: (typeof data.items)[number]) {
+    const kind = assetDragKind(item.type);
+    if (!kind || !e.dataTransfer) return;
+
+    const nodeType = DRAG_NODE_KIND.asset[kind];
+    const nodeData =
+      nodeType === 'doc'
+        ? staticDocData(item.content ?? '')
+        : staticMediaData({
+            assetId: item.id,
+            url: item.signedUrl ?? '',
+            name: item.url?.split('/').pop() ?? item.id,
+            mimeType: item.mimeType ?? ''
+          });
+    const size = nodeType === 'doc' ? docNodeSize() : genNodeSize(nodeType);
+
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData(
+      CANVAS_DRAG_FILLED_NODE,
+      serializeFilledNodeDrag({ type: nodeType, data: nodeData, ...size })
+    );
+    e.dataTransfer.setData(CANVAS_DRAG_MEDIUM, nodeType === 'doc' ? 'doc' : nodeType);
+  }
 </script>
 
 <div class="media-page">
@@ -33,7 +143,22 @@
       </a>
     {/each}
     <span class="count">{data.items.length}</span>
+
+    <input
+      bind:this={fileInput}
+      type="file"
+      class="file-input"
+      onchange={onFilePicked}
+      accept="image/png,image/jpeg,image/webp,image/gif,image/avif,video/mp4,video/webm,video/quicktime,.pdf,.docx,.xlsx,.xls,.html,.htm,.csv,.txt,.md,.markdown,.xml,.rss,.atom,.ipynb"
+    />
+    <button type="button" class="upload-btn" disabled={uploading} onclick={() => fileInput?.click()}>
+      {uploading ? 'Uploading…' : 'Upload'}
+    </button>
   </nav>
+
+  {#if uploadError}
+    <p class="upload-error">{uploadError}</p>
+  {/if}
 
   {#if !data.items.length}
     <div class="empty">
@@ -42,16 +167,23 @@
         {#if data.filter === 'generated'}
           Nothing generated yet. Run a node on the canvas to fill this in.
         {:else if data.filter === 'upload'}
-          Nothing uploaded yet. Drop a file onto a canvas to see it here.
+          Nothing uploaded yet. Upload a file, or drop one onto a canvas.
         {:else}
-          Generate or upload something on the canvas and it lands here.
+          Generate or upload something and it lands here.
         {/if}
       </p>
     </div>
   {:else}
     <div class="grid">
       {#each data.items as item (item.id)}
-        <div class="tile">
+        <!-- svelte-ignore a11y_no_static_element_interactions -- trascinare una tile è una
+             scorciatoia sulla libreria, non l'unico modo di portare l'asset sulla tela: chi usa
+             la tastiera può ancora aprire il nodo dal link "from …" qui sotto. -->
+        <div
+          class="tile"
+          draggable={Boolean(assetDragKind(item.type))}
+          ondragstart={(e) => onTileDragStart(e, item)}
+        >
           <span class="badge" class:generated={item.source === 'generated'}>
             {item.source === 'generated' ? 'generated' : 'uploaded'}
           </span>
@@ -62,6 +194,8 @@
             <video src={item.signedUrl} muted playsinline preload="metadata"></video>
           {:else if item.type === 'text'}
             <p class="text-preview">{item.content}</p>
+          {:else if item.type === 'document'}
+            <p class="text-preview">{(item.content ?? '').slice(0, 400)}</p>
           {:else}
             <span class="ph">{item.type}</span>
           {/if}
@@ -96,6 +230,16 @@
   .filter.active { background: var(--paper-2); color: var(--ink); border-color: var(--line); }
   .count { margin-left: auto; font-size: 12px; color: var(--ink-faint); }
 
+  .file-input { display: none; }
+  .upload-btn {
+    font-size: 13px; font-weight: 600; padding: 7px 14px; margin-left: 10px;
+    color: var(--ink); background: var(--paper); border: 1px solid var(--line); cursor: pointer;
+  }
+  .upload-btn:hover { background: var(--paper-2); }
+  .upload-btn:disabled { opacity: 0.6; cursor: default; }
+
+  .upload-error { margin: 0 0 12px; font-size: 12px; color: var(--danger, #c0392b); }
+
   .empty { text-align: center; padding: 48px 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
   .empty h3 { margin: 0; font-size: 18px; }
   .empty p { margin: 0; color: var(--ink-soft); max-width: 420px; line-height: 1.5; }
@@ -105,6 +249,7 @@
     position: relative; overflow: hidden; background: var(--paper-2);
     border: 1px solid var(--line); display: flex; flex-direction: column; min-height: 160px;
   }
+  .tile[draggable='true'] { cursor: grab; }
   .tile img, .tile video { width: 100%; height: 140px; object-fit: cover; display: block; }
   .text-preview {
     margin: 0; padding: 14px; font-size: 12px; line-height: 1.4; color: var(--ink);
