@@ -106,8 +106,7 @@ export const PLANS: Plan[] = [
     socialsIncluded: 0,
     aiSurfaces: ['chatgpt', 'claude', 'gemini', 'perplexity', 'copilot', 'grok', 'deepseek', 'google', 'bing'],
     postsPerMonth: 15,
-    articlesPerMonth: 15,
-    articlesPerWeek: 3
+    articlesPerMonth: 15
   },
   {
     key: 'starter',
@@ -130,8 +129,7 @@ export const PLANS: Plan[] = [
     socialsIncluded: 2,
     aiSurfaces: ['chatgpt', 'claude', 'gemini', 'perplexity', 'copilot', 'grok', 'deepseek', 'google', 'bing'],
     postsPerMonth: 30,
-    articlesPerMonth: 30,
-    articlesPerWeek: 7
+    articlesPerMonth: 30
   },
   {
     key: 'pro',
@@ -155,8 +153,7 @@ export const PLANS: Plan[] = [
     socialsIncluded: 8,
     aiSurfaces: ['chatgpt', 'claude', 'gemini', 'perplexity', 'copilot', 'grok', 'deepseek', 'google', 'bing'],
     postsPerMonth: 90,
-    articlesPerMonth: 90,
-    articlesPerWeek: 21
+    articlesPerMonth: 90
   }
 ];
 
