@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { postQuota, videoCap, mixCostUsd, VIDEO_SHARE, batchWeeks } from './plans';
-import { PLAN_WEEKS } from './editorial-plan';
+import { PLAN_WEEKS } from '$lib/plans';
 import { creditQuota } from './credits';
 
 // The quotas are sized against a MEASURED cost per post, so they are only correct while the two

@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { normalizeRubric, rubricsBrief, applyRubricToSeed, type Rubric } from './rubrics';
-import { weekStrategyBrief, type EditorialPlan } from './editorial-plan';
 import type { ContentFormat } from '$lib/content-formats';
 
 type SeedLike = { rubric?: string; rubric_id?: string; format: ContentFormat; art_direction?: string };
@@ -72,30 +71,6 @@ describe('applyRubricToSeed', () => {
     const out = applyRubricToSeed(seed, []);
     expect(out.format).toBe('video');
     expect(out.rubric_id).toBeUndefined();
-  });
-});
-
-describe('weekStrategyBrief rubric block (opt-in)', () => {
-  const plan = (): EditorialPlan => ({
-    strategy: 'S',
-    voice: { mood: '', tone: '', goal: '', personality: '' },
-    cadence: '3/week',
-    platform_mix: [],
-    gtm: null,
-    weeks: [
-      { index: 0, week_start: null, theme: 'T', focus: 'F', content_mix: [{ type: 'educational', count: 3 }], rationale: 'R', brief: null, products: null, status: 'upcoming' }
-    ]
-  });
-
-  it('is byte-identical to the no-arg call when the brand has no rubrics', () => {
-    expect(weekStrategyBrief(plan(), 0, [])).toBe(weekStrategyBrief(plan(), 0));
-    expect(weekStrategyBrief(plan(), 0)).not.toContain('RUBRIC');
-  });
-
-  it('adds the approved-rubrics block when rubrics exist', () => {
-    const brief = weekStrategyBrief(plan(), 0, [rubric()]);
-    expect(brief).toContain('APPROVED RUBRICS');
-    expect(brief).toContain('Dietro le quinte del lab');
   });
 });
 
