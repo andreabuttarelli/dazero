@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { DRAG_NODE_KIND, staticDocData, staticMediaData, staticTextData } from './drag-payload';
+import {
+  DRAG_NODE_KIND,
+  parseFilledNodeDrag,
+  serializeFilledNodeDrag,
+  staticDocData,
+  staticMediaData,
+  staticTextData
+} from './drag-payload';
 import { validateNodeData } from './node-data';
 
 describe('cosa diventa un nodo trascinato da fuori la tela', () => {
@@ -32,5 +39,17 @@ describe('cosa diventa un nodo trascinato da fuori la tela', () => {
     const data = staticDocData('# Titolo');
     expect(validateNodeData('doc', data)).toEqual({ ok: true, data });
     expect(data.public).toBe(false);
+  });
+
+  it('serializeFilledNodeDrag/parseFilledNodeDrag fanno un giro completo', () => {
+    const drag = { type: 'image' as const, data: staticMediaData({ assetId: 'a1', url: '/x', name: 'n', mimeType: 'image/png' }), w: 320, h: 240 };
+    expect(parseFilledNodeDrag(serializeFilledNodeDrag(drag))).toEqual(drag);
+  });
+
+  it('parseFilledNodeDrag rifiuta un JSON non nella forma attesa', () => {
+    expect(parseFilledNodeDrag('non è json')).toBeNull();
+    expect(parseFilledNodeDrag('{}')).toBeNull();
+    expect(parseFilledNodeDrag(JSON.stringify({ type: 'audio', data: {}, w: 1, h: 1 }))).toBeNull();
+    expect(parseFilledNodeDrag(JSON.stringify({ type: 'image', data: {} }))).toBeNull();
   });
 });

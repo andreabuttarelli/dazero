@@ -59,3 +59,41 @@ export type StaticDocData = { content: string; public: false };
 export function staticDocData(content: string): StaticDocData {
   return { content, public: false };
 }
+
+/**
+ * IL TIPO MIME CON CUI UN NODO GIÀ PIENO VIAGGIA DA FUORI LA TELA — dalla libreria asset o dalla
+ * lista brand, un `dragstart` su una card, non sul menù `+` della tela. `CANVAS_DRAG_MEDIUM`
+ * (`new-node.ts`) porta solo un nome di tipo (`Addable`) e la tela lo trasforma in un nodo VUOTO
+ * (`newNodeRow`); qui invece il nodo nasce PIENO — un asset o un campo brand che esiste già, non
+ * un prompt da scrivere. Un MIME diverso, non un payload più ricco sullo stesso: la tela di oggi
+ * (`CanvasFlow.svelte::onDrop`) ignora un tipo che non riconosce, quindi finché il suo handler
+ * non legge anche questo, un file trascinato qui non fa niente — non crea un nodo vuoto per
+ * sbaglio, che sarebbe peggio di un trascinamento che non funziona ancora.
+ */
+export const CANVAS_DRAG_FILLED_NODE = 'application/x-dazero-filled-node';
+
+export type FilledNodeDrag = {
+  type: 'image' | 'video' | 'text' | 'doc';
+  data: Record<string, unknown>;
+  w: number;
+  h: number;
+};
+
+export function serializeFilledNodeDrag(drag: FilledNodeDrag): string {
+  return JSON.stringify(drag);
+}
+
+export function parseFilledNodeDrag(raw: string): FilledNodeDrag | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<FilledNodeDrag>;
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (parsed.type !== 'image' && parsed.type !== 'video' && parsed.type !== 'text' && parsed.type !== 'doc') {
+      return null;
+    }
+    if (!parsed.data || typeof parsed.data !== 'object') return null;
+    if (typeof parsed.w !== 'number' || typeof parsed.h !== 'number') return null;
+    return { type: parsed.type, data: parsed.data, w: parsed.w, h: parsed.h };
+  } catch {
+    return null;
+  }
+}
