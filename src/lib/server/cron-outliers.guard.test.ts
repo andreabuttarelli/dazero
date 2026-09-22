@@ -4,13 +4,9 @@ import { join } from 'node:path';
 
 const API_ROOT = 'src/routes/api/v1';
 
-const DECLARED_OUTLIERS = ['src/routes/api/v1/memory/dream/+server.ts'];
+const DECLARED_OUTLIERS: string[] = [];
 
-const LOCAL_CRON_AUTH_PATTERNS = [
-  /[!=]==?\s*`Bearer \$\{/,
-  /\bsafeSecretEqual\(/,
-  /\/\^Bearer\\s\+\/i/
-];
+const LOCAL_CRON_AUTH_PATTERNS = [/[!=]==?\s*`Bearer \$\{/, /\bsafeSecretEqual\(/];
 
 function serverFiles(dir: string, out: string[] = []): string[] {
 	for (const entry of readdirSync(dir)) {
@@ -28,12 +24,12 @@ function localAuthOutliers(): string[] {
 	});
 }
 
-describe('le guardie cron scritte a mano restano solo nei due outlier dichiarati', () => {
+describe('le guardie cron scritte a mano restano solo negli outlier dichiarati', () => {
 	it('ha trovato endpoint api/v1 da scansionare (il test non passa vuoto per errore)', () => {
 		expect(serverFiles(API_ROOT).length).toBeGreaterThan(10);
 	});
 
-	it('nessun endpoint oltre a memory/dream e agent-files fa auth cron in casa', () => {
+	it('nessun endpoint fa auth cron in casa oltre a quelli dichiarati', () => {
 		const found = localAuthOutliers();
 		const extra = found.filter((f) => !DECLARED_OUTLIERS.includes(f));
 		const gone = DECLARED_OUTLIERS.filter((f) => !found.includes(f));
