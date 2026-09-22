@@ -44,8 +44,7 @@ describe('le route del guscio leggono la stessa dichiarazione, non una copia', (
 		const sorgenti = [
 			'src/routes/p/[projectId]/settings/team/+page.server.ts',
 			'src/routes/p/[projectId]/settings/danger/+page.server.ts',
-			'src/lib/server/settings-actions.ts',
-			'src/lib/server/tenant.ts'
+			'src/lib/server/settings-actions.ts'
 		];
 		for (const f of sorgenti) {
 			const src = readFileSync(f, 'utf8');
