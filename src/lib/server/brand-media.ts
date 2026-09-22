@@ -764,7 +764,7 @@ export async function publishLibraryMediaAsPostMedia(
 
   const fallbackMime = kind === 'video' ? 'video/mp4' : 'image/jpeg';
   const mime = (media.mime || res.headers.get('content-type') || fallbackMime).split(';')[0].trim();
-  const { publishImageBufferAsPostMedia } = await import('$lib/server/content-preview');
+  const { publishImageBufferAsPostMedia } = await import('$lib/server/media-generate.images');
   const publicUrl = await publishImageBufferAsPostMedia(supabase, opts.userId, buf, mime, opts.platform);
   if (!publicUrl) return { error: 'Upload of library media failed' };
   await recordBrandMediaUse(supabase, opts.brandId, [media.id]);

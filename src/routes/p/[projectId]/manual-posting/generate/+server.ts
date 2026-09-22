@@ -3,7 +3,7 @@ import { error, json } from '@sveltejs/kit';
 import { brandSlugOf } from '$lib/server/tenancy/brand-slug';
 import { remaining } from '$lib/server/usage';
 import { generateManualCaptions, normalizePlatforms } from '$lib/server/manual-posting';
-import type { ContentPrefs } from '$lib/server/content-preview';
+import type { ContentPrefs } from '$lib/server/manual-posting-platform';
 
 export const POST: RequestHandler = async ({ params, request, locals: { supabase, safeGetSession } }) => {
   const { session } = await safeGetSession();

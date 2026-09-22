@@ -406,7 +406,7 @@ async function persistPng(
   const save = opts.saveToLibrary !== false;
 
   if (!save) {
-    const { uploadPostImage } = await import('$lib/server/content-preview');
+    const { uploadPostImage } = await import('$lib/server/media-generate.images');
     const dataUrl = `data:image/png;base64,${png.toString('base64')}`;
     const imageUrl = await uploadPostImage(opts.supabase, opts.userId, dataUrl);
     if (!imageUrl) return { error: 'Could not store screenshot' };
@@ -450,7 +450,7 @@ async function persistPng(
   const signed = await signKnowledgePaths(opts.supabase, [storagePath]).catch((error) => { swallow('sign media urls', error); return new Map(); });
   let imageUrl = signed.get(storagePath);
   if (!imageUrl) {
-    const { uploadPostImage } = await import('$lib/server/content-preview');
+    const { uploadPostImage } = await import('$lib/server/media-generate.images');
     imageUrl =
       (await uploadPostImage(opts.supabase, opts.userId, `data:image/png;base64,${png.toString('base64')}`)) ??
       undefined;

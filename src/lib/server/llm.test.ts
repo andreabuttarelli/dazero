@@ -178,7 +178,7 @@ describe('nessun SDK Google nei call site app', () => {
 	it('createGoogleGenerativeAI / googleGenaiClient solo in gemini.ts (morto) o test', () => {
 		const allowed = new Set([
 			join(HERE, 'gemini.ts'),
-			join(HERE, 'content-preview/images.ts') // pixel: Kie, con ripiego Google solo lì
+			join(HERE, 'media-generate.images.ts') // pixel: Kie, con ripiego Google solo lì
 		]);
 		const hits: string[] = [];
 		for (const file of walkTs(join(SRC, 'lib'))) {

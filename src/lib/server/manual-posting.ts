@@ -3,7 +3,7 @@ import type { PostSource } from '$lib/contracts/post-tools';
 import { structured } from '$lib/server/research';
 import { withBrandContext } from '$lib/server/ai-log';
 import { aiActCopyGuardrail } from '$lib/ai-act';
-import { platformPlaybook, houseVoiceFor, type ContentPrefs } from '$lib/server/content-preview';
+import { platformPlaybook, houseVoiceFor, type ContentPrefs } from '$lib/server/manual-posting-platform';
 import { publishApprovedPost, type ApprovablePost } from '$lib/server/publish';
 import { earliestScheduleMs, wallClockToUtc, zonedClock } from '$lib/server/schedule';
 import { findBrandMediaByIds, publishLibraryMediaAsPostMedia } from '$lib/server/brand-media';

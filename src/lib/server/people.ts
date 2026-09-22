@@ -88,10 +88,10 @@ type ImagePart = { inlineData: { mimeType: string; data: string } };
 // bloccano la stessa faccia da una posa all'altra: `personImages` è lo slot giusto, perché è quello
 // che dice al modello che le foto SONO l'identità e non un suggerimento di stile.
 //
-// L'import è dinamico per non chiudere il ciclo: `content-preview/images.ts` importa `signPaths` da
+// L'import è dinamico per non chiudere il ciclo: `media-generate.images.ts` importa `signPaths` da
 // qui.
 async function genImage(text: string, refs: ImagePart[] = []): Promise<string | undefined> {
-  const { renderPostImage } = await import('./content-preview/images');
+  const { renderPostImage } = await import('./media-generate.images');
   return await renderPostImage(text, { personImages: refs, aspectRatio: '1:1' });
 }
 

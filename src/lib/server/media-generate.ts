@@ -26,7 +26,7 @@ import { IMAGE_PART_MAX_BYTES } from '$lib/raster-image';
 import type { ImagePart, ImagePartRefusal } from '$lib/server/brand-context';
 import { safeProviderReason } from '$lib/server/provider-reason';
 import { markImage, DIGITAL_SOURCE_TYPE } from '$lib/server/content-credentials';
-import type { AspectRatio } from '$lib/server/content-preview';
+import type { AspectRatio } from '$lib/server/media-generate.images';
 
 export type GeneratedMedia = {
   /**
@@ -446,7 +446,7 @@ async function runImageJob(
     { imageModelFor, imageRefineModelFor },
     { mediaModelSlot, slotAccepts, slotChoices }
   ] = await Promise.all([
-    import('$lib/server/content-preview'),
+    import('$lib/server/media-generate.images'),
     import('$lib/image-models'),
     import('$lib/media-model-slots')
   ]);
