@@ -85,7 +85,7 @@ export type FilledNodeDrag = {
 /**
  * LO STESSO PACCHETTO, DA UNA RIGA DI ASSET O DA UN CAMPO BRAND — non riscritto a ogni pannello
  * che trascina. Prima viveva due volte, dentro `dragstart` di `assets/+page.svelte` e
- * `brands/+page.svelte`; la sidebar del progetto (`AssetsPanel`) è il terzo posto da cui la
+ * `brands/+page.svelte`; la sidebar del progetto (`ProjectDragPanel`) è il terzo posto da cui la
  * stessa card parte, e una terza copia sarebbe la regola sparsa che CLAUDE.md chiede di non
  * scrivere. `null` quando non c'è niente da mettere nel nodo — un asset senza url firmato, un
  * campo brand vuoto — non un nodo che nasce e si scopre rotto al primo sguardo.
