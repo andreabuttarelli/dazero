@@ -1,4 +1,4 @@
-import { uploadCanvasAsset, UploadError } from '$lib/server/canvas/upload';
+import { registerCanvasUpload, UploadError } from '$lib/server/canvas/upload';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import type { Db } from '$lib/server/db/client';
@@ -180,12 +180,20 @@ export const actions: Actions = {
   upload: async ({ request, params, locals }) => {
     const scope = await scopeFor(locals, params.canvasId);
     const fd = await request.formData();
-    const file = fd.get('file');
-    if (!(file instanceof File)) { return fail(400, { error: 'Scegli un file' }); }
+
+    const path = String(fd.get('path') ?? '');
+    const fileName = String(fd.get('file_name') ?? '');
+    const mimeType = String(fd.get('mime_type') ?? '');
+    const bytes = coord(fd.get('bytes'));
+    if (!path || !fileName || !mimeType || bytes === null) {
+      return fail(400, { error: 'richiesta non valida' });
+    }
+
     try {
-      return await uploadCanvasAsset(scope.db, {
+      return await registerCanvasUpload(scope.db, {
         orgId: scope.orgId, projectId: scope.canvas.projectId, canvasId: scope.canvasId,
-        userId: scope.userId, file, x: coord(fd.get('x')) ?? 0, y: coord(fd.get('y')) ?? 0
+        path, fileName, mimeType, bytes,
+        x: coord(fd.get('x')) ?? 0, y: coord(fd.get('y')) ?? 0
       });
     } catch (cause) {
       if (cause instanceof UploadError) { return fail(cause.status, { error: cause.message }); }
