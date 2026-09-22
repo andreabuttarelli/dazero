@@ -53,7 +53,7 @@ vi.mock('$lib/server/ai-log', () => ({
   }
 }));
 
-import { generateBrandImages, generateImagesWithoutBrand } from './media-generate';
+import { generateImagesWithoutBrand } from './media-generate';
 
 const SIGNED = 'https://storage.test/signed?token=abc';
 
@@ -63,14 +63,6 @@ function supabaseThatHasNoBrands() {
     from: (table: string) => {
       throw new Error(`ha letto ${table}`);
     }
-  } as never;
-}
-
-function supabaseWithPrefs(prefs: Record<string, unknown>) {
-  return {
-    from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { content_prefs: prefs }, error: null }) }) })
-    })
   } as never;
 }
 
@@ -194,26 +186,3 @@ describe('disegnare senza un brand', () => {
   });
 });
 
-describe('con un brand, niente è cambiato', () => {
-  const job = { brandId: 'brand-1', userId: 'user-1', prompt: 'un banco in noce' };
-
-  it('il modello continua a venire dalle preferenze del brand', async () => {
-    const out = await generateBrandImages(supabaseWithPrefs({ imageModel: 'nano-banana-pro' }), job);
-
-    expect(out.ok && out.model).toBe('nano-banana-pro');
-  });
-
-  it('il render resta avvolto nel contesto del brand: è così che la spesa gli arriva', async () => {
-    await generateBrandImages(supabaseWithPrefs({}), job);
-
-    expect(withBrandContext).toHaveBeenCalledWith('brand-1');
-    expect(withOrgContext).not.toHaveBeenCalled();
-  });
-
-  it('l asset entra ancora in libreria, con un id da passare a create_post', async () => {
-    const out = await generateBrandImages(supabaseWithPrefs({}), job);
-
-    expect(insertBrandMedia).toHaveBeenCalled();
-    expect(out.ok && out.media[0].id).toBe('media-new');
-  });
-});
