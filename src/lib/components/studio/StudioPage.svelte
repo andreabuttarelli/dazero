@@ -11,7 +11,6 @@
   import type { ActionResult } from '@sveltejs/kit';
   import { _ } from 'svelte-i18n';
   import { isPaidPlan } from '$lib/plans';
-  import BrandMemoryPanel from '$lib/components/studio/BrandMemoryPanel.svelte';
   import { untrack } from 'svelte';
   import FontPicker from '$lib/components/studio/FontPicker.svelte';
 
