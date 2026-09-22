@@ -141,9 +141,6 @@ const REST_ONLY = [
   'api-keys',
   'api-keys/[id]',
   'calendar',
-  // `generate_media` era la porta vecchia: inoltrava a `generate_image` e `generate_video` e la
-  // sua stessa descrizione diceva di preferirli. Il tool esce, la rotta resta per chi l'ha cablata.
-  'media/generate',
   'posts/[id]/approve',
   'posts/[id]/publish',
   'posts/[id]/revoke',
