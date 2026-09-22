@@ -95,10 +95,6 @@
       [`${base}/people`]: {
         title: $_('app.studio.tabs.people')
       },
-      [`${base}/library`]: {
-        title: $_('app.nav.library'),
-        subtitle: $_('app.settings.library.subtitle')
-      },
       [`${base}/connected-accounts`]: {
         title: $_('app.settings.connectedAccounts')
       },

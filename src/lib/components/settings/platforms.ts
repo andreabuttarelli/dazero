@@ -27,7 +27,6 @@ export const SETTINGS_SECTIONS = [
   'brand',
   'products',
   'people',
-  'library',
   'connected-accounts',
   'ads',
   'ads-accounts',
@@ -71,8 +70,7 @@ export const SETTINGS_GROUPS: readonly {
     items: [
       { section: 'brand', labelKey: 'app.studio.tabs.brand' },
       { section: 'products', labelKey: 'app.hub.overview.brand.products' },
-      { section: 'people', labelKey: 'app.studio.tabs.people' },
-      { section: 'library', labelKey: 'app.hub.web.library' }
+      { section: 'people', labelKey: 'app.studio.tabs.people' }
     ]
   },
   {

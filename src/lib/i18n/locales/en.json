@@ -1155,7 +1155,6 @@
       "openMenu": "Open menu",
       "closeMenu": "Close menu",
       "seogeo": "SEO & GEO",
-      "library": "Content Library",
       "site": "Blog",
       "sectionSocial": "Social",
       "radar": "Radar",
@@ -1204,7 +1203,6 @@
         "overview": "Overview",
         "seo": "SEO",
         "citations": "GEO",
-        "library": "Library",
         "blog": "Blog",
         "keywords": "Keywords",
         "backlinks": "Backlinks",
@@ -2231,26 +2229,6 @@
           "videoMotion": "Video motion",
           "videoMotionDesc": "Which model takes the movement from a reference video and applies it to a subject in your image. Not the same as motion videos, which are rendered from code and use no generative model."
         }
-      },
-      "library": {
-        "subtitle": "Pages from your website become real linkable assets for posts and radar.",
-        "website": "Main website",
-        "websiteDesc": "The primary site dazero crawls for the content library (and uses for SEO/GEO).",
-        "websitePlaceholder": "https://example.com",
-        "websiteSaved": "✓ Website saved.",
-        "pages": "Indexed pages",
-        "pagesDesc": "Scanned once a month on paid plans. You can also scan manually anytime.",
-        "scan": "Scan site",
-        "rescan": "Re-scan site",
-        "scanning": "Scanning…",
-        "scanFailed": "Scan failed: {error}",
-        "scanOk": "Indexed {count} pages.",
-        "noWebsite": "Add your main website above to enable scanning.",
-        "relevance": "relevance {score}",
-        "used": "already used",
-        "neverUsed": "never used",
-        "emptyTitle": "No pages indexed yet",
-        "emptyDesc": "Run a scan to populate the library from your sitemap."
       },
       "demoAccount": {
         "nav": "Product demo",
