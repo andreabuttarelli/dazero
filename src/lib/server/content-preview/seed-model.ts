@@ -1,11 +1,12 @@
 import sharp from 'sharp';
 import { env } from '$env/dynamic/private';
 import { structured } from '$lib/server/research';
-import { CONTENT_FORMATS, type ContentFormat } from '$lib/content-formats';
+import { CONTENT_FORMATS, normalizeContentFormat, type ContentFormat } from '$lib/content-formats';
 import { classifyHookTactic, type HookTacticId } from '$lib/server/hook-tactics';
 import { byLadderPriority, ladderFor, type LadderContext } from '$lib/server/production-ladder';
 import { applyRubricToSeed, type Rubric } from '$lib/server/rubrics';
 import { PLATFORM_IDS } from '$lib/platforms';
+import { guardrailsBlock } from '$lib/server/brand-guardrails';
 
 export type Progress = (step: string, message: string) => void;
 
@@ -991,3 +992,144 @@ export function clampCarousels<T extends { format: ContentFormat; slide_count?: 
 export type ImagePart = { inlineData: { mimeType: string; data: string } };
 
 export const MAX_COMPETITOR_MOOD_IMAGES = 4;
+
+export function brandLines(profile: BrandProfile, prefs: ContentPrefs) {
+  const char = profile?.ai_character ?? {};
+  // User-chosen preferences take priority over what we inferred from the site.
+  const moodLine = prefs.mood ? `Brand mood (user-chosen, lead with this): ${prefs.mood}` : '';
+  const toneLine = prefs.tone
+    ? `Tone of voice (user-chosen, lead with this): ${prefs.tone}`
+    : `Tone of voice: ${char.tone ?? ''} ${char.speaking_style ?? ''}`;
+  const personalityLine = prefs.personality?.trim()
+    ? `Brand personality (from the approved editorial plan — LEAD with this; do not flatten into a generic agency voice): ${prefs.personality.trim()}`
+    : '';
+  const goalLine = prefs.goal ? `Primary goal (optimise every post for this): ${prefs.goal}` : '';
+  // Caption language: user choice wins, else the language detected from the site, else infer.
+  const language = (prefs.language || profile?.language || '').trim();
+  const languageLine = language
+    ? `LANGUAGE: write EVERY caption, hashtag and any on-image text in ${language}. Do not mix languages.`
+    : `LANGUAGE: write captions in the brand's OWN primary language — infer it from the brand context/about above. Never default to English unless the brand clearly communicates in English.`;
+  // La metà NEGATIVA del contesto, portata in testa: in fondo a 500 parole i vincoli si saltano, e
+  // un modello che salta "cosa NON facciamo" riempie il vuoto con capacità plausibili che non
+  // abbiamo.
+  const guardrails = guardrailsBlock(profile?.ai_context);
+  const contextBlock = profile?.ai_context
+    ? `\nBRAND CONTEXT & HISTORY (authoritative — follow this voice, themes and what performs):\n${profile.ai_context}\n`
+    : '';
+  const visualStyleBlock = profile?.visual_style
+    ? `\nVISUAL STYLE (the brand's existing look — every image_prompt must match it):\n${profile.visual_style}\n`
+    : '';
+  // Brand-banned words/phrases (operational strategy) — a hard rule for the copywriter.
+  const avoid = (prefs.avoid ?? []).map((w) => String(w).trim()).filter(Boolean);
+  const avoidLine = avoid.length
+    ? `BANNED WORDS/PHRASES (the brand forbids these — never use them in any caption, hashtag or on-image text): ${avoid.join('; ')}.`
+    : '';
+  // Post reali passati: ritmo, tono e struttura delle frasi da imitare, mai da copiare.
+  const examples = (prefs.voiceExamples ?? [])
+    .map((e) => String(e ?? '').trim())
+    .filter(Boolean)
+    .slice(0, 6)
+    .map((e) => e.slice(0, 400));
+  const voiceExamplesBlock = examples.length
+    ? `\nWRITING VOICE EXAMPLES (match the rhythm, tone and sentence structure of these REAL past posts — learn the voice, do NOT copy them verbatim):\n${examples.map((e) => `- ${e}`).join('\n')}\n`
+    : '';
+  // The structured voice framework (Strategia operativa) — injected only in 'manual' mode;
+  // 'auto' keeps today's behaviour (voice read from the Studio's ai_context/ai_character).
+  const vf = prefs.voiceMode === 'manual' ? prefs.voiceFramework : undefined;
+  const vfLines = vf
+    ? [
+        vf.purpose?.trim() ? `Purpose of the communication: ${vf.purpose.trim()}` : '',
+        vf.audience?.trim() ? `Audience: ${vf.audience.trim()}` : '',
+        vf.tone?.trim() ? `Base tone: ${vf.tone.trim()}` : '',
+        typeof vf.register === 'number' ? `Register: ${vf.register}/100 on the informal→formal scale` : '',
+        vf.emotion?.trim() ? `Emotion to convey: ${vf.emotion.trim()}` : '',
+        vf.character?.trim() ? `Character/personality: ${vf.character.trim()}` : '',
+        vf.syntax?.trim() ? `Sentence style: ${vf.syntax.trim()}` : '',
+        vf.terminology?.trim() ? `Language & terminology: ${vf.terminology.trim()}` : ''
+      ].filter(Boolean)
+    : [];
+  const voiceBlock = vfLines.length
+    ? `\nVOICE FRAMEWORK (the brand's style manual — apply it to every caption):\n${vfLines.map((l) => `- ${l}`).join('\n')}\n`
+    : '';
+  return { moodLine, toneLine, personalityLine, goalLine, languageLine, contextBlock, guardrails, visualStyleBlock, avoidLine, voiceExamplesBlock, voiceBlock };
+}
+
+export function seedToPost(seed: PostSeed): PreviewPost {
+  const format = normalizeContentFormat(seed.format);
+  const isVideo = format === 'video';
+  return {
+    platform: seed.platform ?? '',
+    ...(Array.isArray(seed.platforms) && seed.platforms.length > 1 ? { platforms: seed.platforms } : {}),
+    pillar: seed.pillar ?? '',
+    // La provenienza passa da questo unico mapping seed→post.
+    angle: seed.angle ?? '',
+    planRowId: seed.id,
+    ...(seed.rubric_id ? { rubricId: seed.rubric_id } : {}),
+    format,
+    media: isVideo ? 'video' : seed.media === 'image' ? 'image' : seed.media,
+    day: seed.day ?? '',
+    time: seed.time ?? '',
+    caption: '',
+    image_prompt: '',
+    title: seed.title ?? '',
+    link_url: seed.link_url ?? '',
+    subreddit: seed.subreddit ?? '',
+    product: seed.product ?? '',
+    person: seed.person ?? '',
+    setting: seed.setting ?? '',
+    // generate/+server.ts li legge per ugcSpokenLine: perderli qui produce clip mute anche quando
+    // il Pass 1 ha scritto un hook/body/cta completo.
+    ...(isVideo
+      ? {
+          ugc: seed.ugc !== false,
+          ugc_ad: seed.ugc_ad === true,
+          hook: seed.hook ?? '',
+          hook_visual: seed.hook_visual ?? '',
+          hook_text: seed.hook_text ?? '',
+          body: seed.body ?? '',
+          cta: seed.cta ?? ''
+        }
+      : {}),
+    ...(seed.media_id
+      ? {
+          mediaId: seed.media_id,
+          mediaMode: (seed.media_mode === 'composite' ? 'composite' : 'use_as_is') as 'use_as_is' | 'composite'
+        }
+      : {})
+  };
+}
+
+// L'argine tecnico al collasso ("N scatti prodotto quasi identici") ora che la scena è consultiva:
+// confronta le APERTURE degli image_prompt (le prime parole fissano soggetto e inquadratura) e
+// ritorna il cluster più grande di scene quasi uguali. Deve accendere una spia, non giudicare.
+// ponytail: euristica naive sulle prime 15 parole; se dà falsi positivi reali il passo dopo è
+// confrontare l'intero prompt, non costruire un judge.
+export function detectSceneCollapse(prompts: string[], minCluster = 3, threshold = 0.6): number[] {
+  const tokens = prompts.map(
+    (p) =>
+      new Set(
+        String(p ?? '')
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+          .split(/\s+/)
+          .filter(Boolean)
+          .slice(0, 15)
+      )
+  );
+  const jaccard = (a: Set<string>, b: Set<string>) => {
+    if (!a.size || !b.size) return 0;
+    let inter = 0;
+    for (const t of a) if (b.has(t)) inter++;
+    return inter / (a.size + b.size - inter);
+  };
+  let best: number[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    if (!tokens[i].size) continue;
+    const cluster = [i];
+    for (let j = 0; j < tokens.length; j++) {
+      if (j !== i && jaccard(tokens[i], tokens[j]) >= threshold) cluster.push(j);
+    }
+    if (cluster.length > best.length) best = [...cluster].sort((a, b) => a - b);
+  }
+  return best.length >= minCluster ? best : [];
+}

@@ -1,7 +1,6 @@
 import { CAROUSEL_CRAFT } from '$lib/server/carousel-craft';
 import { scrubPersonAppearance } from './images';
-import { brandLines, detectSceneCollapse, seedToPost } from './plan-pipeline';
-import { type AnyRec, type BrandProfile, CAPTION_LINK_PLATFORMS, CAROUSEL_MIN_SLIDES, type ContentPrefs, EXEC_SCHEMA, type PastWinner, type PreviewPost, type Progress, type WeeklyStrategy, carouselMaxSlides, faceBrandMode, platformKey, platformPlaybook, primaryPersonName } from './seed-model';
+import { type AnyRec, type BrandProfile, brandLines, CAPTION_LINK_PLATFORMS, CAROUSEL_MIN_SLIDES, type ContentPrefs, detectSceneCollapse, EXEC_SCHEMA, type PastWinner, type PreviewPost, type Progress, seedToPost, type WeeklyStrategy, carouselMaxSlides, faceBrandMode, platformKey, platformPlaybook, primaryPersonName } from './seed-model';
 import { aiActCopyGuardrail } from '$lib/ai-act';
 import { designWallDigestSection } from '$lib/server/wall-digest';
 import type { SupabaseClient } from '@supabase/supabase-js';

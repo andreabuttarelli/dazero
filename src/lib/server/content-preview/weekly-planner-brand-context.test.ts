@@ -23,7 +23,7 @@ vi.mock('./images', async (importOriginal) => ({
   uploadPostImage: (...args: unknown[]) => state.upload(...args)
 }));
 
-const { renderPreviewImages } = await import('./weekly-planner');
+const { renderPreviewImages } = await import('./render-preview');
 
 beforeEach(() => {
   state.contexts = [];
