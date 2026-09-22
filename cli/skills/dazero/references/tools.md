@@ -177,10 +177,6 @@ now one of the three, on the table named beside it:
 | `approve_post` / `publish_post` / `reject_post` | `dazero post <slug> <id> approve\|publish\|reject` |
 | `reschedule_post` | `dazero post <slug> <id> reschedule --scheduledFor …` |
 | `render_post` | `dazero post <slug> <id> render` |
-| `regenerate_post_media` | `dazero post <slug> <id> regenerate --instruction "…"` |
-| `regenerate_slide` | `dazero post <slug> <id> slide --index N --instruction "…"` |
-| `reorder_slides` | `dazero post <slug> <id> reorder --order "0,2,1"` |
-| `make_video` | `dazero post <slug> <id> video …` |
 
 `diagnose_brand` answers "why is nothing happening". For each recurring cycle — publishing,
 autopilot, analytics review — it names the FIRST gate the brand fails (`blockedBy`), what the
@@ -577,8 +573,8 @@ inferred, not something a person stated, and are never scoped to a chat.
 for the writing deck alone; `content` and `ugc` add `social`, `web` adds `seo-audit`.
 
 It also returns the **built-in production skills** for that agent — the ones that name the gates
-which refuse a render (`motion-voiceover-fit`, `graphic-feed-legibility`, and the rest). Write a
-motion script without them and `make_video` gets refused with no explanation.
+which refuse a render (`motion-voiceover-fit`, `motion-alive-scenes`, and the rest). Write a
+motion script without them and `render_motion_video` gets refused with no explanation.
 
 And it returns this brand's OWN procedures — what its team wrote down or the system distilled
 from repeated lessons. `source` tells product from brand, and **a brand procedure overrules a

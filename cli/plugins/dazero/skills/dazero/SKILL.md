@@ -190,9 +190,7 @@ slides take nothing from any brand (name the look in the brief), are filed nowhe
 
 **Animate an image you already have** → `generate_video` with its `base_media_id`. That is how
 "make a 5s clip of this photo" works, and it needs **no post**: the clip lands in the library and
-`create_post` takes its id as `media_ids`. `make_video` animates the cover of a post you
-already have and attaches the clip back to it — reach for it when you already have the post, not
-to get a video.
+`create_post` takes its id as `media_ids`.
 
 **Film from nothing** → `generate_video` with a prompt and no `base_media_id`. A clip takes minutes,
 so it returns a `job_id`; `query` on `video_renders` says when it landed. The model moves this bill by more
@@ -211,9 +209,9 @@ id and never a web address.
 on that post and attaches it. One render. To draw a picture that is not tied to a post, use
 `generate_image` instead.
 
-**Change the image already on a post** → `regenerate_post_media` with an instruction. It REPLACES
-that post's image — one render, and the old one is gone. When you want to keep the original, use
-`refine_media` on the library asset instead: that files the result as a new asset.
+**Change the image already on a post** → `refine_media` on the post's media, then `edit_post` with
+the new `media_id`. `refine_media` never overwrites — it files the result as a new asset, so a
+wrong edit costs one render and not your original.
 
 **CHANGE something you already made** → `refine_media` with its `base_media_id` and an
 instruction ("make it red", "warmer background", "keep the movement but make it night"). One door
@@ -316,8 +314,6 @@ and a misread of "show me the queue" used to publish the week.
 view and nothing else. The token is in the response **once** — hand over the `url` immediately.
 `query` on `shared_views` shows what is out there, `revoke_share` turns one off without touching anyone's
 access to the brand.
-
-**Fix one carousel slide** → `query` on `posts` for its `media_urls` → `regenerate_slide` (`index`, instruction; 0 = cover).
 
 **Blog draft** → you write the markdown → `create_article` (title + `body_md`) → `update_article`
 for later passes → `publish_article` when asked. No tool writes the article: `get_writing_skills`

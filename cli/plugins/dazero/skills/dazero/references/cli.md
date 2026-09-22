@@ -25,8 +25,6 @@ dazero dashboard <slug>
 dazero content <slug> --status pending_user
 dazero approve <slug> --all
 dazero post <slug> <id> edit --caption "..."
-dazero post <slug> <id> regenerate --instruction "..."
-dazero post <slug> <id> slide --index 1 --instruction "..."
 dazero post <slug> <id> approve|publish|reject
 dazero plan <slug> propose
 dazero weekly-plan <slug> plan --week 0

@@ -42,16 +42,10 @@ const ASKED_FOR: ReadonlyArray<{ tool: string; question: string; words: readonly
     question: 'animate this photo with a 5 second video',
     words: ['animate', 'photo', 'video', 'clip']
   },
-  { tool: 'make_video', question: 'turn this post into a video', words: ['post', 'video', 'animate'] },
   {
     tool: 'render_post',
     question: 'this post has no image, draw it',
     words: ['image', 'post', 'prompt']
-  },
-  {
-    tool: 'regenerate_post_media',
-    question: 'change the image on this post',
-    words: ['change', 'image', 'post', 'refine_media']
   },
   {
     tool: 'search_knowledge',
