@@ -2,7 +2,6 @@ import { swallow } from '$lib/server/swallow';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { publishPost, getPostStatus, deletePost } from './zernio';
 import { nextOccurrence } from './schedule';
-import { markPageUsed } from './content-library';
 import { withBrandContext } from './ai-log';
 import { buildMemoryContext } from './brand-memory';
 import { platformLimit, platformLabel, captionFor, ensureShortNetworkCuts, mediaUrlsForPublish, VIDEO_ONLY_PLATFORMS, youtubeTitleFrom, type PlatformCaptions } from '$lib/platform-limits';
@@ -567,13 +566,6 @@ export async function publishApprovedPost(
       .from('social_accounts')
       .update({ last_used_at: new Date().toISOString() })
       .in('id', usedAccountIds);
-  }
-
-  // Content library: if this post links one of the brand's own pages — a Reddit link post OR a
-  // caption link on X/Threads/LinkedIn/Facebook — stamp it used so the planner rotates to other
-  // pages next time. No-op when the URL isn't in the library.
-  if (scheduled > 0 && post.link_url) {
-    await markPageUsed(supabase, post.brand_id, post.link_url).catch(swallow('mark page used'));
   }
 
   return { scheduled, failed, noAccount: false, error: scheduled === 0 ? failReason : undefined };
