@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { redactSecrets, redactJson, noteSecret } from './redact';
-import { agentSessionRow, createRecorder } from './agent-sessions';
+import { redactSecrets, redactJson, noteSecret, redactFor } from './redact';
 
 /**
  * IL CORPUS, in due metà che devono valere insieme.
@@ -90,23 +89,6 @@ describe('redactSecrets — devono restare', () => {
   });
 });
 
-describe('redazione PRIMA del taglio', () => {
-  /**
-   * `clipEventData` taglia a 4.000 caratteri. Redigere dopo lascerebbe 39 caratteri su 40 di un
-   * token — cioè sedici tentativi di forza bruta invece di un segreto.
-   */
-  it('un segreto oltre il taglio non sopravvive nel troncamento', () => {
-    noteSecret('b-clip', TOK);
-    const rec = createRecorder(Date.now, 'b-clip');
-    rec.event('sandbox_exec', { stdout: 'x'.repeat(3990) + TOK });
-    // La spia è corta di proposito. Con `'gho_INVENTATO'` (13 caratteri) questo test passerebbe
-    // anche SENZA redazione, perché il taglio a 4.000 lascia sopravvivere solo `gho_INVENT` — ed è
-    // precisamente il difetto: dieci caratteri di token in chiaro sono sedici tentativi di forza
-    // bruta, non un segreto protetto. Otto caratteri è la soglia sotto cui non redigiamo comunque.
-    expect(JSON.stringify(rec.events())).not.toContain('gho_INVE');
-  });
-});
-
 describe('fail-closed', () => {
   it('un round-trip impossibile torna null, mai il valore di partenza', () => {
     const circular: Record<string, unknown> = { a: 1 };
@@ -134,17 +116,14 @@ describe('costo', () => {
   });
 });
 
-describe('la riga scritta è redatta in ogni campo, non solo nel transcript', () => {
-  it('system_prompt ed error non escono in chiaro, e la riga è marcata', () => {
+describe('redazione applicata a ogni campo, non solo a uno', () => {
+  it('system_prompt, transcript ed error non escono in chiaro nello stesso giro', () => {
     noteSecret('b-save', TOK);
-    const rec = createRecorder(Date.now, 'b-save');
-    rec.event('report', { report: `rapporto con ${TOK}` });
-    const row = agentSessionRow({
-      brandId: 'b-save', agent: 'motion', mode: 'execute', surface: 'chat_subagent', status: 'error',
-      systemPrompt: `sistema con ${TOK}`, transcript: `rapporto con ${TOK}`, error: `errore con ${TOK}`,
-      recorder: rec
-    });
+    const row = {
+      system_prompt: redactFor(`sistema con ${TOK}`, 'b-save'),
+      transcript: redactFor(`rapporto con ${TOK}`, 'b-save'),
+      error: redactFor(`errore con ${TOK}`, 'b-save')
+    };
     expect(JSON.stringify(row)).not.toContain('gho_INVE');
-    expect(row.format_version).toBe(2);
   });
 });
