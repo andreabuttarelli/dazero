@@ -119,17 +119,11 @@ describe('BRAND_ENDPOINTS', () => {
  * rotta resta viva, raggiungibile e senza più nessun posto dove è descritta — nessun tool, nessun
  * contratto, nessun rosso.
  *
- * Una volta è una curiosità. Le letture rientrate dentro `query` sono trentatré, e trentatré
- * rotte che nessuno può elencare sono il modo in cui il percorso a chiave API diventa in silenzio
- * l'unica strada per un terzo del prodotto — perché `query` la chiave API la RIFIUTA
- * (`createQueryTool` pretende un client RLS-scoped, e `authenticate` sul percorso a chiave dà la
- * service role).
- *
  * Quindi una rotta senza contratto si DICHIARA qui. La lista non porta un motivo per riga perché
- * ventotto di queste esistevano già da prima e inventarne il motivo sarebbe peggio che tacerlo:
- * quello che la lista impone è che la riga si aggiunga a mano, in un diff che qualcuno legge, con
- * la domanda giusta davanti — questa rotta cos'è adesso, se non è più un tool? Superficie REST
- * voluta, o codice morto da cancellare.
+ * gran parte di queste esistevano già da prima e inventarne il motivo sarebbe peggio che
+ * tacerlo: quello che la lista impone è che la riga si aggiunga a mano, in un diff che qualcuno
+ * legge, con la domanda giusta davanti — questa rotta cos'è adesso, se non è più un tool?
+ * Superficie REST voluta, o codice morto da cancellare.
  */
 /** La rotta alla radice del brand: non ha un segmento da nominare, ma va dichiarata come le altre. */
 const BRAND_ROOT = '.';
@@ -141,83 +135,25 @@ const REST_ONLY = [
   // basta, ed è la superficie che `src/lib/server/brand-agent/` serve.
   'agent',
   'agent/assets',
-  'agent-sessions',
-  'agent-sessions/[id]',
-  'analytics',
+  // `ads_action` chiama funzioni sue (approva, rifiuta, duplica, propone) senza passare da un
+  // contratto: il CLI la raggiunge con `api.adsAction`, non con `ADS_ACTION`.
+  'ads',
   'api-keys',
   'api-keys/[id]',
-  'articles',
-  'articles/[id]',
   'calendar',
-  'connections',
-  'connections/[id]',
-  'connections/[id]/complete',
-  'connections/catalog',
-  // Le quattro rotte che scrivevano piano e settimana con un modello loro. Il tool esce — chi
-  // chiama dazero è già un agente che scrive, e `save_plan` / `save_week_seeds` depositano il
-  // testo suo — ma la rotta resta, perché l'autopilot passa da queste stesse funzioni su ogni
-  // brand con un piano attivo.
-  'captions/generate',
-  'editorial-plan',
-  // `discard_plan` metteva a `rejected` una riga sola: `update_row` fa lo stesso con la RLS di chi
-  // chiama. Il tool esce, la rotta resta perché il CLI la chiama ancora (`cli/lib/api.ts`).
-  'editorial-plan/discard',
-  'editorial-plan/propose',
-  'editorial-plan/replan-week',
-  'editorial-plan/revise',
-  'editorial-plan/update',
-  'gtm',
-  'gtm/update',
-  'ideas',
-  'knowledge',
-  'library/scan',
-  // `record_memory_used` segnava l'uso di una memoria per rallentarne il decadimento: una colonna
-  // per riga, che `update_row` tocca. Il tool esce, la rotta resta per il CLI.
-  'memory/used',
   // `generate_media` era la porta vecchia: inoltrava a `generate_image` e `generate_video` e la
   // sua stessa descrizione diceva di preferirli. Il tool esce, la rotta resta per chi l'ha cablata.
   'media/generate',
-  // `create_product`, `update_person`, `update_product` e `update_competitor` erano un insert e un
-  // update di una riga e nient'altro: `insert_row` e `update_row` li fanno con la RLS di chi
-  // chiama. I tool escono, le rotte restano — il CLI le chiama ancora, e con `delete_product` e
-  // `delete_competitor` ritirati nessun contratto rivendica più quelle due cartelle.
-  'people/[id]',
   'posts/[id]/approve',
-  'posts/[id]/media',
   'posts/[id]/publish',
   'posts/[id]/revoke',
   'posts/approve-all',
   'products',
+  // `update_product` era un update di una riga e nient'altro: `update_row` lo fa con la RLS di
+  // chi chiama. Il tool esce, la rotta resta — il CLI la chiama ancora.
   'products/[id]',
   'publishing',
-  'rubrics',
-  'rubrics/approve',
-  'rubrics/propose',
-  // `remove_blog_term` toglie una categoria, un tag o un autore: una `delete` che `delete_row` fa.
-  // Il conto degli articoli toccati resta comodo per il CLI, quindi la rotta non se ne va.
-  'settings/blog/terms/remove',
   'social/accounts',
-  'studio',
-  // `add_competitor` e `delete_competitor` erano un insert e una delete di una riga. I tool
-  // escono, le rotte restano: `cli/lib/api.ts` le chiama entrambe.
-  'studio/competitors',
-  'studio/competitors/[id]',
-  'studio/memory',
-  'studio/memory/[id]',
-  'studio/products',
-  'voice',
-  'web',
-  // `generate_article` e `optimize_article` sono usciti per la stessa ragione: il markdown lo
-  // scrive chi chiama e `create_article` lo deposita. Il cron del blog continua a
-  // passare di qui.
-  'web/article/[id]/optimize',
-  'web/generate',
-  'webhook',
-  'weekly-plan',
-  'weekly-plan/plan',
-  'weekly-plan/produce',
-  'weekly-plan/render',
-  'weekly-plan/save',
 ];
 
 const BRAND_ROUTES = 'src/routes/api/v1/brands/[slug]';
