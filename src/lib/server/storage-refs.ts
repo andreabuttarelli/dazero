@@ -3,15 +3,16 @@
  *
  * La pulizia era sparsa: due endpoint su trentotto toglievano il file insieme alla riga, tutti gli
  * altri no, e nessuno dei due leggeva l'altro. `brand_documents` sapeva che `file_url` è un path del
- * bucket `brand-knowledge`; `people` sapeva che `images` è un array di `{path}`; e un `delete_row`
- * generico non sapeva né l'uno né l'altro. Un caso nuovo qui è UNA RIGA della tabella sotto, e tutti
- * i casi si vedono insieme — che è l'unico modo perché il trentanovesimo non diverga in silenzio.
+ * bucket `brand-knowledge`; `social_thumb_cache` sapeva che `paths` è un array di path; e un
+ * `delete_row` generico non sapeva né l'uno né l'altro. Un caso nuovo qui è UNA RIGA della tabella
+ * sotto, e tutti i casi si vedono insieme — che è l'unico modo perché il trentanovesimo non diverga
+ * in silenzio.
  *
  * TRE FORME, perché nel database ce ne sono tre e fingerne una sola perde file o ne cancella di vivi:
  *
  *   path        la colonna È la chiave dell'oggetto. `social_post_history.thumbnail_path`.
  *   jsonb_path  la colonna è un array di oggetti e la chiave sta dentro uno di essi.
- *               `people.images[].path`, `competitors.top_posts[].archivedPath`.
+ *               `social_thumb_cache.paths[]`, `competitors.top_posts[].archivedPath`.
  *   -           NON esiste una forma «url»: le colonne che tengono un URL pubblico firmato o
  *               assemblato NON sono qui. Estrarre un path da un URL vuol dire indovinare il prefisso
  *               del progetto, e un prefisso sbagliato produce un path plausibile che non esiste —
@@ -81,15 +82,6 @@ export const STORAGE_REFS: StorageRef[] = [
     areas: ['history']
   },
   {
-    table: 'people',
-    bucket: 'brand-knowledge',
-    columns: ['images'],
-    form: 'jsonb_path',
-    key: 'path',
-    orderBy: ['id'],
-    areas: ['people']
-  },
-  {
     // Bucket privato: `url` ripete `storage_path`, non lo completa (brand-media.ts).
     table: 'brand_media',
     bucket: 'brand-knowledge',
@@ -131,14 +123,6 @@ export const STORAGE_REFS: StorageRef[] = [
     form: 'path',
     orderBy: ['id'],
     areas: ['wall']
-  },
-  {
-    table: 'talent_views',
-    bucket: 'talent',
-    columns: ['path'],
-    form: 'path',
-    orderBy: ['id'],
-    areas: ['talent']
   }
 ];
 
@@ -176,7 +160,6 @@ type AreaRule = { area: string; bucket: string; segment: number; name: string | 
 
 export const COLLECTABLE_AREAS: AreaRule[] = [
   { area: 'history', bucket: 'brand-knowledge', segment: 3, name: 'history' },
-  { area: 'people', bucket: 'brand-knowledge', segment: 3, name: 'people' },
   { area: 'media', bucket: 'brand-knowledge', segment: 3, name: 'media' },
   { area: 'artifacts', bucket: 'brand-knowledge', segment: 3, name: 'artifacts' },
   { area: 'market', bucket: 'brand-knowledge', segment: 1, name: 'market' },

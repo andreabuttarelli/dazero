@@ -479,18 +479,18 @@ describe('deleteRow porta via i file che le righe referenziavano', () => {
   it('legge i path prima, e li rimuove DOPO che le righe sono sparite', async () => {
     const { client, calls, removed } = fakeClient([
       { count: 1 },
-      { rows: [{ id: 'p1', images: [{ path: 'own/b1/people/a.png' }] }] },
-      { rows: [{ id: 'p1', images: [{ path: 'own/b1/people/a.png' }] }] }
+      { rows: [{ platform: 'ig', handle: 'a', paths: ['own/b1/history/a.png'] }] },
+      { rows: [{ platform: 'ig', handle: 'a', paths: ['own/b1/history/a.png'] }] }
     ]);
 
     const out: any = await tools(client).deleteRow({
-      table: 'people',
-      where: [{ column: 'id', op: 'eq', value: 'p1' }]
+      table: 'social_thumb_cache',
+      where: [{ column: 'handle', op: 'eq', value: 'a' }]
     });
 
     expect(out.deleted).toBe(1);
     expect(removed).toEqual([
-      { bucket: 'brand-knowledge', paths: ['own/b1/people/a.png'], afterCalls: calls.length }
+      { bucket: 'brand-knowledge', paths: ['own/b1/history/a.png'], afterCalls: calls.length }
     ]);
     expect(calls.some((c: any) => c.verb === 'delete')).toBe(true);
     expect(out.files_removed).toBe(1);
@@ -500,8 +500,8 @@ describe('deleteRow porta via i file che le righe referenziavano', () => {
     const { client, removed } = fakeClient([{ count: DELETE_MAX_ROWS + 1 }]);
 
     const out: any = await tools(client).deleteRow({
-      table: 'people',
-      where: [{ column: 'name', op: 'like', value: '%a%' }]
+      table: 'social_thumb_cache',
+      where: [{ column: 'handle', op: 'like', value: '%a%' }]
     });
 
     expect(out.error).toBe('too_many_rows');
@@ -524,14 +524,14 @@ describe('deleteRow porta via i file che le righe referenziavano', () => {
   it('un file che un\'ALTRA riga referenzia ancora non viene tolto', async () => {
     const { client, removed } = fakeClient([
       { count: 1 },
-      { rows: [{ id: 'p1', images: [{ path: 'own/b1/people/shared.png' }] }] },
-      { rows: [{ id: 'p1', images: [{ path: 'own/b1/people/shared.png' }] }] },
-      { rows: [{ id: 'p2', images: [{ path: 'own/b1/people/shared.png' }] }] }
+      { rows: [{ platform: 'ig', handle: 'a', paths: ['own/b1/history/shared.png'] }] },
+      { rows: [{ platform: 'ig', handle: 'a', paths: ['own/b1/history/shared.png'] }] },
+      { rows: [{ platform: 'ig', handle: 'b', paths: ['own/b1/history/shared.png'] }] }
     ]);
 
     const out: any = await tools(client).deleteRow({
-      table: 'people',
-      where: [{ column: 'id', op: 'eq', value: 'p1' }]
+      table: 'social_thumb_cache',
+      where: [{ column: 'handle', op: 'eq', value: 'a' }]
     });
 
     expect(out.deleted).toBe(1);
@@ -542,8 +542,8 @@ describe('deleteRow porta via i file che le righe referenziavano', () => {
   it('una rimozione che fallisce non trasforma una cancellazione riuscita in un errore', async () => {
     const { client } = fakeClient([
       { count: 1 },
-      { rows: [{ id: 'p1', images: [{ path: 'own/b1/people/a.png' }] }] },
-      { rows: [{ id: 'p1', images: [{ path: 'own/b1/people/a.png' }] }] }
+      { rows: [{ platform: 'ig', handle: 'a', paths: ['own/b1/history/a.png'] }] },
+      { rows: [{ platform: 'ig', handle: 'a', paths: ['own/b1/history/a.png'] }] }
     ]);
     client.storage = {
       from: () => ({
@@ -554,8 +554,8 @@ describe('deleteRow porta via i file che le righe referenziavano', () => {
     };
 
     const out: any = await tools(client).deleteRow({
-      table: 'people',
-      where: [{ column: 'id', op: 'eq', value: 'p1' }]
+      table: 'social_thumb_cache',
+      where: [{ column: 'handle', op: 'eq', value: 'a' }]
     });
 
     expect(out.deleted).toBe(1);

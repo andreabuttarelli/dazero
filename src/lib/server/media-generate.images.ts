@@ -14,7 +14,6 @@ import { structured } from '$lib/server/research';
 import { signKnowledgePaths } from '$lib/server/media-archive';
 import { generateImageOnOpenrouter } from '$lib/server/openrouter-image';
 import { route } from '$lib/server/model-routing';
-import { signPaths } from '$lib/server/people';
 import { svgToPng } from '$lib/server/brand-analysis';
 import { normalizeContentFormat } from '$lib/content-formats';
 import { firstLogoUrl } from '$lib/brand-fields';
@@ -661,7 +660,7 @@ export async function collectBatchReviewImages(
 }
 
 // Righe `brand_documents` con kind='image'; `file_url` è un path nel bucket privato
-// brand-knowledge, lo stesso su cui firma signPaths.
+// brand-knowledge, lo stesso su cui firma signKnowledgePaths.
 export async function loadBrandMoodImageUrls(supabase: SupabaseClient, brandId: string): Promise<string[]> {
   const { data: rows } = await supabase
     .from('brand_documents')
@@ -672,7 +671,7 @@ export async function loadBrandMoodImageUrls(supabase: SupabaseClient, brandId: 
     .limit(MOOD_REF_IMAGES);
   const paths = (rows ?? []).map((r) => String(r.file_url ?? '')).filter(Boolean);
   if (!paths.length) return [];
-  const signed = await signPaths(supabase, paths);
+  const signed = await signKnowledgePaths(supabase, paths);
   return paths.map((p) => signed.get(p)).filter((u): u is string => !!u);
 }
 

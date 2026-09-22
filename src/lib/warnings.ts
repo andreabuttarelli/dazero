@@ -54,7 +54,6 @@ export interface BrandWarningInput {
   hasLogo: boolean;
   hasVisualStyle: boolean;
   hasHashtags: boolean;
-  peopleCount: number;
   competitorCount: number;
   blogEnabled: boolean; // the brand opted its blog into the content pipeline
 }
@@ -158,7 +157,6 @@ export function computeBrandWarnings(i: BrandWarningInput): AppWarning[] {
   // content with them, but none blocks generation).
   if (!i.hasLogo) out.push({ id: 'studio-no-logo', severity: 'suggestion', title: 'warnings.studioLogo.title', message: 'warnings.studioLogo.msg', href: `${i.base}/settings/brand` });
   if (!i.hasVisualStyle) out.push({ id: 'studio-no-visual-style', severity: 'suggestion', title: 'warnings.studioVisual.title', message: 'warnings.studioVisual.msg', href: `${i.base}/settings/brand` });
-  if (i.peopleCount === 0) out.push({ id: 'studio-no-people', severity: 'suggestion', title: 'warnings.studioPeople.title', message: 'warnings.studioPeople.msg', href: `${i.base}/settings/people` });
   if (i.competitorCount === 0) out.push({ id: 'studio-no-competitors', severity: 'suggestion', title: 'warnings.studioCompetitors.title', message: 'warnings.studioCompetitors.msg', href: i.base });
   if (!i.hasHashtags) out.push({ id: 'studio-no-hashtags', severity: 'suggestion', title: 'warnings.studioHashtags.title', message: 'warnings.studioHashtags.msg', href: `${i.base}/settings/brand#hashtags` });
 

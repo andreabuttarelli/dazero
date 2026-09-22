@@ -18,17 +18,17 @@ describe('il registro delle dipendenze riga → file', () => {
   });
 
   it('cammina un array jsonb invece di stringere la colonna', () => {
-    const rule = STORAGE_REFS.find((r) => r.table === 'people');
-    expect(pathsInRow(rule!, { images: [{ path: 'o/b/people/1.png' }, { path: 'o/b/people/2.png' }] })).toEqual([
-      { bucket: 'brand-knowledge', path: 'o/b/people/1.png' },
-      { bucket: 'brand-knowledge', path: 'o/b/people/2.png' }
+    const rule = STORAGE_REFS.find((r) => r.table === 'social_thumb_cache');
+    expect(pathsInRow(rule!, { paths: ['o/b/history/1.jpg', 'o/b/history/2.jpg'] })).toEqual([
+      { bucket: 'brand-knowledge', path: 'o/b/history/1.jpg' },
+      { bucket: 'brand-knowledge', path: 'o/b/history/2.jpg' }
     ]);
   });
 
   it('non inventa un path da una colonna vuota o di forma sbagliata', () => {
-    const rule = STORAGE_REFS.find((r) => r.table === 'people');
-    expect(pathsInRow(rule!, { images: null })).toEqual([]);
-    expect(pathsInRow(rule!, { images: 'not-an-array' })).toEqual([]);
+    const rule = STORAGE_REFS.find((r) => r.table === 'social_thumb_cache');
+    expect(pathsInRow(rule!, { paths: null })).toEqual([]);
+    expect(pathsInRow(rule!, { paths: 'not-an-array' })).toEqual([]);
     expect(pathsInRow(rule!, {})).toEqual([]);
   });
 
@@ -71,7 +71,6 @@ describe('il registro delle dipendenze riga → file', () => {
 describe('l\'area di un path, e il recinto di quelle raccoglibili', () => {
   it.each([
     ['brand-knowledge', 'own/brand/history/a.jpg', 'history'],
-    ['brand-knowledge', 'own/brand/people/a.png', 'people'],
     ['brand-knowledge', 'own/brand/media/a.png', 'media'],
     ['brand-knowledge', 'own/brand/artifacts/a.pdf', 'artifacts'],
     ['brand-knowledge', 'market/tiktok/abc.mp4', 'market'],
