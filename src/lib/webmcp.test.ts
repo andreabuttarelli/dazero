@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { BRAND_ENDPOINTS, MEDIA_MODEL_SLOT_IDS } from '@dazero/api-contracts';
-import { brandWebMcpTools, modelContext, registerBrandWebMcp } from './webmcp';
+import { z } from 'zod';
+import { BRAND_ENDPOINTS, MEDIA_MODEL_SLOT_IDS, type BrandEndpoint } from '@dazero/api-contracts';
+import { annotationsFor, brandWebMcpTools, callApi, inputSchemaFor, modelContext, registerBrandWebMcp } from './webmcp';
 
 const TOKEN = 'eyJ-fake-session-token';
 const tools = () => brandWebMcpTools('demo', TOKEN);
@@ -9,6 +10,37 @@ const byName = (name: string) => {
   if (!tool) throw new Error(`${name} non generato`);
   return tool;
 };
+
+/**
+ * Nessun endpoint reale porta oggi `resource` o `openWorld`: i test sotto verificano che
+ * `webmcp.ts` sappia comunque generare i due casi, non che il registry ne contenga uno adesso.
+ * Un fixture locale prova il meccanismo senza dipendere da quale contratto capita di esistere.
+ */
+const RESOURCE_FIXTURE = {
+  tool: 'fixture_resource_tool',
+  title: 'Fixture',
+  description: 'Fixture per un endpoint su risorsa',
+  method: 'POST',
+  pathUnderBrand: '/fixture/:id',
+  resource: 'post',
+  input: z.object({}).strict(),
+  output: z.object({ ok: z.literal(true) }),
+  failures: [],
+  destructive: false
+} satisfies BrandEndpoint;
+
+const OPEN_WORLD_FIXTURE = {
+  tool: 'fixture_open_world_tool',
+  title: 'Fixture',
+  description: 'Fixture per un endpoint openWorld',
+  method: 'GET',
+  pathUnderBrand: '/fixture-open-world',
+  input: z.object({}).strict(),
+  output: z.object({ ok: z.literal(true) }),
+  failures: [],
+  destructive: false,
+  openWorld: true
+} satisfies BrandEndpoint;
 
 describe('il registry alimenta anche Web MCP', () => {
   it('genera uno strumento per ogni endpoint, senza elenchi a mano', () => {
@@ -36,9 +68,7 @@ describe('il registry alimenta anche Web MCP', () => {
   });
 
   it('uno strumento su una risorsa chiede anche il suo id', () => {
-    const resourceEndpoint = BRAND_ENDPOINTS.find((e) => e.resource !== undefined);
-    if (!resourceEndpoint) throw new Error('il registry non ha piu’ endpoint su risorsa');
-    const schema = byName(resourceEndpoint.tool).inputSchema as {
+    const schema = inputSchemaFor(RESOURCE_FIXTURE) as {
       properties: Record<string, unknown>;
       required: string[];
     };
@@ -78,9 +108,7 @@ describe('le annotazioni dicono la verita’ nel vocabolario giusto', () => {
   });
 
   it('cio’ che esce su internet e’ marcato come contenuto di cui non rispondiamo', () => {
-    const openWorld = BRAND_ENDPOINTS.find((e) => e.openWorld === true);
-    if (!openWorld) throw new Error('il registry non ha piu’ endpoint openWorld');
-    expect(byName(openWorld.tool).annotations.untrustedContentHint).toBe(true);
+    expect(annotationsFor(OPEN_WORLD_FIXTURE).untrustedContentHint).toBe(true);
     expect(byName('get_media_models').annotations.untrustedContentHint).toBe(false);
   });
 });
@@ -126,10 +154,7 @@ describe('quello che l’esecuzione manda davvero in rete', () => {
   });
 
   it('un id di risorsa entra nel percorso, non nel corpo', async () => {
-    const resource = BRAND_ENDPOINTS.find((e) => e.resource !== undefined);
-    if (!resource) throw new Error('il registry non ha piu’ endpoint su risorsa');
-
-    await byName(resource.tool).execute({ id: 'risorsa-1' });
+    await callApi(RESOURCE_FIXTURE, TOKEN, { slug: 'demo', id: 'risorsa-1' });
     const [path, init] = fetchMock.mock.calls[0];
     expect(path).toContain('risorsa-1');
     expect(init.body ?? '').not.toContain('risorsa-1');

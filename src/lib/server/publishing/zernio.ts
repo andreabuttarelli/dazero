@@ -1,6 +1,5 @@
 import { env } from '$env/dynamic/private';
 import { isVideoUrl } from '$lib/content-formats';
-import { youtubeTitleFrom } from '$lib/platform-limits';
 import type {
   AdsConnectPlatform,
   AdsConnectUrlResult,
@@ -21,6 +20,14 @@ import type {
 } from './port';
 
 const DEFAULT_BASE_URL = 'https://zernio.com/api/v1';
+const YOUTUBE_TITLE_LIMIT = 100;
+
+function youtubeTitleFrom(caption: string | null | undefined, explicit?: string | null): string {
+  const fromExplicit = (explicit ?? '').trim();
+  const fromCaption = (caption ?? '').trim().split('\n')[0]?.trim() ?? '';
+  const raw = fromExplicit || fromCaption;
+  return raw.slice(0, YOUTUBE_TITLE_LIMIT);
+}
 
 function baseUrl(): string {
   return env.ZERNIO_BASE_URL?.trim() || DEFAULT_BASE_URL;

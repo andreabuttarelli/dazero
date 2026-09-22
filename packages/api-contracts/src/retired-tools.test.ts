@@ -21,6 +21,11 @@ const RETIRED = [
   'record_memory_used',
   'discard_plan',
   'approve_posts',
+  'edit_post',
+  'reschedule_post',
+  'approve_post',
+  'publish_post',
+  'reject_post',
   'set_automation',
   'create_article',
   'update_article',
@@ -77,14 +82,8 @@ const RETIRED = [
  * giro di pulizia li toglie per simmetria e rompe qualcosa che nessun test copre.
  */
 const KEPT_ON_PURPOSE: Record<string, string> = {
-  publish_post:
-    'chiama `publishApprovedPost`, che consegna alle piattaforme: `update_row` darebbe post marcati pubblicati che non escono',
-  approve_post:
-    'pubblica o schedula davvero, e distingue tre esiti che uno stato non contiene: schedulato, rifiutato dalla piattaforma, approvato-ma-senza-account collegato',
-  reject_post:
-    'revoca la schedulazione su Zernio PRIMA di cancellare, e se la revoca fallisce non cancella: `delete_row` toglierebbe la riga lasciando viva la schedulazione — il post esce e non resta nulla che lo racconti (incidente luglio 2026)',
-  create_post: 'deposita la copy scritta fuori come post in attesa, senza modello e senza crediti',
-  edit_post: 'riscrive la copy di un post che esiste, senza modello e senza crediti',
+  create_post:
+    'deposita un post come bozza (caption, media dalla libreria, sorgenti dal canvas): hand-registered in cli/mcp/tools/posts.ts, non più un BrandEndpoint',
   enhance_prompt:
     'il testo che produce non lo legge una persona ma un modello di immagini, e la forma che serve a ciascuno (sezioni etichettate, paragrafo unico, comando) sta in una guida per modello che vive qui: un agente esterno non sa con quale modello stai per rendere né come vuole essere parlato. Rifiuta di suo le riscritture che inventano un soggetto, quindi non è una seconda stesura del brief'
 };
@@ -94,9 +93,6 @@ const KEPT_ON_PURPOSE: Record<string, string> = {
  * `cli/mcp/tools/{posts,ads,org-data}.ts` (`list_posts`, `create_post`, `set_post_status`,
  * `list_ad_campaigns`, `create_ad_campaign`, `approve_ad_campaign`, `query`, `insert_row`,
  * `update_row`, `delete_row`, `describe_node_types`) e non passa più da `BRAND_ENDPOINTS`.
- * `approve_post`, `publish_post` e `reject_post` sono nomi che questo registro conosceva quando
- * risolvevano un id da un prefisso; restano qui come promemoria che una rotta REST li chiama
- * ancora, anche se `tools/list` oggi è quello cablato a mano.
  */
 const HAND_REGISTERED = [
   'list_posts',
@@ -109,10 +105,7 @@ const HAND_REGISTERED = [
   'insert_row',
   'update_row',
   'delete_row',
-  'describe_node_types',
-  'approve_post',
-  'publish_post',
-  'reject_post'
+  'describe_node_types'
 ];
 
 describe('i tool ritirati o le cui rotte sono cancellate', () => {

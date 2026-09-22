@@ -51,7 +51,7 @@ describe('il registry degli endpoint di brand', () => {
     for (const e of BRAND_ENDPOINTS) {
       expect(e.pathUnderBrand.startsWith('/'), e.tool).toBe(true);
     }
-    expect(pathFor(byTool('create_post'), 'demo')).toBe('/api/v1/brands/demo/posts');
+    expect(pathFor(byTool('import_media_url'), 'demo')).toBe('/api/v1/brands/demo/media');
   });
 
   it('un endpoint di risorsa mette l id risolto al posto del segmento', () => {
@@ -99,42 +99,15 @@ describe('il registry degli endpoint di brand', () => {
   });
 
   it('lo status di un fallimento non dichiarato è 500, non un 400 silenzioso', () => {
-    const createPost = byTool('create_post');
-    expect(statusForFailure(createPost, 'need_caption')).toBe(400);
-    expect(statusForFailure(createPost, 'insert_failed')).toBe(500);
-  });
-
-  it('un guasto della pipeline media non è colpa di chi chiama: 5xx, non 400', () => {
-    const createPost = byTool('create_post');
-    expect(statusForFailure(createPost, 'media_not_found')).toBe(400);
-    expect(statusForFailure(createPost, 'media_unavailable')).toBe(502);
-  });
-
-  it('create_post accetta la copy e rifiuta una richiesta senza piattaforme', () => {
-    const { input } = byTool('create_post');
-    expect(input.safeParse({ platforms: ['linkedin'], caption: 'ciao' }).success).toBe(true);
-    expect(input.safeParse({ platforms: [], caption: 'ciao' }).success).toBe(false);
-    expect(input.safeParse({ platforms: ['linkedin'], caption: '' }).success).toBe(false);
+    const importMedia = byTool('import_media_url');
+    expect(statusForFailure(importMedia, 'not_https')).toBe(400);
+    expect(statusForFailure(importMedia, 'insert_failed')).toBe(500);
   });
 
   it('un campo che nessun endpoint dichiara viene rifiutato, non scartato in silenzio', () => {
     for (const e of BRAND_ENDPOINTS) {
       expect(e.input.safeParse({ campo_che_non_esiste: 'x' }).success, e.tool).toBe(false);
     }
-    expect(
-      byTool('create_post').input.safeParse({
-        platforms: ['linkedin'],
-        caption: 'ciao',
-        campo_che_non_esiste: 'x'
-      }).success
-    ).toBe(false);
-  });
-
-  it('create_post accetta i media della libreria, che prima non avevano dove passare', () => {
-    const { input } = byTool('create_post');
-    expect(
-      input.safeParse({ platforms: ['instagram'], caption: 'ciao', media_ids: ['asset-1'] }).success
-    ).toBe(true);
   });
 
   it('la lettura dei media dichiara un tetto, e nessun fallimento proprio', () => {
@@ -162,21 +135,6 @@ describe('il registry degli endpoint di brand', () => {
     expect(input.safeParse({}).success).toBe(false);
     expect(input.safeParse({ url: '' }).success).toBe(false);
     expect(input.safeParse({ url: 'https://cdn.example.com/a.png', quality: 'high' }).success).toBe(false);
-  });
-
-  it('create_post promette un post pending_user con la data proposta', () => {
-    const { output } = byTool('create_post');
-    const ok = output.safeParse({
-      ok: true,
-      id: 'post-1',
-      status: 'pending_user',
-      scheduled_for: '2030-05-16T07:00:00.000Z',
-      scheduled_for_local: '2030-05-16 09:00 (Europe/Rome)',
-      slot: 'Thu 09:00',
-      review_url: 'https://dazero.co/app/demo/posts/post-1'
-    });
-    expect(ok.success).toBe(true);
-    expect(output.safeParse({ ok: true, id: 'post-1', status: 'approved' }).success).toBe(false);
   });
 
   it('i due link di fatturazione portano a Stripe e non sono distruttivi', () => {

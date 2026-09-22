@@ -60,7 +60,7 @@ const SLUG_PROPERTY = { type: 'string', minLength: 1, description: 'Brand URL sl
  * insieme piu' largo. Marcarne uno di troppo non costa niente; marcarne uno di meno toglie
  * all'agente un avviso che avrebbe dovuto vedere.
  */
-function annotationsFor(endpoint: BrandEndpoint) {
+export function annotationsFor(endpoint: BrandEndpoint) {
   return {
     readOnlyHint: endpoint.method === 'GET',
     consequentialHint: endpoint.destructive,
@@ -68,7 +68,7 @@ function annotationsFor(endpoint: BrandEndpoint) {
   };
 }
 
-function inputSchemaFor(endpoint: BrandEndpoint): Record<string, unknown> {
+export function inputSchemaFor(endpoint: BrandEndpoint): Record<string, unknown> {
   const base = z.toJSONSchema(endpoint.input, { io: 'input' }) as {
     properties?: Record<string, unknown>;
     required?: string[];
@@ -90,7 +90,7 @@ function inputSchemaFor(endpoint: BrandEndpoint): Record<string, unknown> {
  */
 const envelope = (value: unknown) => ({ content: [{ type: 'text', text: JSON.stringify(value) }] });
 
-async function callApi(
+export async function callApi(
   endpoint: BrandEndpoint,
   token: string,
   input: Record<string, unknown>,

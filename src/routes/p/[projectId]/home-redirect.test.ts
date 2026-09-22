@@ -68,6 +68,6 @@ describe('/p/[projectId] è una rotta, non solo un guscio', () => {
 	});
 
 	it('il controllo sa dire di no: una cartella di solo endpoint non ha pagina', () => {
-		expect(pageFilesIn('manual-posting/generate')).toEqual([]);
+		expect(pageFilesIn('upload-url')).toEqual([]);
 	});
 });
