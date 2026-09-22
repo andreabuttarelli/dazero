@@ -22,16 +22,12 @@
     "test:unit": "vitest run",
     "check:motion-chain": "vitest run src/lib/motion-video/chain.test.ts --reporter=verbose",
     "test:e2e": "playwright test",
-    "bake:style-reels": "vite-node --config scripts/vite-node.config.ts scripts/bake-style-reels.ts",
     "bake:motion-library": "vite-node --config scripts/vite-node.config.ts scripts/bake-motion-library.ts",
     "db:migrate": "node --env-file-if-exists=.env scripts/db-migrate.mjs",
     "test:realtime-policies": "node scripts/realtime-policy-harness.mjs",
     "db:seed": "node --env-file-if-exists=.env scripts/db-seed.mjs",
-    "eval:creative": "vite-node --config scripts/vite-node.config.ts scripts/eval/creative.ts",
-    "eval:agent": "vite-node --config scripts/vite-node.config.ts scripts/eval/agent-probe.ts",
     "oss:export": "node scripts/export-oss.mjs",
     "postinstall": "patch-package",
-    "eval:clip": "vite-node --config scripts/vite-node.config.ts scripts/eval/clip.ts",
     "test:constraints": "node scripts/constraint-harness.mjs",
     "test:storage-policies": "node scripts/storage-policy-harness.mjs",
     "test:privileges": "node scripts/privilege-harness.mjs",
@@ -39,7 +35,8 @@
     "eval:canvas": "vite-node --config scripts/vite-node.config.ts scripts/eval/canvas.ts",
     "eval:image-node": "vite-node --config scripts/vite-node.config.ts scripts/eval/image-node.ts",
     "eval:gen-node": "vite-node --config scripts/vite-node.config.ts scripts/eval/gen-node.ts",
-    "eval:bootstrap": "vite-node --config scripts/vite-node.config.ts scripts/eval/bootstrap.ts"
+    "eval:bootstrap": "vite-node --config scripts/vite-node.config.ts scripts/eval/bootstrap.ts",
+    "docs:mcp-tools": "node scripts/mcp-inventory.mjs --write"
   },
   "devDependencies": {
     "@internationalized/date": "^3.12.0",
