@@ -74,7 +74,6 @@
     { label: $_('docs.layout.s31'), items: [
       { title: $_('docs.layout.s32'), href: '/docs/api/brands', icon: 'layers' },
       { title: $_('docs.layout.s33'), href: '/docs/api/posts', icon: 'file-text' },
-      { title: $_('docs.layout.s34'), href: '/docs/api/editorial-plan', icon: 'calendar' },
       { title: $_('docs.layout.s35'), href: '/docs/api/studio', icon: 'palette' },
       { title: $_('docs.layout.s36'), href: '/docs/api/strategy', icon: 'target' },
       { title: $_('docs.layout.s37'), href: '/docs/api/analytics', icon: 'bar-chart' },
