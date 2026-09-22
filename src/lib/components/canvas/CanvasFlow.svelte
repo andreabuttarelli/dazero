@@ -36,6 +36,8 @@
   import { CANVAS_EDGE_KINDS, EDGE_KIND_LABEL, type CanvasEdgeKind, type FlowEdge } from '$lib/canvas-edges';
   import { CANVAS_ADDABLE, ADDABLE_LABEL, isAddable, type Addable } from '$lib/canvas/addable';
   import { DEFAULT_EDGE_KIND, edgeKindsFor, verdictBetween } from '$lib/canvas/connect-rules';
+  import { connectorAccepts } from '$lib/canvas/connector-ports';
+  import { isListValued, type ConnectorType } from '$lib/canvas/connectors';
   import type { CanvasNode } from '$lib/canvas/graph';
 
   /**
@@ -59,6 +61,9 @@
     h: number;
     connectable?: boolean;
     node?: CanvasNode;
+    /** Le porte di questo nodo (`connectorsFor`), passate a `CanvasTile` così com'è. Assente =
+     *  un solo ingresso generico. */
+    connectors?: ConnectorType[];
   };
 
   let {
@@ -117,7 +122,7 @@
     id: t.id,
     position: { x: t.x, y: t.y },
     // `render` è lo snippet del chiamante: il nodo lo esegue senza sapere cosa disegni.
-    data: { tile: t, id: t.id, render: tile, connectable: t.connectable !== false },
+    data: { tile: t, id: t.id, render: tile, connectable: t.connectable !== false, connectors: t.connectors },
     type: 'tile',
     style: `width:${t.w}px;height:${t.h}px`
   });
@@ -160,6 +165,11 @@
 
   const lookup = (id: string) => nodeOf.get(id) ?? null;
 
+  /** Le porte tipizzate di una tile, per id — usate solo per rifiutare un secondo filo su un
+   *  connettore a valore singolo già occupato: `connect-rules.ts` non conosce i connettori, la
+   *  domanda "quale porta" è di questo file. */
+  const connectorsOf = $derived(new Map(tiles.map((t) => [t.id, t.connectors])));
+
   /**
    * IL RIFIUTO, MENTRE IL PUNTATORE È ANCORA IN ARIA. La libreria si ferma qui e domanda: tornare
    * `false` significa che la linea non si aggancia e l'attacco non si accende, senza che nessuno
@@ -171,13 +181,32 @@
    */
   let refusal = $state<string | null>(null);
 
-  function isValidConnection(c: { source?: string | null; target?: string | null }): boolean {
-    const { source, target } = c;
+  function isValidConnection(c: {
+    source?: string | null;
+    target?: string | null;
+    targetHandle?: string | null;
+  }): boolean {
+    const { source, target, targetHandle } = c;
     if (!source || !target) return false;
 
     const verdict = verdictBetween(lookup, source, target);
-    refusal = verdict.ok ? null : verdict.why;
-    return verdict.ok;
+    if (!verdict.ok) {
+      refusal = verdict.why;
+      return false;
+    }
+
+    const connector = targetHandle as ConnectorType | null | undefined;
+    const connectors = connectorsOf.get(target);
+    if (connector && connectors?.includes(connector)) {
+      const free = connectorAccepts(edges, target, connector, isListValued(connector));
+      if (!free) {
+        refusal = `porta ${connector} già occupata`;
+        return false;
+      }
+    }
+
+    refusal = null;
+    return true;
   }
 
   /**
