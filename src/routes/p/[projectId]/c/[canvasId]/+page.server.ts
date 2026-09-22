@@ -17,6 +17,7 @@ import {
   writeNodeData
 } from '$lib/server/repos/canvas';
 import { isNodeType, docData, productsOf, socialFeedOf } from '$lib/canvas-node-data';
+import { validateNodeData } from '$lib/canvas/node-data';
 import type { Actor } from '$lib/server/repos/actor';
 import { mintShareToken } from '$lib/canvas/doc-node';
 import { clearDocShare, setDocShare } from '$lib/server/repos/doc-share';
@@ -379,6 +380,15 @@ export const actions: Actions = {
       return fail(400, { error: 'contenuto non leggibile' });
     }
 
+    // Un nodo trascinato dalla libreria degli asset o dai brand arriva con `data` già scritto
+    // dal browser (`CanvasFlow::onCreateFilled`): non meno un input esterno di un form, e il
+    // CHECK del database (`nodes_data_shape_check`) è l'ultima riga di difesa, non la prima —
+    // rifiutarlo qui dà un errore leggibile invece di un 500 dal vincolo.
+    const verdict = validateNodeData(type, data);
+    if (!verdict.ok) {
+      return fail(400, { error: verdict.error });
+    }
+
     const node = await createNode(scope.db, {
       orgId: scope.orgId,
       projectId: scope.canvas.projectId,
@@ -386,7 +396,7 @@ export const actions: Actions = {
       type,
       x,
       y,
-      data,
+      data: verdict.data,
       actor: userActor(scope)
     });
 

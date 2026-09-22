@@ -32,6 +32,7 @@
   import CanvasAddBar from './CanvasAddBar.svelte';
   import CanvasKeys from './CanvasKeys.svelte';
   import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
+  import { CANVAS_DRAG_FILLED_NODE, parseFilledNodeDrag, type FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { syncNodes } from '$lib/canvas/tile-sync';
   import { CANVAS_EDGE_KINDS, EDGE_KIND_LABEL, type CanvasEdgeKind, type FlowEdge } from '$lib/canvas-edges';
   import { CANVAS_ADDABLE, ADDABLE_LABEL, isAddable, type Addable } from '$lib/canvas/addable';
@@ -75,6 +76,7 @@
     onEdgeDelete,
     onEdgeRetype,
     onCreate,
+    onCreateFilled,
     onUpload,
     tile
   }: {
@@ -101,6 +103,13 @@
     onEdgeRetype?: (edgeId: string, kind: CanvasEdgeKind) => void;
     /** Una tile nuova chiesta col doppio clic, col punto già in unità di tela. */
     onCreate?: (what: Addable, at: { x: number; y: number }) => void;
+    /**
+     * Una tile che nasce già PIENA — trascinata dalla libreria degli asset o dai brand, non dal
+     * menù del doppio clic. `onDrop` la prova PRIMA del fallback `onCreate`: un file che ha già
+     * un `assetId` non deve mai diventare un nodo vuoto perché il ramo sbagliato ha guardato per
+     * primo.
+     */
+    onCreateFilled?: (drag: FilledNodeDrag, at: { x: number; y: number }) => void;
     /** Un file scelto dalla barra: la tela non lo carica da sé, lo passa a chi la monta. */
     onUpload?: (file: File) => void;
     /** Cosa disegnare dentro una tile. La tela non sa cosa mostra: lo decide chi la usa. */
@@ -318,14 +327,33 @@
    * il browser rifiuta il rilascio e il trascinamento finisce in un nulla di fatto.
    */
   function onDragOver(e: DragEvent) {
-    if (!e.dataTransfer?.types.includes(CANVAS_DRAG_MEDIUM)) return;
+    const types = e.dataTransfer?.types ?? [];
+    if (!types.includes(CANVAS_DRAG_FILLED_NODE) && !types.includes(CANVAS_DRAG_MEDIUM)) return;
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
+    e.dataTransfer!.dropEffect = 'copy';
   }
 
+  /**
+   * IL PAYLOAD PIENO SI PROVA PER PRIMO. La stessa card trascinata porta ENTRAMBI i MIME
+   * (`drag-payload.ts`, i pannelli che trascinano) — pieno come strada normale, vuoto come
+   * fallback per chi non lo legge ancora. Guardare prima il fallback creerebbe un nodo vuoto e
+   * scarterebbe in silenzio il file che l'utente aveva già pronto in mano.
+   */
   function onDrop(e: DragEvent) {
+    if (!toFlow) return;
+
+    const filledRaw = e.dataTransfer?.getData(CANVAS_DRAG_FILLED_NODE);
+    if (filledRaw) {
+      const drag = parseFilledNodeDrag(filledRaw);
+      if (drag) {
+        e.preventDefault();
+        onCreateFilled?.(drag, toFlow({ x: e.clientX, y: e.clientY }));
+        return;
+      }
+    }
+
     const what = e.dataTransfer?.getData(CANVAS_DRAG_MEDIUM);
-    if (!what || !isAddable(what) || !toFlow) return;
+    if (!what || !isAddable(what)) return;
 
     e.preventDefault();
     onCreate?.(what, toFlow({ x: e.clientX, y: e.clientY }));

@@ -35,4 +35,21 @@ describe('canvas action input', () => {
     expect(result).toMatchObject({ status: 400 });
     expect(input.calls.some((call) => call.op === 'insert')).toBe(false);
   });
+  it('rejects data that does not match the node schema, before writing', async () => {
+    const input = event({ type: 'text', x: '0', y: '0', data: '{"no_prompt": true}' });
+    const result = await actions.create(input as never);
+    expect(result).toMatchObject({ status: 400 });
+    expect(input.calls.some((call) => call.op === 'insert')).toBe(false);
+  });
+  it('accepts a node dragged in already filled, its data intact', async () => {
+    const input = event({
+      type: 'image',
+      x: '0',
+      y: '0',
+      data: JSON.stringify({ prompt: '', assetId: 'a1', url: '/x', name: 'logo.png', mimeType: 'image/png' })
+    });
+    const result = await actions.create(input as never);
+    expect(result).not.toMatchObject({ status: 400 });
+    expect(input.calls.some((call) => call.op === 'insert')).toBe(true);
+  });
 });

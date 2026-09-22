@@ -32,6 +32,7 @@
   import { productsNodeSize } from '$lib/canvas/products-node';
   import { socialFeedNodeSize } from '$lib/canvas/social-feed-node';
   import { isGenAddable, type Addable } from '$lib/canvas/addable';
+  import type { FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { tileNode } from '$lib/canvas/connect-rules';
   import { planDelete } from '$lib/canvas/delete-plan';
   import { connectorsFor, type ConnectorType } from '$lib/canvas/connectors';
@@ -360,6 +361,28 @@
   }
 
   /**
+   * UN NODO CHE NASCE GIÀ PIENO — trascinato dalla libreria degli asset o dai brand, non dal menù
+   * del doppio clic. Stessa forma di `create`, ma `type`/`data` arrivano dal trascinamento e non
+   * da `newNodeRow`: il server li rivalida comunque (`validateNodeData`), perché un payload che
+   * viaggia nel `dataTransfer` del browser non è meno un input esterno di un form.
+   */
+  async function createFilled(drag: FilledNodeDrag, at: { x: number; y: number }) {
+    const res = await post('create', {
+      type: drag.type,
+      x: at.x - drag.w / 2,
+      y: at.y - drag.h / 2,
+      data: JSON.stringify(drag.data)
+    });
+
+    const created = (res?.node ?? null) as CanvasNodeRecord | null;
+    if (!created) {
+      return;
+    }
+
+    nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created)];
+  }
+
+  /**
    * SPOSTARE SI SCRIVE ALLA FINE DEL GESTO, non durante: `CanvasFlow` chiama qui su
    * `onNodeDragStop`, quindi un trascinamento è un `UPDATE` e non uno per fotogramma. Lo schermo
    * è già andato avanti da solo — la libreria muove il nodo mentre lo si trascina — e questa riga
@@ -613,6 +636,7 @@
     onDelete={remove}
     onEdgeDelete={disconnect}
     onCreate={create}
+    onCreateFilled={createFilled}
     onUpload={upload}
   >
     {#snippet tile({ id, selected })}
