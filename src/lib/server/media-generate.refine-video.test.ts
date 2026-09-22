@@ -32,7 +32,7 @@ vi.mock('$lib/server/brand-media', () => ({
   storeBrandMediaBytes: async () => ({}),
   probeImageDimensions: async () => ({ width: null, height: null })
 }));
-vi.mock('$lib/server/content-preview', () => ({
+vi.mock('$lib/server/media-generate.images', () => ({
   renderPostImage: (...args: unknown[]) => renderPostImage(...args),
   buildImageRequest: () => ({ model: null }),
   loadBrandVisualContext: async () => ({})

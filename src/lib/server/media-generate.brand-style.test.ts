@@ -12,7 +12,7 @@ const BRAND_LOOK = 'BRAND IDENTITY — Colour palette: #0f0f0f';
 const PLAYBOOK = 'WHAT WORKS VISUALLY: close crops';
 const LOGO = { inlineData: { mimeType: 'image/png', data: 'LOGO' } };
 
-vi.mock('$lib/server/content-preview', () => ({
+vi.mock('$lib/server/media-generate.images', () => ({
   renderPostImage: (...args: unknown[]) => renderPostImage(...args),
   buildImageRequest: (_prompt: string, opts: { model?: string }) => ({ model: opts.model ?? null }),
   loadBrandVisualContext: (...args: unknown[]) => loadBrandVisualContext(...args)

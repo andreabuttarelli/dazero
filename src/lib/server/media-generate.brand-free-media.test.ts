@@ -27,7 +27,7 @@ const remaining = vi.fn();
 const PNG_DATA_URL = 'data:image/png;base64,AAAA';
 const SIGNED = 'https://storage.test/signed?token=abc';
 
-vi.mock('$lib/server/content-preview', () => ({
+vi.mock('$lib/server/media-generate.images', () => ({
   renderPostImage: (...args: unknown[]) => renderPostImage(...args),
   buildImageRequest: (_prompt: string, opts: { model?: string }) => ({ model: opts.model ?? null }),
   loadBrandVisualContext: vi.fn()

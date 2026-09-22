@@ -27,7 +27,7 @@ const PNG_DATA_URL = 'data:image/png;base64,AAAA';
 // test misura QUALI opzioni sono state scelte. Che poi quelle opzioni risolvano al modello giusto
 // e' un fatto di buildImageRequest, e sta nel suo test — importarlo davvero qui tira dentro sharp,
 // i client dei modelli e mezzo mondo.
-vi.mock('$lib/server/content-preview', () => ({
+vi.mock('$lib/server/media-generate.images', () => ({
   renderPostImage: (...args: unknown[]) => renderPostImage(...args),
   buildImageRequest: (_prompt: string, opts: { baseImage?: unknown; refineModel?: string; model?: string }) => ({
     model: (opts.baseImage ? opts.refineModel : undefined) ?? opts.model ?? null
