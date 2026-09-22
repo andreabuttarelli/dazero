@@ -8,7 +8,6 @@
       { title: $_('docs.agents.s1'), href: '#install-skill' },
       { title: $_('docs.agents.s28'), href: '#auth' },
       { title: $_('docs.agents.s29'), href: '#rules' },
-      { title: $_('docs.agents.s30'), href: '#workflows' },
       { title: $_('docs.agents.s2'), href: '#examples' },
       { title: $_('docs.agents.s10'), href: '#supported-agents' },
       { title: $_('docs.agents.s64'), href: '#cli-fallback' },
@@ -50,10 +49,6 @@
       <td>{$_('docs.agents.s39')}</td>
       <td>{$_('docs.agents.s40')}</td>
     </tr>
-    <tr>
-      <td>{$_('docs.agents.s41')}</td>
-      <td>{$_('docs.agents.s42')}</td>
-    </tr>
   </tbody>
 </table>
 <p>{$_('docs.agents.s43')}</p>
@@ -61,9 +56,13 @@
 <h2 id="install-skill">{$_('docs.agents.s23')}</h2>
 <p>{$_('docs.agents.s44')}</p>
 <pre><code>npx skills add andreabuttarelli/dazero --skill dazero</code></pre>
-<p>{$_('docs.agents.s45')}</p>
-<pre><code>curl -sSL https://dazero.co/install-skill.sh | bash</code></pre>
 <p>{$_('docs.agents.s24')}</p>
+<pre><code># Claude Code
+/plugin marketplace add andreabuttarelli/dazero
+/plugin install dazero@dazero
+
+# Codex
+codex plugin marketplace add andreabuttarelli/dazero</code></pre>
 <p>{@html $_('docs.agents.s46')}</p>
 
 <h2 id="auth">{$_('docs.agents.s47')}</h2>
@@ -80,20 +79,15 @@
   <li>{$_('docs.agents.s54')}</li>
   <li>{$_('docs.agents.s55')}</li>
   <li>{$_('docs.agents.s56')}</li>
+  <li>{$_('docs.agents.s85')}</li>
 </ol>
 
-<h2 id="workflows">{$_('docs.agents.s57')}</h2>
-<ul>
-  <li><strong>{$_('docs.agents.s58')}</strong> — {$_('docs.agents.s59')}</li>
-  <li><strong>{$_('docs.agents.s60')}</strong> — {$_('docs.agents.s61')}</li>
-  <li><strong>{$_('docs.agents.s62')}</strong> — {$_('docs.agents.s63')}</li>
-</ul>
-
 <h2 id="examples">{$_('docs.agents.s25')}</h2>
-<pre><code>"Use the dazero CLI to show me my brands"
-"Approve all pending posts for flashcamp"
-"Ask dazero to analyze my last 10 posts"
-"Change the tone to friendly and professional"</code></pre>
+<pre><code>"Show me every draft post for flashcamp"
+"Draft a post for flashcamp from this photo"
+"Approve the post about the new drop"
+"What's on flashcamp's calendar this week?"
+"Draft a Meta ad campaign for our new arrivals"</code></pre>
 
 <h2 id="supported-agents">{$_('docs.agents.s10')}</h2>
 <ul>
@@ -101,20 +95,15 @@
   <li><strong>{$_('docs.agents.s13')}</strong> {$_('docs.agents.s14')}</li>
   <li><strong>{$_('docs.agents.s15')}</strong> {$_('docs.agents.s16')}</li>
   <li><strong>{$_('docs.agents.s17')}</strong> {$_('docs.agents.s18')}</li>
-  <li><strong>{$_('docs.agents.s19')}</strong> {$_('docs.agents.s20')}</li>
-  <li><strong>{$_('docs.agents.s21')}</strong> {$_('docs.agents.s22')}</li>
 </ul>
 
 <h2 id="cli-fallback">{$_('docs.agents.s64')}</h2>
 <p>{$_('docs.agents.s65')}</p>
-<pre><code>curl -sSL https://dazero.co/install.sh | bash
+<pre><code>curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash
 dazero login
 dazero brands
 dazero content &lt;slug&gt; --status pending_user
-dazero approve &lt;slug&gt; --all
-dazero ai &lt;slug&gt; --message "..." --pipe</code></pre>
-<p>{$_('docs.agents.s27')}</p>
-<pre><code>echo "Analyze my posts" | dazero ai my-brand --pipe</code></pre>
+dazero approve &lt;slug&gt; --all</code></pre>
 
 <hr />
 

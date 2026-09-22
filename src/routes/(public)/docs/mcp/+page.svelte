@@ -57,7 +57,7 @@ dazero API  (/api/v1/*)</code></pre>
   "mcpServers": &#123;
     "dazero": &#123;
       "command": "bun",
-      "args": ["run", "/ABS/PATH/to/dazero/mcp/stdio.ts"]
+      "args": ["run", "/ABS/PATH/to/dazero/cli/mcp/stdio.ts"]
     &#125;
   &#125;
 &#125;</code></pre>
@@ -94,7 +94,8 @@ dazero API  (/api/v1/*)</code></pre>
 <p>{@html $_('docs.mcp.s32')}</p>
 
 <h2 id="local-http">{$_('docs.mcp.s33')}</h2>
-<pre><code>bun install
+<pre><code>cd cli
+bun install
 bun run mcp:http
 # → http://localhost:8787/mcp
 #    http://localhost:8787/health</code></pre>
@@ -127,14 +128,14 @@ bun run mcp:http
 
 <h2 id="first-calls">{$_('docs.mcp.s44')}</h2>
 <ol>
-  <li><code>list_brands</code> — {$_('docs.mcp.s45')}</li>
-  <li><code>get_dashboard</code> — {$_('docs.mcp.s46')}</li>
-  <li><code>list_posts</code> {$_('docs.mcp.s47')}</li>
-  <li>{$_('docs.mcp.s48')}</li>
+  <li><code>query({'{'} table: "brands", columns: ["id","slug","name"] {'}'})</code> — {$_('docs.mcp.s45')}</li>
+  <li><code>query({'{'} table: "posts", columns: ["id","status","caption"], where: [...] {'}'})</code> {$_('docs.mcp.s46')}</li>
+  <li>{$_('docs.mcp.s47')}</li>
 </ol>
 <p>{$_('docs.mcp.s49')}</p>
 
 <h2 id="tools">{$_('docs.mcp.s50')}</h2>
+<p>{$_('docs.mcp.s79')}</p>
 <table>
   <thead>
     <tr>
@@ -145,26 +146,23 @@ bun run mcp:http
   <tbody>
     <tr>
       <td>{$_('docs.mcp.s53')}</td>
-      <td><code>list_brands</code></td>
+      <td><code>query</code>, <code>insert_row</code>, <code>update_row</code>, <code>delete_row</code>, <code>describe_node_types</code></td>
+    </tr>
+    <tr>
+      <td>{$_('docs.mcp.s80')}</td>
+      <td><code>run_node_generation</code></td>
     </tr>
     <tr>
       <td>{$_('docs.mcp.s54')}</td>
-      <td><code>list_posts</code>, <code>get_post</code>, <code>edit_post</code>, <code>approve_posts</code>, <code>regenerate_slide</code>, <code>make_video</code></td>
+      <td><code>list_posts</code>, <code>create_post</code>, <code>set_post_status</code></td>
     </tr>
     <tr>
       <td>{$_('docs.mcp.s55')}</td>
-      <td><code>get_plan</code>, <code>propose_plan</code>, <code>plan_week</code>, <code>produce_week</code></td>
-    </tr>
-    <tr>
-      <td>{$_('docs.mcp.s56')}</td>
-      <td><code>get_studio</code>, <code>add_note</code>, <code>research_competitors</code></td>
-    </tr>
-    <tr>
-      <td>{$_('docs.mcp.s57')}</td>
-      <td><code>get_seo</code>, <code>get_geo</code>, <code>generate_article</code>, <code>chat</code></td>
+      <td><code>list_ad_campaigns</code>, <code>create_ad_campaign</code>, <code>approve_ad_campaign</code></td>
     </tr>
   </tbody>
 </table>
+<p>{@html $_('docs.mcp.s81')}</p>
 
 <h2 id="troubleshooting">{$_('docs.mcp.s58')}</h2>
 <table>
@@ -190,6 +188,11 @@ bun run mcp:http
       <td>{$_('docs.mcp.s68')}</td>
       <td>{$_('docs.mcp.s69')}</td>
       <td>{$_('docs.mcp.s70')}</td>
+    </tr>
+    <tr>
+      <td>{$_('docs.mcp.s82')}</td>
+      <td>{$_('docs.mcp.s83')}</td>
+      <td>{$_('docs.mcp.s84')}</td>
     </tr>
   </tbody>
 </table>
