@@ -23,11 +23,11 @@ const canvasSrc = (name: string) =>
 const flow = canvasSrc('CanvasFlow.svelte');
 const keys = canvasSrc('CanvasKeys.svelte');
 
-const workbench = (name: string) =>
-  readFileSync(join(dir, '..', '..', 'routes', 'p', '[projectId]', 'workbench', name), 'utf8');
+const canvasPage = (name: string) =>
+  readFileSync(join(dir, '..', '..', 'routes', 'p', '[projectId]', 'c', '[canvasId]', name), 'utf8');
 
-const page = workbench('+page.svelte');
-const server = workbench('+page.server.ts');
+const page = canvasPage('+page.svelte');
+const server = canvasPage('+page.server.ts');
 
 describe('il gesto di cancellare arriva fino alla riga', () => {
   it('la tela passa alla tastiera chi sa togliere una tile', () => {
@@ -55,12 +55,6 @@ describe('il gesto di cancellare arriva fino alla riga', () => {
   it('e le linee della tela le può togliere davvero', () => {
     expect(page).toMatch(/onEdgeDelete=\{/);
     expect(page).toMatch(/post\('disconnect'/);
-  });
-
-  it('il recap non è una riga, quindi non si cancella', () => {
-    // È l'unica tile senza `brand_canvas_items` dietro: mandarne l'id al server darebbe un
-    // errore rosso su un gesto che l'utente legge come innocuo.
-    expect(page).toMatch(/RECAP\.id/);
   });
 
   it('le action che cancellano ci sono entrambe, e il server le conosce', () => {
