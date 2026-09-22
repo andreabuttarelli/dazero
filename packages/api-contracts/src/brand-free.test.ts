@@ -61,7 +61,7 @@ describe('generare senza un brand', () => {
    * niente da aprire — dichiararli sarebbe una porta su una stanza che non esiste.
    */
   it('chi lavora su un post resta ancorato al brand del post', () => {
-    for (const tool of ['regenerate_slide', 'reorder_slides', 'regenerate_post_media', 'make_video']) {
+    for (const tool of ['edit_post', 'render_post', 'reschedule_post']) {
       const anchored = BRAND_ENDPOINTS.find((e) => e.tool === tool);
 
       expect(pathWithoutBrand(anchored!), tool).toBeNull();

@@ -3,7 +3,6 @@ import { z } from 'zod';
 import {
   BRAND_ENDPOINTS,
   BRAND_RESOURCES,
-  GET_ARTICLE_READ,
   LIST_MEDIA_READ,
   RESOURCE_SEGMENT,
   pathFor,
@@ -178,73 +177,6 @@ describe('il registry degli endpoint di brand', () => {
     });
     expect(ok.success).toBe(true);
     expect(output.safeParse({ ok: true, id: 'post-1', status: 'approved' }).success).toBe(false);
-  });
-
-  it('check_content è una POST per forma e una lettura per effetto', () => {
-    const check = byTool('check_content');
-    expect(check.method).toBe('POST');
-    expect(check.destructive).toBe(false);
-    expect(pathFor(check, 'demo')).toBe('/api/v1/brands/demo/content/check');
-  });
-
-  it('check_content promette errori, avvisi, punteggi e le versioni delle regole', () => {
-    const { output } = byTool('check_content');
-    const ok = output.safeParse({
-      ok: false,
-      errors: [{ code: 'over_limit', field: 'caption', detail: 'LinkedIn: 3001 characters, limit 3000' }],
-      warnings: [],
-      scores: [
-        {
-          platform: 'linkedin',
-          index: 42.5,
-          checks: [{ id: 'hook_strength', value: 0.4, weight: 18, note: 'hook generico' }]
-        }
-      ],
-      versions: { rules: 1, scorer: 3 }
-    });
-    expect(ok.success).toBe(true);
-    expect(output.safeParse({ ok: true, errors: [], warnings: [], scores: [] }).success).toBe(false);
-  });
-
-  it('leggere un articolo chiede il suo id, e non parte senza', () => {
-    expect(GET_ARTICLE_READ.input.safeParse({ id: 'art-1' }).success).toBe(true);
-    expect(GET_ARTICLE_READ.input.safeParse({}).success).toBe(false);
-  });
-
-  it('update_article dichiara ogni campo che si può scrivere senza un modello', () => {
-    const { input } = byTool('update_article');
-    expect(
-      input.safeParse({
-        id: 'art-1',
-        title: 'Guida',
-        body_md: '# Guida',
-        meta_title: null,
-        meta_description: null,
-        category_id: 'cat-1',
-        author_id: null,
-        tag_ids: ['tag-1'],
-        language: 'it',
-        scheduled_for: null
-      }).success
-    ).toBe(true);
-    expect(input.safeParse({ id: 'art-1', title: '' }).success).toBe(false);
-    expect(input.safeParse({ id: 'art-1', title: 'a'.repeat(201) }).success).toBe(false);
-    expect(input.safeParse({ id: 'art-1', meta_title: 'a'.repeat(71) }).success).toBe(false);
-    expect(input.safeParse({ id: 'art-1', cover_image: 'https://cdn/x.png' }).success).toBe(false);
-  });
-
-  it('un articolo pubblicato non si aggiorna: il rifiuto è un 409, non un 500 muto', () => {
-    const update = byTool('update_article');
-    expect(statusForFailure(update, 'article_published')).toBe(409);
-    expect(statusForFailure(update, 'planned_needs_slot')).toBe(409);
-    expect(statusForFailure(update, 'translation_locked')).toBe(409);
-    expect(statusForFailure(update, 'category_not_found')).toBe(400);
-    expect(statusForFailure(update, 'article_not_found')).toBe(404);
-  });
-
-  it('scrivere un articolo è una POST sull indirizzo dell articolo', () => {
-    expect(byTool('update_article').pathUnderBrand).toBe('/web/article');
-    expect(byTool('update_article').method).toBe('POST');
   });
 
   it('i due link di fatturazione portano a Stripe e non sono distruttivi', () => {

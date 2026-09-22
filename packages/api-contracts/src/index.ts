@@ -1,27 +1,8 @@
 import type { z } from 'zod';
-import { inAFamily } from './families';
 import { ADS_ACTION, ADS_REMIX } from './ads';
-import { SET_APPEARANCE } from './appearance';
 import { BILLING_PORTAL_LINK, CHECKOUT_LINK } from './billing';
-import {
-  CREATE_ARTICLE,
-  DELETE_ARTICLE,
-  PUBLISH_ARTICLE,
-  UNPUBLISH_ARTICLE,
-  UPDATE_ARTICLE
-} from './articles';
-import { CHECK_CONTENT } from './content';
 import { QUERY_DATABASE } from './query';
 import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from './write';
-import { GET_CREATION_KIT } from './creation-kit';
-import {
-  APPROVE_PLAN,
-  PLAN_CADENCES,
-  PLAN_CYCLE_WEEKS,
-  SAVE_BRIEF,
-  SAVE_PLAN,
-  SAVE_WEEK_SEEDS,
-} from './plans';
 import {
   CREATE_POST,
   EDIT_POST,
@@ -30,57 +11,26 @@ import {
   GENERATE_VIDEO,
   GENERATE_MEDIA,
   IMPORT_MEDIA_URL,
-  MAKE_VIDEO,
   REFINE_MEDIA,
-  REGENERATE_POST_MEDIA,
-  REGENERATE_SLIDE,
   RENDER_POST,
-  REORDER_SLIDES,
   RESCHEDULE_POST,
 } from './posts';
-import { DIAGNOSE_BRAND } from './brand-state';
-import {
-  ADD_BLOG_TERM,
-  SET_BLOG_SETTINGS
-} from './blog-settings';
 import { SET_BRAND_SETTINGS } from './brand-settings';
 import { GET_MEDIA_MODELS, SET_MEDIA_MODEL } from './media-models';
-import { SAVE_MEMORY } from './memory';
-import { SEARCH_KNOWLEDGE } from './knowledge';
 import { SOCIAL_CONNECT_LINK } from './social';
 import { ENHANCE_PROMPT } from './prompts';
-import { GET_WRITING_SKILLS } from './writing-skills';
 import {
   CREATE_SHARE,
   REVOKE_SHARE,
   SHARED_VIEW_TYPES,
 } from './shares';
-import {
-  ADD_NOTE,
-  ADD_PERSON,
-  CREATE_PRODUCT,
-  DELETE_DOCUMENT,
-  DELETE_PERSON,
-  RESEARCH_COMPETITORS,
-  SET_BIO,
-  SET_COLORS,
-  SYNC_HISTORY,
-  UPDATE_BRAND_KIT,
-  UPDATE_COMPETITOR,
-  UPDATE_PERSON,
-  UPDATE_PRODUCT,
-  UPDATE_VOICE
-} from './studio';
+import { UPDATE_PRODUCT } from './studio';
 
 export type EndpointFailure = { readonly error: string; readonly status: number };
 
 export const BRAND_RESOURCES = {
   post: 'Post',
-  article: 'Article',
-  product: 'Product',
-  person: 'Person',
-  competitor: 'Competitor',
-  document: 'Document'
+  product: 'Product'
 } as const;
 
 export type BrandResource = keyof typeof BRAND_RESOURCES;
@@ -89,16 +39,14 @@ export const RESOURCE_SEGMENT = ':id';
 
 /**
  * L'intestazione con cui un client dice QUALE tool sta chiamando. `ai_calls` registra la chiamata
- * al modello, non chi l'ha causata, e le sue etichette (`planStrategy`, `seoAgent`) sono condivise
- * fra l'autopilot, la chat in-app e gli agenti esterni: senza questo nome la spesa di un tool non
- * è separabile da quella di nessun altro, e «questo tool vale quello che costa» resta senza
- * risposta.
+ * al modello, non chi l'ha causata: senza questo nome la spesa di un tool non è separabile da
+ * quella di nessun altro, e «questo tool vale quello che costa» resta senza risposta.
  */
 export const TOOL_HEADER = 'x-dazero-tool';
 
 /**
  * Il nome arriva dalla rete, quindi non è un nome finché non lo si guarda: si accetta solo la
- * forma che un tool ha davvero (tutti e ottanta) e si scarta il resto invece di scriverlo.
+ * forma che un tool ha davvero e si scarta il resto invece di scriverlo.
  */
 export function toolFromHeader(value: string | null | undefined): string | null {
   return value && /^[a-z][a-z0-9_]{0,63}$/.test(value) ? value : null;
@@ -136,82 +84,32 @@ export type ResourceEndpoint = EndpointShape & {
 export type BrandEndpoint = ResourcelessEndpoint | ResourceEndpoint;
 
 export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
-  ADD_BLOG_TERM,
-  ADD_NOTE,
-  ADD_PERSON,
-  ADS_ACTION,
   ADS_REMIX,
-  APPROVE_PLAN,
   BILLING_PORTAL_LINK,
   CHECKOUT_LINK,
-  CHECK_CONTENT,
-  CREATE_ARTICLE,
   CREATE_POST,
   CREATE_SHARE,
-  DELETE_ARTICLE,
-  DELETE_DOCUMENT,
-  DELETE_PERSON,
-  DIAGNOSE_BRAND,
   EDIT_POST,
   ENHANCE_PROMPT,
   GENERATE_CAROUSEL,
   GENERATE_IMAGE,
   GENERATE_VIDEO,
-  GET_CREATION_KIT,
   GET_MEDIA_MODELS,
-  GET_WRITING_SKILLS,
   IMPORT_MEDIA_URL,
   DELETE_ROW,
   INSERT_ROW,
-  MAKE_VIDEO,
-  PUBLISH_ARTICLE,
   QUERY_DATABASE,
   REFINE_MEDIA,
-  REGENERATE_POST_MEDIA,
-  REGENERATE_SLIDE,
   RENDER_POST,
-  REORDER_SLIDES,
   RESCHEDULE_POST,
-  RESEARCH_COMPETITORS,
   REVOKE_SHARE,
-  SAVE_BRIEF,
-  SAVE_MEMORY,
-  SAVE_PLAN,
-  SAVE_WEEK_SEEDS,
-  SEARCH_KNOWLEDGE,
-  SET_APPEARANCE,
-  SET_BIO,
-  SET_BLOG_SETTINGS,
   SET_BRAND_SETTINGS,
-  SET_COLORS,
   SET_MEDIA_MODEL,
   SOCIAL_CONNECT_LINK,
-  SYNC_HISTORY,
-  UNPUBLISH_ARTICLE,
-  UPDATE_ARTICLE,
-  UPDATE_BRAND_KIT,
   UPDATE_ROW,
-  UPDATE_VOICE,
 ];
 
-export {
-  BRAND_FAMILIES,
-  familyCalls,
-  familyInput,
-  inAFamily,
-  UPDATE_BRAND_IDENTITY
-} from './families';
-export type { BrandFamily } from './families';
-
-/**
- * Gli endpoint che diventano un tool per conto proprio: il registro meno chi e' finito in una
- * famiglia. Sta scritto qui una volta perche' lo leggono il registrar e ogni test che confronta
- * `tools/list` col registro — e una sottrazione ripetuta in cinque posti diverge al primo che
- * qualcuno dimentica.
- */
-export const OWN_TOOL_ENDPOINTS: readonly BrandEndpoint[] = BRAND_ENDPOINTS.filter(
-  (endpoint) => !inAFamily(endpoint)
-);
+export const OWN_TOOL_ENDPOINTS: readonly BrandEndpoint[] = BRAND_ENDPOINTS;
 
 export function pathFor(endpoint: ResourcelessEndpoint, slug: string): string;
 export function pathFor(endpoint: ResourceEndpoint, slug: string, id: string): string;
@@ -244,84 +142,32 @@ export function statusForFailure(
 export {
   ADS_ACTION,
   ADS_REMIX,
-  CHECK_CONTENT,
   CREATE_POST,
   GENERATE_CAROUSEL,
   GENERATE_IMAGE,
   GENERATE_VIDEO,
   EDIT_POST,
   GENERATE_MEDIA,
-  GET_CREATION_KIT,
   IMPORT_MEDIA_URL,
   REFINE_MEDIA,
-  MAKE_VIDEO,
-  REGENERATE_POST_MEDIA,
-  REGENERATE_SLIDE,
   RENDER_POST,
-  REORDER_SLIDES,
   RESCHEDULE_POST,
-  UPDATE_ARTICLE,
 };
 /**
  * Gli schemi delle letture ritirate da MCP. La rotta REST resta e continua a validare con questi;
  * nessuno di essi e' un endpoint del registry, quindi nessuno diventa un tool.
  */
 export { CHECK_MEDIA_JOB_READ, LIST_MEDIA_READ } from './posts';
-export { GET_ARTICLE_READ } from './articles';
-export {
-  GET_AUDIT_FINDINGS_READ,
-  LIST_AUDIT_CITATIONS_READ,
-  LIST_WEB_AUDITS_READ,
-  LIST_WEB_FIXES_READ
-} from './evidence';
 export { LIST_SHARES_READ } from './shares';
 export { LIST_SOCIAL_ACCOUNTS_READ } from './social';
 
-export { GENERATE_CAPTIONS } from './captions';
 export { QUERY_DATABASE, QUERY_OPS, QUERY_TABLE_NAMES, QUERY_DEFAULT_ROWS, QUERY_MAX_ROWS } from './query';
 export { QUERY_TABLES } from './query-tables';
-export {
-  CREATE_ARTICLE,
-  DELETE_ARTICLE,
-  GENERATE_ARTICLE,
-  OPTIMIZE_ARTICLE,
-  PUBLISH_ARTICLE,
-  UNPUBLISH_ARTICLE
-} from './articles';
-export type {
-  Article,
-  CreateArticleInput,
-  CreateArticleResult,
-  GetArticleInput,
-  UpdateArticleInput,
-  UpdateArticleResult
-} from './articles';
-export {
-  AUDIT_CITATIONS_DEFAULT,
-  AUDIT_CITATIONS_MAX,
-  WEB_AUDITS_DEFAULT,
-  WEB_AUDITS_MAX,
-  WEB_FIXES_DEFAULT,
-  WEB_FIXES_MAX,
-  WEB_FIX_STATUSES,
-  WEB_FIX_SURFACES
-} from './evidence';
-export { STUDIO_DOCUMENT_MODES } from './reads';
-export type { StudioDocumentMode } from './reads';
 export {
   SET_BRAND_SETTINGS,
   TARGET_PLATFORMS
 } from './brand-settings';
 export type { TargetPlatform } from './brand-settings';
-export {
-  DIAGNOSE_BRAND,
-  DOCTOR_GATE_STATUSES,
-  DOCTOR_LOOP_STATUSES,
-  GOALS_DEFAULT,
-  GOALS_MAX,
-  GOAL_CRITERION_STATUSES,
-  GOAL_STATUSES
-} from './brand-state';
 export {
   GET_MEDIA_MODELS,
   MEDIA_MODEL_JOBS,
@@ -329,50 +175,8 @@ export {
   SET_MEDIA_MODEL
 } from './media-models';
 export type { MediaModelSlotId } from './media-models';
-export {
-  KNOWLEDGE_COLLECTIONS,
-  KNOWLEDGE_DOC_STATUSES,
-  KNOWLEDGE_FAILURES_MAX,
-  KNOWLEDGE_EXCERPT_CHARS,
-  KNOWLEDGE_HITS_DEFAULT,
-  KNOWLEDGE_HITS_MAX,
-  SEARCH_KNOWLEDGE
-} from './knowledge';
-export type { KnowledgeCollection } from './knowledge';
-export {
-  AGENT_MEMORY_CATEGORIES,
-  MEMORY_CATEGORIES,
-  MEMORY_ENTRIES_DEFAULT,
-  MEMORY_ENTRIES_MAX,
-  MEMORY_USED_MAX,
-  SAVE_MEMORY,
-  UPDATE_MEMORY_ENTRY
-} from './memory';
-export type { AgentMemoryCategory } from './memory';
 export { ENHANCE_PROMPT } from './prompts';
-export {
-  GET_WRITING_SKILLS,
-  WRITING_DECK_AGENTS,
-  WRITING_SKILL_SOURCES
-} from './writing-skills';
-export type { WritingDeckAgent } from './writing-skills';
-export {
-  ADD_NOTE,
-  ADD_PERSON,
-  CONSENT_NOT_ATTESTED,
-  CREATE_PRODUCT,
-  DELETE_DOCUMENT,
-  DELETE_PERSON,
-  RESEARCH_COMPETITORS,
-  SET_BIO,
-  SET_COLORS,
-  SYNC_HISTORY,
-  UPDATE_BRAND_KIT,
-  UPDATE_COMPETITOR,
-  UPDATE_PERSON,
-  UPDATE_PRODUCT,
-  UPDATE_VOICE
-} from './studio';
+export { UPDATE_PRODUCT } from './studio';
 export {
   CREATE_SHARE,
   REVOKE_SHARE,
@@ -385,42 +189,10 @@ export {
 } from './automations';
 export type { AutomationJob } from './automations';
 export { SOCIAL_CONNECT_LINK } from './social';
-export {
-  ADD_BLOG_TERM,
-  BLOG_ANALYTICS_ID_PATTERNS,
-  BLOG_ANALYTICS_PROVIDERS,
-  BLOG_FONTS,
-  BLOG_LAYOUTS,
-  BLOG_TERM_KINDS,
-  blogAnalyticsIdOk,
-  SET_BLOG_SETTINGS
-} from './blog-settings';
-export type { BlogAnalyticsProvider, BlogTermKind } from './blog-settings';
-export { SET_APPEARANCE } from './appearance';
 export { BILLING_PORTAL_LINK, CHECKOUT_LINK };
 export type { BillingPortalLinkResult, CheckoutLinkInput, CheckoutLinkResult } from './billing';
-export type { CheckContentInput, CheckContentResult } from './content';
-export type {
-  AuditCitationRow,
-  WebAuditFindings,
-  WebAuditIndexRow,
-  WebFixRow
-} from './evidence';
-export { KIT_FORMATS } from './creation-kit';
-export type { GetCreationKitInput, GetCreationKitResult } from './creation-kit';
 export type { CreatePostInput, CreatePostResult } from './posts';
 export { MAX_MEDIA_ALTERNATIVES } from './posts';
-export {
-  APPROVE_PLAN,
-  PLAN_CADENCES,
-  PLAN_CYCLE_WEEKS,
-  SAVE_BRIEF,
-  SAVE_PLAN,
-  SAVE_WEEK_SEEDS
-};
-export { PLAN_WEEK, PROPOSE_PLAN, REPLAN_WEEK, REVISE_PLAN } from './plans';
-export type { SavePlanInput, SavePlanResult, SaveWeekSeedsInput, SaveWeekSeedsResult } from './plans';
-export type { CreateProductInput, CreateProductResult } from './studio';
 export type { CreateShareInput, CreateShareResult, SharedViewType } from './shares';
 export { INSERT_ROW, UPDATE_ROW, DELETE_ROW, UPDATE_MAX_ROWS, DELETE_MAX_ROWS } from './write';
 export { TABLE_CHECKS, WRITABLE_COLUMNS } from './write-rules';
@@ -429,12 +201,8 @@ export { TABLE_CHECKS, WRITABLE_COLUMNS } from './write-rules';
  * I CONTRATTI DEI TOOL RITIRATI, che restano esportati.
  *
  * Ritirare un tool vuol dire toglierlo da `BRAND_ENDPOINTS`, cioè smettere di esporlo su MCP. La
- * rotta REST resta, il CLI e l'app la chiamano, e il contratto è la forma con cui la chiamano:
- * toglierlo anche di qui ha fatto smettere di compilare tre rotte, con errori di TIPO che il
- * codice in esecuzione non mostra e che si perdono fra i trecento preesistenti.
+ * rotta REST resta, il CLI la chiama, e il contratto è la forma con cui la chiama: toglierlo anche
+ * di qui fa smettere di compilare una rotta, con un errore di TIPO che il codice in esecuzione non
+ * mostra e che si perde fra i preesistenti.
  */
-export { ADD_COMPETITOR, DELETE_COMPETITOR, DELETE_PRODUCT } from './studio';
-export { REMOVE_BLOG_TERM } from './blog-settings';
 export { GET_ADS } from './reads';
-export { RECORD_MEMORY_USED } from './memory';
-export { DISCARD_PLAN } from './plans';
