@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { BLOG_FONTS, BRAND_ENDPOINTS } from '@dazero/api-contracts';
+import { BRAND_ENDPOINTS, MEDIA_MODEL_SLOT_IDS } from '@dazero/api-contracts';
 import { brandWebMcpTools, modelContext, registerBrandWebMcp } from './webmcp';
 
 const TOKEN = 'eyJ-fake-session-token';
@@ -48,12 +48,12 @@ describe('il registry alimenta anche Web MCP', () => {
 
   it('lo schema di ingresso arriva dal contratto, non riscritto a mano', () => {
     // Un enum chiuso del contratto deve arrivare CHIUSO fino all'agente: se lo schema fosse
-    // riscritto a mano, `font` diventerebbe una stringa libera e il primo valore inventato
+    // riscritto a mano, `slot` diventerebbe una stringa libera e il primo valore inventato
     // arriverebbe fino alla rotta.
-    const schema = byName('set_blog_settings').inputSchema as {
-      properties: { font?: { enum?: string[] } };
+    const schema = byName('set_media_model').inputSchema as {
+      properties: { slot?: { enum?: string[] } };
     };
-    expect(schema.properties.font?.enum).toEqual([...BLOG_FONTS]);
+    expect(schema.properties.slot?.enum).toEqual([...MEDIA_MODEL_SLOT_IDS]);
   });
 });
 
@@ -65,7 +65,7 @@ describe('il registry alimenta anche Web MCP', () => {
 describe('le annotazioni dicono la verita’ nel vocabolario giusto', () => {
   it('una lettura e’ readOnly, una scrittura no', () => {
     expect(byName('get_media_models').annotations.readOnlyHint).toBe(true);
-    expect(byName('set_blog_settings').annotations.readOnlyHint).toBe(false);
+    expect(byName('set_media_model').annotations.readOnlyHint).toBe(false);
   });
 
   it('cio’ che il registry chiama distruttivo diventa consequentialHint, non destructiveHint', () => {
@@ -119,10 +119,10 @@ describe('quello che l’esecuzione manda davvero in rete', () => {
   });
 
   it('lo slug lo mette il registratore, non chi chiama lo strumento', async () => {
-    await byName('set_blog_settings').execute({ title: 'Il blog' });
+    await byName('set_media_model').execute({ slot: 'imageModel', model: 'x' });
     const [path, init] = fetchMock.mock.calls[0];
-    expect(path).toBe('/api/v1/brands/demo/settings/blog');
-    expect(JSON.parse(init.body)).toEqual({ title: 'Il blog' });
+    expect(path).toBe('/api/v1/brands/demo/settings/models');
+    expect(JSON.parse(init.body)).toEqual({ slot: 'imageModel', model: 'x' });
   });
 
   it('un id di risorsa entra nel percorso, non nel corpo', async () => {
@@ -137,7 +137,7 @@ describe('quello che l’esecuzione manda davvero in rete', () => {
 
   it('un errore dell’API diventa un errore, non un successo silenzioso', async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 403, json: async () => ({ error: 'API key is read-only' }) });
-    await expect(byName('set_blog_settings').execute({ title: 'x' })).rejects.toThrow(/403/);
+    await expect(byName('set_media_model').execute({ slot: 'imageModel', model: 'x' })).rejects.toThrow(/403/);
   });
 
   it('il risultato viaggia nella busta che i client si aspettano', async () => {
