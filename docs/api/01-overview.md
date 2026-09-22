@@ -57,7 +57,6 @@ Gli endpoint che spendono AI richiedono **piano a pagamento + crediti** e scope 
 | `POST /brands/:slug/weekly-plan/produce` | Produce i post dai seeds |
 | `POST /brands/:slug/weekly-plan/render` | Batch render immagini |
 | `POST /brands/:slug/posts/:id/render` | Render immagine singola |
-| `POST /brands/:slug/posts/:id/media` (azioni con render) | Regenerate/slide/video |
 | `POST /brands/:slug/brands/[slug]/tick` | Tick manuale autopilot |
 | `POST /brands/:slug/seo` | Audit/piano/initiative/asset/article |
 | `POST /brands/:slug/geo` | Audit/fix GEO |
