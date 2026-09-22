@@ -6,7 +6,6 @@ import { invalidateBrandNav } from '$lib/server/nav-cache';
 import { discoverCompetitors } from '$lib/server/research';
 import { OUTPUT_LANGUAGE } from '$lib/i18n/locale';
 import { withBrandContext } from '$lib/server/ai-log';
-import { syncBrandPostHistoryFromSocials, type ScrapeSyncResult } from '$lib/server/scrapecreators';
 import { signKnowledgePaths, archiveImageToBucket } from '$lib/server/media-archive';
 import { safeFetchBytes, SafeFetchError, type SafeFetchReason } from '$lib/server/tool-guard';
 import { extractText, isSupportedDoc } from '$lib/server/documents';
@@ -160,30 +159,6 @@ export const studioActions: Actions = {
       await supabase.from('brands').update({ content_prefs: prefs, website }).eq('id', brand.id);
 
       await rebuildBrandContext(supabase, brand.id);
-      return { saved: true };
-    });
-  },
-
-  // Per-platform copy instructions live on brands.content_prefs.platformInstructions, keyed by the
-  // internal platform key. The form posts one field per platform named `pg_<key>` (e.g. pg_linkedin);
-  // we merge non-empty values in and drop blanks, so clearing a box removes that override. This does
-  // NOT touch the brand context (it only steers caption generation), so no rebuild is needed.
-  updatePlatformGuidance: async ({ request, params, locals: { supabase } }) => {
-    return withBrand(supabase, params.brand, async (brand) => {
-      const fd = await request.formData();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prefs: Record<string, any> = { ...(brand.content_prefs ?? {}) };
-      const instructions: Record<string, string> = {};
-      for (const [key, value] of fd.entries()) {
-        if (!key.startsWith('pg_')) continue;
-        const platform = key.slice(3).toLowerCase().trim();
-        const text = String(value ?? '').trim();
-        if (platform && text) instructions[platform] = text;
-      }
-      if (Object.keys(instructions).length) prefs.platformInstructions = instructions;
-      else delete prefs.platformInstructions;
-      const { error } = await supabase.from('brands').update({ content_prefs: prefs }).eq('id', brand.id);
-      if (error) return fail(400, { error: error.message });
       return { saved: true };
     });
   },
@@ -906,20 +881,6 @@ export const studioActions: Actions = {
         .eq('brand_id', brand.id);
       if (error) return fail(400, { error: error.message });
       return { saved: true };
-    });
-  },
-
-  syncHistory: async ({ params, locals: { supabase } }) => {
-    return withBrand(supabase, params.brand, async (brand) => {
-      let result: ScrapeSyncResult;
-      try {
-        result = await syncBrandPostHistoryFromSocials(supabase, { id: brand.id });
-      } catch (e) {
-        return fail(400, { error: e instanceof Error ? e.message : 'Sync failed' });
-      }
-      if (result.accounts === 0) return { synced: 0, noAccounts: true };
-      if (result.synced > 0) await rebuildBrandContext(supabase, brand.id);
-      return { synced: result.synced, errors: result.errors };
     });
   },
 
