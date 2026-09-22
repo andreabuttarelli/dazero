@@ -18,20 +18,10 @@ dazero dashboard <slug>                          # Brand overview
 dazero content <slug> --status pending_user      # Pending posts
 dazero approve <slug> --all                      # Approve all pending
 dazero post <slug> <id> edit --caption "..."     # Edit post
-dazero plan <slug>                               # View editorial plan
-dazero weekly-plan <slug> produce --week 0       # Produce posts
-dazero seo <slug>                                # SEO grade + initiatives
-dazero geo <slug>                                # AI visibility / citations
-dazero keywords <slug>                           # Keyword strategy
-dazero web <slug>                                # Blog articles (drafts too)
-# Backlinks network lives at GET/POST /api/v1/brands/:slug/backlinks (CLI command TBD — see cli/)
-# Idea bank: GET/POST /api/v1/brands/:slug/ideas (disruptive ideas agents save — docs/42)
-# Field watch: GET/POST /api/v1/brands/:slug/market/field (what moves in the brand's field, taken apart)
-# Radar self-test: GET /api/v1/brands/:slug/radar/diagnose (fetches every source live, says why one finds nothing)
-# Brand doctor: GET /api/v1/brands/:slug/doctor (per cycle, the first gate the brand fails and how to unlock it)
-# Agent Library: GET /api/v1/agent-templates (public catalogue behind /agents + Automations › Custom Agents)
-# Chat goals: GET /api/v1/brands/:slug/goals (history + summary of goal mode — met_first_pass, laps, stopped_by)
-dazero studio <slug> add-note --text "..."       # Add knowledge
+dazero calendar <slug>                           # Monthly scheduled posts
+dazero products <slug> sync                      # Re-import catalog from the connected store
+dazero ads <slug> --propose                      # Propose ad boosts from top organic posts
+dazero upgrade <slug>                            # Open billing checkout
 ```
 
 ## Lo schema del database (26 tabelle, progetto `klnswzhhgrqvbfjzioul`)
