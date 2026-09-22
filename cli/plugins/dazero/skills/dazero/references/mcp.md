@@ -7,7 +7,7 @@ Model Context Protocol server for dazero. Same HTTPS client and OAuth as the CLI
 Host (Cursor / Claude / …)
   ├─ stdio  → bun run mcp / dazero-mcp
   └─ HTTPS  → https://mcp.dazero.co/mcp  (+ Bearer on remote)
-         └─ dazero API /api/v1/*
+         └─ dazero API /api/v1/org/* and /api/v1/brands/:slug/*
 ```
 
 ## 1. Pick a transport
@@ -38,7 +38,7 @@ Clone or install the repo, then in Cursor MCP settings:
   "mcpServers": {
     "dazero": {
       "command": "bun",
-      "args": ["run", "/ABS/PATH/to/dazero-cli/mcp/stdio.ts"]
+      "args": ["run", "/ABS/PATH/to/dazero/cli/mcp/stdio.ts"]
     }
   }
 }
@@ -72,7 +72,7 @@ The host must send OAuth Bearer. If it cannot yet, use [mcp-remote](https://www.
 
 ```bash
 git clone https://github.com/andreabuttarelli/dazero.git
-cd dazero-cli
+cd dazero/cli
 bun install
 bun run mcp          # stdio
 bun run mcp:http     # http://localhost:8787/mcp
@@ -82,11 +82,9 @@ bun run mcp:http     # http://localhost:8787/mcp
 
 **Local (stdio / local HTTP)**
 
-1. Run `dazero login` in a terminal — it opens the browser. There is no MCP tool for this: the
-   one that existed only worked on stdio, and its `logout` twin reported success after deleting
-   nothing.
+1. Run `dazero login` in a terminal — it opens the browser.
 2. Session is stored at `~/.config/dazero/session.json` and shared with the CLI.
-3. `list_brands` to confirm — brands come back, or you are not signed in.
+3. Confirm with a `query` on `brands` — rows come back, or you are not signed in.
 
 **Remote HTTP**
 
@@ -103,11 +101,13 @@ There is **no** `DAZERO_TOKEN` / API-key path by design.
 
 ## 4. First calls
 
-1. `list_brands` — learn brand **slugs**.
-2. `get_dashboard` with `slug` — overview.
-3. `list_posts` with `slug` and status `pending_user` — approval queue.
+1. `query({ table: "brands", columns: ["id","slug","name","plan","status"] })` — confirm auth and
+   learn which brands/orgs this session can see.
+2. `query({ table: "posts", columns: ["id","status","caption"], where: [{ column: "status", op: "eq", value: "draft" }] })`
+   — a brand's pending posts (add a `brand_id` filter once you have one).
 
-Ids from list tools accept short unambiguous prefixes (same rule as the CLI).
+Ids from list-derived reads accept short unambiguous prefixes (same rule as the CLI); a `where` on
+`id` in `delete_row`/`update_row` needs the full id.
 
 ## 5. Troubleshooting
 
@@ -117,6 +117,7 @@ Ids from list tools accept short unambiguous prefixes (same rule as the CLI).
 | 404 on `/health` | Wrong deploy root / path | Expect `/health` and `/mcp` on the MCP host |
 | Tools missing | MCP not connected in host | Check Cursor MCP panel; restart host |
 | Auth works in CLI but not MCP | Different machine / no session file | Run `dazero login` on the machine running the MCP server |
+| `conflict` on `run_node_generation` | Stale `version` — someone else wrote the node since you read it | Re-read the node with `query`, take its current `version`, retry |
 | `Not an https or loopback URI: cursor://anysphere.cursor-mcp/oauth/callback` | Cursor DCR uses a custom-scheme callback; dazero OAuth only allows https/loopback | Use **stdio** MCP, update Cursor (localhost `:8787` callback), or pass Bearer; see [docs/mcp.md](../../../docs/mcp.md#cursor--remote-http-oauth) |
 
 ## 6. More

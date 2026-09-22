@@ -13,9 +13,9 @@ Details: [dazero/references/mcp.md](./dazero/references/mcp.md) · [tools.md](./
 
 ## Auth
 
-- Local: MCP `login` or `dazero login` → `~/.config/dazero/session.json`
+- Local: `dazero login` (terminal) → `~/.config/dazero/session.json`, shared with the MCP server
 - Remote MCP (`https://mcp.dazero.co/mcp`): `Authorization: Bearer <access_token>`
-- Start with `list_brands` / `dazero brands`
+- Confirm with a `query` on `brands` (MCP) or `dazero brands` (CLI) — never guess a brand or org
 
 ## Cursor MCP (stdio)
 

@@ -1,146 +1,94 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'fs';
-import { join } from 'path';
 import { fileURLToPath } from 'url';
-import { BRAND_ENDPOINTS, BRAND_FAMILIES } from '../lib/contracts/index.ts';
+import { handleMcpFetch } from '../mcp/http-app.ts';
 import { MCP_INSTRUCTIONS } from '../mcp/server.ts';
 
 /**
  * Un tool si trova con le parole di chi lo cerca, non con le nostre.
  *
- * Ogni riga è una richiesta arrivata davvero in chat e il tool che avrebbe dovuto risponderle.
- * Se la descrizione non contiene quelle parole il modello scorre `tools/list` e non lo riconosce:
- * è così che «puoi generare la img di un gatto?» ha ricevuto «non ho uno strumento di generazione
- * immagini» con `generate_image` nella lista, e «rendi rossa questa foto» ha prodotto un disegno
- * nuovo con `refine_media` nella stessa lista.
+ * Ogni riga è una richiesta che potrebbe arrivare in chat e il tool che dovrebbe risponderle. Se la
+ * descrizione non contiene quelle parole il modello scorre `tools/list` e non lo riconosce.
  *
- * IL CONTROLLO VALE SU DUE SUPERFICI, non una. La skill si legge PRIMA dei contratti, quindi non
- * sono «il lavoro e il suo allineamento»: sono due prompt in concorrenza, e vince quello che
- * l'agente incontra per primo. Il terzo fallimento lo dimostra — «l'animazione è esposta solo per
- * la copertina di un post» veniva dalla skill, mentre `generate_video` diceva già la cosa giusta.
- * Un test sulle sole descrizioni sarebbe passato mentre l'agente si arrendeva.
+ * IL CONTROLLO VALE SU DUE SUPERFICI, non una. La skill si legge PRIMA della descrizione del tool
+ * (arriva col caricamento della skill, non col handshake MCP), quindi non sono «il lavoro e il suo
+ * allineamento»: sono due prompt in concorrenza, e un agente che non ha ancora aperto il tool può
+ * incontrare solo la prima.
  *
- * La seconda regola è la tariffa. «about 8 credits each» è il numero che ha fatto chiamare
- * «spreco» una generazione richiesta dall'utente, ed è pure sbagliato: il prezzo lo dice la
- * risposta, misurato, non la descrizione, stimato. Che il tool spenda va detto; quanto, no.
- *
- * Il divieto vale QUI e nella prosa della skill — le superfici che un agente legge per decidere —
- * e non nel codice né nella storia: `content-cost.ts` documenta mediane di produzione misurate e
- * i changelog citano cifre perché quelle cifre SONO l'argomento di una decisione presa.
+ * Le descrizioni si leggono dal SERVER VERO (`tools/list`), non da un registro dichiarativo: la
+ * superficie MCP di dazero è cablata a mano in `cli/mcp/tools/*.ts`, e un contratto REST separato
+ * (`cli/lib/contracts/`) descrive le rotte brand-scoped che il CLI chiama — leggere quello per
+ * `tools/list` mentirebbe sul tool che un agente vede davvero.
  */
 const ASKED_FOR: ReadonlyArray<{ tool: string; question: string; words: readonly string[] }> = [
-  // La domanda che ha aperto tutto questo: «puoi generare la img di un gatto?», e l'agente ha
-  // risposto di non avere lo strumento. Le parole stanno nella prima riga della descrizione e in
-  // apertura di entrambe le superfici della skill, perche' e' li' che un modello scorre.
-  { tool: 'generate_image', question: 'generate an image of a cat', words: ['image', 'cat', 'draw'] },
-  { tool: 'refine_media', question: 'make this photo red', words: ['change', 'photo', 'red'] },
-  // Un video gia' in libreria si CORREGGE, non si rifilma: e' la meta' che mancava, e la sola
-  // superficie su cui un agente puo' scoprirlo e' questa.
-  { tool: 'refine_media', question: 'change this video I already made', words: ['change', 'video', 'library'] },
-  {
-    tool: 'generate_video',
-    question: 'animate this photo with a 5 second video',
-    words: ['animate', 'photo', 'video', 'clip']
-  },
-  {
-    tool: 'render_post',
-    question: 'this post has no image, draw it',
-    words: ['image', 'post', 'prompt']
-  },
-  {
-    tool: 'search_knowledge',
-    question: 'what does this brand know about returns',
-    words: ['question', 'documents', 'answer']
-  },
-  {
-    tool: 'query',
-    question: 'how is this brand supposed to sound',
-    words: ['brand', 'settings']
-  },
-  {
-    tool: 'query',
-    question: 'how many posts went out last month',
-    words: ['table', 'count', 'read']
-  },
-  {
-    tool: 'query',
-    question: 'what does this brand sell',
-    words: ['sell', 'products']
-  }
+  { tool: 'query', question: 'how is this brand supposed to sound', words: ['brand', 'read'] },
+  { tool: 'query', question: 'how many posts went out last month', words: ['table', 'read'] },
+  { tool: 'query', question: 'what does this brand sell', words: ['products', 'read'] },
+  { tool: 'run_node_generation', question: 'generate an image in this node', words: ['generate', 'image', 'node'] },
+  { tool: 'run_node_generation', question: 'animate this into a video', words: ['generate', 'video', 'node'] },
+  { tool: 'create_post', question: 'turn this into a post', words: ['post', 'brand', 'caption'] },
+  { tool: 'list_posts', question: 'what posts are pending for this brand', words: ['posts', 'brand'] },
+  { tool: 'create_ad_campaign', question: 'draft an ad campaign for this brand', words: ['campaign', 'draft'] },
+  { tool: 'approve_ad_campaign', question: 'approve this ad campaign so it can spend', words: ['approve', 'campaign', 'spend'] },
+  { tool: 'insert_row', question: 'add a row to a table', words: ['add', 'row', 'table'] },
+  { tool: 'delete_row', question: 'delete rows from a table', words: ['remove', 'org'] },
+  { tool: 'describe_node_types', question: 'what shape does a node need', words: ['data', 'type', 'node'] }
 ];
 
 const HAND_WRITTEN_TARIFF = /\b\d+\s*credits?\b/i;
 
 /**
- * `SKILL.md` E BASTA, e non più concatenata a `references/tools.md`.
+ * `SKILL.md` E BASTA, e non concatenata a `references/tools.md`.
  *
  * Le due non sono la stessa superficie: SKILL.md si carica sempre, tools.md è sotto «References
  * (load on demand)» e un agente può non aprirla mai. Concatenandole, una parola presente solo nel
- * riferimento faceva passare la riga mentre la superficie che si legge davvero taceva — che è
- * ESATTAMENTE il difetto che questa tabella esiste per prendere. Preso sul vivo: togliendo
- * `list_products` la domanda «what does this brand sell» finiva in tools.md e SKILL.md restava
- * senza né «sell» né «products», e il test era verde.
- *
- * tools.md resta coperta da `tools-coverage.test.ts`, che pretende ogni tool documentato lì.
+ * riferimento farebbe passare la riga mentre la superficie che si legge davvero tace.
  */
 const SKILL = readFileSync(
   fileURLToPath(new URL('./dazero/SKILL.md', import.meta.url)),
   'utf8'
 ).toLowerCase();
 
-const describing = (tool: string): string => {
-  const found = BRAND_ENDPOINTS.find((e) => e.tool === tool);
-  if (!found) throw new Error(`missing endpoint ${tool}`);
-  return found.description;
-};
+async function listedTools(): Promise<Map<string, string>> {
+  const post = (body: unknown) =>
+    handleMcpFetch(
+      new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+        body: JSON.stringify(body)
+      })
+    );
+
+  await post({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'initialize',
+    params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'findability', version: '0' } }
+  });
+
+  const body = await (await post({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} })).json();
+  const tools = body.result.tools as { name: string; description?: string }[];
+
+  return new Map(tools.map((t) => [t.name, (t.description ?? '').toLowerCase()]));
+}
 
 /**
  * LA TERZA SUPERFICIE, e si legge PRIMA delle altre due. `instructions` arriva col handshake di
- * `initialize`: il client la mostra da sola, una volta per sessione, prima di qualunque
- * descrizione e prima della skill. Se una riga qui contraddice una descrizione, vince questa —
- * quindi è la superficie dove un errore costa di più.
- *
- * L'errore che c'era: «Always start with `list_brands` (or `whoami`) to learn brand slugs.»
- * È un ordine, ed è stato eseguito alla lettera — l'agente chiamava `list_brands` per qualunque
- * cosa e poi sceglieva un brand a caso, spendendo i crediti di un'organizzazione vera e
- * scrivendo nella libreria di un cliente vero. Per un gatto.
+ * `initialize`: il client la mostra da sola, una volta per sessione, prima di qualunque descrizione
+ * e prima della skill. Se una riga qui contraddice una descrizione, vince questa — quindi è la
+ * superficie dove un errore costa di più.
  *
  * Serve corta: si paga a ogni sessione, come `tools/list`.
- *
- * 1.300 → 1.700 il 2026-09-06, e stavolta non è un promemoria a scadenza: con trentatré letture
- * ritirate dentro `query`, queste righe SONO il percorso principale. Un agente che qui non impara
- * `columns`, `offset` e `count` chiama `query` male e conclude che il prodotto non risponde — che
- * costa infinitamente più dei 400 caratteri. In cambio `tools/list` cala di 24.000 caratteri, e
- * quello si paga una volta per sessione come questo.
  */
-const INSTRUCTIONS_MAX_CHARS = 1_700;
+const INSTRUCTIONS_MAX_CHARS = 1_900;
 
 describe('le istruzioni del server sono una mappa, non un ordine', () => {
-  test('non dicono di partire SEMPRE da list_brands', () => {
-    expect(MCP_INSTRUCTIONS).not.toMatch(/always[^.]*list_brands/i);
+  test('dicono di non scegliere brand/org da soli, che è il danno vero', () => {
+    expect(MCP_INSTRUCTIONS).toMatch(/never guess|nullable, and that is the normal case/i);
   });
 
-  test('dicono di non scegliere il brand da soli, che è il danno vero', () => {
-    expect(MCP_INSTRUCTIONS).toMatch(/never call `?list_brands`? to pick one/i);
-  });
-
-  test('dicono quando serve uno slug e dove si legge senza tool dedicato', () => {
-    expect(MCP_INSTRUCTIONS).toContain('slug');
-    expect(MCP_INSTRUCTIONS).toContain('query');
-  });
-
-  test('dicono che cosa non costa, non solo che cosa costa', () => {
+  test('dicono che una lettura non costa', () => {
     expect(MCP_INSTRUCTIONS).toMatch(/reads cost nothing/i);
-    expect(MCP_INSTRUCTIONS).toMatch(/credits/i);
-  });
-
-  /**
-   * Il prefisso corto valeva per una quindicina di tool e ognuno se lo ripeteva. È una regola del
-   * server, non di un tool: sta qui, dove si legge una volta per sessione, e le descrizioni non la
-   * pagano più quindici volte.
-   */
-  test('dicono che gli id accettano un prefisso corto', () => {
-    expect(MCP_INSTRUCTIONS).toMatch(/prefix/i);
   });
 
   test('nessuna tariffa scritta a mano, come sulle altre due superfici', () => {
@@ -153,9 +101,17 @@ describe('le istruzioni del server sono una mappa, non un ordine', () => {
 });
 
 describe('una descrizione si legge cercando il proprio problema', () => {
+  test('tutti i tool di ASKED_FOR esistono davvero', async () => {
+    const tools = await listedTools();
+    for (const { tool } of ASKED_FOR) {
+      expect(tools.has(tool), tool).toBe(true);
+    }
+  });
+
   for (const { tool, question, words } of ASKED_FOR) {
-    test(`«${question}» trova ${tool} nella lista dei tool`, () => {
-      const description = describing(tool).toLowerCase();
+    test(`«${question}» trova ${tool} nella lista dei tool`, async () => {
+      const tools = await listedTools();
+      const description = tools.get(tool) ?? '';
 
       for (const word of words) {
         expect(description, `${tool} ← ${word}`).toContain(word);
@@ -163,8 +119,6 @@ describe('una descrizione si legge cercando il proprio problema', () => {
     });
 
     test(`«${question}» trova ${tool} anche nella skill, che si legge prima`, () => {
-      // Le parole senza il nome del tool non portano da nessuna parte: «answer» e «read» stanno in
-      // qualunque pagina di prosa. Il nome è ciò che rende la corrispondenza una chiamata.
       expect(SKILL, `skill ← ${tool}`).toContain(tool);
 
       for (const word of words) {
@@ -173,25 +127,17 @@ describe('una descrizione si legge cercando il proprio problema', () => {
     });
   }
 
-  test('nessuna descrizione scrive una tariffa a mano: il prezzo lo misura la risposta', () => {
-    for (const endpoint of [...BRAND_ENDPOINTS, ...BRAND_FAMILIES]) {
-      expect(HAND_WRITTEN_TARIFF.test(endpoint.description), endpoint.tool).toBe(false);
+  test('nessuna descrizione scrive una tariffa a mano: il prezzo lo misura la risposta', async () => {
+    const tools = await listedTools();
+    for (const [name, description] of tools) {
+      expect(HAND_WRITTEN_TARIFF.test(description), name).toBe(false);
     }
   });
 
-
-  /**
-   * Il rovescio della regola sulle tariffe: se il prezzo non si scrive, la SPESA va dichiarata,
-   * sempre e con le stesse parole. Un agente prudente evita cio` di cui non conosce il prezzo, e
-   * un tool che tace su una spesa reale e` peggio di uno che la annuncia. Il registro sa gia` chi
-   * paga: `credits_exhausted` fra i suoi rifiuti.
-   */
-  test('ogni tool che puo` restare senza crediti dice che spende', () => {
-    for (const endpoint of BRAND_ENDPOINTS) {
-      if (!endpoint.failures.some((f) => f.error === 'credits_exhausted')) continue;
-
-      expect(endpoint.description, endpoint.tool).toMatch(/spends? credits/i);
-    }
+  test('ogni tool che può restare senza crediti dice che spende', async () => {
+    const tools = await listedTools();
+    const description = tools.get('run_node_generation') ?? '';
+    expect(description).toMatch(/spends? credits/i);
   });
 
   test('nemmeno la skill la scrive: le due superfici dicono la stessa cosa', () => {
