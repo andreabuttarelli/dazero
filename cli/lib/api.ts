@@ -248,17 +248,6 @@ export type PostPatch = {
   media_url?: string | null; platform_captions?: Record<string, string> | null;
 };
 
-export type PostState = {
-  content_type: string | null; format: string | null;
-  platform: string | null; platforms: string[] | null;
-  caption: string | null; title: string | null; first_comment: string | null;
-  link_url: string | null; subreddit: string | null;
-  media_url: string | null; image_prompt?: string | null;
-  is_carousel: boolean; slide_count: number;
-  slides: { index: number; image_prompt: string | null; has_image: boolean; url: string }[] | null;
-  status: string; text_only: boolean;
-};
-
 // ── API methods ─────────────────────────────────────────────────────────
 
 export const api = {
@@ -344,13 +333,6 @@ export const api = {
 
   updatePost: (t: string, slug: string, postId: string, data: PostPatch) =>
     request<{ ok: boolean }>(`/api/v1/brands/${slug}/posts/${postId}`, t, { method: 'PUT', body: JSON.stringify(data) }),
-
-  // Post state incl. carousel slides — richer than the row in getPosts.
-  getPostMedia: (t: string, slug: string, postId: string) =>
-    get<PostState>(`/api/v1/brands/${slug}/posts/${postId}/media`, t),
-
-  postMedia: (t: string, slug: string, postId: string, body: { action: string; instruction?: string; prompt?: string; index?: number; order?: number[]; duration?: number; script?: string; aspectRatio?: string }) =>
-    post<{ success?: boolean; error?: string; rendered?: boolean; media_url?: string; slide_index?: number; slide_count?: number; notes?: string; duration_seconds?: number; videos_left?: number }>(`/api/v1/brands/${slug}/posts/${postId}/media`, t, body),
 
   deletePost: (t: string, slug: string, postId: string) =>
     request<{ ok: boolean }>(`/api/v1/brands/${slug}/posts/${postId}`, t, { method: 'DELETE' }),

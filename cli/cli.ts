@@ -204,7 +204,7 @@ program
 
 program
   .command('post <slug> <postId> [action]')
-  .description('Post singolo: show, edit, regenerate, slide, reorder, video, render, approve, publish, reject, reschedule')
+  .description('Post singolo: show, edit, render, approve, publish, reject, reschedule')
   .option('--caption <text>', 'Nuova caption')
   .option('--title <text>', 'Titolo (Reddit, carosello, link post)')
   .option('--link <url>', 'URL del link post ("" per rimuoverlo)')
@@ -219,13 +219,6 @@ program
   .option('--slot <datetime>', 'Data/ora slot')
   .option('--product <name>', 'Prodotto associato')
   .option('--scheduledFor <datetime>', 'Nuova data programmazione (reschedule)')
-  .option('--instruction <text>', 'Cosa cambiare (regenerate, slide, video)')
-  .option('--prompt <text>', 'Prompt completo sostitutivo (regenerate, slide)')
-  .option('--index <n>', 'Indice slide, 0 = copertina (slide)')
-  .option('--order <list>', 'Nuovo ordine slide, es. "0,2,1" (reorder)')
-  .option('--duration <seconds>', 'Durata del clip in secondi (video)')
-  .option('--script <text>', 'Battuta parlata/on-screen, tagliata sulla durata (video)')
-  .option('--aspectRatio <ratio>', '9:16 | 1:1 | 16:9 | 4:3 | 3:4 | 21:9 (video)')
   .action(async (slug: string, postId: string, action: string | undefined, opts: Record<string, unknown>) => {
     const { cmdPost } = await import('./commands/post.ts');
     await cmdPost(slug, postId, { action: action ?? 'show', ...opts as any });
