@@ -25,7 +25,7 @@ export function asTool<T>(tool: string, fn: () => T): T {
   return toolCall.run(tool, fn);
 }
 
-async function request<T>(path: string, token: string, opts?: RequestInit): Promise<T> {
+export async function request<T>(path: string, token: string, opts?: RequestInit): Promise<T> {
   // Resolved per call, not at import time: loadEnv() sets PUBLIC_APP_URL after the module
   // graph is already loaded, so a module-level constant would freeze the production default
   // and ignore the local dev server.
@@ -155,74 +155,6 @@ export type Post = {
   created_at: string;
 };
 
-export type EditorialPlanData = {
-  plan: Record<string, unknown> | null;
-  proposed: Record<string, unknown> | null;
-  proposedFeedback: string | null;
-  currentWeek: number | null;
-  quota: { used: number; remaining: number };
-};
-
-export type WeeklyPlanData = {
-  plan: {
-    cadence: string;
-    weeks: { index: number; theme: string; status: string }[];
-    platform_mix: unknown;
-    strategy: string | null;
-  } | null;
-  currentWeekIdx: number | null;
-  posts: { id: string; platform: string | null; caption: string | null; status: string; slot: string | null; scheduled_for: string | null; pillar: string | null; format: string | null }[];
-  seeds: { id: string; seeds: unknown; editorial_week: number | null } | null;
-  quota: { used: number; max: number };
-};
-
-export type GtmData = {
-  gtm: Record<string, unknown> | null;
-  proposed: Record<string, unknown> | null;
-  proposedFeedback: string | null;
-  currentPhase: number | null;
-  phaseStatuses: ('done' | 'now' | 'next')[];
-  horizons: readonly string[];
-  studioPct: number;
-};
-
-export type AnalyticsData = {
-  total: number;
-  scheduled: number;
-  pending: number;
-  failed: number;
-  platforms: [string, number][];
-  upcomingPosts: { id: string; platform: string | null; caption: string | null; scheduled_for: string | null }[];
-  recentActivity: { id: string; platform: string | null; status: string; caption: string | null; error: string | null; created_at: string }[];
-  socialPerformance: { platform: string; posts: number; totals: { views: number; likes: number; comments: number; shares: number } }[];
-  topPosts: { id: string; platform: string; caption: string | null; thumbnail_url: string | null; url: string | null; published_at: string | null; metrics: Record<string, number> }[];
-  products: number;
-  accounts: number;
-};
-
-export type StudioData = {
-  kit: Record<string, unknown> | null;
-  products: { id: string; title: string; pricing: string | null; images: unknown; featured: boolean | null }[];
-  documents: { id: string; kind: string; title: string; status: string; chunkCount: number; textBytes: number }[];
-  history: { id: string; platform: string; content: string | null; metrics: Record<string, number> }[];
-  people: { id: string; name: string; role: string | null; kind: string; description: string | null; consent: boolean; imageCount: number }[];
-  competitors: { id: string; name: string; website: string | null; kind: string; rationale: string | null; source: string }[];
-  targetPlatforms: string[];
-  platformInstructions: Record<string, string>;
-  language: string;
-  studioPct: number;
-};
-
-export type VoiceData = {
-  platforms: string[];
-  voiceMode: string;
-  voiceFramework: Record<string, unknown>;
-  platformRules: Record<string, Record<string, unknown>>;
-  avoid: string[];
-  platformInstructions: Record<string, string>;
-  studioPct: number;
-};
-
 export type CalendarData = {
   posts: Record<string, unknown>[];
   year: number;
@@ -231,13 +163,6 @@ export type CalendarData = {
   prevYM: string;
   nextYM: string;
   timezone: string;
-};
-
-export type WebArticle = {
-  id: string; slug: string; title: string;
-  meta_title: string | null; meta_description: string | null;
-  status: string; scheduled_for: string | null; published_at: string | null;
-  source_initiative_id: string | null; created_at: string;
 };
 
 /** Every scalar field the post editor can write. `media_url: null` clears the image (text-only). */
@@ -258,65 +183,6 @@ export const api = {
   // Posts
   getPosts: (t: string, slug: string, status?: string) =>
     get<Post[]>(`/api/v1/brands/${slug}/posts${status ? `?status=${status}` : ''}`, t),
-
-  // Editorial plan
-  getEditorialPlan: (t: string, slug: string) =>
-    get<EditorialPlanData>(`/api/v1/brands/${slug}/editorial-plan`, t),
-
-  // Weekly plan
-  getWeeklyPlan: (t: string, slug: string) =>
-    get<WeeklyPlanData>(`/api/v1/brands/${slug}/weekly-plan`, t),
-
-  // GTM
-  getGtm: (t: string, slug: string) =>
-    get<GtmData>(`/api/v1/brands/${slug}/gtm`, t),
-
-  // Analytics
-  getAnalytics: (t: string, slug: string) =>
-    get<AnalyticsData>(`/api/v1/brands/${slug}/analytics`, t),
-
-  // Studio
-  getStudio: (t: string, slug: string) =>
-    get<StudioData>(`/api/v1/brands/${slug}/studio`, t),
-
-  // Studio — Brand Kit
-  updateBrandKit: (t: string, slug: string, data: { about?: string; category?: string; target_audience?: string; brand_style?: string; language?: string }) =>
-    request<{ ok: boolean }>(`/api/v1/brands/${slug}/studio/kit`, t, { method: 'PUT', body: JSON.stringify(data) }),
-
-  updateColors: (t: string, slug: string, colors: string[]) =>
-    request<{ ok: boolean; colors: string[] }>(`/api/v1/brands/${slug}/studio/colors`, t, { method: 'PUT', body: JSON.stringify({ colors }) }),
-
-  // Studio — People
-  addPerson: (t: string, slug: string, data: { name: string; role?: string; description?: string; kind?: string; gender?: string; ageRange?: string; ethnicity?: string; vibe?: string; consent?: boolean }) =>
-    post<{ ok: boolean; person: { id: string; name: string; role: string | null; kind: string } }>(`/api/v1/brands/${slug}/studio/people`, t, data),
-
-  deletePerson: (t: string, slug: string, personId: string) =>
-    request<{ ok: boolean }>(`/api/v1/brands/${slug}/studio/people/${personId}`, t, { method: 'DELETE' }),
-
-  // Studio — Documents/Knowledge
-  addDocument: (t: string, slug: string, data: { title?: string; content_text: string; kind?: string }) =>
-    post<{ ok: boolean; document: { id: string; kind: string; title: string } }>(`/api/v1/brands/${slug}/studio/documents`, t, data),
-
-  deleteDocument: (t: string, slug: string, docId: string) =>
-    request<{ ok: boolean }>(`/api/v1/brands/${slug}/studio/documents/${docId}`, t, { method: 'DELETE' }),
-
-  // Studio — Competitors
-  addCompetitor: (t: string, slug: string, data: { name: string; website?: string; kind?: string; rationale?: string }) =>
-    post<{ ok: boolean; competitor: { id: string; name: string; website: string | null; kind: string; source: string } }>(`/api/v1/brands/${slug}/studio/competitors`, t, data),
-
-  deleteCompetitor: (t: string, slug: string, compId: string) =>
-    request<{ ok: boolean }>(`/api/v1/brands/${slug}/studio/competitors/${compId}`, t, { method: 'DELETE' }),
-
-  researchCompetitors: (t: string, slug: string) =>
-    post<{ ok: boolean; found: number; added: number }>(`/api/v1/brands/${slug}/studio/competitors/research`, t),
-
-  // Studio — History
-  syncHistory: (t: string, slug: string) =>
-    post<{ synced: number; noAccounts?: boolean; errors?: string[] }>(`/api/v1/brands/${slug}/studio/history/sync`, t),
-
-  // Voice
-  getVoice: (t: string, slug: string) =>
-    get<VoiceData>(`/api/v1/brands/${slug}/voice`, t),
 
   // Calendar
   getCalendar: (t: string, slug: string, month?: string) =>
@@ -346,43 +212,6 @@ export const api = {
   publishPost: (t: string, slug: string, postId: string) =>
     post<{ ok: boolean; status: string }>(`/api/v1/brands/${slug}/posts/${postId}/publish`, t),
 
-  // ── Editorial plan editing ────────────────────────────────────────────
-
-  updateEditorialPlan: (t: string, slug: string, data: { voice?: unknown; cadence?: string; platform_mix?: unknown; week_index?: number; week_theme?: string; week_brief?: string }) =>
-    post<{ ok: boolean }>(`/api/v1/brands/${slug}/editorial-plan/update`, t, data),
-
-  proposePlan: (t: string, slug: string) =>
-    post<{ ok: boolean; plan: unknown }>(`/api/v1/brands/${slug}/editorial-plan/propose`, t),
-
-  revisePlan: (t: string, slug: string, feedback: string) =>
-    post<{ ok: boolean; plan: unknown }>(`/api/v1/brands/${slug}/editorial-plan/revise`, t, { feedback }),
-
-  approvePlan: (t: string, slug: string) =>
-    post<{ ok: boolean }>(`/api/v1/brands/${slug}/editorial-plan/approve`, t),
-
-  discardPlan: (t: string, slug: string) =>
-    post<{ ok: boolean }>(`/api/v1/brands/${slug}/editorial-plan/discard`, t),
-
-  replanWeek: (t: string, slug: string, week_index: number, brief: string) =>
-    post<{ ok: boolean }>(`/api/v1/brands/${slug}/editorial-plan/replan-week`, t, { week_index, brief }),
-
-  saveBrief: (t: string, slug: string, week_index: number, brief: string, products?: string[]) =>
-    post<{ ok: boolean }>(`/api/v1/brands/${slug}/editorial-plan/save-brief`, t, { week_index, brief, products }),
-
-  // ── Weekly plan ───────────────────────────────────────────────────────
-
-  planWeek: (t: string, slug: string, week_index: number) =>
-    post<{ ok: boolean; draft: unknown }>(`/api/v1/brands/${slug}/weekly-plan/plan`, t, { week_index }),
-
-  saveWeekDraft: (t: string, slug: string, draft_id: string, seeds: unknown[]) =>
-    post<{ ok: boolean }>(`/api/v1/brands/${slug}/weekly-plan/save`, t, { draft_id, seeds }),
-
-  produceWeek: (t: string, slug: string, draft_id: string, row_index?: number) =>
-    post<{ ok: boolean; produced: number }>(`/api/v1/brands/${slug}/weekly-plan/produce`, t, { draft_id, row_index }),
-
-  renderWeek: (t: string, slug: string, week_index?: number) =>
-    post<{ ok: boolean; rendered: number; failed: number; results: { id: string; ok: boolean; url?: string; error?: string; product?: string; qc?: { score: number; pass: boolean; issues: string[]; retried: boolean } }[] }>(`/api/v1/brands/${slug}/weekly-plan/render`, t, week_index !== undefined ? { week_index } : {}),
-
   // ── Products ──────────────────────────────────────────────────────────
   listProducts: (t: string, slug: string) =>
     get<{ products: { id: string; title: string; kind: string; pricing: string | null; imageCount: number; featured: boolean }[] }>(`/api/v1/brands/${slug}/products`, t),
@@ -397,24 +226,6 @@ export const api = {
 
   deletePostsByStatus: (t: string, slug: string, status: string) =>
     request<{ ok: boolean; deleted: number }>(`/api/v1/brands/${slug}/posts?status=${encodeURIComponent(status)}`, t, { method: 'DELETE' }),
-
-  // ── GTM editing ───────────────────────────────────────────────────────
-
-  updateGtmPlan: (t: string, slug: string, data: { objective?: string; phase_index?: number; phase_name?: string; phase_objective?: string; platform_weights?: unknown; pillars?: string[] }) =>
-    post<{ ok: boolean }>(`/api/v1/brands/${slug}/gtm/update`, t, data),
-
-  // ── Voice editing ─────────────────────────────────────────────────────
-
-  updateVoice: (t: string, slug: string, data: { mood?: string; tone?: string; register?: number; emotion?: string; character?: string; syntax?: string; platform_instructions?: Record<string, string>; avoid?: string[] }) =>
-    post<{ ok: boolean }>(`/api/v1/brands/${slug}/voice/update`, t, data),
-
-  // ── Web / Blog ────────────────────────────────────────────────────────
-
-  getWeb: (t: string, slug: string, status?: string) =>
-    get<{ articles: WebArticle[] }>(`/api/v1/brands/${slug}/web${status ? `?status=${status}` : ''}`, t),
-
-  webAction: (t: string, slug: string, body: { action: string; topic?: string; id?: string }) =>
-    post<{ ok?: boolean; articleId?: string; status?: string }>(`/api/v1/brands/${slug}/web`, t, body),
 
   // ── Ads ───────────────────────────────────────────────────────────────
 

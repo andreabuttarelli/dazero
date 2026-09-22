@@ -119,19 +119,17 @@ beforeEach(() => {
 });
 
 describe('ogni chiamata a un tool riempie le tre colonne vuote', () => {
-  // Serve un tool-che-prende-uno-slug-e-fallisce-senza-bearer, e basta che ne resti uno. Ne sono
-  // già caduti due da sotto questa riga — `approve_posts`, poi `propose_plan` — quindi il nome qui
-  // è quello di un tool che non genera niente: `approve_plan` non passa da un modello e resta.
-  test('il tool e il brand su cui è stato chiamato', async () => {
-    await callTool('approve_plan', { slug: 'demo' });
+  // `query` non passa da un modello e non ha bisogno di un brand per fallire: senza bearer
+  // `withAuth` lo rifiuta subito, ed è un tool che resta sulla superficie nuova.
+  test('il tool su cui è stato chiamato', async () => {
+    await callTool('query', {});
 
-    expect(toolCall()?.tool_name).toBe('approve_plan');
-    expect(toolCall()?.brand_slug).toBe('demo');
+    expect(toolCall()?.tool_name).toBe('query');
     expect(typeof toolCall()?.duration_ms).toBe('number');
   });
 
   test('chi ha chiamato, quando il client si è autenticato davvero', async () => {
-    await callTool('list_brands', {}, signedIn);
+    await callTool('query', {}, signedIn);
 
     expect(toolCall()?.user_id).toBe(USER_ID);
   });
@@ -142,22 +140,22 @@ describe('ogni chiamata a un tool riempie le tre colonne vuote', () => {
    * percorso comodo la porterebbe dentro senza che nessuno se ne accorga.
    */
   test('l’identificatore e nient’altro: nessuna email finisce nella riga', async () => {
-    await callTool('list_brands', {}, signedIn);
+    await callTool('query', {}, signedIn);
 
     expect(JSON.stringify(toolCall())).not.toContain(USER_EMAIL);
     expect(JSON.stringify(toolCall())).not.toContain('@');
   });
 
   test('un tool che torna un errore lascia un avviso, non il silenzio', async () => {
-    await callTool('approve_plan', { slug: 'demo' });
+    await callTool('query', {});
 
     expect(toolCall()?.level).toBe('warn');
   });
 
   test('vale per un tool qualunque, perché non è il tool a scrivere la riga', async () => {
-    await callTool('list_brands', {});
+    await callTool('query', {});
 
-    expect(toolCall()?.tool_name).toBe('list_brands');
+    expect(toolCall()?.tool_name).toBe('query');
   });
 });
 
@@ -167,9 +165,9 @@ describe('il nome del tool viaggia con le chiamate che il tool fa', () => {
    * a un'etichetta condivisa fra l'autopilot, la chat e gli agenti esterni — cioè a nessuno.
    */
   test('la richiesta all’app porta x-dazero-tool', async () => {
-    await callTool('list_brands', {}, signedIn);
+    await callTool('query', {}, signedIn);
 
-    expect(apiCalls).toContainEqual({ path: '/api/v1/brands', tool: 'list_brands' });
+    expect(apiCalls).toContainEqual({ path: '/api/v1/org/query', tool: 'query' });
   });
 
   test('fuori da un tool non parte nessuna intestazione inventata', async () => {

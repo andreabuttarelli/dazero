@@ -77,8 +77,8 @@ describe('mcp HTTP transport', () => {
     expect(listRes.status).toBe(200);
     const listBody = await listRes.json();
     const names = (listBody.result?.tools ?? []).map((t: { name: string }) => t.name);
-    expect(names).toContain('list_brands');
-    expect(names.length).toBeGreaterThan(50);
+    expect(names).toContain('query');
+    expect(names.length).toBe(11);
   });
 
   /**
