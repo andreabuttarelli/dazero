@@ -10,7 +10,6 @@ import { PROJECT_BRAND_SHELL_SELECT, type ProjectBrandShell } from '$lib/server/
 import { env } from '$env/dynamic/private';
 
 const FLAGS = {
-  connectors: env.FEATURE_CONNECTORS !== 'false',
   navTeam: env.FEATURE_NAV_TEAM === 'true'
 };
 

@@ -106,10 +106,6 @@
       [`${base}/connected-accounts`]: {
         title: $_('app.settings.connectedAccounts')
       },
-      [`${base}/connectors`]: {
-        title: $_('app.settings.connectors.title'),
-        subtitle: $_('app.settings.connectors.subtitle')
-      },
       [`${base}/ads`]: {
         title: $_('app.settings.ads.capsTitle')
       },

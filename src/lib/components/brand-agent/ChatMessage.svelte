@@ -86,7 +86,6 @@
   .bubble {
     max-width: 92%;
     padding: 6px 9px;
-    border-radius: 10px;
     font-size: 12.5px;
     line-height: 1.45;
     white-space: pre-wrap;
@@ -95,12 +94,10 @@
   .user-bubble {
     background: var(--accent-solid, #7c5cff);
     color: #fff;
-    border-bottom-right-radius: 3px;
   }
   .assistant-bubble {
     background: var(--paper-2, #f9f9f9);
     color: var(--ink, #1d1d1f);
-    border-bottom-left-radius: 3px;
   }
 
   .meta {
@@ -140,7 +137,6 @@
   .pip {
     width: 5px;
     height: 5px;
-    border-radius: 50%;
     background: var(--ink-faint, #86868b);
     align-self: center;
   }
@@ -161,7 +157,6 @@
   .dots i {
     width: 4px;
     height: 4px;
-    border-radius: 50%;
     background: var(--ink-soft, #6e6e73);
     animation: blink 1.2s infinite;
   }

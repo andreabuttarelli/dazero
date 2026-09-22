@@ -78,8 +78,8 @@
       'data-[state=open]:bg-[color-mix(in_srgb,var(--ink)_4%,transparent)]',
       'dark:data-[state=open]:bg-[color-mix(in_srgb,var(--ink)_6%,transparent)]',
       compact
-        ? 'flex size-8 items-center justify-center rounded-lg p-0'
-        : 'flex h-9 w-full min-w-0 items-center gap-2 rounded-lg px-1'
+        ? 'flex size-8 items-center justify-center p-0'
+        : 'flex h-9 w-full min-w-0 items-center gap-2 px-1'
     )}
     aria-label={$_('app.brands.title')}
   >
@@ -185,14 +185,12 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border-radius: 7px;
     background: var(--accent);
     color: #fff;
   }
   .bps-logo-sm {
     width: 28px;
     height: 28px;
-    border-radius: 8px;
   }
   .bps-initials {
     font-size: 9px;
@@ -211,7 +209,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     padding: 2px 7px 2px 6px;
-    border-radius: 999px;
     font-size: 10.5px;
     font-weight: 650;
     letter-spacing: 0.01em;
@@ -227,7 +224,6 @@
   .bps-dot {
     width: 6px;
     height: 6px;
-    border-radius: 50%;
     flex-shrink: 0;
     background: currentColor;
   }
@@ -319,7 +315,6 @@
     gap: 10px;
     min-height: 44px;
     padding: 8px 8px;
-    border-radius: 10px;
     color: var(--ink);
     text-decoration: none;
   }
@@ -360,7 +355,6 @@
     gap: 9px;
     min-height: 36px;
     padding: 7px 8px;
-    border-radius: 9px;
     color: var(--ink-soft);
     font-size: 12.5px;
     font-weight: 550;

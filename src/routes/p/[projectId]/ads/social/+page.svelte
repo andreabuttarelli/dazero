@@ -9,11 +9,12 @@
   import AdsOverview from '$lib/components/AdsOverview.svelte';
   import AdsBookCallPlaceholder from '$lib/components/AdsBookCallPlaceholder.svelte';
   import { adsErrorMessage } from '$lib/ads-fee';
+  import { page } from '$app/stores';
 
   let { data, form } = $props();
   const brand = $derived(data.brand);
   const selfServe = $derived(!!data.selfServe);
-  const newHref = $derived(`/app/${brand.slug}/ads/social/new`);
+  const newHref = $derived(`/p/${$page.params.projectId}/ads/social/new`);
 
   const fmt = (n: number) =>
     n >= 1_000_000
@@ -137,7 +138,7 @@
     gap: 12px; padding: 8px 22px 18px;
   }
   .cand {
-    border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+    border: 1px solid var(--line); padding: 12px 14px;
     display: flex; flex-direction: column; gap: 6px;
   }
   .cand header { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }

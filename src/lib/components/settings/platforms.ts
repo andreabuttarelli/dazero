@@ -30,11 +30,9 @@ export const SETTINGS_SECTIONS = [
   'library',
   'demo-account',
   'connected-accounts',
-  'connectors',
   'ads',
   'ads-accounts',
   'video',
-  'language',
   'api-keys',
   'team',
   'profile',
@@ -98,7 +96,6 @@ export const SETTINGS_GROUPS: readonly {
   {
     labelKey: 'app.nav.workspace',
     items: [
-      { section: 'language', labelKey: 'app.settings.language' },
       { section: 'api-keys', labelKey: 'app.settings.apiKeys.title' },
       { section: 'team', labelKey: 'app.settings.team.title' }
     ]

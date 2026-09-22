@@ -8,11 +8,13 @@
   import AdsOverview from '$lib/components/AdsOverview.svelte';
   import AdsBookCallPlaceholder from '$lib/components/AdsBookCallPlaceholder.svelte';
   import { adsErrorMessage } from '$lib/ads-fee';
+  import { page } from '$app/stores';
 
   let { data, form } = $props();
   const brand = $derived(data.brand);
   const selfServe = $derived(!!data.selfServe);
-  const newHref = $derived(`/app/${brand.slug}/ads/google/new`);
+  const base = $derived(`/p/${$page.params.projectId}`);
+  const newHref = $derived(`${base}/ads/google/new`);
 
   const fmt = (n: number) =>
     n >= 1_000_000
@@ -93,7 +95,7 @@
       {:else}
         <div class="empty">
           <p>{$_('app.ads.noGoogleAccount')}</p>
-          <a class="mini connect" href={`/app/${brand.slug}/ads/connect/googleads`}>
+          <a class="mini connect" href={`${base}/ads/connect/googleads`}>
             {$_('app.settings.ads.connectGoogle')}
           </a>
         </div>

@@ -10,13 +10,12 @@ integrazioni esterne via API key — request, response, query params, body, erro
 |---|---|
 | [01 — Overview](01-overview.md) | Auth (JWT/API key), errori comuni, gate crediti, convenzioni |
 | [02 — Brand core](02-brands-core.md) | `GET /brands`, `GET /brands/:slug`, `/analytics`, `/calendar`, `/bio`, `/publishing`, `/tick`, `/doctor`, `/goals` |
-| [03 — Posts](03-posts.md) | `/posts` (list/edit/delete), `/approve`, `/publish`, `/reschedule`, `/render`, `/media`, `/revoke`, `/approve-all` |
+| [03 — Posts](03-posts.md) | `/posts` (list/edit/delete), `/approve`, `/publish`, `/reschedule`, `/render`, `/revoke`, `/approve-all` |
 | [04 — Studio](04-studio.md) | `/studio`, `/kit`, `/colors`, `/memory`, `/people`, `/documents`, `/competitors`, `/history/sync`, `/people/:id` |
 | [05 — Editorial plan](05-editorial-plan.md) | `/editorial-plan` + `propose` `approve` `discard` `revise` `update` `save-brief` `replan-week` |
 | [06 — Weekly plan](06-weekly-plan.md) | `/weekly-plan` + `plan` `produce` `render` `save` |
 | [07 — Growth: SEO/GEO/web](07-growth-seo-geo.md) | `/seo`, `/geo`, `/web/audits`, `/web/fixes`, `/keywords`, `/backlinks`, `/web`, `/articles`, `/gsc`, `/ranks`, `/library/scan` |
 | [08 — Ads, voice, GTM e gestione](08-ads-voice-gtm-misc.md) | `/ads`, `/ads/remix`, `/voice`, `/gtm`, `/rubrics`, `/products`, `/api-keys`, `/ideas`, `/market/field`, `/radar/diagnose` |
-| [09 — Connections](09-connections.md) | `/connections`, `/connections/catalog`, `/connections/:id/complete`, `/connections/:id` |
 | [10 — Shares](10-shares.md) | `/shares`, `/shares/revoke`, e la rotta pubblica `/share/:token` |
 | [11 — Billing](11-billing.md) | `/billing/portal`, `/billing/checkout` — link Stripe che l'agente consegna all'umano |
 | [12 — Impostazioni: modelli media](12-settings-models.md) | `/settings/models` — quale modello disegna e quale gira, per brand |

@@ -67,7 +67,6 @@
     color: var(--accent, #7c5cff);
     margin: 0 0 16px;
     padding: 6px 14px;
-    border-radius: 980px;
     background: rgba(var(--accent-rgb, 124, 92, 255), 0.07);
     border: 1px solid rgba(var(--accent-rgb, 124, 92, 255), 0.12);
   }
@@ -110,7 +109,6 @@
     top: 4px;
     width: 12px;
     height: 12px;
-    border-radius: 50%;
     background: var(--accent, #7c5cff);
     border: 2px solid var(--paper, #fff);
     box-shadow: 0 0 0 2px var(--accent, #7c5cff);
@@ -159,7 +157,6 @@
     top: 9px;
     width: 6px;
     height: 6px;
-    border-radius: 50%;
     background: var(--line, #ddd);
   }
 

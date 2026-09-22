@@ -1,8 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { isPaidPlan } from '$lib/plans';
 import { isExportOnlyPlan } from '$lib/server/plans';
-import { OWN_SOURCE } from '$lib/server/own-post-history';
-import { jobEnabledForBrand } from '$lib/server/job-roster';
 
 /**
  * BRAND DOCTOR — «perché questo brand non sta ricevendo niente dall'AI?»
@@ -59,8 +56,6 @@ export type DoctorFacts = {
   /** Solo i pending STANTII: è questo il numero su cui lo scheduler frena, non il totale. */
   pendingStalePosts: number;
   publishedLast30: number;
-  /** Ultimo run COMPLETATO dell'analytics review (agent_runs.finished_ok). */
-  lastAnalyticsRunAt: string | null;
   /** Ultimo esito registrato per ciclo (loop_ticks), incluse le esclusioni. */
   lastTicks: Record<string, { at: string; outcome: string; reason: string | null } | undefined>;
 };
@@ -68,23 +63,6 @@ export type DoctorFacts = {
 const DAY = 24 * 60 * 60 * 1000;
 const PENDING_BACKLOG_CAP = 15;
 const PENDING_BACKLOG_AGE_MS = 7 * DAY;
-/** Deve restare allineato a FRESH_DAYS nel tick dell'analytics review. */
-const ANALYTICS_FRESH_DAYS = 6;
-
-function daysSince(iso: string | null | undefined, now: number): number | null {
-  if (!iso) return null;
-  const t = Date.parse(iso);
-  if (!Number.isFinite(t)) return null;
-  return Math.floor((now - t) / DAY);
-}
-
-function ago(iso: string | null | undefined, now: number): string {
-  const d = daysSince(iso, now);
-  if (d == null) return 'mai';
-  if (d === 0) return 'oggi';
-  if (d === 1) return 'ieri';
-  return `${d} giorni fa`;
-}
 
 /** Il primo gate fallito decide lo stato del ciclo. Un `unknown` non è un via libera: si dichiara. */
 function verdict(gates: DoctorGate[]): Pick<DoctorLoop, 'status' | 'blockedBy'> {
@@ -157,52 +135,6 @@ export function assessLoops(f: DoctorFacts): DoctorLoop[] {
     });
   }
 
-  // ── 2. Analytics review. Gate verificati uno per uno nel tick.
-  {
-    const paid = isPaidPlan(f.plan);
-    const ownDays = daysSince(f.ownHistoryAt, f.now);
-    const freshDays = daysSince(f.lastAnalyticsRunAt, f.now);
-    const isFresh = freshDays != null && freshDays < ANALYTICS_FRESH_DAYS;
-    const gates: DoctorGate[] = [
-      {
-        id: 'paid_plan',
-        status: paid ? 'pass' : 'fail',
-        detail: paid ? `Piano "${f.plan}".` : `Piano "${f.plan ?? 'free'}": il ciclo è riservato ai piani a pagamento.`,
-        ...(paid ? {} : { fix: 'Attiva un piano a pagamento.' })
-      },
-      {
-        id: 'own_performance_data',
-        status: f.ownHistoryAt ? 'pass' : 'fail',
-        detail: f.ownHistoryAt
-          ? `Dati di performance propri (source='${OWN_SOURCE}'), ultimi ${ownDays ?? '?'} giorni fa.`
-          : `Nessun dato di performance proprio: l'agente non avrebbe niente da cui adattare (i dati scrapati dei competitor non contano).`,
-        ...(f.ownHistoryAt
-          ? {}
-          : { fix: 'Pubblica dall\'app: la sincronizzazione delle metriche crea le righe da cui questo ciclo impara.' })
-      },
-      {
-        id: 'freshness',
-        // Passare il gate di freschezza significa "già fatto di recente": non è un problema, ma è
-        // la ragione più frequente per cui un brand non viene toccato oggi.
-        status: isFresh ? 'fail' : 'pass',
-        detail: isFresh
-          ? `Già revisionato ${ago(f.lastAnalyticsRunAt, f.now)} (finestra: ${ANALYTICS_FRESH_DAYS} giorni).`
-          : `Ultima review completata: ${ago(f.lastAnalyticsRunAt, f.now)}.`,
-        ...(isFresh ? { fix: `Attendi la finestra, o forza con ?brand=<slug>&force=1.` } : {})
-      }
-    ];
-    const v = verdict(gates);
-    loops.push({
-      loop: 'analytics_review',
-      schedule: 'ogni giorno 08:00 UTC (per brand: al più ogni 6 giorni)',
-      ...v,
-      // "Già fatto di recente" non è un blocco: è un turno saltato.
-      status: v.blockedBy === 'freshness' ? 'waiting' : v.status,
-      gates,
-      lastRun: f.lastTicks.analytics_review ?? null
-    });
-  }
-
   return loops;
 }
 
@@ -224,7 +156,7 @@ export async function collectDoctorFacts(
 
   const staleBefore = new Date(now - PENDING_BACKLOG_AGE_MS).toISOString();
 
-  const [accounts, plan, pending, pendingStale, published, lastAnalytics, ticks] = await Promise.all([
+  const [accounts, plan, pending, pendingStale, published, ticks] = await Promise.all([
     admin.from('social_accounts').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).eq('status', 'active'),
     admin.from('editorial_plans').select('id').eq('brand_id', brand.id).eq('status', 'active').limit(1).maybeSingle(),
     admin.from('posts').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).eq('status', 'pending_user'),
@@ -241,15 +173,6 @@ export async function collectDoctorFacts(
       .eq('brand_id', brand.id)
       .eq('status', 'published')
       .gte('published_at', since30),
-    admin
-      .from('agent_runs')
-      .select('created_at')
-      .eq('brand_id', brand.id)
-      .eq('agent', 'analytics_review')
-      .eq('finished_ok', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
     admin
       .from('loop_ticks')
       .select('loop, outcome, reason, created_at')
@@ -276,7 +199,6 @@ export async function collectDoctorFacts(
     pendingPosts: pending.count ?? 0,
     pendingStalePosts: pendingStale.count ?? 0,
     publishedLast30: published.count ?? 0,
-    lastAnalyticsRunAt: lastAnalytics.data?.created_at ? String(lastAnalytics.data.created_at) : null,
     lastTicks
   };
 }
@@ -292,8 +214,8 @@ export async function brandDoctor(
     generatedAt: new Date(facts.now).toISOString(),
     headline: doctorHeadline(loops),
     loops,
-    // Onestà sul perimetro: questa diagnosi copre tre cicli su nove. Dire quali NON copre evita che
+    // Onestà sul perimetro: questa diagnosi copre un ciclo solo. Dire quali NON copre evita che
     // un "nessun blocco" venga letto come "tutto il prodotto sta funzionando".
-    notCovered: ['seo', 'geo', 'field', 'blog', 'ads', 'weekly_recap']
+    notCovered: ['seo', 'geo', 'field', 'ads', 'analytics_review']
   };
 }

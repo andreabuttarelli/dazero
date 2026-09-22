@@ -88,7 +88,7 @@ export async function brandStage(
 
   const path: Record<Stage, string> = {
     studio: `${base}/settings/brand`,
-    strategy: `${base}/studio`,
+    strategy: `${base}/settings/brand`,
     plan: `${base}/calendar`,
     generate: `${base}/calendar`,
     approve: `${base}/calendar`,

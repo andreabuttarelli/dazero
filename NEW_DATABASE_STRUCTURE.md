@@ -1821,12 +1821,12 @@ nodo si contendono il mouse: l'ultima posizione è quella che entrambe vedono e 
 lavoro. Sul contenuto no — A riscrive il prompt, B cambia il modello, e senza `version` una delle
 due modifiche sparisce in silenzio. Il conflitto va difeso dove fa male, non ovunque.
 
-**12. `canvas_events`: la scrive il codice, si tiene 30 giorni, solo i gesti strutturali.**
+**12. `canvas_events`: la scrive il codice, si tiene 356 giorni, solo i gesti strutturali.**
 - *Chi:* il codice, non un trigger. Un trigger non distingue un gesto dell'utente da una scrittura
   dell'agente né da una migrazione, e `actor_kind` è metà del valore della tabella.
 - *Cosa:* create/delete/update e gli archi. **Non i movimenti** — `node.move` è il 90% degli eventi
   e il meno interessante da rileggere; la posizione sta già su `nodes`.
-- *Quanto:* 30 giorni, con una pulizia periodica. È un registro operativo, non un archivio.
+- *Quanto:* 356 giorni, con una pulizia periodica. È un registro operativo, non un archivio.
 
 **13. `actor_kind`, non un profilo fittizio.** Un agente non è una persona con un'email, e un
 profilo finto inquina ogni join su `profiles`, ogni elenco di membri, ogni conteggio. La colonna

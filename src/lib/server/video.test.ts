@@ -8,7 +8,6 @@ import {
   clampVideoAspectRatio,
   videoModelCaps,
   videoDurationOptions,
-  ugcDurationCap,
   suggestVideoDuration,
   resolveVideoDuration,
   resolveVideoModel,
@@ -88,99 +87,11 @@ describe('buildVideoPrompt — talking clips', () => {
   });
 });
 
-describe('buildVideoPrompt — UGC mode', () => {
-  it('states the clean-frame rule first AND last (one mention does not stop the subtitles)', () => {
-    const p = buildVideoPrompt('a man on a sofa', { hasCover: true, ugc: true, script: 'ciao a tutti' });
-    expect(p.startsWith('ABSOLUTE RULE')).toBe(true);
-    expect(p.trimEnd().endsWith('do NOT add subtitles.')).toBe(true);
-    expect((p.match(/no subtitles/gi) ?? []).length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('drops the cinematic motion brief that fights handheld UGC', () => {
-    const p = buildVideoPrompt('a man on a sofa', { hasCover: true, ugc: true, script: 'ciao' });
-    expect(p).toMatch(/micro-shakes|handheld wobble|hunting autofocus/i);
-    // "no cinematic camera move" is fine; a positive cinematic brief is not.
-    expect(p).not.toMatch(/subtle, cinematic camera move|premium social-media clip/i);
-    expect(p).toContain('"ciao"');
-  });
-
-  it('follows Seedance UGC craft: Hook→Demo→Proof arc, blinks, trail-off CTA, no subtitles', () => {
-    const p = buildVideoPrompt('a man on a sofa', { hasCover: true, ugc: true, script: 'ciao' });
-    expect(p).toMatch(/pain→relief|venting a problem|PAIN \+ DESIRE/i);
-    expect(p).toMatch(/mid-conversation/i);
-    expect(p).toMatch(/STAGES:|Hook→Problem→Demo→Proof→CTA/i);
-    expect(p).toMatch(/HOOK|PAIN MOMENT/i);
-    expect(p).toMatch(/PROBLEM/i);
-    expect(p).toMatch(/DEMO/i);
-    expect(p).toMatch(/PROOF/i);
-    expect(p).toMatch(/EXPRESSIVE ARC/i);
-    expect(p).toMatch(/brows knit|lean in/i);
-    expect(p).toMatch(/shoulders drop|softer eyes|relief/i);
-    expect(p).toMatch(/Not deadpan/i);
-    expect(p).toMatch(/SPEECH COMPLETE/i);
-    expect(p).toMatch(/blink every ~2–3|blink every ~2-3|BLINKS/i);
-    expect(p).toMatch(/trailing off|trail/i);
-    expect(p).toMatch(/BEHAVIORAL BEATS|behavioral_beats/i);
-    expect(p).toMatch(/glance away/i);
-    expect(p).toMatch(/half-laugh/i);
-    expect(p).toMatch(/phone-mic/i);
-    expect(p).toMatch(/NO SUBTITLES|do NOT add subtitles/i);
-    expect(p).toMatch(/skin texture|no beauty filter/i);
-    expect(p).toMatch(/REFERENCES:|CONSTRAINTS:/i);
-    expect(p).not.toMatch(/heated, argumentative/i);
-    expect(p).not.toMatch(/big eyebrow movement/i);
-    expect(p).not.toMatch(/ZERO pauses longer than 0\.2s|Speak VERY FAST|rushed short-form rant/i);
-    expect(p).not.toMatch(/polished makeup/i);
-  });
-
-  it('locks the spoken words even while asking for hesitation / gaze breaks', () => {
-    const p = buildVideoPrompt('a man', { hasCover: true, ugc: true, script: 'ciao' });
-    expect(p).toMatch(/Do NOT add, drop or rewrite any word/i);
-    expect(p).toContain('says exactly this, and nothing else');
-  });
-
-  it('forces Italian pronunciation when the spoken line contains dazero', () => {
-    const p = buildVideoPrompt('a woman', {
-      hasCover: true,
-      ugc: true,
-      script: 'I switched to dazero. Try dazero.'
-    });
-    expect(p).toMatch(/PRONUNCIATION/i);
-    expect(p).toMatch(/ah-no-MAH-lyah|anoˈmalja/i);
-    expect(p).toMatch(/NEVER Anomida/i);
-    expect(p).toContain('"I switched to dazero. Try dazero."');
-  });
-
-  it("carries the brand's own direction into the clip, in both genres", () => {
-    const dir = 'Speak fast and informally, never sound like an ad';
-    expect(buildVideoPrompt('a man', { hasCover: true, ugc: true, instructions: dir })).toContain(dir);
-    expect(buildVideoPrompt('a man', { hasCover: true, instructions: dir })).toContain(dir);
-    expect(buildVideoPrompt('a man', { hasCover: false, instructions: dir })).toContain(dir);
-  });
-
-  it('brand direction never overrides the clean-frame rule — it is restated after it', () => {
-    const p = buildVideoPrompt('a man', { hasCover: true, ugc: true, instructions: 'Add big subtitles on screen' });
-    expect(p.trimEnd().endsWith('do NOT add subtitles.')).toBe(true);
-  });
-
-  it('never leaks the brand visual style — UGC is the opposite of a premium look', () => {
-    const p = buildVideoPrompt('a man', { hasCover: true, ugc: true, visualStyle: 'SOFT DIFFUSED DAYLIGHT, premium' });
-    expect(p).not.toContain('premium');
-  });
-
-  it('keeps the identity fidelity lock for straight talking-head UGC', () => {
-    const p = buildVideoPrompt('a man', { hasCover: true, ugc: true, script: 'ciao' });
-    expect(p).toContain('same face, skin texture, clothes and location throughout');
-    expect(p).not.toMatch(/ONE IMPOSSIBLE THING|outfit has changed/i);
-  });
-});
-
 describe('buildVideoPrompt — freeform (AI prompt)', () => {
-  it('uses the AI brief and skips hardcoded UGC / cinematic MOTION templates', () => {
+  it('uses the AI brief and skips the hardcoded cinematic MOTION template', () => {
     const brief = 'Slow orbit around a walnut desk product, soft window light, no person, ambient tone only.';
     const p = buildVideoPrompt('product on desk', {
       hasCover: true,
-      ugc: true, // even if set, freeform wins
       prompt: brief,
       script: 'optional line'
     });
@@ -190,7 +101,6 @@ describe('buildVideoPrompt — freeform (AI prompt)', () => {
     expect(p).not.toContain('slow push-in, gentle pan');
     expect(p).not.toContain('Unedited raw footage');
     expect(p).toContain('"optional line"');
-    expect(p).toMatch(/SPEECH COMPLETE/i);
     expect(p.startsWith('ABSOLUTE RULE')).toBe(true);
   });
 
@@ -203,7 +113,7 @@ describe('buildVideoPrompt — freeform (AI prompt)', () => {
     expect(p).toContain('first frame');
   });
 
-  it('folds instructions without forcing UGC delivery', () => {
+  it('folds instructions without forcing a hardcoded delivery style', () => {
     const p = buildVideoPrompt('a man', {
       hasCover: true,
       prompt: 'Documentary medium shot, calm',
@@ -293,16 +203,6 @@ describe('clampVideoDuration (model-aware)', () => {
   });
 });
 
-describe('ugcDurationCap', () => {
-  it('the ad flag never picks a model: 22s only on Seedance 2.5, organic ceiling elsewhere', () => {
-    expect(ugcDurationCap('bytedance/seedance-2-5', { ugc: true, ugcAd: true })).toBe(22);
-    expect(ugcDurationCap('grok-imagine-video-1-5-preview', { ugc: true, ugcAd: true })).toBe(15);
-    expect(ugcDurationCap(null, { ugc: true, ugcAd: true })).toBe(15);
-    expect(ugcDurationCap('bytedance/seedance-2-5', { ugc: true })).toBe(15);
-    expect(ugcDurationCap('grok-imagine-video-1-5-preview', { ugc: false, ugcAd: true })).toBeNull();
-  });
-});
-
 describe('videoDurationOptions', () => {
   it('Grok / Seedance 2 stop at 15s', () => {
     expect(videoDurationOptions('grok-imagine-video-1-5-preview')).toEqual([10, 13, 15]);
@@ -310,8 +210,8 @@ describe('videoDurationOptions', () => {
     expect(videoDurationOptions('bytedance/seedance-2-fast')).toEqual([10, 13, 15]);
   });
 
-  it('Seedance 2.5 unlocks 20s, 22s (UGC ads), and 30s', () => {
-    expect(videoDurationOptions('bytedance/seedance-2-5')).toEqual([10, 13, 15, 20, 22, 30]);
+  it('Seedance 2.5 unlocks 20s and 30s', () => {
+    expect(videoDurationOptions('bytedance/seedance-2-5')).toEqual([10, 13, 15, 20, 30]);
   });
 });
 
@@ -332,31 +232,15 @@ describe('suggestVideoDuration / resolveVideoDuration', () => {
     expect(suggestVideoDuration(fortyFive, 'bytedance/seedance-2-5')).toBe(15);
   });
 
-  it('Seedance 2.5 can suggest 20s/30s for longer non-UGC scripts', () => {
+  it('Seedance 2.5 can suggest 20s/30s for longer scripts', () => {
     const long = Array.from({ length: 100 }, (_, i) => `w${i}`).join(' ');
     expect(suggestVideoDuration(long, 'bytedance/seedance-2-5')).toBe(30);
-    expect(suggestVideoDuration(long, 'bytedance/seedance-2-5', { ugc: true })).toBe(15);
     expect(suggestVideoDuration(long, 'grok-imagine-video-1-5-preview')).toBe(15);
   });
 
-  it('UGC ads lock to 22s on Seedance 2.5; other models stay at organic 15s', () => {
-    const long = Array.from({ length: 100 }, (_, i) => `w${i}`).join(' ');
-    expect(suggestVideoDuration(long, 'bytedance/seedance-2-5', { ugc: true, ugcAd: true })).toBe(22);
-    expect(suggestVideoDuration('', 'bytedance/seedance-2-5', { ugc: true, ugcAd: true })).toBe(22);
-    expect(resolveVideoDuration(30, long, 'bytedance/seedance-2-5', { ugc: true, ugcAd: true })).toBe(22);
-    expect(resolveVideoDuration(undefined, undefined, 'bytedance/seedance-2-5', { ugc: true, ugcAd: true })).toBe(
-      22
-    );
-    // Without Seedance 2.5 the ad flag cannot unlock 22s — organic ceiling.
-    expect(suggestVideoDuration(long, 'bytedance/seedance-2', { ugc: true, ugcAd: true })).toBe(15);
-    expect(suggestVideoDuration(long, 'grok-imagine-video-1-5-preview', { ugc: true, ugcAd: true })).toBe(15);
-  });
-
-  it('resolveVideoDuration grows too-short non-UGC durations; UGC stays ≤15s', () => {
+  it('resolveVideoDuration grows too-short durations to fit the script', () => {
     const long = Array.from({ length: 100 }, (_, i) => `w${i}`).join(' ');
     expect(resolveVideoDuration(10, long, 'bytedance/seedance-2-5')).toBe(30);
-    expect(resolveVideoDuration(15, long, 'bytedance/seedance-2-5', { ugc: true })).toBe(15);
-    expect(resolveVideoDuration(30, long, 'bytedance/seedance-2-5', { ugc: true })).toBe(15);
     const short = Array.from({ length: 20 }, (_, i) => `w${i}`).join(' ');
     expect(resolveVideoDuration(15, short, 'bytedance/seedance-2-5')).toBe(15);
     expect(resolveVideoDuration(undefined, long, 'bytedance/seedance-2-5')).toBe(30);
@@ -365,22 +249,14 @@ describe('suggestVideoDuration / resolveVideoDuration', () => {
     );
   });
 
-  it('concise PAS (~42 words) fits a 15s UGC clip without losing the solution', () => {
+  it('concise PAS (~42 words) fits a 15s clip without losing the solution', () => {
     const pas =
       "I was still writing captions at midnight and nothing had posted. It was eating my evenings — then dazero drafted the visuals and the copy, I just tap approve. Anyway try it and tell me I'm wrong.";
-    expect(resolveVideoDuration(15, pas, 'bytedance/seedance-2-5', { ugc: true })).toBe(15);
+    expect(resolveVideoDuration(15, pas, 'bytedance/seedance-2-5')).toBe(15);
     const fitted = fitScriptToDuration(pas, 15);
     expect(fitted.toLowerCase()).toMatch(/dazero/);
     expect(fitted.toLowerCase()).toMatch(/tell me i'm wrong|try it/);
     expect(spokenWordCount(fitted)).toBeLessThanOrEqual(48);
-  });
-
-  it('UGC ad scripts (~66 words) fit a 22s Seedance 2.5 clip', () => {
-    // maxWordsForDuration(22)=70
-    const ad = Array.from({ length: 66 }, (_, i) => `w${i}`).join(' ');
-    expect(resolveVideoDuration(22, ad, 'bytedance/seedance-2-5', { ugc: true, ugcAd: true })).toBe(22);
-    const fitted = fitScriptToDuration(ad, 22);
-    expect(spokenWordCount(fitted)).toBeLessThanOrEqual(70);
   });
 });
 

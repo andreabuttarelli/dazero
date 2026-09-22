@@ -33,6 +33,10 @@ export type ModelChoice = {
   maxDuration?: number;
   maxPromptChars?: number;
   generateAudio?: boolean;
+  /** `ai_models.input_modalities` sincronizzate per questo modello — quel che `connectorsFor`
+   *  (`canvas/connectors.ts`) traduce nelle porte del nodo. Assente per il testo, che non passa
+   *  da `offerable-models.ts` e non ha porte oltre a quella fissa. */
+  inputModalities?: string[];
 };
 
 /** Quel che l'utente ha scelto nell'overlay. Non è il catalogo: è la scelta dentro al catalogo. */

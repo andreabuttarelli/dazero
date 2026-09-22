@@ -61,17 +61,17 @@
   .cx-overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
     display: flex; align-items: center; justify-content: center; padding: 24px; }
-  .cx-card { background: #fff; border-radius: 20px; padding: 26px; width: 100%; max-width: 440px;
+  .cx-card { background: #fff; padding: 26px; width: 100%; max-width: 440px;
     box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.4); }
   .cx-card h3 { margin: 0 0 8px; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
   .cx-sub { margin: 0; font-size: 14px; color: var(--ink-soft, #6e6e73); line-height: 1.5; }
   .cx-err { margin-top: 10px; font-size: 12.5px; color: #c0392b; }
   .cx-text { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 11px 13px;
-    border: 1px solid var(--line, #e3e3e6); border-radius: 12px; outline: none; margin-top: 14px; }
+    border: 1px solid var(--line, #e3e3e6); outline: none; margin-top: 14px; }
   .cx-text:focus { border-color: var(--accent); }
   .cx-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
   .bbtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font: inherit;
-    font-size: 13.5px; font-weight: 600; padding: 9px 15px; border-radius: 11px; cursor: pointer;
+    font-size: 13.5px; font-weight: 600; padding: 9px 15px; cursor: pointer;
     background: var(--paper-2, #f5f5f7); color: var(--ink, #1d1d1f); border: 1px solid var(--line, #e3e3e6); }
   .bbtn:hover { border-color: var(--line-2, #d2d2d7); }
   .bbtn.danger { background: transparent; color: #c0392b; border-color: rgba(192, 57, 43, 0.3); }

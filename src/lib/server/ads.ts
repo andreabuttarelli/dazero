@@ -1370,9 +1370,9 @@ export async function adsReadiness(
     status?: string;
     actorEmail?: string | null;
   },
-  channel: AdsChannel
+  channel: AdsChannel,
+  base: string
 ): Promise<{ checks: AdsCheck[]; ready: boolean; adAccounts: { id: string; platform: string; name: string | null; currency: string | null }[] }> {
-  const base = `/app/${brand.slug}`;
   const settings = parseAdsSettings(brand.ads_settings);
 
   const [{ data: allAccounts }, { data: socials }] = await Promise.all([

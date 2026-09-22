@@ -325,7 +325,6 @@
     border: 1px solid var(--line-2, #d2d2d7);
     background: var(--paper, #fff);
     color: var(--ink, #1d1d1f);
-    border-radius: 7px;
     padding: 3px 9px;
     font-size: 11px;
     font-weight: 600;
@@ -349,7 +348,6 @@
   .shimmer span {
     display: block;
     height: 28px;
-    border-radius: 10px;
     background: linear-gradient(
       90deg,
       color-mix(in srgb, var(--ink) 4%, var(--paper)) 0%,

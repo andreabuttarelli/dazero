@@ -112,7 +112,6 @@
     font-size: 13px;
     padding: 8px 10px;
     border: 1px solid var(--line, #e5e5e8);
-    border-radius: 8px;
     background: var(--paper, #fff);
     color: inherit;
   }
@@ -125,7 +124,6 @@
     display: grid;
     gap: 2px;
     border: 1px solid var(--line, #e5e5e8);
-    border-radius: 10px;
     background: var(--paper, #fff);
   }
   .repo-row {
@@ -148,7 +146,6 @@
     font-size: 13px;
     font-weight: 600;
     line-height: 1.2;
-    border-radius: 10px;
     padding: 9px 14px;
     cursor: pointer;
     border: 1px solid transparent;

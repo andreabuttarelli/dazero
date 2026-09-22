@@ -4,7 +4,7 @@ import { assessLoops, doctorHeadline, type DoctorFacts } from './brand-doctor';
 const NOW = Date.parse('2026-08-20T12:00:00Z');
 const daysAgo = (n: number) => new Date(NOW - n * 24 * 60 * 60 * 1000).toISOString();
 
-/** Un brand che sta funzionando: tutto collegato, coda vuota, dati propri, review non fresca. */
+/** Un brand che sta funzionando: tutto collegato, coda vuota, dati propri. */
 function healthy(over: Partial<DoctorFacts> = {}): DoctorFacts {
   return {
     now: NOW,
@@ -16,7 +16,6 @@ function healthy(over: Partial<DoctorFacts> = {}): DoctorFacts {
     pendingPosts: 0,
     pendingStalePosts: 0,
     publishedLast30: 9,
-    lastAnalyticsRunAt: daysAgo(8),
     lastTicks: {},
     ...over
   };
@@ -71,38 +70,6 @@ describe('assessLoops — publishing', () => {
   });
 });
 
-describe('assessLoops — analytics review', () => {
-  it('names the free plan', () => {
-    const l = loop(healthy({ plan: null }), 'analytics_review');
-    expect(l.blockedBy).toBe('paid_plan');
-  });
-
-  it('names the missing own data — the gate that kept this agent from ever running', () => {
-    const l = loop(healthy({ ownHistoryAt: null }), 'analytics_review');
-    expect(l.status).toBe('blocked');
-    expect(l.blockedBy).toBe('own_performance_data');
-    expect(l.gates.find((g) => g.id === 'own_performance_data')?.detail).toContain('competitor');
-  });
-
-  it('distinguishes "already done" from "blocked"', () => {
-    const l = loop(healthy({ lastAnalyticsRunAt: daysAgo(1) }), 'analytics_review');
-    expect(l.status).toBe('waiting');
-    expect(l.blockedBy).toBe('freshness');
-  });
-
-  it('is ok once the freshness window has passed', () => {
-    expect(loop(healthy({ lastAnalyticsRunAt: daysAgo(6) }), 'analytics_review').status).toBe('ok');
-  });
-
-  it('surfaces the last recorded tick outcome, skips included', () => {
-    const l = loop(
-      healthy({ lastTicks: { analytics_review: { at: daysAgo(1), outcome: 'skipped', reason: 'no_budget' } } }),
-      'analytics_review'
-    );
-    expect(l.lastRun).toEqual({ at: daysAgo(1), outcome: 'skipped', reason: 'no_budget' });
-  });
-});
-
 describe('doctorHeadline', () => {
   it('leads with the first blocked loop and its fix', () => {
     const head = doctorHeadline(assessLoops(healthy({ connectedAccounts: 0, publishedLast30: 0 })));
@@ -111,7 +78,7 @@ describe('doctorHeadline', () => {
   });
 
   it('does not claim health it cannot see', () => {
-    // "Nessun blocco" deve restare circoscritto ai cicli coperti: il doctor ne vede tre su nove.
+    // "Nessun blocco" deve restare circoscritto ai cicli coperti: il doctor ne vede uno solo.
     expect(doctorHeadline(assessLoops(healthy()))).toContain('cicli coperti');
   });
 });

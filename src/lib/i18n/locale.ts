@@ -10,7 +10,7 @@ export function isLocale(v: string | undefined | null): v is Locale {
 }
 
 // English name of the language an AI writes its user-facing prose in. The app UI ships English
-// only; a brand's own publishing language is a separate, product-level choice ($lib/blog-locales).
+// only.
 export const OUTPUT_LANGUAGE = 'English';
 
 /**

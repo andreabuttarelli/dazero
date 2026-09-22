@@ -29,9 +29,9 @@ export const SERVICE_ROLE_USES: readonly ServiceRoleUse[] = [
     tables: ['api_keys']
   },
   {
-    path: 'src/routes/api/v1/canvas/runs/tick/+server.ts — expireStuckRuns + tickSourceSync + pruneOldCanvasEvents; i worker a tempo per scheduled_posts restano da scrivere (fase 5)',
-    why: "Un cron non ha una sessione: nessun utente ha cliccato. Prende le righe già scadute (run in corso, consegne da pubblicare, nodi products/social_account_feed non sincronizzati da oltre sei ore, eventi canvas_events più vecchi di 30 giorni) attraverso tutte le org per costruzione, e l'org_id lo LEGGE dalla riga che ha preso — non lo riceve mai da fuori. La potatura di canvas_events è l'unica eccezione dichiarata: pota per età, su ogni org insieme, non per riga scoperta da un org_id letto — vedi retention.ts.",
-    tables: ['node_runs', 'scheduled_posts', 'nodes', 'products', 'social_posts', 'canvas_events']
+    path: 'src/routes/api/v1/canvas/runs/tick/+server.ts — expireStuckRuns + pruneOldCanvasEvents',
+    why: "Un cron non ha una sessione: nessun utente ha cliccato. Prende le righe già scadute (run rimasti in corso, eventi canvas_events più vecchi di 356 giorni) attraverso tutte le org per costruzione, e l'org_id lo LEGGE dalla riga che ha preso — non lo riceve mai da fuori. La potatura di canvas_events è l'unica eccezione dichiarata: pota per età, su ogni org insieme, non per riga scoperta da un org_id letto — vedi retention.ts.",
+    tables: ['node_runs', 'nodes', 'canvas_events']
   },
   {
     path: 'le callback dei provider, src/routes/api/v1/webhooks/** (non ancora scritte: fase 3 e 5)',

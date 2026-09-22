@@ -68,7 +68,6 @@
   }
   .cta {
     border: 0;
-    border-radius: 980px;
     padding: 10px 18px;
     background: var(--ink);
     color: var(--paper);
@@ -94,7 +93,6 @@
     gap: 6px;
     padding: 18px 18px 16px;
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 14px;
     background: var(--paper);
     text-decoration: none;
     color: inherit;

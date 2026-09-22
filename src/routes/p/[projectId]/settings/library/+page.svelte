@@ -108,7 +108,6 @@
 	.panel {
 		background: var(--paper);
 		border: 1px solid var(--line);
-		border-radius: 16px;
 		padding: 18px 22px;
 		margin-bottom: 16px;
 	}
@@ -152,7 +151,6 @@
 		min-width: 200px;
 		height: 38px;
 		border: 1px solid var(--line);
-		border-radius: 10px;
 		padding: 0 12px;
 		background: var(--paper-2, var(--paper));
 		color: var(--ink);
@@ -161,7 +159,6 @@
 	.mini.connect {
 		height: 38px;
 		padding: 0 16px;
-		border-radius: 10px;
 		border: none;
 		background: var(--accent, #7c5cff);
 		color: #fff;
@@ -176,7 +173,6 @@
 		gap: 6px;
 		height: 36px;
 		padding: 0 14px;
-		border-radius: 10px;
 		border: none;
 		background: var(--accent, #7c5cff);
 		color: #fff;
@@ -192,7 +188,6 @@
 
 	.banner {
 		font-size: 13px;
-		border-radius: 10px;
 		padding: 10px 14px;
 		margin: 0 0 14px;
 	}
@@ -235,7 +230,6 @@
 		font-size: 11px;
 		font-weight: 600;
 		padding: 2px 9px;
-		border-radius: 999px;
 		background: var(--paper-2);
 		color: var(--ink-faint);
 	}
@@ -276,7 +270,6 @@
 	.empty-hero {
 		width: 100%;
 		max-width: 420px;
-		border-radius: 14px;
 		margin: 0 auto 12px;
 		display: block;
 	}

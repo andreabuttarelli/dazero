@@ -15,9 +15,6 @@ export function siteUrl(reqOrigin?: string): string {
 
 // Indexable public pages. Everything under /app is excluded.
 export const MARKETING_PATHS = [
-  '/privacy',
-  '/terms',
-  '/cookies',
   '/changelog',
   '/docs',
   '/docs/getting-started',

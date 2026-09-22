@@ -6,6 +6,21 @@ vi.mock('$lib/server/cli-auth', () => ({
   loadBrandForUser: vi.fn(),
   checkApiKeyWriteAccess: vi.fn(() => null)
 }));
+vi.mock('$lib/server/supabase-admin', () => ({ createAdminClient: () => ({}) }));
+
+// La rotta legge `offerableSlotChoices` (sincronizzato ∩ nostri fatti di integrazione). Questo
+// test resta sulla domanda che gli compete — i limiti arrivano, la scelta stantia sparisce — e
+// non sulla tabella `ai_models`, che è il dominio di `offerable-models.test.ts`: qui si finge
+// "tutto sincronizzato" restituendo lo stesso elenco che `slotChoices` dava prima del sync.
+vi.mock('$lib/server/offerable-models', async () => {
+  const { slotChoices } = await import('$lib/media-model-slots');
+  return {
+    offerableSlotChoices: async (_admin: unknown, slot: Parameters<typeof slotChoices>[0]) => ({
+      synced: true,
+      choices: slotChoices(slot)
+    })
+  };
+});
 
 import { GET, PUT } from './+server';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';

@@ -1,7 +1,7 @@
 import type { Db } from '$lib/server/db/client';
 
 /**
- * LA POTATURA DI `canvas_events`: 30 giorni, un registro operativo, non un archivio
+ * LA POTATURA DI `canvas_events`: 356 giorni, un registro operativo, non un archivio
  * (NEW_DATABASE_STRUCTURE.md §12). Vive fuori da `repos/` di proposito — `tenancy.test.ts` esige
  * `org_id` su ogni scrittura di un repository perché la service role bypassa la RLS, ma una
  * potatura per età È cross-org per definizione: pota le righe vecchie di OGNI org nello stesso
@@ -9,10 +9,9 @@ import type { Db } from '$lib/server/db/client';
  * sembrare una fuga di tenant; qui è dichiaratamente il compito di un cron.
  *
  * Un cron Vercel esistente (`api/v1/canvas/runs/tick`), non un secondo processo — l'utente è
- * stato esplicito, e la regola già scritta per `source-sync-tick.ts` vale identica qui: estendere
- * il tick che gira ogni minuto, non aggiungerne uno.
+ * stato esplicito: estendere il tick che gira ogni minuto, non aggiungerne uno.
  */
-export const CANVAS_EVENT_RETENTION_DAYS = 30;
+export const CANVAS_EVENT_RETENTION_DAYS = 356;
 
 export async function pruneOldCanvasEvents(
   db: Db,

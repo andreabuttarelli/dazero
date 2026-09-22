@@ -129,7 +129,6 @@
 .doc-prose a:focus-visible {
   outline: 2px solid var(--accent-solid);
   outline-offset: 2px;
-  border-radius: 3px;
 }
 
 /* Il filetto a sinistra del citato prende un filo d'accento: una virgoletta sola
@@ -152,7 +151,6 @@
   font-size: 0.9em;
   letter-spacing: 0;
   padding: 0.1em 0.35em;
-  border-radius: 5px;
   background: var(--paper-2);
   border: 1px solid var(--line);
 }
@@ -162,7 +160,6 @@
   padding: 12px 14px;
   overflow-x: auto;
   border: 1px solid var(--line-2);
-  border-radius: 10px;
   background: var(--paper-2);
   -webkit-overflow-scrolling: touch;
 }
@@ -185,7 +182,6 @@
   max-width: 100%;
   height: auto;
   margin: 0 auto 0.95em;
-  border-radius: 10px;
   border: 1px solid var(--line);
 }
 

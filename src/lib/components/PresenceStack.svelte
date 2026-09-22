@@ -46,7 +46,6 @@
     gap: 7px;
     height: 32px;
     padding: 0 10px 0 4px;
-    border-radius: 999px;
     background: var(--paper-2);
     flex: 0 0 auto;
     min-width: 0;
@@ -75,7 +74,6 @@
     justify-content: center;
     width: 24px;
     height: 24px;
-    border-radius: 50%;
     overflow: hidden;
     background: var(--accent);
     color: #fff;

@@ -54,9 +54,6 @@ export const actions: Actions = {
   select: async ({ request, params, locals: { supabase } }) => {
     const form = await request.formData();
     const accountType = form.get('accountType') === 'organization' ? 'organization' : 'personal';
-    // Where to return after connecting. Carried as a hidden field because the form posts to
-    // `?/select`, which drops the original `?return=…` query string the load saw.
-    const dest = form.get('dest') === 'activate' ? 'activate' : 'settings';
     const tempToken = String(form.get('tempToken') ?? '');
     const userProfileRaw = String(form.get('userProfile') ?? '');
     const orgRaw = String(form.get('organization') ?? '');
@@ -100,6 +97,6 @@ export const actions: Actions = {
       return fail(500, { error: e instanceof Error ? e.message : 'connect_failed' });
     }
 
-    throw redirect(303, `/p/${params.projectId}/${dest === 'activate' ? 'activate' : 'settings/connected-accounts'}?connected=1`);
+    throw redirect(303, `/p/${params.projectId}/settings/connected-accounts?connected=1`);
   }
 };

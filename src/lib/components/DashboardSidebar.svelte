@@ -168,7 +168,7 @@
   // Mobile rows need a comfortable tap target without looking oversized next to desktop.
   const menuBtnMobileClass = $derived(
     mobile
-      ? 'h-auto! min-h-10! gap-2! rounded-lg! px-2.5! py-2! text-[14.5px]! leading-tight! [&_svg]:size-4! touch-manipulation'
+      ? 'h-auto! min-h-10! gap-2! px-2.5! py-2! text-[14.5px]! leading-tight! [&_svg]:size-4! touch-manipulation'
       : ''
   );
   // Riga di nav SELEZIONATA: pastiglia in velo d'accento + binario sinistro + etichetta in
@@ -335,7 +335,7 @@
                    seconda lingua visiva accanto alle righe di pagina. -->
               <span
                 class={cn(
-                  'ml-auto h-1.5 w-1.5 shrink-0 rounded-[2px] border border-current opacity-30 group-data-[collapsible=icon]:hidden',
+                  'ml-auto h-1.5 w-1.5 shrink-0 border border-current opacity-30 group-data-[collapsible=icon]:hidden',
                   active && 'opacity-50'
                 )}
                 aria-hidden="true"
@@ -482,7 +482,7 @@
       class={cn(
         'flex items-center border-0 bg-transparent text-sidebar-foreground/70 transition-colors cursor-pointer touch-manipulation',
         'hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-sidebar-foreground',
-        mobile ? 'gap-2 rounded-lg px-2.5 py-2.5' : 'gap-2 rounded-lg px-2.5 py-2',
+        mobile ? 'gap-2 px-2.5 py-2.5' : 'gap-2 px-2.5 py-2',
         'group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0'
       )}
       aria-label={$_('app.nav.install')}
@@ -501,7 +501,7 @@
         href={activateHref}
         class={cn(
           'sidebar-upgrade flex items-center no-underline transition-opacity hover:opacity-90 active:opacity-80 touch-manipulation',
-          mobile ? 'gap-2 rounded-lg px-2.5 py-2.5' : 'gap-2 rounded-lg px-2.5 py-2',
+          mobile ? 'gap-2 px-2.5 py-2.5' : 'gap-2 px-2.5 py-2',
           'group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0'
         )}
         style="background: var(--accent, #7c5cff); color: #fff;"
@@ -534,8 +534,8 @@
           'data-[state=open]:bg-black/[0.04] dark:data-[state=open]:bg-white/[0.06]',
           'group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0',
           mobile
-            ? 'gap-2.5 rounded-lg px-2.5 py-2.5 min-h-11'
-            : 'gap-2.5 rounded-lg px-2 py-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0'
+            ? 'gap-2.5 px-2.5 py-2.5 min-h-11'
+            : 'gap-2.5 px-2 py-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0'
         )}
         aria-label={`${brandName} — ${$_('app.account.menu')}`}
         title={sidebar.state === 'collapsed' && !mobile ? brandName : undefined}
@@ -543,7 +543,7 @@
         <!-- Avatar del BRAND, non dell'utente: collassata è l'unica cosa visibile. -->
         <span
           class={cn(
-            'um-brand-avatar flex shrink-0 items-center justify-center overflow-hidden rounded-lg',
+            'um-brand-avatar flex shrink-0 items-center justify-center overflow-hidden',
             mobile ? 'size-8' : 'size-7'
           )}
         >
@@ -725,7 +725,7 @@
         'um-bell relative flex shrink-0 items-center justify-center text-sidebar-foreground/70 transition-colors',
         'border-0 bg-transparent shadow-none',
         'hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-sidebar-foreground touch-manipulation',
-        mobile ? 'size-9 rounded-lg' : 'size-8 rounded-lg',
+        mobile ? 'size-9' : 'size-8',
         $warningCenterOpen && 'text-[var(--accent)]'
       )}
       onclick={() => warningCenterOpen.update((v) => !v)}
@@ -752,7 +752,7 @@
         'um-settings flex shrink-0 items-center justify-center text-sidebar-foreground/70 no-underline transition-colors',
         'border-0 bg-transparent shadow-none',
         'hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-sidebar-foreground touch-manipulation',
-        mobile ? 'size-9 rounded-lg' : 'size-8 rounded-lg',
+        mobile ? 'size-9' : 'size-8',
         isNavPending(settingsHref) && 'text-[var(--accent)]'
       )}
       aria-label={settingsLabel}
@@ -834,7 +834,6 @@
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
-    border-radius: 999px;
     box-shadow: 0 0 0 2px var(--sidebar-bg, var(--paper));
     color: #fff;
     font-size: 10px;
@@ -878,7 +877,6 @@
     background: color-mix(in srgb, var(--ink) 4%, transparent) !important;
   }
   :global(.um-menu[data-slot='dropdown-menu-content']) {
-    border-radius: 14px;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
   }
   .um-section {
@@ -895,7 +893,6 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border-radius: 999px;
     background: var(--accent);
     color: #fff;
   }
@@ -950,12 +947,10 @@
     min-width: 0;
     flex: 1;
     overflow: hidden;
-    border-radius: 999px;
     background: color-mix(in srgb, var(--ink) 8%, transparent);
   }
   .um-credits-fill {
     height: 100%;
-    border-radius: 999px;
     transition: width 0.3s ease;
   }
   .um-credits-fill.ok { background: #16a34a; }
@@ -965,7 +960,6 @@
     gap: 9px;
     min-height: 34px;
     padding: 7px 8px;
-    border-radius: 9px;
     font-size: 13px;
     cursor: pointer;
   }
@@ -976,7 +970,6 @@
     gap: 9px;
     min-height: 34px;
     padding: 7px 8px;
-    border-radius: 9px;
     color: inherit;
     text-decoration: none;
     background: none;
@@ -993,7 +986,6 @@
   .um-brand-avatar-sm {
     width: 24px;
     height: 24px;
-    border-radius: 7px;
     display: flex;
     flex-shrink: 0;
     align-items: center;
@@ -1049,7 +1041,6 @@
     align-items: center;
     justify-content: center;
     border: none;
-    border-radius: 8px;
     background: color-mix(in srgb, var(--ink) 6%, transparent);
     color: var(--ink-soft);
     cursor: pointer;

@@ -291,11 +291,11 @@
 {#snippet brandHead()}
   <a
     href={brandHref}
-    class="flex h-full w-full items-center gap-2.5 rounded-lg px-1.5 text-sidebar-foreground no-underline transition-colors hover:bg-sidebar-accent active:bg-[var(--paper)] touch-manipulation cursor-pointer"
+    class="flex h-full w-full items-center gap-2.5 px-1.5 text-sidebar-foreground no-underline transition-colors hover:bg-sidebar-accent active:bg-[var(--paper)] touch-manipulation cursor-pointer"
   >
     <ArrowLeft class="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.8} />
     <div
-      class="flex aspect-square size-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-sidebar-primary text-sidebar-primary-foreground"
+      class="flex aspect-square size-7 shrink-0 items-center justify-center overflow-hidden bg-sidebar-primary text-sidebar-primary-foreground"
     >
       {#if logoUrl}
         <img
@@ -331,7 +331,7 @@
         <button
           type="button"
           class={cn(
-            'flex w-full items-center gap-2 rounded-lg text-left text-sidebar-foreground transition-colors touch-manipulation cursor-pointer',
+            'flex w-full items-center gap-2 text-left text-sidebar-foreground transition-colors touch-manipulation cursor-pointer',
             large ? 'h-12 px-2.5 text-[16px] font-semibold' : 'h-8 px-1.5 text-[12.5px] font-medium',
             hasActive ? 'font-semibold' : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06]'
           )}
@@ -362,7 +362,7 @@
               <a
                 href={item.href}
                 class={cn(
-                  'flex items-center gap-2.5 rounded-xl px-3 text-sidebar-foreground no-underline transition-colors touch-manipulation cursor-pointer',
+                  'flex items-center gap-2.5 px-3 text-sidebar-foreground no-underline transition-colors touch-manipulation cursor-pointer',
                   large ? 'h-11 text-[15px]' : 'h-8 text-[12.5px]',
                   itemActiveClass(active, large)
                 )}
@@ -391,7 +391,7 @@
           <a
             href={item.href}
             class={cn(
-              'flex items-center gap-2.5 rounded-xl px-3 text-sidebar-foreground no-underline transition-colors touch-manipulation cursor-pointer',
+              'flex items-center gap-2.5 px-3 text-sidebar-foreground no-underline transition-colors touch-manipulation cursor-pointer',
               large ? 'h-12 text-[16px]' : 'h-8 text-[12.5px]',
               itemActiveClass(active, large)
             )}
@@ -410,7 +410,7 @@
   <button
     type="button"
     class={cn(
-      'flex w-full items-center gap-2 rounded-lg px-2.5 text-left text-sidebar-foreground transition-colors hover:bg-sidebar-accent active:bg-[var(--paper)] touch-manipulation cursor-pointer',
+      'flex w-full items-center gap-2 px-2.5 text-left text-sidebar-foreground transition-colors hover:bg-sidebar-accent active:bg-[var(--paper)] touch-manipulation cursor-pointer',
       large ? 'h-12 text-[15px]' : 'py-2 text-[12.5px]'
     )}
     onclick={toggleTheme}

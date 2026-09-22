@@ -427,3 +427,35 @@ describe('resolveUpstreamInputs — nodo assente o non generativo', () => {
     expect(out.rejected).toEqual([{ nodeId: 'd1', why: expect.stringContaining('non si genera') }]);
   });
 });
+
+describe('resolveUpstreamInputs — un\'immagine caricata, non generata', () => {
+  // Un nodo `image` senza prompt (l'upload statico: `data.assetId` presente, niente `prompt`) è
+  // ancora `type: 'image'` per questo file — la scelta di design è proprio questa: il MEDIUM
+  // decide il collegamento, non se quell'immagine è nata da un giro o da un file caricato.
+  // Nessun cambiamento a `KIND_MAP`/`toCanvasKind` serve: un `type: 'image'` con `mediaUrl` già
+  // risolve come riferimento o come fotogramma, identico a un'immagine generata.
+  it('alimenta il connettore immagini come un\'immagine generata', () => {
+    const nodes = [
+      node({ id: 'u1', type: 'image', mediaUrl: 'https://cdn/upload.png' }),
+      node({ id: 'v1', type: 'video' })
+    ];
+    const edges = [edge({ id: 'e1', sourceNodeId: 'u1', targetNodeId: 'v1' })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'v1', TEXT_IMAGE_VIDEO_AUDIO);
+
+    expect(out.referenceImageUrls).toEqual(['https://cdn/upload.png']);
+    expect(out.rejected).toEqual([]);
+  });
+
+  it('alimenta il fotogramma iniziale quando è collegata su quella maniglia', () => {
+    const nodes = [
+      node({ id: 'u1', type: 'image', mediaUrl: 'https://cdn/upload.png' }),
+      node({ id: 'v1', type: 'video' })
+    ];
+    const edges = [edge({ id: 'e1', sourceNodeId: 'u1', targetNodeId: 'v1', targetHandle: FIRST_FRAME_HANDLE })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'v1', TEXT_IMAGE_VIDEO_AUDIO);
+
+    expect(out.startFrameUrl).toBe('https://cdn/upload.png');
+  });
+});

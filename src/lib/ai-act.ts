@@ -290,7 +290,7 @@ ${bullets
   .map((l) => `> ${l}`)
   .join('\n')}
 >
-> Queste pratiche sono vietate nell'Unione europea a prescindere dal consenso: non possiamo assisterti su questa parte della richiesta. Il controllo è automatico e può sbagliare — se si tratta di un falso positivo, l'assistente prosegue normalmente. Il dettaglio è nei [Termini](/terms).`;
+> Queste pratiche sono vietate nell'Unione europea a prescindere dal consenso: non possiamo assisterti su questa parte della richiesta. Il controllo è automatico e può sbagliare — se si tratta di un falso positivo, l'assistente prosegue normalmente.`;
   }
   return `> **Compliance notice — AI Act, Article 5**
 >
@@ -301,5 +301,5 @@ ${bullets
   .map((l) => `> ${l}`)
   .join('\n')}
 >
-> These practices are prohibited across the EU regardless of consent, so we cannot help with that part of the request. The check is automatic and can be wrong — on a false positive the assistant simply carries on. Details are in our [Terms](/terms).`;
+> These practices are prohibited across the EU regardless of consent, so we cannot help with that part of the request. The check is automatic and can be wrong — on a false positive the assistant simply carries on.`;
 }

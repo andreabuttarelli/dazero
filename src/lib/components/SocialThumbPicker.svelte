@@ -92,7 +92,7 @@
 <style>
   .stp { display: flex; flex-direction: column; gap: 10px; }
   .stp-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .ctrl { font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line);
+  .ctrl { font: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--line);
     background: var(--paper); color: var(--ink); }
   .btn-out { cursor: pointer; font-weight: 600; color: var(--ink-soft); white-space: nowrap;
     display: inline-flex; align-items: center; justify-content: center; min-width: 64px; }
@@ -101,14 +101,14 @@
   .stp-status { display: flex; justify-content: center; padding: 10px 0; }
   .stp-empty { font-size: 12px; color: var(--ink-faint); padding: 8px 2px; }
   .stp-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-  .stp-cell { position: relative; width: 56px; height: 56px; border-radius: 9px; border: 2px solid transparent;
+  .stp-cell { position: relative; width: 56px; height: 56px; border: 2px solid transparent;
     padding: 0; cursor: pointer; background-color: var(--paper-2); overflow: hidden; }
   .stp-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .stp-cell:hover { border-color: var(--line-2, #d2d2d7); }
   .stp-cell.on { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.25); }
-  .stp-check { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; border-radius: 50%;
+  .stp-check { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px;
     background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
-  .spinner { width: 20px; height: 20px; border-radius: 50%; border: 3px solid rgba(var(--accent-rgb), 0.25);
+  .spinner { width: 20px; height: 20px; border: 3px solid rgba(var(--accent-rgb), 0.25);
     border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
   .spinner.sm { width: 14px; height: 14px; border-width: 2px; border-color: rgba(var(--accent-rgb), 0.3); border-top-color: var(--accent); }
   @keyframes spin { to { transform: rotate(360deg); } }

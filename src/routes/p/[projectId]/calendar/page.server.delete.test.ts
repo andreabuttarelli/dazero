@@ -17,10 +17,6 @@ vi.mock('$lib/server/post-editing', () => ({
 }));
 vi.mock('$lib/server/publish', () => ({ publishApprovedPost: vi.fn(), syncDuePosts: vi.fn() }));
 vi.mock('$lib/server/usage', () => ({ remaining: vi.fn() }));
-vi.mock('$lib/server/token', () => ({ signApproveToken: vi.fn() }));
-vi.mock('$lib/server/email', () => ({
-  sendEmail: vi.fn(), approvalEmailHtml: vi.fn(), approvalEmailText: vi.fn(), approvalEmailSubject: vi.fn()
-}));
 vi.mock('$lib/server/supabase-admin', () => ({ createAdminClient: vi.fn() }));
 vi.mock('$lib/server/page-cache', () => ({ cachedBrandPage: vi.fn() }));
 vi.mock('$lib/server/tenancy/brand-slug', () => ({ brandSlugOf: vi.fn().mockResolvedValue('b') }));

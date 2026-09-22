@@ -140,7 +140,7 @@
   .fp { position: relative; }
   .fp-trigger {
     width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    padding: 8px 10px; border: 1px solid var(--line, #e3e3e3); border-radius: 10px;
+    padding: 8px 10px; border: 1px solid var(--line, #e3e3e3);
     background: var(--card, #fff); color: inherit; font-size: 15px; cursor: pointer; text-align: left;
   }
   .fp-trigger:hover { border-color: var(--ink, #111); }
@@ -148,13 +148,12 @@
   .fp-caret { opacity: 0.5; font-size: 11px; }
   .fp-panel {
     position: absolute; z-index: 40; top: calc(100% + 4px); left: 0; right: 0;
-    background: var(--card, #fff); border: 1px solid var(--line, #e3e3e3); border-radius: 12px;
+    background: var(--card, #fff); border: 1px solid var(--line, #e3e3e3);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12); padding: 8px; max-height: 320px;
     display: flex; flex-direction: column; gap: 6px;
   }
   .fp-search {
-    width: 100%; padding: 7px 9px; border: 1px solid var(--line, #e3e3e3);
-    border-radius: 8px; font-size: 13px; font: inherit; font-size: 13px;
+    width: 100%; padding: 7px 9px; border: 1px solid var(--line, #e3e3e3); font-size: 13px; font: inherit; font-size: 13px;
   }
   .fp-list { overflow-y: auto; display: flex; flex-direction: column; }
   .fp-group {
@@ -163,7 +162,7 @@
   }
   .fp-option {
     display: block; width: 100%; text-align: left; padding: 7px 9px; border: 0;
-    background: transparent; color: inherit; font-size: 16px; border-radius: 8px; cursor: pointer;
+    background: transparent; color: inherit; font-size: 16px; cursor: pointer;
   }
   .fp-option:hover { background: var(--hover, rgba(0, 0, 0, 0.05)); }
   .fp-option.sel { background: var(--hover, rgba(0, 0, 0, 0.07)); font-weight: 600; }

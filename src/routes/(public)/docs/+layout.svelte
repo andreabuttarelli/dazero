@@ -204,17 +204,17 @@
     >
       <BrandMark size={40} />
       <span class="docs-brand-wordmark text-[15px] font-medium tracking-[-0.035em]">{$_('docs.layout.s42')}</span>
-      <span class="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground bg-muted border border-border rounded-md px-1.5 py-0.5">{$_('docs.layout.s43')}</span>
+      <span class="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground bg-muted border border-border px-1.5 py-0.5">{$_('docs.layout.s43')}</span>
     </a>
     <div class="w-px h-5 bg-border hidden sm:block"></div>
     <a href={'/'} class="hidden sm:inline text-[13px] text-muted-foreground no-underline hover:text-foreground transition-colors whitespace-nowrap">{$_('docs.layout.s44')}</a>
   </div>
 
-  <div class="flex items-center gap-0.5 bg-muted border border-border rounded-lg p-[3px] shrink-0">
+  <div class="flex items-center gap-0.5 bg-muted border border-border p-[3px] shrink-0">
     <a
       href={'/docs'}
       class={cn(
-        'text-[12px] sm:text-[12.5px] font-semibold py-[5px] px-2.5 sm:px-3.5 rounded-md no-underline transition-all',
+        'text-[12px] sm:text-[12.5px] font-semibold py-[5px] px-2.5 sm:px-3.5 no-underline transition-all',
         !isApiPage
           ? 'bg-background text-foreground shadow-sm'
           : 'text-muted-foreground hover:text-foreground'
@@ -226,7 +226,7 @@
     <a
       href={'/docs/api'}
       class={cn(
-        'text-[12px] sm:text-[12.5px] font-semibold py-[5px] px-2.5 sm:px-3.5 rounded-md no-underline transition-all',
+        'text-[12px] sm:text-[12.5px] font-semibold py-[5px] px-2.5 sm:px-3.5 no-underline transition-all',
         isApiPage
           ? 'bg-background text-foreground shadow-sm'
           : 'text-muted-foreground hover:text-foreground'
@@ -240,13 +240,13 @@
   <div class="flex items-center gap-2 sm:gap-3 shrink-0">
     <button
       type="button"
-      class="flex items-center gap-2 bg-muted border border-border rounded-lg px-2.5 sm:px-3 py-1.5 min-w-0 sm:min-w-[200px] text-[13px] text-muted-foreground cursor-pointer hover:border-muted-foreground/50 transition-colors text-left"
+      class="flex items-center gap-2 bg-muted border border-border px-2.5 sm:px-3 py-1.5 min-w-0 sm:min-w-[200px] text-[13px] text-muted-foreground cursor-pointer hover:border-muted-foreground/50 transition-colors text-left"
       onclick={() => (searchOpen = true)}
       aria-label={$_('docs.layout.s47')}
     >
       <svg class="w-3.5 h-3.5 opacity-50 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       <span class="truncate hidden sm:inline">{$_('docs.layout.s47')}</span>
-      <kbd class="ml-auto text-[11px] bg-background border border-border rounded px-1.5 text-muted-foreground hidden sm:inline">⌘K</kbd>
+      <kbd class="ml-auto text-[11px] bg-background border border-border px-1.5 text-muted-foreground hidden sm:inline">⌘K</kbd>
     </button>
   </div>
 </div>
@@ -298,7 +298,7 @@
               role="option"
               aria-selected={item.href === currentNavHref}
               class={cn(
-                'flex w-full items-center rounded-lg px-2.5 py-2 text-left text-sm transition-colors cursor-pointer',
+                'flex w-full items-center px-2.5 py-2 text-left text-sm transition-colors cursor-pointer',
                 item.href === currentNavHref
                   ? 'bg-primary/10 font-semibold text-primary'
                   : 'text-muted-foreground hover:bg-primary/5 hover:text-foreground'
@@ -335,7 +335,7 @@
           <a
             href={item.href}
             class={cn(
-              'flex items-center gap-2 py-[7px] px-2.5 rounded-lg text-sm no-underline transition-colors',
+              'flex items-center gap-2 py-[7px] px-2.5 text-sm no-underline transition-colors',
               isActive(item.href, $page.url.pathname)
                 ? 'bg-primary/10 text-primary font-semibold'
                 : 'text-muted-foreground hover:bg-primary/5 hover:text-foreground'

@@ -125,7 +125,6 @@
   }
   .slot {
     display: inline-flex;
-    border-radius: 50%;
     /* A ring in the sidebar's own background keeps overlapping balls apart. */
     box-shadow: 0 0 0 1.5px var(--sidebar, var(--sidebar-bg, var(--paper, #fff)));
   }
@@ -147,7 +146,6 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 999px;
     background: color-mix(in srgb, currentColor 12%, transparent);
     box-shadow: 0 0 0 1.5px var(--sidebar, var(--sidebar-bg, var(--paper, #fff)));
     font-weight: 600;

@@ -141,7 +141,6 @@
 <style>
   .banner {
     font-size: 13px;
-    border-radius: 10px;
     padding: 10px 14px;
     margin: 0 0 16px;
   }
@@ -160,7 +159,6 @@
   .avatar-preview {
     width: 64px;
     height: 64px;
-    border-radius: 50%;
     overflow: hidden;
     flex-shrink: 0;
     display: flex;
@@ -205,7 +203,6 @@
     font-weight: 400;
     padding: 9px 12px;
     border: 1px solid var(--line-2, var(--line));
-    border-radius: 10px;
     background: var(--paper);
     color: var(--ink);
     outline: none;

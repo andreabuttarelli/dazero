@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { derivePostCounts, deriveUpcomingBlogs } from './hub-overview';
+import { derivePostCounts } from './hub-overview';
 
-// These two replace six PostgREST round trips (migration 0206). The risk of moving counting
+// This replaces separate PostgREST round trips (migration 0206). The risk of moving counting
 // from SQL into JS is that a predicate quietly drifts from the one it replaced, so the tests
 // below are written against the SQL they stand in for.
 
@@ -26,58 +26,5 @@ describe('derivePostCounts', () => {
   it('survives null/empty input', () => {
     expect(derivePostCounts(null)).toEqual({ pending: 0, scheduled: 0, published: 0 });
     expect(derivePostCounts([])).toEqual({ pending: 0, scheduled: 0, published: 0 });
-  });
-});
-
-describe('deriveUpcomingBlogs', () => {
-  const NOW = '2026-08-20T12:00:00.000Z';
-
-  it('keeps only approved articles whose slot is still ahead', () => {
-    const r = deriveUpcomingBlogs(
-      [
-        { id: 'a', status: 'approved', scheduled_for: '2026-08-21T09:00:00.000Z' },
-        { id: 'b', status: 'approved', scheduled_for: '2026-08-19T09:00:00.000Z' }, // past
-        { id: 'c', status: 'approved', scheduled_for: null }, // no slot
-        { id: 'd', status: 'draft', scheduled_for: '2026-08-22T09:00:00.000Z' } // still needs a human
-      ],
-      NOW
-    );
-    expect(r.count).toBe(1);
-    expect(r.previews.map((p) => p.id)).toEqual(['a']);
-  });
-
-  it('orders soonest first and caps the preview without capping the count', () => {
-    const rows = Array.from({ length: 8 }, (_, i) => ({
-      id: `a${i}`,
-      status: 'approved',
-      // descending input, so a stable-but-unsorted implementation would fail this
-      scheduled_for: `2026-09-${String(28 - i).padStart(2, '0')}T09:00:00.000Z`
-    }));
-    const r = deriveUpcomingBlogs(rows, NOW);
-    expect(r.count).toBe(8);
-    expect(r.previews).toHaveLength(5);
-    expect(r.previews.map((p) => p.id)).toEqual(['a7', 'a6', 'a5', 'a4', 'a3']);
-  });
-
-  it('maps cover_image onto cover_url and normalises missing fields', () => {
-    const r = deriveUpcomingBlogs(
-      [{ id: 'a', status: 'approved', scheduled_for: '2026-08-21T09:00:00.000Z', cover_image: '/x.png' }],
-      NOW
-    );
-    expect(r.previews[0]).toEqual({
-      id: 'a',
-      title: null,
-      cover_url: '/x.png',
-      scheduled_for: '2026-08-21T09:00:00.000Z'
-    });
-  });
-
-  it('treats a slot exactly at now as still upcoming, matching gte in SQL', () => {
-    const r = deriveUpcomingBlogs([{ id: 'a', status: 'approved', scheduled_for: NOW }], NOW);
-    expect(r.count).toBe(1);
-  });
-
-  it('survives null/empty input', () => {
-    expect(deriveUpcomingBlogs(null, NOW)).toEqual({ count: 0, previews: [] });
   });
 });

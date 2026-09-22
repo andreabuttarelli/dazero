@@ -186,7 +186,7 @@ dazero brands`;
     position: relative;
     width: min(560px, 100%); max-height: 88vh; overflow: auto;
     background: var(--paper); color: var(--ink);
-    border: 1px solid var(--line); border-radius: 24px;
+    border: 1px solid var(--line);
     padding: 34px 32px 30px;
     box-shadow: 0 40px 90px -50px rgba(0, 0, 0, 0.6);
     animation: rise 220ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -214,8 +214,7 @@ dazero brands`;
   .cd-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
   .cd-pill {
     font-size: 10px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
-    color: var(--accent); background: rgba(var(--accent-rgb), 0.12);
-    border-radius: 999px; padding: 2px 7px;
+    color: var(--accent); background: rgba(var(--accent-rgb), 0.12); padding: 2px 7px;
   }
 
   /* I tre passi prima del bottone: chi non sa cosa sia un MCP deve sapere cosa succedera' prima
@@ -224,7 +223,7 @@ dazero brands`;
   .cd-steps li { display: flex; gap: 13px; align-items: flex-start; }
   .cd-steps p { margin: 0; font-size: 0.95rem; line-height: 1.5; color: var(--ink); padding-top: 2px; }
   .cd-n {
-    width: 25px; height: 25px; flex: none; border-radius: 50%;
+    width: 25px; height: 25px; flex: none;
     display: grid; place-items: center;
     background: rgba(var(--accent-rgb), 0.14); color: var(--accent);
     font-size: 12.5px; font-weight: 700;
@@ -232,8 +231,7 @@ dazero brands`;
 
   .cd-big {
     width: 100%; border: none; cursor: pointer;
-    background: var(--ink); color: var(--paper);
-    border-radius: 14px; padding: 16px; font-size: 15px; font-weight: 650;
+    background: var(--ink); color: var(--paper); padding: 16px; font-size: 15px; font-weight: 650;
     transition: transform 140ms ease, opacity 140ms ease;
   }
   .cd-big:hover { transform: translateY(-1px); opacity: 0.92; }
@@ -249,7 +247,7 @@ dazero brands`;
   .cd-peek[open] summary::before { content: '▾ '; }
   .cd-peek pre {
     margin: 8px 0 0; padding: 14px 16px;
-    background: var(--paper-2); border: 1px solid var(--line); border-radius: 12px;
+    background: var(--paper-2); border: 1px solid var(--line);
     white-space: pre-wrap; word-break: break-word;
     font-family: var(--mono); font-size: 11.5px; line-height: 1.55; color: var(--ink-soft);
   }
@@ -259,7 +257,7 @@ dazero brands`;
 
   .cd-url {
     display: flex; align-items: center; gap: 10px;
-    background: var(--paper-2); border: 1px solid var(--line); border-radius: 12px;
+    background: var(--paper-2); border: 1px solid var(--line);
     padding: 12px 12px 12px 15px;
   }
   .cd-url code { font-family: var(--mono); font-size: 12.5px; flex: 1; word-break: break-all; }
@@ -267,13 +265,12 @@ dazero brands`;
   .cd-block { position: relative; }
   .cd-block pre {
     margin: 0; padding: 13px 15px;
-    background: var(--paper-2); border: 1px solid var(--line); border-radius: 12px;
+    background: var(--paper-2); border: 1px solid var(--line);
     white-space: pre-wrap; word-break: break-word;
     font-family: var(--mono); font-size: 11.5px; line-height: 1.55; color: var(--ink);
   }
   .cd-copy {
-    border: 1px solid var(--line); background: var(--paper); color: var(--ink);
-    border-radius: 999px; padding: 5px 13px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--line); background: var(--paper); color: var(--ink); padding: 5px 13px; font-size: 11.5px; font-weight: 600; cursor: pointer;
     white-space: nowrap;
   }
   .cd-block .cd-copy { position: absolute; top: 9px; right: 9px; }
@@ -291,7 +288,7 @@ dazero brands`;
   }
 
   @media (max-width: 560px) {
-    .cd-card { padding: 26px 20px 24px; border-radius: 20px; }
+    .cd-card { padding: 26px 20px 24px; }
     .cd-app-head a { margin-left: 0; }
     .cd-tab { padding: 10px 8px; font-size: 13px; }
   }

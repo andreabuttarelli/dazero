@@ -1161,6 +1161,14 @@ cercato. Un'assenza va dichiarata con l'endpoint interrogato accanto, o è un'op
 da fatto — e finisce in `MISSING`, dove la testata promette «fatti misurati, non ipotesi di
 listino».
 
+**Confermato una quarta volta** sincronizzando `ai_models` dal picker (2026-09-22): un sync che
+leggeva solo `/models` aveva zero righe immagine per Seedream/GPT Image 2/2.5/Qwen (52 modelli su
+`/images/models`, catalogo proprio, stessa forma `architecture.input_modalities` di `/models` ma
+NESSUNO di questi id compare lì) e zero righe video (29 su `/videos/models`, di nuovo). Stesso
+segnale delle prime tre: `GET /api/v1/models` risponde «zero» per una capacità che il gateway
+serve altrove. Prima di dire "il picker non può offrire X", chiama l'endpoint immagine/video
+diretto e guarda cosa torna, non solo `/models`.
+
 ## Un ciclo di import tenuto in piedi dall'ordine cade quando togli un import morto
 
 Cancellato `genWithRetry` — zero chiamanti — e con lui l'`import` che stava alla **riga 2** di

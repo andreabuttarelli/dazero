@@ -172,6 +172,42 @@ export type ModelModalities = {
 } | null;
 
 /**
+ * IL NOSTRO ID → L'ID DI OPENROUTER, PER MEDIUM. `ai_models.id` è sempre l'id sul FILO
+ * (`openai/gpt-image-2.5-flare`, `bytedance/seedance-2.5`), mai il nostro id interno
+ * (`gpt-image-2.5-flare`, `bytedance/seedance-2-5`, quello che `nodes.data.model` porta e che
+ * `image-models.ts`/`video-models.ts` chiamano `id`). Cercare l'interno sul filo non trova mai
+ * niente — non perché il modello sia sparito, ma perché la chiave è quella sbagliata.
+ *
+ * Un solo posto traduce, perché `offerable-models.ts` (cosa il nodo può SCEGLIERE) e questo
+ * modulo (cosa un modello scelto SA fare ancora) devono leggere lo stesso filo o si disallineano
+ * di nuovo, silenziosamente, com'è già successo qui.
+ *
+ * `image` guarda `openrouterImages`, `video`/`chat` guardano `openrouterId` — `chat` perché un
+ * modello di testo non ha un secondo spec di integrazione: il suo id interno E' già quello sul
+ * filo (`openrouter-models.ts` legge `/models` con l'id a nudo).
+ *
+ * Due assenze, due risposte diverse: NESSUNO spec per quel medium (id sconosciuto in
+ * `image-models.ts`/`video-models.ts`) lascia l'id così com'è — il chiamante lo cerca comunque, e
+ * se non lo trova è genuinamente sconosciuto, non un problema di traduzione. Uno spec che ESISTE
+ * ma dichiara `openrouterImages`/`openrouterId` null — quella famiglia non passa da OpenRouter,
+ * per scelta — torna `null`: tradurlo nell'id nudo lo farebbe combaciare per caso con una riga di
+ * `ai_models` che non ha niente a che fare con lui.
+ */
+export async function wireModelId(specId: string, medium: AiModelCatalogue): Promise<string | null> {
+  if (medium === 'image') {
+    const { imageModelSpec } = await import('$lib/image-models');
+    const spec = imageModelSpec(specId);
+    return spec ? spec.openrouterImages : specId;
+  }
+  if (medium === 'video') {
+    const { videoModelSpec } = await import('$lib/video-models');
+    const spec = videoModelSpec(specId);
+    return spec ? (spec.openrouterId ?? null) : specId;
+  }
+  return specId;
+}
+
+/**
  * COSA SA UN MODELLO, DALLA TABELLA, PER UN LISTINO PRECISO. Lo stesso id può comparire su più
  * listini con fatti diversi (`google/gemini-3-pro-image` come modello di chat e come modello
  * immagine): chiedere senza dire quale listino risponderebbe con una riga a caso fra le due.
@@ -184,11 +220,13 @@ export type ModelModalities = {
  */
 /**
  * `catalogue` OMESSO cerca su tutti e tre, e torna il primo che risponde — è il ripiego per un
- * chiamante che non sa ancora, al punto in cui chiede, quale mestiere fa il nodo (`upstream.ts`
- * oggi passa solo l'id del modello, non il medium del nodo). Un chiamante che SA quale listino
- * interrogare — il picker, che il medium ce l'ha in mano — lo passa sempre, perché un id in comune
- * fra due listini (`google/gemini-3-pro-image` come chat e come immagine) senza catalogo risponde
- * al PRIMO che trova, non a quello giusto.
+ * chiamante che non sa ancora, al punto in cui chiede, quale mestiere fa il nodo. Un chiamante che
+ * SA quale listino interrogare — il picker, `upstream.ts` col medium del nodo in mano — lo passa
+ * sempre, perché un id in comune fra due listini (`google/gemini-3-pro-image` come chat e come
+ * immagine) senza catalogo risponde al PRIMO che trova, non a quello giusto. Quando `catalogue` è
+ * dato, `modelId` viene tradotto dal nostro id interno all'id sul filo PRIMA della query — vedi
+ * `wireModelId`; omesso, `modelId` è usato così com'è, perché senza un medium non c'è uno spec da
+ * cui tradurre.
  */
 export async function modalitiesOf(
   admin: SupabaseClient,
@@ -198,10 +236,13 @@ export async function modalitiesOf(
   const catalogues: AiModelCatalogue[] = catalogue ? [catalogue] : ['chat', 'image', 'video'];
 
   for (const c of catalogues) {
+    const wireId = catalogue ? await wireModelId(modelId, catalogue) : modelId;
+    if (wireId === null) continue;
+
     const { data } = await admin
       .from('ai_models')
       .select('input_modalities, output_modalities, synced_at')
-      .eq('id', modelId)
+      .eq('id', wireId)
       .eq('catalogue', c)
       .maybeSingle();
 

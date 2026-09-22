@@ -1,12 +1,9 @@
-import { DEFAULT_LOCALE } from '$lib/i18n/locale';
 import { swallow } from '$lib/server/swallow';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { countCalendarConflicts } from '$lib/server/schedule';
 import { remaining } from '$lib/server/usage';
 import { publishApprovedPost, syncDuePosts, type ApprovablePost } from '$lib/server/publish';
-import { signApproveToken } from '$lib/server/token';
-import { sendEmail, approvalEmailHtml, approvalEmailText, approvalEmailSubject } from '$lib/server/email';
 import {
   EDITOR_POST_COLS,
   decoratePosts,
@@ -15,7 +12,6 @@ import {
   deletePostCancellingZernio,
   editorActions
 } from '$lib/server/post-editing';
-import { createAdminClient } from '$lib/server/supabase-admin';
 import { cachedBrandPage } from '$lib/server/page-cache';
 import { brandSlugOf } from '$lib/server/tenancy/brand-slug';
 import { requireBrand } from '$lib/server/projects/brand-shell';
@@ -73,10 +69,10 @@ function parseIds(form: FormData, key = 'ids'): string[] {
 
 const FILTERABLE = new Set(['pending_user', 'approved', 'scheduled', 'published', 'failed']);
 
-/** Display row for the month/list calendar (social posts + blog articles). */
+/** Display row for the month/list calendar. */
 export type CalendarPost = {
   id: string;
-  kind: 'social' | 'blog';
+  kind: 'social';
   platform: string | null;
   platforms?: string[] | null;
   caption: string | null;
@@ -89,7 +85,6 @@ export type CalendarPost = {
   time: string;
   whenLabel: string;
   isDraft: boolean;
-  slug?: string;
   needs_attention?: boolean | null;
   attention_reason?: string | null;
   weekOf?: string;
@@ -98,7 +93,7 @@ export type CalendarPost = {
   product_name?: string | null;
   format?: string | null;
   lastError?: string | null;
-  /** Full decorated social row for PostEditor — absent for blog. */
+  /** Full decorated social row for PostEditor. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   editorPost?: any;
 };
@@ -178,7 +173,6 @@ export const load: PageServerLoad = async (event) => {
     const [
       { data: rows, error: rowsErr },
       { data: draftRows },
-      { data: articleRows },
       { data: allRows },
       budget,
       { data: accts },
@@ -186,15 +180,6 @@ export const load: PageServerLoad = async (event) => {
     ] = await Promise.all([
       scheduledQ,
       draftQ,
-      filter && filter !== 'published' && filter !== 'scheduled' && filter !== 'approved'
-        ? Promise.resolve({ data: [] as never[] })
-        : supabase
-            .from('brand_articles')
-            .select('id, title, slug, status, scheduled_for, published_at, cover_image')
-            .eq('brand_id', brand.id)
-            .or(
-              `and(scheduled_for.gte.${qStart},scheduled_for.lte.${qEnd}),and(published_at.gte.${qStart},published_at.lte.${qEnd})`
-            ),
       supabase.from('posts').select('status').eq('brand_id', brand.id),
       remaining(supabase, brand.id, brand.plan, brand.timezone),
       supabase.from('social_accounts').select('platform').eq('brand_id', brand.id).eq('status', 'active'),
@@ -269,34 +254,7 @@ export const load: PageServerLoad = async (event) => {
       };
     });
 
-    const articleCal: CalendarPost[] = ((articleRows ?? []) as Array<Record<string, unknown>>)
-      .map((a): CalendarPost | null => {
-        const iso = (a.published_at as string | null) || (a.scheduled_for as string | null);
-        if (!iso) return null;
-        if (filter === 'published' && a.status !== 'published') return null;
-        if (filter === 'scheduled' && a.status === 'published') return null;
-        const z = zonedParts(iso, tz);
-        const time = `${pad(z.hour)}:${pad(z.minute)}`;
-        return {
-          id: a.id as string,
-          kind: 'blog' as const,
-          platform: null,
-          caption: (a.title as string) ?? null,
-          media_url: (a.cover_image as string | null) ?? null,
-          status: a.status as string,
-          scheduled_for: iso,
-          dayKey: `${z.year}-${pad(z.month)}-${pad(z.day)}`,
-          time,
-          whenLabel: `${dayLabelFmt.format(new Date(iso))} · ${time}`,
-          isDraft: a.status !== 'published',
-          slug: a.slug as string
-        };
-      })
-      .filter((x): x is CalendarPost => x !== null);
-
-    const posts = [...socialCal, ...articleCal].sort((a, b) =>
-      a.scheduled_for.localeCompare(b.scheduled_for)
-    );
+    const posts = [...socialCal].sort((a, b) => a.scheduled_for.localeCompare(b.scheduled_for));
 
     const busyDays = buildBusyDays(decorated);
 
@@ -526,62 +484,6 @@ export const actions: Actions = {
     return { deletedSelected: deleted };
   },
 
-  /** Bulk-publish selected blog articles (calendar multi-select). */
-  publishSelectedArticles: async ({ request, params, locals: { supabase } }) => {
-    const ids = parseIds(await request.formData());
-    if (!ids.length) return fail(400, { error: 'No articles selected' });
-    const brandSlug = await brandSlugOf(supabase, params.projectId);
-    if (!brandSlug) return fail(409, { error: 'no_brand' });
-    const { data: brand } = await supabase
-      .from('brands')
-      .select('id')
-      .eq('slug', brandSlug)
-      .maybeSingle();
-    if (!brand) return fail(404, { error: 'Brand not found' });
-    const admin = createAdminClient();
-    const { data: arts } = await admin
-      .from('brand_articles')
-      .select('id')
-      .eq('brand_id', brand.id)
-      .in('id', ids)
-      .neq('status', 'published')
-      .neq('status', 'planned');
-    const publishIds = (arts ?? []).map((a) => a.id);
-    if (!publishIds.length) return { publishedSelected: 0 };
-    const { error } = await admin
-      .from('brand_articles')
-      .update({ status: 'published', published_at: new Date().toISOString() })
-      .eq('brand_id', brand.id)
-      .in('id', publishIds);
-    if (error) return fail(500, { error: error.message });
-    const { syncArticlesToCMS } = await import('$lib/server/cms-sync');
-    const cms = await syncArticlesToCMS(admin, brand.id, publishIds);
-    return { publishedSelected: publishIds.length, cms };
-  },
-
-  /** Bulk-delete selected blog articles. */
-  deleteSelectedArticles: async ({ request, params, locals: { supabase } }) => {
-    const ids = parseIds(await request.formData());
-    if (!ids.length) return fail(400, { error: 'No articles selected' });
-    const brandSlug = await brandSlugOf(supabase, params.projectId);
-    if (!brandSlug) return fail(409, { error: 'no_brand' });
-    const { data: brand } = await supabase
-      .from('brands')
-      .select('id')
-      .eq('slug', brandSlug)
-      .maybeSingle();
-    if (!brand) return fail(404, { error: 'Brand not found' });
-    const admin = createAdminClient();
-    const { error } = await admin
-      .from('brand_articles')
-      .delete()
-      .eq('brand_id', brand.id)
-      .in('id', ids);
-    if (error) return fail(500, { error: error.message });
-    return { deletedSelectedArticles: ids.length };
-  },
-
-
   approveAll: async ({ params, locals: { supabase, user } }) => {
     const brandSlug = await brandSlugOf(supabase, params.projectId);
     if (!brandSlug) return fail(409, { error: 'no_brand' });
@@ -607,39 +509,6 @@ export const actions: Actions = {
       if (res.noAccount) noAccount = true;
     }
     return { ok: true, noAccount };
-  },
-
-  emailApprove: async ({ params, url, locals: { supabase, safeGetSession } }) => {
-    const { session, user } = await safeGetSession();
-    if (!session || !user?.email) return fail(400, { error: 'No email on file' });
-    const brandSlug = await brandSlugOf(supabase, params.projectId);
-    if (!brandSlug) return fail(409, { error: 'no_brand' });
-    const { data: brand } = await supabase
-      .from('brands')
-      .select('id, name')
-      .eq('slug', brandSlug)
-      .maybeSingle();
-    if (!brand) return fail(404, { error: 'Brand not found' });
-    const { data: pending } = await supabase
-      .from('posts')
-      .select('platform, caption, media_url')
-      .eq('brand_id', brand.id)
-      .eq('status', 'pending_user')
-      .order('created_at', { ascending: true });
-    if (!pending || pending.length === 0) return { emailed: false, empty: true };
-    const token = signApproveToken(brand.id);
-    const approveUrl = `${url.origin}/approve/${token}`;
-    try {
-      await sendEmail({
-        to: user.email,
-        subject: approvalEmailSubject(DEFAULT_LOCALE, brand.name, pending.length),
-        html: approvalEmailHtml(DEFAULT_LOCALE, brand.name, pending.length, approveUrl, pending, url.origin),
-        text: approvalEmailText(DEFAULT_LOCALE, brand.name, pending.length, approveUrl, pending)
-      });
-    } catch (e) {
-      return fail(500, { error: e instanceof Error ? e.message : 'Email failed' });
-    }
-    return { emailed: true, to: user.email };
   },
 
   ...editorActions

@@ -334,7 +334,6 @@
     box-sizing: border-box;
     font-size: 16px;
     padding: 14px 18px;
-    border-radius: 14px;
     border: 1px solid var(--line-2, #d2d2d7);
     outline: none;
     background: var(--paper, #fff);
@@ -350,7 +349,6 @@
     justify-content: center;
     gap: 8px;
     border: none;
-    border-radius: 14px;
     padding: 14px 22px;
     font-size: 15px;
     font-weight: 600;
@@ -396,7 +394,6 @@
     height: 15px;
     border: 2px solid rgba(255, 255, 255, 0.35);
     border-top-color: #fff;
-    border-radius: 50%;
     animation: spin 0.7s linear infinite;
   }
   @keyframes spin {
@@ -462,7 +459,6 @@
     gap: 10px;
     background: rgba(124, 92, 255, 0.08);
     border: 1px solid rgba(124, 92, 255, 0.25);
-    border-radius: 12px;
     padding: 12px 16px;
     margin-bottom: 24px;
     font-size: 14px;
@@ -501,7 +497,6 @@
     max-width: 440px;
     background: var(--paper, #fff);
     color: var(--ink, #1d1d1f);
-    border-radius: 18px;
     padding: 24px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   }
@@ -524,7 +519,6 @@
     justify-content: center;
     background: var(--accent, #7c5cff);
     color: #fff;
-    border-radius: 14px;
     padding: 14px 22px;
     font-size: 15px;
     font-weight: 600;
@@ -536,7 +530,6 @@
     color: var(--ink-soft, #6e6e73);
     background: var(--surface, #f5f5f7);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 10px;
     padding: 10px 12px;
     margin-bottom: 12px;
     word-break: break-all;
@@ -546,7 +539,6 @@
     background: var(--ink, #1d1d1f);
     color: #fff;
     border: none;
-    border-radius: 14px;
     padding: 13px 22px;
     font-size: 15px;
     font-weight: 600;

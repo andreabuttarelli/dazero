@@ -70,53 +70,6 @@ function cta(approveUrl: string, label: string): string {
   return `<a href="${approveUrl}" style="display:inline-block;background:#1d1d1f;color:#fff;padding:13px 26px;border-radius:980px;text-decoration:none;font-weight:600;margin-top:6px;">${label}</a>`;
 }
 
-export function approvalEmailSubject(locale: Locale, brandName: string, count: number): string {
-  return tEmail(locale, 'approval.subject', { brand: brandName, count });
-}
-
-export function approvalEmailHtml(
-  locale: Locale,
-  brandName: string,
-  count: number,
-  approveUrl: string,
-  preview: PreviewPost[],
-  origin?: string
-): string {
-  // Show EVERY pending post (with its image), not a truncated sample — the owner approves them all.
-  const items = preview.map(postRow).join('');
-  return shell(
-    origin,
-    `
-    <h2 style="font-size:22px;letter-spacing:-0.02em;margin:14px 0 6px;">${tEmail(locale, 'approval.heading', { brand: brandName, count })}</h2>
-    <p style="color:#6e6e73;line-height:1.5;margin:0 0 18px;">${tEmail(locale, 'approval.intro')}</p>
-    ${items}
-    ${cta(approveUrl, tEmail(locale, 'approval.cta'))}
-    <p style="color:#86868b;font-size:12px;margin-top:22px;">${tEmail(locale, 'approval.footer')}</p>`
-  );
-}
-
-// Plain-text alternative (deliverability + accessibility).
-export function approvalEmailText(
-  locale: Locale,
-  brandName: string,
-  count: number,
-  approveUrl: string,
-  preview: PreviewPost[]
-): string {
-  const lines = preview.map((p) => `- ${(p.platform ?? '').toUpperCase()}: ${(p.caption ?? '').slice(0, 140)}`).join('\n');
-  return [
-    tEmail(locale, 'approval.heading', { brand: brandName, count }),
-    '',
-    tEmail(locale, 'approval.intro'),
-    '',
-    lines,
-    '',
-    `${tEmail(locale, 'approval.cta')} ${approveUrl}`,
-    '',
-    tEmail(locale, 'approval.footer')
-  ].join('\n');
-}
-
 // ── Password reset ─────────────────────────────────────────────────────────────────────────────
 // Sent when a user requests a password reset from /login. The link points at /auth/confirm, which
 // verifies the recovery token (verifyOtp) and forwards to /auth/reset-password to set a new password.
@@ -193,45 +146,6 @@ export function strategyPlanReadyEmailText(
     `${tEmail(locale, 'strategy_plan.cta')} ${continueUrl}`,
     '',
     tEmail(locale, 'strategy_plan.footer')
-  ].join('\n');
-}
-
-// Recurring-autopilot variant of the approval email. Same one-tap flow and signed token as
-// approvalEmailHtml (stateless — the token IS the authorization, no DB row, 3-day expiry), so
-// /approve/[token] handles it identically. Only the copy changes: this batch came from the
-// recurring planner running on the brand's cadence, not a one-off click. We keep no per-post
-// preview here because the recurring email is unsolicited (cron-triggered) and we want it short;
-// the owner reviews details on the Approvals page if they don't trust the one-tap link.
-export function schedulerEmailSubject(locale: Locale, brandName: string, count: number): string {
-  return tEmail(locale, 'scheduler.subject', { brand: brandName, count });
-}
-
-export function schedulerApprovalEmailHtml(
-  locale: Locale,
-  brandName: string,
-  count: number,
-  approveUrl: string,
-  origin?: string
-): string {
-  return shell(
-    origin,
-    `
-    <h2 style="font-size:22px;letter-spacing:-0.02em;margin:14px 0 6px;">${tEmail(locale, 'scheduler.heading', { brand: brandName, count })}</h2>
-    <p style="color:#6e6e73;line-height:1.5;margin:0 0 16px;">${tEmail(locale, 'scheduler.intro', { count })}</p>
-    ${cta(approveUrl, tEmail(locale, 'scheduler.cta'))}
-    <p style="color:#86868b;font-size:12px;margin-top:22px;">${tEmail(locale, 'scheduler.footer')}</p>`
-  );
-}
-
-export function schedulerApprovalEmailText(locale: Locale, brandName: string, count: number, approveUrl: string): string {
-  return [
-    tEmail(locale, 'scheduler.heading', { brand: brandName, count }),
-    '',
-    tEmail(locale, 'scheduler.intro', { count }),
-    '',
-    `${tEmail(locale, 'scheduler.cta')} ${approveUrl}`,
-    '',
-    tEmail(locale, 'scheduler.footer')
   ].join('\n');
 }
 

@@ -68,7 +68,6 @@
     align-items: flex-start;
     gap: 10px;
     padding: 14px;
-    border-radius: 14px;
     border: 1.5px solid var(--line);
     background: var(--paper);
     color: var(--ink);
@@ -100,7 +99,6 @@
   .theme-swatch {
     width: 100%;
     height: 36px;
-    border-radius: 8px;
     border: 1px solid var(--line);
   }
   .theme-swatch.light {

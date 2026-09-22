@@ -35,10 +35,10 @@
     <p class="text-muted-foreground mt-2 text-sm">{$_('app.settings.apiKeys.subtitle')}</p>
 
     {#if form?.apiKeyCreated && form?.apiKeyRaw}
-      <div class="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+      <div class="mt-6 border border-amber-500/30 bg-amber-500/5 p-4">
         <div class="mb-2.5 text-sm font-semibold text-amber-600">⚠️ {$_('app.settings.apiKeys.warning')}</div>
         <div class="flex items-center gap-2">
-          <code class="bg-muted ring-border flex-1 select-all break-all rounded-lg px-2.5 py-2 text-xs ring-1">{form.apiKeyRaw}</code>
+          <code class="bg-muted ring-border flex-1 select-all break-all px-2.5 py-2 text-xs ring-1">{form.apiKeyRaw}</code>
           <Button variant="outline" size="sm" onclick={copyKey}>
             {#if copied}<Check class="size-3.5" /> {$_('app.settings.apiKeys.copied')}
             {:else}<Copy class="size-3.5" /> {$_('app.settings.apiKeys.copyKey')}{/if}
@@ -48,10 +48,10 @@
     {/if}
 
     {#if form?.apiKeyError}
-      <div class="mt-4 rounded-lg bg-red-500/10 px-3.5 py-2.5 text-sm text-red-500">{form.apiKeyError}</div>
+      <div class="mt-4 bg-red-500/10 px-3.5 py-2.5 text-sm text-red-500">{form.apiKeyError}</div>
     {/if}
     {#if form?.apiKeyRevoked}
-      <div class="mt-4 rounded-lg bg-emerald-500/10 px-3.5 py-2.5 text-sm text-emerald-500">{$_('app.settings.apiKeys.keyRevoked')}</div>
+      <div class="mt-4 bg-emerald-500/10 px-3.5 py-2.5 text-sm text-emerald-500">{$_('app.settings.apiKeys.keyRevoked')}</div>
     {/if}
 
     <div class="mt-6 mb-4">
@@ -61,13 +61,13 @@
     </div>
 
     {#if data.keys.length}
-      <div class="ring-border divide-border divide-y overflow-hidden rounded-xl ring-1">
+      <div class="ring-border divide-border divide-y overflow-hidden ring-1">
         {#each data.keys as k (k.id)}
           <div class="bg-card flex items-center justify-between gap-3.5 p-4">
             <div class="min-w-0 flex-1">
               <div class="font-semibold">{k.name}</div>
               <div class="mt-1.5 flex flex-wrap items-center gap-2">
-                <code class="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-xs">{k.key_prefix}…</code>
+                <code class="bg-muted text-muted-foreground px-1.5 py-0.5 text-xs">{k.key_prefix}…</code>
                 <Badge variant="secondary" class="text-primary text-[10px] uppercase">{$_('app.settings.apiKeys.read')} + {$_('app.settings.apiKeys.write')}</Badge>
                 {#if k.permissions?.brand_ids === '*'}
                   <Badge variant="outline" class="text-[10px] uppercase">{$_('app.settings.apiKeys.allBrands')}</Badge>
@@ -129,7 +129,7 @@
         <select
           id="brand_scope"
           name="all_brands"
-          class="border-input bg-background ring-offset-background focus-visible:ring-ring h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          class="border-input bg-background ring-offset-background focus-visible:ring-ring h-10 w-full border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
           onchange={(e) => (allBrands = e.currentTarget.value === 'true')}
         >
           <option value="true">{$_('app.settings.apiKeys.allBrands')}</option>
@@ -141,7 +141,7 @@
       {#if !allBrands}
         <div class="flex flex-wrap gap-1.5">
           {#each data.brands as b (b.id)}
-            <label class="ring-border has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs ring-1">
+            <label class="ring-border has-[input:checked]:border-primary has-[input:checked]:bg-primary/5 inline-flex cursor-pointer items-center gap-1.5 px-2.5 py-1.5 text-xs ring-1">
               <input type="checkbox" name="brand_ids" value={b.id} checked class="accent-[var(--accent)]" />
               <span>{b.name}</span>
             </label>

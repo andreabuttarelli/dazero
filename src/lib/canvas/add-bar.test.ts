@@ -41,6 +41,27 @@ describe('la barra per aggiungere un nodo', () => {
   it('ha un nome accessibile: sono icone, e un bottone muto non si legge', () => {
     expect(bar).toMatch(/aria-label|title=/);
   });
+
+  it('sta in basso al centro e allinea in fila, non verticale a sinistra', () => {
+    expect(bar).toMatch(/bottom:/);
+    expect(bar).toMatch(/left:\s*50%/);
+    expect(bar).not.toMatch(/flex-direction:\s*column/);
+  });
+
+  it('il nome compare come tooltip SOPRA l\'icona, non come testo sempre visibile', () => {
+    // Il testo esiste (`ADDABLE_LABEL[what]`) ma è nascosto finché non si passa sopra l'icona:
+    // `opacity: 0` di riposo, `opacity: 1` solo su `:hover`/`:focus-visible`. `bottom: calc(100% …`
+    // lo ancora sopra l'icona — sotto uscirebbe dal riquadro, dato che la barra tocca già il
+    // fondo della tela.
+    expect(bar).toMatch(/opacity:\s*0;/);
+    expect(bar).toMatch(/:hover[\s\S]{0,80}opacity:\s*1/);
+    expect(bar).toMatch(/\.add-tip\s*\{[^}]*bottom:\s*calc\(100%/);
+  });
+
+  it('offre un modo di caricare un file, oltre a scegliere fra ciò che nasce già pieno', () => {
+    expect(bar).toMatch(/type="file"/);
+    expect(bar).toMatch(/onupload/);
+  });
 });
 
 describe('la tela che riceve il trascinamento', () => {

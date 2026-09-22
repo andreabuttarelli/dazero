@@ -130,8 +130,12 @@
   // I modelli arrivano dal server: il testo dal centralino, immagine e video dal registro dei
   // media coi loro limiti. Un nodo nasce comunque SENZA modello scelto — sceglierne uno al posto
   // dell'utente significherebbe spendere su una decisione che non ha preso.
+  const EMPTY_MEDIUM = { choices: [], synced: true };
   const catalogue = $derived(
-    (data.catalogue ?? { text: [], image: [], video: [] }) as Record<GenMedium, ModelChoice[]>
+    (data.catalogue ?? { text: EMPTY_MEDIUM, image: EMPTY_MEDIUM, video: EMPTY_MEDIUM }) as Record<
+      GenMedium,
+      { choices: ModelChoice[]; synced: boolean }
+    >
   );
 
   /**
@@ -465,7 +469,8 @@
             <GenNode
               {node}
               {selected}
-              choices={catalogue[node.medium]}
+              choices={catalogue[node.medium].choices}
+              catalogueSynced={catalogue[node.medium].synced}
               onchange={(change) => patch(id, change)}
               onrun={() => run(id)}
               onshow={(runId) => show(id, runId)}
@@ -513,7 +518,6 @@
     color: #c0392b;
     background: var(--paper, #fff);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 999px;
   }
 
   /* Il nodo si comporta come la pagina che conteneva: sfondo pieno e il suo respiro attorno.
@@ -525,7 +529,6 @@
     height: 100%;
     overflow: hidden;
     padding: 24px 28px;
-    border-radius: 18px;
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
   }

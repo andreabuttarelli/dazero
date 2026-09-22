@@ -268,7 +268,6 @@
     font-size: 0.82rem;
     padding: 0.35rem 0.8rem;
     border: 1px solid #e4e4e7;
-    border-radius: 999px;
     background: #fff;
     color: #52525b;
     cursor: pointer;
@@ -296,7 +295,6 @@
   .facts div {
     padding: 0.9rem 1rem;
     border: 1px solid #e4e4e7;
-    border-radius: 0.75rem;
   }
   .facts dt {
     font-size: 0.75rem;
@@ -353,7 +351,6 @@
   .status {
     font-size: 0.7rem;
     padding: 0.1rem 0.45rem;
-    border-radius: 999px;
     background: #f4f4f5;
     color: #52525b;
   }
@@ -371,7 +368,6 @@
     width: 4.5rem;
     height: 4.5rem;
     object-fit: cover;
-    border-radius: 0.5rem;
     flex: none;
   }
   .tiles {
@@ -385,7 +381,6 @@
     flex-direction: column;
     padding: 0.9rem 1rem;
     border: 1px solid #e4e4e7;
-    border-radius: 0.75rem;
   }
   .tile .n {
     font-size: 1.4rem;

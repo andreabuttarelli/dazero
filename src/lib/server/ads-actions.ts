@@ -134,7 +134,7 @@ export function adsChannelLoad(channel: AdsChannel) {
 
     const [summary, readiness, candidates] = await Promise.all([
       getPaidSummary(supabase, brand.id, { channel, email }),
-      adsReadiness(supabase, { ...brand, actorEmail: email }, channel),
+      adsReadiness(supabase, { ...brand, actorEmail: email }, channel, base),
       // Boosting an organic winner only exists on social — Google has no organic post to promote.
       channel === 'social'
         ? rankBoostCandidates(supabase, brand.id, { limit: 8 })
@@ -385,7 +385,7 @@ export const adsNewLoad = async ({
   if (!adsSelfServeEnabled(isAdsPreviewUser(email))) throw redirect(303, `${base}/ads/${channel}`);
   if (!adsAvailable(brand.plan, email)) throw redirect(303, `${base}/settings/ads`);
 
-  const readiness = await adsReadiness(supabase, { ...brand, actorEmail: email }, channel);
+  const readiness = await adsReadiness(supabase, { ...brand, actorEmail: email }, channel, base);
   return { channel, readiness, website: brand.website, selfServe: true };
 };
 

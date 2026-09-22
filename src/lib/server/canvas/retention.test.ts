@@ -29,7 +29,7 @@ function fakeDb(count: number) {
 }
 
 describe('pruneOldCanvasEvents: pota per età, su ogni org insieme', () => {
-  it('cancella sotto una soglia di 30 giorni per default', async () => {
+  it('cancella sotto una soglia di 356 giorni per default', async () => {
     const { db, calls } = fakeDb(0);
     const now = new Date('2026-09-22T00:00:00Z');
 

@@ -38,7 +38,7 @@ export async function buildSetupChecklist(supabase: SupabaseClient, brandId: str
 
   const items: SetupChecklistItem[] = [
     { key: 'studio', done: studioPct >= 80, href: `/app/${slug}/settings/brand` },
-    { key: 'strategy', done: !!gtm, href: `/app/${slug}/studio` },
+    { key: 'strategy', done: !!gtm, href: `/app/${slug}/settings/brand` },
     { key: 'plan', done: !!plan, href: `/app/${slug}/calendar` },
     { key: 'blog', done: blogEnabled, href: `/app/${slug}/site` }
   ];

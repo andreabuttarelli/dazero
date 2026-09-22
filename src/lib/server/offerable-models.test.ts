@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { GPT_IMAGE_2_MODEL, NANO_BANANA_PRO_MODEL, QWEN3_PRO_MODEL } from '$lib/image-models';
-import { SEEDANCE_25_MODEL, OPENROUTER_UPSCALE_MODEL } from '$lib/video-models';
-import { offerableModels } from './offerable-models';
+import { SEEDANCE_25_MODEL, OPENROUTER_UPSCALE_MODEL, KLING_3_VIDEO_MODEL } from '$lib/video-models';
+import { mediaModelSlot } from '$lib/media-model-slots';
+import { offerableModels, offerableSlotChoices } from './offerable-models';
 
 function fakeAdmin(rows: { id: string; catalogue: string; input_modalities: string[]; output_modalities: string[] }[]) {
   const admin = {
@@ -98,6 +99,17 @@ describe('offerableModels — cosa un nodo può davvero scegliere', () => {
     expect(out.choices.map((c) => c.id)).not.toContain(OPENROUTER_UPSCALE_MODEL);
   });
 
+  it('ogni scelta porta le modalità di ingresso sincronizzate — la tela le usa per disegnare le porte', async () => {
+    const admin = fakeAdmin([
+      { id: 'openai/gpt-image-2', catalogue: 'image', input_modalities: ['text', 'image'], output_modalities: ['image'] }
+    ]);
+
+    const out = await offerableModels(admin, 'image');
+    const choice = out.choices.find((c) => c.id === GPT_IMAGE_2_MODEL);
+
+    expect(choice?.inputModalities).toEqual(['text', 'image']);
+  });
+
   it('ogni scelta porta un id e un nome leggibile', async () => {
     const admin = fakeAdmin([
       { id: 'openai/gpt-image-2', catalogue: 'image', input_modalities: ['text', 'image'], output_modalities: ['image'] }
@@ -109,5 +121,32 @@ describe('offerableModels — cosa un nodo può davvero scegliere', () => {
       expect(choice.id).toBeTruthy();
       expect(choice.label).toBeTruthy();
     }
+  });
+});
+
+describe('offerableSlotChoices — i sei mestieri delle settings, filtrati sui modelli offribili', () => {
+  it('uno slot immagine offre solo modelli sincronizzati', async () => {
+    const admin = fakeAdmin([
+      { id: 'openai/gpt-image-2', catalogue: 'image', input_modalities: ['text', 'image'], output_modalities: ['image'] }
+    ]);
+
+    const out = await offerableSlotChoices(admin, mediaModelSlot('imageModel')!);
+
+    expect(out.synced).toBe(true);
+    expect(out.choices.map((c) => c.id)).toEqual([GPT_IMAGE_2_MODEL]);
+  });
+
+  it('uno slot video offre solo modelli sincronizzati CHE fanno quel ruolo', async () => {
+    // Kling fa 'motion'; Seedance 2.5 no — un modello sincronizzato ma del ruolo sbagliato resta
+    // fuori dallo slot, anche se compare nel catalogo video generale.
+    const admin = fakeAdmin([
+      { id: 'bytedance/seedance-2.5', catalogue: 'video', input_modalities: ['text', 'image'], output_modalities: ['video'] },
+      { id: 'kwaivgi/kling-v3.0-pro', catalogue: 'video', input_modalities: ['text', 'image'], output_modalities: ['video'] }
+    ]);
+
+    const out = await offerableSlotChoices(admin, mediaModelSlot('videoMotionModel')!);
+
+    expect(out.choices.map((c) => c.id)).toEqual([KLING_3_VIDEO_MODEL]);
+    expect(out.choices.map((c) => c.id)).not.toContain(SEEDANCE_25_MODEL);
   });
 });

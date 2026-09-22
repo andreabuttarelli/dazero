@@ -57,7 +57,13 @@ describe('upstreamInputsFor — dal database alla forma pura', () => {
       assets: [{ id: ASSET, project_id: 'p1', type: 'text', url: null, content: 'ciao mondo', mime_type: 'text/plain', bytes: null, width: null, height: null, duration_s: null, source: 'generated', source_node_id: TEXT_NODE, created_at: 'now' }]
     });
 
-    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE, model: MODEL });
+    const out = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: IMAGE_NODE,
+      model: MODEL,
+      medium: 'image'
+    });
 
     expect(out.text).toEqual(['ciao mondo']);
     expect(out.blocked).toBeNull();
@@ -82,7 +88,13 @@ describe('upstreamInputsFor — dal database alla forma pura', () => {
       assets: []
     });
 
-    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE, model: MODEL });
+    const out = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: IMAGE_NODE,
+      model: MODEL,
+      medium: 'image'
+    });
 
     expect(out.text).toEqual(['appunti']);
   });
@@ -152,7 +164,13 @@ describe('upstreamInputsFor — un modello sparito da ai_models blocca il nodo',
   it('un modello sincronizzato risolve normalmente, mai bloccato', async () => {
     const { db } = videoToVideoDb();
 
-    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: VIDEO_NODE, model: MODEL });
+    const out = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: VIDEO_NODE,
+      model: MODEL,
+      medium: 'video'
+    });
 
     expect(out.blocked).toBeNull();
     expect(out.referenceVideoUrls).toEqual(['https://cdn/clip.mp4']);
@@ -162,7 +180,13 @@ describe('upstreamInputsFor — un modello sparito da ai_models blocca il nodo',
     modalitiesOf.mockResolvedValue(null);
     const { db } = videoToVideoDb();
 
-    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: VIDEO_NODE, model: MODEL });
+    const out = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: VIDEO_NODE,
+      model: MODEL,
+      medium: 'video'
+    });
 
     expect(out.blocked).toContain(MODEL);
     // Bloccato vuol dire NIENTE risolto — non un arco rifiutato, il nodo intero non gira.
@@ -174,20 +198,45 @@ describe('upstreamInputsFor — un modello sparito da ai_models blocca il nodo',
     modalitiesOf.mockResolvedValue(null);
     const { db, calls } = fakeDb({ nodes: [], nodes_connections: [], assets: [] });
 
-    await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: VIDEO_NODE, model: MODEL });
+    await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: VIDEO_NODE, model: MODEL, medium: 'video' });
 
     expect(calls.some((c) => c.table === 'nodes')).toBe(false);
     expect(calls.some((c) => c.table === 'nodes_connections')).toBe(false);
+  });
+
+  it('senza un medium, nessun controllo modello parte — non sa quale spec tradurre', async () => {
+    modalitiesOf.mockResolvedValue(null);
+    const { db, calls } = fakeDb({ nodes: [], nodes_connections: [], assets: [] });
+
+    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: VIDEO_NODE, model: MODEL });
+
+    expect(out.blocked).toBeNull();
+    expect(modalitiesOf).not.toHaveBeenCalled();
+    expect(calls.some((c) => c.table === 'nodes')).toBe(true);
   });
 
   it('un modello che NON prende video (ma esiste) rifiuta solo quell\'arco, non blocca il nodo', async () => {
     modalitiesOf.mockResolvedValue({ input: ['text', 'image'], output: ['video'], synced_at: 'now' });
     const { db } = videoToVideoDb();
 
-    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: VIDEO_NODE, model: MODEL });
+    const out = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: VIDEO_NODE,
+      model: MODEL,
+      medium: 'video'
+    });
 
     expect(out.blocked).toBeNull();
     expect(out.referenceVideoUrls).toEqual([]);
     expect(out.rejected).toEqual([{ nodeId: SOURCE_VIDEO_NODE, why: expect.stringContaining('connettore') }]);
+  });
+
+  it('passa il medium a `modalitiesOf`, così l\'id interno si traduce sul listino giusto', async () => {
+    const { db } = videoToVideoDb();
+
+    await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: VIDEO_NODE, model: MODEL, medium: 'video' });
+
+    expect(modalitiesOf).toHaveBeenCalledWith(expect.anything(), MODEL, 'video');
   });
 });

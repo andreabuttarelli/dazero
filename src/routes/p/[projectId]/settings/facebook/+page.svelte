@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import { _ } from 'svelte-i18n';
   let { data, form } = $props();
-  const base = $derived(`/app/${$page.params.brand}`);
+  const base = $derived(`/p/${$page.params.projectId}`);
   let working = $state(false);
 </script>
 
@@ -69,11 +69,11 @@
   .wrap { display: flex; justify-content: center; padding: 48px 20px; }
   .card {
     width: 100%; max-width: 560px; background: var(--card, #fff);
-    border: 1px solid var(--line, #ececf1); border-radius: 16px; padding: 28px;
+    border: 1px solid var(--line, #ececf1); padding: 28px;
   }
   .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--ink-faint, #8a8a99); }
   .badge {
-    display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 6px;
+    display: inline-grid; place-items: center; width: 26px; height: 26px;
     background: #1877f2; color: #fff; font-size: 15px; font-weight: 700; font-family: Georgia, serif;
   }
   h1 { margin: 14px 0 4px; font-size: 22px; }
@@ -81,17 +81,17 @@
   .section { margin: 22px 0 10px; font-size: 13px; font-weight: 600; color: var(--ink-faint, #8a8a99); text-transform: uppercase; letter-spacing: .04em; }
   .row {
     display: flex; align-items: center; gap: 12px; padding: 12px;
-    border: 1px solid var(--line, #ececf1); border-radius: 12px; margin-bottom: 10px;
+    border: 1px solid var(--line, #ececf1); margin-bottom: 10px;
   }
   .ico {
-    width: 38px; height: 38px; border-radius: 9px; flex: 0 0 auto;
+    width: 38px; height: 38px; flex: 0 0 auto;
     display: grid; place-items: center; font-weight: 700; color: #fff; background: #1877f2;
   }
   .meta { flex: 1; min-width: 0; }
   .meta .h { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meta .s { font-size: 13px; color: var(--ink-faint, #8a8a99); }
   .btn {
-    border: none; border-radius: 10px; padding: 9px 16px; font-weight: 600; cursor: pointer;
+    border: none; padding: 9px 16px; font-weight: 600; cursor: pointer;
     text-decoration: none; font-size: 14px; white-space: nowrap;
   }
   .btn.primary { background: var(--accent, #7c5cff); color: #fff; }
@@ -100,11 +100,11 @@
   .actions { display: flex; gap: 10px; margin-top: 18px; }
   .empty { color: var(--ink-faint, #8a8a99); font-size: 14px; padding: 8px 2px 4px; }
   .err {
-    background: #fdecec; color: #c0392b; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; font-size: 14px;
+    background: #fdecec; color: #c0392b; padding: 12px 14px; margin-bottom: 8px; font-size: 14px;
   }
   .detail {
     font-family: ui-monospace, monospace; font-size: 12px; color: #8a8a99;
-    background: #f6f6f9; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;
+    background: #f6f6f9; padding: 10px 12px; margin-bottom: 12px;
     word-break: break-word;
   }
 </style>

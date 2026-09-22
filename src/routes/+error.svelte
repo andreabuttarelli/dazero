@@ -63,7 +63,6 @@
     text-align: center;
     background: var(--paper-2);
     border: 1px solid var(--line);
-    border-radius: 24px;
     padding: 44px 32px 40px;
   }
   .err-code {
@@ -106,7 +105,6 @@
   @media (max-width: 420px) {
     .err-card {
       padding: 36px 22px 32px;
-      border-radius: 20px;
     }
   }
 </style>

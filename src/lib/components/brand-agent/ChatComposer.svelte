@@ -59,7 +59,7 @@
   {#if busy}
     <button type="button" class="act stop" onclick={onstop} aria-label="Interrompi">
       <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-        <rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="currentColor" />
+        <rect x="3.5" y="3.5" width="9" height="9" fill="currentColor" />
       </svg>
     </button>
   {:else}
@@ -81,7 +81,6 @@
     gap: 5px;
     padding: 5px 5px 5px 8px;
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 10px;
     background: var(--paper, #fff);
     transition: border-color 0.14s var(--ease, cubic-bezier(0.22, 1, 0.36, 1));
   }
@@ -119,7 +118,6 @@
     width: 24px;
     height: 24px;
     border: none;
-    border-radius: 7px;
     cursor: pointer;
     transition: opacity 0.14s ease, transform 0.14s var(--ease, cubic-bezier(0.22, 1, 0.36, 1));
   }

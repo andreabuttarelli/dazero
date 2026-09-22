@@ -30,6 +30,7 @@
   let {
     node,
     choices = [],
+    catalogueSynced = true,
     selected = false,
     onchange,
     onrun,
@@ -40,6 +41,13 @@
     node: GenNode;
     /** I modelli che questo medium può usare, dal catalogo del brand. */
     choices?: ModelChoice[];
+    /**
+     * Il catalogo che alimenta `choices` ha almeno una riga per questo medium. `false` con
+     * `choices` vuoto vuol dire "il sync non è ancora passato", non "questo medium non ha
+     * modelli": un menù vuoto senza dirlo sembra un difetto, non la conseguenza accettata della
+     * regola "non sincronizzato, non offerto" (`offerable-models.ts`).
+     */
+    catalogueSynced?: boolean;
     /** Le proprietà si aprono solo sul nodo scelto: dieci fasce addosso al contenuto lo coprono. */
     selected?: boolean;
     onchange?: (patch: Partial<GenNode>) => void;
@@ -100,19 +108,23 @@
 
   {#if selected}
   <header class="gen-head">
-    <select
-      class="gen-field"
-      value={node.model ?? ''}
-      onchange={(e) => onchange?.({ model: e.currentTarget.value || null })}
-      aria-label="Modello"
-    >
-      {#if !node.model}
-        <option value="">Modello…</option>
-      {/if}
-      {#each choices as c (c.id)}
-        <option value={c.id}>{c.label}</option>
-      {/each}
-    </select>
+    {#if !choices.length && !catalogueSynced}
+      <span class="gen-field gen-catalogue-warn">Catalogo modelli non ancora sincronizzato</span>
+    {:else}
+      <select
+        class="gen-field"
+        value={node.model ?? ''}
+        onchange={(e) => onchange?.({ model: e.currentTarget.value || null })}
+        aria-label="Modello"
+      >
+        {#if !node.model}
+          <option value="">Modello…</option>
+        {/if}
+        {#each choices as c (c.id)}
+          <option value={c.id}>{c.label}</option>
+        {/each}
+      </select>
+    {/if}
 
     {#if choice?.aspectRatios?.length}
       <select
@@ -246,7 +258,6 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    border-radius: 16px;
     background: var(--paper, #fff);
     border: 1px solid var(--line, #e5e5e5);
     box-shadow:
@@ -295,7 +306,6 @@
     flex-wrap: wrap;
     padding: 6px 8px;
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 11px;
     background: var(--paper, #fff);
     box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
   }
@@ -314,7 +324,6 @@
     color: var(--ink-soft, #6e6e73);
     background: color-mix(in srgb, var(--paper, #fff) 86%, transparent);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 999px;
     backdrop-filter: blur(6px);
     pointer-events: none;
   }
@@ -326,10 +335,14 @@
     color: var(--ink, #1d1d1f);
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 7px;
   }
   .gen-number {
     width: 52px;
+  }
+  .gen-catalogue-warn {
+    color: #c0392b;
+    background: transparent;
+    border-style: dashed;
   }
   .gen-duration,
   .gen-toggle {
@@ -356,7 +369,6 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border-radius: 15px 15px 0 0;
     background: var(--paper-2, #f9f9f9);
   }
 
@@ -415,7 +427,6 @@
     font: inherit;
     font-size: 11.5px;
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 8px;
     background: var(--paper, #fff);
     color: var(--ink, #1d1d1f);
     cursor: pointer;
@@ -429,7 +440,6 @@
   }
 
   .gen-foot {
-    border-radius: 0 0 15px 15px;
     padding: 8px 9px 9px;
     border-top: 1px solid var(--line, #e5e5e5);
     background: var(--paper, #fff);
@@ -438,7 +448,6 @@
     width: 100%;
     resize: none;
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 9px;
     padding: 6px 8px;
     font: inherit;
     font-size: 12.5px;
@@ -491,7 +500,6 @@
     color: var(--ink-soft, #6e6e73);
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 6px;
     cursor: pointer;
   }
   .gen-past-one.is-shown {
@@ -504,7 +512,6 @@
     font: inherit;
     font-size: 12px;
     border: none;
-    border-radius: 8px;
     background: var(--ink, #1d1d1f);
     color: var(--paper, #fff);
     cursor: pointer;
@@ -521,7 +528,6 @@
   .gen-dots i {
     width: 6px;
     height: 6px;
-    border-radius: 50%;
     background: var(--accent, #c485fe);
     animation: gen-blink 1.2s infinite;
   }

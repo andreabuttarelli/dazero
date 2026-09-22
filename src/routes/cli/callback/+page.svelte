@@ -71,7 +71,6 @@
   }
   .card {
     background: var(--paper, #fff);
-    border-radius: 20px;
     padding: 40px 36px;
     max-width: 420px;
     width: 100%;
@@ -110,7 +109,6 @@
     background: var(--accent, #7c5cff);
     color: #fff;
     border: none;
-    border-radius: 14px;
     padding: 14px 22px;
     font-size: 15px;
     font-weight: 600;

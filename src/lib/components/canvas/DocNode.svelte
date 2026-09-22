@@ -154,7 +154,6 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    border-radius: 16px;
     background: var(--paper, #fff);
     border: 1px solid var(--line, #e5e5e5);
     box-shadow:
@@ -187,7 +186,6 @@
     color: var(--ink-soft, #6e6e73);
     background: color-mix(in srgb, var(--paper, #fff) 86%, transparent);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 999px;
     backdrop-filter: blur(6px);
     pointer-events: none;
   }
@@ -206,7 +204,6 @@
     display: inline-flex;
     flex: none;
     padding: 2px;
-    border-radius: 8px;
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
   }
@@ -217,7 +214,6 @@
     color: var(--ink-soft, #6e6e73);
     background: none;
     border: none;
-    border-radius: 6px;
     cursor: pointer;
   }
   .doc-modes button.is-on {
@@ -236,7 +232,6 @@
     color: var(--ink-soft, #6e6e73);
     background: none;
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 7px;
     cursor: pointer;
   }
   .doc-share:hover {
@@ -264,7 +259,6 @@
     color: var(--ink, #1d1d1f);
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 7px;
   }
   .doc-link-copy {
     flex: none;
@@ -274,7 +268,6 @@
     color: var(--paper, #fff);
     background: var(--ink, #1d1d1f);
     border: none;
-    border-radius: 7px;
     cursor: pointer;
   }
   .doc-link-open {
@@ -284,7 +277,6 @@
     justify-content: center;
     width: 24px;
     height: 24px;
-    border-radius: 7px;
     color: var(--ink-soft, #6e6e73);
   }
   .doc-link-open:hover {

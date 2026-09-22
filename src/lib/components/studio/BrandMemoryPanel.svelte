@@ -331,18 +331,18 @@
 <style>
   .memory-actions { display: flex; align-items: center; gap: 8px; }
   .view-toggle {
-    display: inline-flex; gap: 2px; padding: 2px; border-radius: 10px;
+    display: inline-flex; gap: 2px; padding: 2px;
     background: var(--paper-2, #f5f5f7); border: 1px solid var(--line, #e3e3e6);
   }
   .view-btn {
     border: none; background: transparent; font: inherit; font-size: 12px; font-weight: 600;
-    padding: 6px 10px; border-radius: 8px; cursor: pointer; color: var(--ink-soft, #6e6e73);
+    padding: 6px 10px; cursor: pointer; color: var(--ink-soft, #6e6e73);
   }
   .view-btn.active { background: var(--paper, #fff); color: var(--ink, #1d1d1f); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
   .memory-filters { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
   .filter-label { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-soft); }
   .filter-label select {
-    font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 10px;
+    font: inherit; font-size: 13px; padding: 6px 10px;
     border: 1px solid var(--line-2, #d2d2d7); background: var(--paper, #fff);
   }
   .filter-count { font-size: 12px; }
@@ -350,7 +350,7 @@
   .graph-wrap { display: flex; flex-direction: column; gap: 12px; }
   .memory-graph {
     width: 100%; height: auto; background: var(--paper-2, #f5f5f7);
-    border: 1px solid var(--line, #e3e3e6); border-radius: 16px;
+    border: 1px solid var(--line, #e3e3e6);
   }
   .graph-edge { stroke: rgba(0,0,0,.12); }
   .graph-edge.strong { stroke: rgba(124, 92, 255, .45); }
@@ -359,10 +359,10 @@
   .graph-node.selected circle { stroke: var(--ink, #1d1d1f); stroke-width: 2; }
   .graph-legend { display: flex; flex-wrap: wrap; gap: 10px 14px; font-size: 11.5px; color: var(--ink-soft); }
   .legend-item { display: inline-flex; align-items: center; gap: 6px; }
-  .legend-item i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .legend-item i { width: 8px; height: 8px; display: inline-block; }
   .legend-item.soft { opacity: .8; }
   .graph-detail {
-    border: 1px solid var(--line, #e3e3e6); border-radius: 14px; padding: 12px 14px;
+    border: 1px solid var(--line, #e3e3e6); padding: 12px 14px;
     background: var(--paper, #fff);
   }
   .related ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }

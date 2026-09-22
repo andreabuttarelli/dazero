@@ -1,11 +1,7 @@
-import type { ScheduledBlogPreview, ScheduledPostPreview } from '$lib/server/hub-overview';
+import type { ScheduledPostPreview } from '$lib/server/hub-overview';
 
 /**
  * COSA ESCE, in una fila sola.
- *
- * Prima erano due riquadri affiancati — «prossimi social» e «prossimi articoli» — ognuno col suo
- * titolo, il suo «vedi tutti» e la sua cornice. Ma nessuno chiede cosa esce sui social e poi cosa
- * esce sul blog: si chiede cosa esce, e la risposta è una fila in ordine di orologio.
  *
  * Come per `home-todos`, qui c'è solo la SELEZIONE e l'ORDINE: nessun testo, nessun brand nella
  * rotta. Le etichette e il prefisso `/app/<slug>` li mette la pagina.
@@ -13,7 +9,7 @@ import type { ScheduledBlogPreview, ScheduledPostPreview } from '$lib/server/hub
 
 const TITLE_MAX = 90;
 
-export type UpcomingKind = 'social' | 'blog';
+export type UpcomingKind = 'social';
 
 export type UpcomingItem = {
   id: string;
@@ -23,7 +19,7 @@ export type UpcomingItem = {
   when: string;
   title: string | null;
   thumb: string | null;
-  /** La sigla da mostrare quando la miniatura non c'è: la piattaforma, o `B` per un articolo. */
+  /** La sigla da mostrare quando la miniatura non c'è: la piattaforma. */
   fallback: string;
 };
 
@@ -33,10 +29,7 @@ function clamp(text: string | null): string | null {
   return t.length > TITLE_MAX ? `${t.slice(0, TITLE_MAX)}…` : t;
 }
 
-export function upcomingFeed(
-  posts: ScheduledPostPreview[],
-  blogs: ScheduledBlogPreview[]
-): UpcomingItem[] {
+export function upcomingFeed(posts: ScheduledPostPreview[]): UpcomingItem[] {
   const social: UpcomingItem[] = posts.map((p) => ({
     id: p.id,
     kind: 'social',
@@ -47,15 +40,5 @@ export function upcomingFeed(
     fallback: (p.platform ?? '?').slice(0, 2).toUpperCase()
   }));
 
-  const articles: UpcomingItem[] = blogs.map((a) => ({
-    id: a.id,
-    kind: 'blog',
-    path: `/site/edit/${a.id}`,
-    when: a.scheduled_for,
-    title: clamp(a.title),
-    thumb: a.cover_url,
-    fallback: 'B'
-  }));
-
-  return [...social, ...articles].sort((a, b) => a.when.localeCompare(b.when));
+  return social.sort((a, b) => a.when.localeCompare(b.when));
 }

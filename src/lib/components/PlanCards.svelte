@@ -205,7 +205,6 @@
     width: 100%;
     text-align: center;
     padding: 12px 18px;
-    border-radius: 980px;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;

@@ -194,7 +194,6 @@
   .main {
     height: 100dvh;
     margin: 0;
-    border-radius: 0;
     display: flex;
     flex-direction: column;
     background: var(--paper);

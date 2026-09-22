@@ -95,8 +95,7 @@
       </div>
     {:else}
       <p class="hh-empty">
-        {head.kind === 'approve' ? $_(`${TK}.approveBlog`) : $_(`${TK}.emptyBody`)}
-        {#if head.kind === 'approve'}<a href={`${base}/site`}>{$_(`${TK}.openBlog`)}</a>{/if}
+        {$_(`${TK}.emptyBody`)}
       </p>
     {/if}
   </div>
@@ -140,12 +139,12 @@
   .hh-card {
     display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 16px;
     align-items: center;
-    background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 14px;
+    background: var(--paper); border: 1px solid var(--line); padding: 14px;
   }
   /* Senza foto la colonna della foto non esiste: riservarla lasciava un rettangolo di vuoto
      larghissimo accanto a una riga di testo. */
   .hh-card.nomedia { grid-template-columns: minmax(0, 1fr); }
-  .hh-card img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 10px; display: block; }
+  .hh-card img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block; }
   .hh-card-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
   .hh-cap {
     margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-soft);
@@ -156,7 +155,7 @@
   .hh-btn {
     display: inline-flex; align-items: center;
     background: var(--ink); color: var(--paper);
-    font-size: 12.5px; font-weight: 600; padding: 8px 16px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 600; padding: 8px 16px;
     text-decoration: none; transition: opacity 140ms ease;
   }
   .hh-btn:hover { opacity: 0.9; }
@@ -174,14 +173,13 @@
     padding-bottom: 2px; scrollbar-width: thin;
   }
   .hh-tile {
-    position: relative; display: block; flex: 0 0 148px; scroll-snap-align: start;
-    border-radius: 12px; overflow: hidden;
+    position: relative; display: block; flex: 0 0 148px; scroll-snap-align: start; overflow: hidden;
     background: var(--paper-2); text-decoration: none;
   }
   .hh-tile img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; display: block; }
   .hh-pill {
     position: absolute; top: 8px; left: 8px;
-    padding: 3px 8px; border-radius: 999px;
+    padding: 3px 8px;
     font-size: 10px; font-weight: 650; letter-spacing: 0.01em;
     backdrop-filter: blur(6px);
   }

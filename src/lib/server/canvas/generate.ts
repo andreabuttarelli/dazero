@@ -261,7 +261,8 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
     orgId: input.orgId,
     canvasId: input.canvasId,
     nodeId: input.nodeId,
-    model: input.model
+    model: input.model,
+    medium: input.medium
   });
 
   // UN MODELLO SPARITO DA `ai_models` FERMA IL GIRO PRIMA DI SPENDERE — mai dopo aver chiesto al

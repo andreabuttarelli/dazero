@@ -370,7 +370,6 @@
   .card {
     background: var(--panel, #fff);
     border: 1px solid var(--line);
-    border-radius: 14px;
     padding: 16px 18px;
     min-height: 180px;
     display: flex;
@@ -397,8 +396,7 @@
     display: flex; align-items: flex-end; gap: 3px; height: 110px; margin-top: 10px;
   }
   .bars span {
-    flex: 1; background: color-mix(in srgb, var(--accent) 35%, transparent);
-    border-radius: 3px 3px 0 0; min-width: 2px;
+    flex: 1; background: color-mix(in srgb, var(--accent) 35%, transparent); min-width: 2px;
   }
   .bars span.hot { background: var(--accent); }
   .empty-chart {
@@ -412,8 +410,8 @@
   }
   .top-row { grid-template-columns: minmax(0, 1.2fr) 1fr 56px; }
   .top-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .track { height: 8px; background: color-mix(in srgb, var(--line) 80%, transparent); border-radius: 99px; overflow: hidden; }
-  .fill { height: 100%; background: var(--accent); border-radius: 99px; }
+  .track { height: 8px; background: color-mix(in srgb, var(--line) 80%, transparent); overflow: hidden; }
+  .fill { height: 100%; background: var(--accent); }
   .fill.ext { background: color-mix(in srgb, var(--accent) 45%, #888); }
   /* Controls inherit the global .fld form styling (src/app.css) so they follow the theme. */
   .filters { margin-bottom: 12px; }
@@ -427,7 +425,7 @@
   td.nm { display: flex; align-items: center; gap: 8px; max-width: 280px; }
   td.nm span { overflow: hidden; text-overflow: ellipsis; }
   .badge {
-    display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem;
+    display: inline-block; padding: 2px 8px; font-size: 0.72rem;
     background: color-mix(in srgb, var(--line) 70%, transparent);
   }
   .badge.ours { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }

@@ -48,14 +48,12 @@
     grid-auto-columns: 1fr;
     gap: 1px;
     padding: 1.5px;
-    border-radius: 7px;
     background: var(--paper-2, #f9f9f9);
   }
   button {
     appearance: none;
     border: none;
     background: transparent;
-    border-radius: 5.5px;
     padding: 2.5px 7px;
     font-size: 10.5px;
     font-weight: 600;

@@ -5,11 +5,12 @@
   import { Sparkles } from '@lucide/svelte';
   import { adsErrorMessage, creditsForSpend } from '$lib/ads-fee';
   import CountryPicker from '$lib/components/CountryPicker.svelte';
+  import { page } from '$app/stores';
 
   let { data, form } = $props();
   const brand = $derived(data.brand);
   const isGoogle = $derived(data.channel === 'google');
-  const backHref = $derived(`/app/${brand.slug}/ads/${data.channel}`);
+  const backHref = $derived(`/p/${$page.params.projectId}/ads/${data.channel}`);
 
   // The AI writes the whole campaign; these hold the draft so every field stays editable before it
   // is saved. A returned draft overwrites them — that IS the point of pressing Generate again.
@@ -413,14 +414,13 @@
 <style>
   .narrow { max-width: 820px; }
   .topback {
-    display: inline-flex; align-items: center; height: 34px; padding: 0 14px;
-    border-radius: 980px; border: 1px solid var(--line-2); background: var(--paper);
+    display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border: 1px solid var(--line-2); background: var(--paper);
     color: var(--ink-soft); font-size: 13px; font-weight: 600; text-decoration: none;
   }
   .topback:hover { background: var(--paper-2); color: var(--ink); }
 
   .banner {
-    padding: 12px 16px; border-radius: 14px; font-size: 13.5px; margin-bottom: 14px;
+    padding: 12px 16px; font-size: 13.5px; margin-bottom: 14px;
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   }
   .banner.err { background: #fdecea; color: #c0392b; }
@@ -430,14 +430,14 @@
   .step { margin-bottom: 16px; }
   .step .num {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px; margin-right: 9px; border-radius: 50%;
+    width: 22px; height: 22px; margin-right: 9px;
     background: var(--ink); color: var(--paper); font-size: 12px; font-weight: 700;
   }
   .step.idle .num { background: var(--line-2); color: var(--ink-faint); }
   .panel-head .t { display: flex; align-items: center; }
   .pill {
     font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-    padding: 4px 10px; border-radius: 980px;
+    padding: 4px 10px;
     background: rgba(var(--accent-rgb), 0.12); color: var(--accent);
   }
 
@@ -448,8 +448,7 @@
   .waiting p { margin: 0; font-size: 13.5px; max-width: 42ch; line-height: 1.5; }
 
   .rationale {
-    margin: 18px 22px 0; padding: 12px 16px;
-    border-radius: 14px; border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line));
+    margin: 18px 22px 0; padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line));
     background: color-mix(in srgb, var(--accent) 7%, var(--paper));
     font-size: 13.5px; line-height: 1.5; color: var(--ink);
   }
@@ -472,12 +471,12 @@
   .variant {
     display: flex; flex-direction: column; gap: 8px;
     padding: 12px; margin-bottom: 8px;
-    border: 1px solid var(--line-2); border-radius: 12px; background: var(--paper-2);
+    border: 1px solid var(--line-2); background: var(--paper-2);
   }
   .variant .vhead { display: flex; align-items: center; justify-content: space-between; }
   .variant .vnum {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px; border-radius: 50%;
+    width: 22px; height: 22px;
     background: var(--paper); border: 1px solid var(--line-2);
     font-size: 12px; font-weight: 700;
   }
@@ -486,13 +485,13 @@
   .rrow input { flex: 1; min-width: 0; }
   .rrow .count { font-size: 11.5px; color: var(--ink-faint); flex: 0 0 auto; min-width: 46px; text-align: right; }
   .rdel {
-    width: 30px; height: 30px; flex: 0 0 auto; border-radius: 50%;
+    width: 30px; height: 30px; flex: 0 0 auto;
     border: 1px solid var(--line-2); background: var(--paper); color: var(--ink-faint);
     font-size: 16px; line-height: 1; cursor: pointer;
   }
   .rdel:hover { border-color: #c0392b; color: #c0392b; }
   .radd {
-    align-self: flex-start; height: 34px; padding: 0 14px; border-radius: 980px;
+    align-self: flex-start; height: 34px; padding: 0 14px;
     border: 1px dashed var(--line-2); background: transparent; color: var(--ink-soft);
     font-size: 12.5px; font-weight: 600; cursor: pointer;
   }

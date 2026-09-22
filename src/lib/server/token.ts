@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import { env } from '$env/dynamic/private';
 
-// Stateless signed token (HMAC, expiring). No DB row needed — used for one-tap email
-// approval and for the OAuth authorization codes / client ids in ./oauth.ts.
+// Stateless signed token (HMAC, expiring). No DB row needed — used for the OAuth
+// authorization codes / client ids in ./oauth.ts.
 //
 // Fail-closed: an unset (or default) APP_SECRET must never sign tokens in production —
 // the constant is public in this repo, so a default value would let anyone forge
@@ -37,14 +37,4 @@ export function verifyPayload<T>(token: string): (T & { e: number }) | null {
   } catch {
     return null;
   }
-}
-
-export function signApproveToken(brandId: string, ttlMs = 1000 * 60 * 60 * 24 * 3): string {
-  return signPayload({ b: brandId }, ttlMs);
-}
-
-export function verifyApproveToken(token: string): { brandId: string } | null {
-  const payload = verifyPayload<{ b: unknown }>(token);
-  if (!payload || typeof payload.b !== 'string') return null;
-  return { brandId: payload.b };
 }

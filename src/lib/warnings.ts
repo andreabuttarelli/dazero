@@ -86,7 +86,7 @@ export function computeBrandWarnings(i: BrandWarningInput): AppWarning[] {
     // operates on → it should be regenerated to fit them.
     if (i.strategyPlatforms && i.strategyPlatforms.length && setsDiffer(targets, i.strategyPlatforms)) {
       const strat = i.strategyPlatforms.map(normPlatform);
-      out.push({ id: 'strategy-platform-mismatch', severity: 'warning', title: 'warnings.strategyMismatch.title', message: 'warnings.strategyMismatch.msg', values: { strategy: labels([...new Set(strat)]), current: labels(targets) }, href: `${i.base}/studio` });
+      out.push({ id: 'strategy-platform-mismatch', severity: 'warning', title: 'warnings.strategyMismatch.title', message: 'warnings.strategyMismatch.msg', values: { strategy: labels([...new Set(strat)]), current: labels(targets) }, href: `${i.base}/settings/brand` });
     }
 
     // The editorial plan cascades from the strategy — if it too was built for other platforms, it
@@ -109,7 +109,7 @@ export function computeBrandWarnings(i: BrandWarningInput): AppWarning[] {
 
   // A new strategy/plan cycle was proposed and is waiting for the user to review it.
   if (i.hasProposedPlan) {
-    out.push({ id: 'plan-proposed', severity: 'suggestion', title: 'warnings.proposed.title', message: 'warnings.proposed.msg', href: `${i.base}/studio` });
+    out.push({ id: 'plan-proposed', severity: 'suggestion', title: 'warnings.proposed.title', message: 'warnings.proposed.msg', href: `${i.base}/settings/brand` });
   }
 
   // Publishing failed on one or more posts — a hard failure the user must see.
@@ -139,7 +139,7 @@ export function computeBrandWarnings(i: BrandWarningInput): AppWarning[] {
   // Strategy layers not set up yet — nudge the user through them in order (strategy → plan).
   // Skipped when the continue-onboarding CTA already covers the same gap.
   if (i.onboardingCompleted && !i.hasStrategy) {
-    out.push({ id: 'no-strategy', severity: 'suggestion', title: 'warnings.noStrategy.title', message: 'warnings.noStrategy.msg', href: `${i.base}/studio` });
+    out.push({ id: 'no-strategy', severity: 'suggestion', title: 'warnings.noStrategy.title', message: 'warnings.noStrategy.msg', href: `${i.base}/settings/brand` });
   } else if (i.onboardingCompleted && !i.hasEditorialPlan) {
     out.push({ id: 'no-plan', severity: 'suggestion', title: 'warnings.noPlan.title', message: 'warnings.noPlan.msg', href: `${i.base}/calendar` });
   }
@@ -159,7 +159,7 @@ export function computeBrandWarnings(i: BrandWarningInput): AppWarning[] {
   if (!i.hasLogo) out.push({ id: 'studio-no-logo', severity: 'suggestion', title: 'warnings.studioLogo.title', message: 'warnings.studioLogo.msg', href: `${i.base}/settings/brand` });
   if (!i.hasVisualStyle) out.push({ id: 'studio-no-visual-style', severity: 'suggestion', title: 'warnings.studioVisual.title', message: 'warnings.studioVisual.msg', href: `${i.base}/settings/brand` });
   if (i.peopleCount === 0) out.push({ id: 'studio-no-people', severity: 'suggestion', title: 'warnings.studioPeople.title', message: 'warnings.studioPeople.msg', href: `${i.base}/settings/people` });
-  if (i.competitorCount === 0) out.push({ id: 'studio-no-competitors', severity: 'suggestion', title: 'warnings.studioCompetitors.title', message: 'warnings.studioCompetitors.msg', href: `${i.base}/studio/competitors` });
+  if (i.competitorCount === 0) out.push({ id: 'studio-no-competitors', severity: 'suggestion', title: 'warnings.studioCompetitors.title', message: 'warnings.studioCompetitors.msg', href: i.base });
   if (!i.hasHashtags) out.push({ id: 'studio-no-hashtags', severity: 'suggestion', title: 'warnings.studioHashtags.title', message: 'warnings.studioHashtags.msg', href: `${i.base}/settings/brand#hashtags` });
 
   // Blog not opted in → dazero's plan generates social only. Nudge the user to enable it so

@@ -84,20 +84,17 @@
 
   .app-entry-block {
     background: color-mix(in srgb, var(--ink, #111) 7%, transparent);
-    border-radius: 8px;
     animation: app-entry-pulse 1.2s ease-in-out infinite;
   }
 
   .app-entry-logo {
     width: 36px;
     height: 36px;
-    border-radius: 10px;
   }
 
   .app-entry-item {
     height: 28px;
     width: 100%;
-    border-radius: 8px;
   }
 
   .app-entry-item:nth-child(2) {

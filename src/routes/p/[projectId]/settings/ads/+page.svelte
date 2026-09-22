@@ -149,7 +149,7 @@
 
   .roller {
     display: inline-block; width: 13px; height: 13px; margin-right: 7px; vertical-align: -2px;
-    border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+    border: 2px solid currentColor; border-right-color: transparent;
     animation: roll 0.7s linear infinite;
   }
   @keyframes roll { to { transform: rotate(360deg); } }
@@ -160,7 +160,7 @@
   .toast {
     position: fixed; z-index: 60; left: 50%; bottom: 26px; transform: translateX(-50%);
     display: flex; align-items: center; gap: 8px;
-    padding: 11px 18px; border-radius: 980px;
+    padding: 11px 18px;
     background: var(--ink); color: var(--paper);
     font-size: 13.5px; font-weight: 600;
     box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.5);

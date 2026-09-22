@@ -30,11 +30,16 @@ import type { Modalities } from '$lib/canvas/connectors';
  * Il prompt, gli archi e il risultato precedente del nodo non li tocca nessuno — `blocked` ferma
  * solo la PROSSIMA generazione, la stessa disciplina che tiene `giveUp()` in `generate.ts` lontano
  * dal cancellare un `refId` prima di sapere l'esito.
+ *
+ * `model` QUI È IL NOSTRO ID INTERNO (`gpt-image-2.5-flare`), non l'id sul filo di OpenRouter
+ * (`openai/gpt-image-2.5-flare`): `modalitiesOf` con un `catalogue` lo traduce da sé
+ * (`wireModelId`, in `ai-models-sync.ts`) — lo stesso spec che `offerable-models.ts` legge per
+ * decidere cosa offrire, non una seconda copia della stessa tabella.
  */
-async function modalitiesFor(model: string): Promise<Modalities | null> {
+async function modalitiesFor(model: string, medium: 'image' | 'video'): Promise<Modalities | null> {
   const { modalitiesOf } = await import('$lib/server/ai-models-sync');
   const { createAdminClient } = await import('$lib/server/supabase-admin');
-  const modalities = await modalitiesOf(createAdminClient(), model);
+  const modalities = await modalitiesOf(createAdminClient(), model, medium);
   return modalities ? { input: modalities.input } : null;
 }
 
@@ -92,11 +97,12 @@ const BLOCKED_EMPTY: Omit<UpstreamInputs, 'blocked'> = {
  */
 export async function upstreamInputsFor(
   db: Db,
-  scope: { orgId: string; canvasId: string; nodeId: string; model?: string | null }
+  scope: { orgId: string; canvasId: string; nodeId: string; model?: string | null; medium?: 'text' | 'image' | 'video' }
 ): Promise<UpstreamInputs> {
-  const modalities = scope.model ? await modalitiesFor(scope.model) : null;
+  const checkable = scope.model && (scope.medium === 'image' || scope.medium === 'video');
+  const modalities = checkable ? await modalitiesFor(scope.model!, scope.medium as 'image' | 'video') : null;
 
-  if (scope.model && !modalities) {
+  if (checkable && !modalities) {
     return {
       ...BLOCKED_EMPTY,
       blocked: `${scope.model} non è più fra i modelli sincronizzati da OpenRouter — scegli un altro modello per continuare`

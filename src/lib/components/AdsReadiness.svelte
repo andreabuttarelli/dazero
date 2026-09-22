@@ -83,7 +83,7 @@
   .right { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
   .status {
     font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
-    padding: 5px 12px; border-radius: 980px;
+    padding: 5px 12px;
     background: rgba(var(--accent-rgb), 0.1); color: var(--accent);
   }
   .status.err { background: #fdecea; color: #c0392b; }
@@ -99,7 +99,7 @@
   }
   .checks li:last-child { border-bottom: none; }
   .mark {
-    width: 24px; height: 24px; border-radius: 50%; flex: 0 0 auto;
+    width: 24px; height: 24px; flex: 0 0 auto;
     display: inline-flex; align-items: center; justify-content: center;
     background: var(--paper-2); color: var(--ink-faint); border: 1px solid var(--line);
   }

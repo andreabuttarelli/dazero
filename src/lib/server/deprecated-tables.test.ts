@@ -25,12 +25,19 @@ const DEPRECATED = [
 	'market_post_observations',
 	'market_posts',
 	'market_teardowns',
-	'market_video_analyses'
+	'market_video_analyses',
+	'brand_app_connections',
+	'brand_knowledge_sources',
+	'brand_triggers',
+	'brand_webhooks',
+	'webhook_deliveries',
+	'onboarding_step_jobs'
 ] as const;
 
 const MIGRATIONS = [
 	'20260921180000_deprecate_dead_tables.sql',
-	'20260921190000_drop_market.sql'
+	'20260921190000_drop_market.sql',
+	'20260922200000_drop_composio_and_onboarding_steps.sql'
 ];
 
 const MIGRATION = MIGRATIONS.map((name) =>
@@ -51,18 +58,18 @@ describe('deprecated tables', () => {
 
 	it('usa un formato solo, o il commento non si può interrogare', () => {
 		for (const { date, body } of commented()) {
-			expect(date).toBe('2026-09-21');
+			expect(['2026-09-21', '2026-09-22']).toContain(date);
 			expect(body.trim()).toMatch(/\.$/);
 		}
 	});
 
 	/**
 	 * Marcare una coda o una funzionalità mai usata da un cliente è il difetto che questo elenco
-	 * previene: entrambe hanno codice vivo che ci scrive, e deprecarle mente a chi legge.
+	 * previene: hanno codice vivo che ci scrive, e deprecarle mente a chi legge.
 	 */
 	it('non tocca le code né le funzionalità vive ma mai usate', () => {
 		const marked = new Set(commented().map((c) => c.table));
-		for (const alive of ['webhook_deliveries', 'org_usage', 'ad_campaigns', 'brand_webhooks']) {
+		for (const alive of ['org_usage', 'ad_campaigns']) {
 			expect(marked.has(alive)).toBe(false);
 		}
 	});

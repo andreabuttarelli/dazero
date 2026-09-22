@@ -22,9 +22,9 @@ export type HeadlinePost = {
 export type HomeHeadline = {
   /** `approve` = c'è una coda; `published` = è uscito qualcosa; `empty` = né l'uno né l'altro. */
   kind: 'approve' | 'published' | 'empty';
-  /** Il post da mostrare accanto alla domanda. Null quando la coda è di soli articoli, o è vuota. */
+  /** Il post da mostrare accanto alla domanda. Null quando la coda è vuota. */
   post: HeadlinePost | null;
-  /** Quanti aspettano una risposta, post e articoli insieme. */
+  /** Quanti post aspettano una risposta. */
   waiting: number;
   /** Quanti sono usciti di recente. */
   recent: number;
@@ -36,11 +36,10 @@ type Input = {
     posts: HeadlinePost[];
     published: Array<HeadlinePost & { published_at: string | null }>;
   };
-  blog: { pending: number };
 };
 
 export function homeHeadline(overview: Input): HomeHeadline {
-  const waiting = overview.queue.pending + overview.blog.pending;
+  const waiting = overview.queue.pending;
   const published = overview.queue.published;
 
   if (waiting > 0) {

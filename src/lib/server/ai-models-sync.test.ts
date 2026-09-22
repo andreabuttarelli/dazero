@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { syncAiModels, modalitiesOf } from './ai-models-sync';
+import { syncAiModels, modalitiesOf, wireModelId } from './ai-models-sync';
+import { GPT_IMAGE_25_FLARE_MODEL } from '$lib/image-models';
+import { SEEDANCE_25_MODEL } from '$lib/video-models';
 
 const CHAT_MODELS = {
   data: [
@@ -239,5 +241,52 @@ describe('modalitiesOf — cosa sa un modello, dalla tabella, per il listino giu
       output: ['video'],
       synced_at: '2026-09-22T00:00:00Z'
     });
+  });
+
+  it('con un catalogo, traduce il nostro id interno all\'id sul filo prima di cercare — la regressione vera: `ai_models.id` è sempre il wire id, mai il nostro', async () => {
+    const { admin } = fakeAdmin([
+      {
+        id: 'openai/gpt-image-2.5-flare',
+        catalogue: 'image',
+        input_modalities: ['text', 'image'],
+        output_modalities: ['image'],
+        synced_at: '2026-09-22T00:00:00Z'
+      }
+    ]);
+
+    // `GPT_IMAGE_25_FLARE_MODEL` è il nostro id interno ('gpt-image-2.5-flare'), non quello che
+    // la tabella ha scritto ('openai/gpt-image-2.5-flare'): senza la traduzione questa query non
+    // trova mai la riga, ed è esattamente il blocco totale che si è visto in produzione.
+    expect(await modalitiesOf(admin, GPT_IMAGE_25_FLARE_MODEL, 'image')).toEqual({
+      input: ['text', 'image'],
+      output: ['image'],
+      synced_at: '2026-09-22T00:00:00Z'
+    });
+  });
+
+  it('un id interno genuinamente sconosciuto al medium resta bloccato — la traduzione non allarga il permesso', async () => {
+    const { admin } = fakeAdmin([
+      { id: 'openai/gpt-image-2.5-flare', catalogue: 'image', input_modalities: ['text', 'image'], output_modalities: ['image'], synced_at: 'now' }
+    ]);
+
+    expect(await modalitiesOf(admin, 'not-a-real-model', 'image')).toBeNull();
+  });
+});
+
+describe('wireModelId — il nostro id interno, sul filo di OpenRouter', () => {
+  it('un id immagine si traduce tramite `openrouterImages`', async () => {
+    expect(await wireModelId(GPT_IMAGE_25_FLARE_MODEL, 'image')).toBe('openai/gpt-image-2.5-flare');
+  });
+
+  it('un id video si traduce tramite `openrouterId`', async () => {
+    expect(await wireModelId(SEEDANCE_25_MODEL, 'video')).toBe('bytedance/seedance-2.5');
+  });
+
+  it('un id di chat non si traduce: è già quello sul filo', async () => {
+    expect(await wireModelId('anthropic/claude-opus', 'chat')).toBe('anthropic/claude-opus');
+  });
+
+  it('un id senza spec per quel medium resta così com\'è — genuinamente sconosciuto, non da tradurre', async () => {
+    expect(await wireModelId('not-a-real-model', 'image')).toBe('not-a-real-model');
   });
 });

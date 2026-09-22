@@ -126,7 +126,6 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    border-radius: 16px;
     background: var(--paper, #fff);
     border: 1px solid var(--line, #e5e5e5);
     box-shadow:
@@ -159,7 +158,6 @@
     color: var(--ink-soft, #6e6e73);
     background: color-mix(in srgb, var(--paper, #fff) 86%, transparent);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 999px;
     backdrop-filter: blur(6px);
     pointer-events: none;
   }
@@ -181,7 +179,6 @@
     color: var(--ink, #1d1d1f);
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 7px;
   }
   .feed-handle {
     flex: 1;
@@ -198,7 +195,6 @@
     color: var(--ink-soft, #6e6e73);
     background: none;
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 7px;
     cursor: pointer;
   }
   .feed-sync:hover:not(:disabled) {
@@ -284,7 +280,6 @@
     color: var(--ink-soft, #6e6e73);
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 999px;
     cursor: pointer;
   }
   .feed-nav:hover {
@@ -306,7 +301,6 @@
     width: 100%;
     object-fit: cover;
     background: var(--paper-2, #f9f9f9);
-    border-radius: 10px;
   }
   .feed-photo-empty {
     display: grid;

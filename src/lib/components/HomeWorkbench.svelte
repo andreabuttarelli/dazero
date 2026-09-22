@@ -24,7 +24,7 @@
     return t.length > n ? `${t.slice(0, n)}…` : t;
   }
 
-  const upcoming = $derived(upcomingFeed(overview.queue.upcoming ?? [], overview.blog.upcoming ?? []));
+  const upcoming = $derived(upcomingFeed(overview.queue.upcoming ?? []));
   // Le cose da fare in cima: la SELEZIONE e l'ORDINE stanno in `$lib/home-todos`, puro e sotto
   // test; qui si aggiunge solo ciò che quel modulo non può sapere — l'href col brand e la
   // traduzione. Ha preso il posto di tre gauge (setup, SEO, GEO) e di una coda paginata dei
@@ -170,7 +170,7 @@
                 <span class="up-meta">{formatWhen(item.when)}</span>
                 <span class="up-title">{item.title ?? '—'}</span>
               </span>
-              <span class="up-kind">{$_(`app.home.overview.kind${item.kind === 'blog' ? 'Blog' : 'Social'}`)}</span>
+              <span class="up-kind">{$_('app.home.overview.kindSocial')}</span>
             </a>
           </li>
         {/each}
@@ -274,7 +274,6 @@
     gap: 12px;
     padding: 13px 16px;
     border: 1px solid var(--line);
-    border-radius: 14px;
     background: var(--paper);
     text-decoration: none;
     transition: border-color 140ms ease;
@@ -300,7 +299,6 @@
   .todo-cta {
     flex: none;
     border: 1px solid var(--line);
-    border-radius: 999px;
     padding: 5px 14px;
     font-size: 13px;
     font-weight: 600;
@@ -337,7 +335,6 @@
     gap: 12px;
     margin: 0 0 20px;
     padding: 12px 14px;
-    border-radius: 14px;
     border: 1px solid var(--line);
     background: var(--paper-2);
   }
@@ -388,7 +385,6 @@
   .ov-empty {
     margin: 0;
     padding: 16px;
-    border-radius: 14px;
     border: 1px dashed var(--line);
     font-size: 13.5px;
     color: var(--ink-soft);
@@ -418,7 +414,6 @@
   .up-thumb {
     width: 40px;
     height: 40px;
-    border-radius: 9px;
     overflow: hidden;
     flex: none;
     background: color-mix(in srgb, var(--ink) 6%, var(--paper));
@@ -495,7 +490,6 @@
     flex-direction: column;
     gap: 8px;
     padding: 14px;
-    border-radius: 14px;
     border: 1px solid var(--line);
     background: var(--paper);
     text-decoration: none;
@@ -549,7 +543,6 @@
   }
   .spark-days span {
     height: 3px;
-    border-radius: 999px;
     background: color-mix(in srgb, var(--ink) 8%, transparent);
   }
   .spark-days span.hot {
@@ -564,7 +557,6 @@
   }
   .likes-bars span {
     flex: 1;
-    border-radius: 6px 6px 3px 3px;
     background: color-mix(in srgb, var(--accent) 55%, var(--ink));
     min-height: 6px;
     transition: height 0.55s ease;

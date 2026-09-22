@@ -127,7 +127,6 @@
   .retry:focus-visible {
     outline: 2px solid var(--accent, #7c5cff);
     outline-offset: 2px;
-    border-radius: 4px;
   }
 
   /* Due colonne fisse: il pannello è stretto e una colonna sola spreca mezzo
@@ -142,7 +141,6 @@
   .skel {
     aspect-ratio: 1;
     border: 1px solid var(--line, #ededef);
-    border-radius: 10px;
     background: var(--paper-2, #f9f9f9);
     animation: skel-pulse 1.2s ease-in-out infinite;
   }

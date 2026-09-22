@@ -88,7 +88,20 @@
         </div>
       </div>
     {:else}
-      <div class="field"><a class="bbtn primary" href="/pricing">{$_('app.settings.billing.choosePlan')}</a></div>
+      <div class="field">
+        <div class="ftxt">
+          <div class="fh">{$_('app.settings.billing.upgradeTitle')}</div>
+          <div class="fs">{$_('app.settings.billing.upgradeDesc')}</div>
+        </div>
+        <div class="bill-actions">
+          {#each data.upgrades as p (p.key)}
+            <form method="POST" action={`?/upgrade`}>
+              <input type="hidden" name="plan" value={p.key} />
+              <button class="bbtn primary" type="submit">{$_('app.settings.upgrade.choose', { values: { plan: p.label } })}</button>
+            </form>
+          {/each}
+        </div>
+      </div>
     {/if}
   {/if}
 </section>
@@ -103,7 +116,7 @@
       <tbody>
         {#each data.brands as b (b.id)}
           <tr>
-            <td><a href={`/app/${b.slug}`}>{b.name}</a></td>
+            <td>{b.name}</td>
             <td class="num">{b.credits}</td>
           </tr>
         {/each}

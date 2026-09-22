@@ -999,32 +999,5 @@ export const studioActions: Actions = {
       }
       return { regenerated: true };
     });
-  },
-
-  refreshMarketReferences: async ({ params, locals: { supabase } }) => {
-    return withBrand(supabase, params.brand, async (brand) => {
-      const { count } = await supabase
-        .from('competitors')
-        .select('id', { count: 'exact', head: true })
-        .eq('brand_id', brand.id);
-      if (!count) {
-        return fail(400, { error: 'Add competitors first.' });
-      }
-      try {
-        const { refreshMarketReferences } = await import('$lib/server/market-references');
-        const row = await withBrandContext(brand.id, () =>
-          refreshMarketReferences(supabase, brand.id, { force: true })
-        );
-        if (!row) return fail(400, { error: 'Could not refresh market references.' });
-        return {
-          marketRefreshed: true,
-          formats: row.catalog.formats.length,
-          references: row.references.length,
-          ads: row.ads?.length ?? 0
-        };
-      } catch (e) {
-        return fail(500, { error: e instanceof Error ? e.message : 'Refresh failed' });
-      }
-    });
   }
 };

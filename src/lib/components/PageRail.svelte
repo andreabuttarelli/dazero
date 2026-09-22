@@ -102,7 +102,6 @@
     justify-content: space-between;
     gap: 6px;
     padding: 10px;
-    border-radius: 8px;
     font-size: 14.5px;
     font-weight: 500;
     color: var(--ink-soft, #6e6e73);

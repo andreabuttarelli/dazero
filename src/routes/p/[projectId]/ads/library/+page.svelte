@@ -8,6 +8,7 @@
   import type { RemixBrief } from '$lib/server/ads-remix';
   import UpgradeLink from '$lib/components/UpgradeLink.svelte';
   import { X } from '@lucide/svelte';
+  import { page } from '$app/stores';
 
   let { data, form } = $props();
   const brand = $derived(data.brand);
@@ -52,7 +53,7 @@
     sp.set('status', next.status ?? status);
     sp.set('media', next.media ?? media);
     const qs = sp.toString();
-    return `/app/${brand.slug}/ads/library${qs ? `?${qs}` : ''}`;
+    return `/p/${$page.params.projectId}/ads/library${qs ? `?${qs}` : ''}`;
   }
 
   async function runSearch(e?: Event) {
@@ -558,7 +559,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     border: 1px solid var(--line);
-    border-radius: 999px;
     padding: 2px 10px;
     font-size: 0.78rem !important;
     color: var(--muted) !important;
@@ -584,7 +584,6 @@
     grid-template-columns: 1fr 1fr;
     gap: 0;
     border: 1px solid var(--line);
-    border-radius: 12px;
     overflow: hidden;
     background: color-mix(in oklab, var(--ink) 3%, var(--paper));
   }
@@ -613,7 +612,6 @@
     flex: 1;
     min-width: 0;
     border: 1px solid var(--line);
-    border-radius: 12px;
     padding: 12px 14px;
     background: var(--bg, var(--paper));
     color: inherit;
@@ -628,7 +626,6 @@
     gap: 6px;
     white-space: nowrap;
     border: none;
-    border-radius: 12px;
     padding: 0 14px;
     background: var(--ink);
     color: var(--paper);
@@ -663,7 +660,6 @@
   .filters select {
     width: 100%;
     border: 1px solid var(--line);
-    border-radius: 10px;
     padding: 10px 12px;
     background: var(--bg, var(--paper));
     color: inherit;
@@ -690,7 +686,6 @@
     border: 1px solid var(--line);
     background: transparent;
     color: inherit;
-    border-radius: 999px;
     padding: 8px 12px;
     font: inherit;
     font-size: 0.82rem;
@@ -752,7 +747,6 @@
     display: flex;
     flex-direction: column;
     border: 1px solid var(--line);
-    border-radius: 14px;
     overflow: hidden;
     background: var(--paper);
     min-width: 0;
@@ -889,7 +883,6 @@
   .badge {
     font-size: 0.68rem;
     font-weight: 650;
-    border-radius: 999px;
     padding: 2px 7px;
     border: 1px solid var(--line);
   }
@@ -909,7 +902,6 @@
 
   .banner.err,
   .banner.ok {
-    border-radius: 12px;
     padding: 12px 14px;
     font-size: 0.9rem;
     line-height: 1.4;
@@ -933,7 +925,6 @@
   }
   .brief {
     border: 1px solid var(--line);
-    border-radius: 14px;
     padding: 14px 16px;
     display: flex;
     flex-direction: column;
@@ -999,7 +990,6 @@
     border: 1px solid var(--line);
     background: var(--paper-2);
     color: inherit;
-    border-radius: 999px;
     padding: 0.25rem 0.7rem;
     font: inherit;
     font-size: 0.78rem;
@@ -1023,7 +1013,6 @@
   }
   .pill {
     border: 1px solid var(--line);
-    border-radius: 999px;
     padding: 4px 10px;
     font-size: 0.72rem;
   }
@@ -1232,7 +1221,6 @@
     overflow: auto;
     background: var(--paper);
     color: var(--ink);
-    border-radius: 16px;
     padding: 16px;
     display: grid;
     gap: 12px;
@@ -1248,7 +1236,6 @@
     appearance: none;
     border: 1px solid var(--line);
     background: transparent;
-    border-radius: 8px;
     width: 32px;
     height: 32px;
     display: inline-flex;
@@ -1260,7 +1247,6 @@
   .vr-player {
     width: 100%;
     max-height: 280px;
-    border-radius: 12px;
     background: #111;
   }
 </style>

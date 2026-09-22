@@ -71,7 +71,7 @@
           controls
           playsinline
           preload="metadata"
-          class="border-border max-h-96 w-full rounded-lg border bg-black"
+          class="border-border max-h-96 w-full border bg-black"
         ></video>
       {:else if preview.kind === 'carousel'}
         <div class="flex snap-x gap-2 overflow-x-auto pb-1">
@@ -80,7 +80,7 @@
               src={url}
               alt="Slide {index + 1}"
               loading="lazy"
-              class="border-border h-72 w-auto shrink-0 snap-start rounded-lg border object-contain"
+              class="border-border h-72 w-auto shrink-0 snap-start border object-contain"
             />
           {/each}
         </div>
@@ -89,7 +89,7 @@
           src={preview.urls[0]}
           alt="Visual attached to this post"
           loading="lazy"
-          class="border-border max-h-96 w-full rounded-lg border object-contain"
+          class="border-border max-h-96 w-full border object-contain"
         />
       {/if}
 
@@ -103,16 +103,16 @@
       {#if outcome?.message}
         <p
           role={outcome.approved ? 'status' : 'alert'}
-          class="rounded-lg border px-3 py-2 text-sm {outcome.approved
+          class="border px-3 py-2 text-sm {outcome.approved
             ? 'border-border'
             : 'border-destructive/40 text-destructive'}"
         >
           {outcome.message}
         </p>
       {:else if outcome?.saved}
-        <p role="status" class="border-border rounded-lg border px-3 py-2 text-sm">Copy saved.</p>
+        <p role="status" class="border-border border px-3 py-2 text-sm">Copy saved.</p>
       {:else if outcome?.approved}
-        <p role="status" class="border-border rounded-lg border px-3 py-2 text-sm">
+        <p role="status" class="border-border border px-3 py-2 text-sm">
           Approved and sent for distribution — the post is now {outcome.status}.
         </p>
       {/if}
@@ -159,7 +159,7 @@
       </form>
 
       {#if postState.canApprove}
-        <div class="border-border flex flex-col gap-3 rounded-lg border p-4">
+        <div class="border-border flex flex-col gap-3 border p-4">
           <h3 class="text-sm font-semibold">Approve</h3>
           <p class="text-sm">{distributionNote(detail, timezone)}</p>
 

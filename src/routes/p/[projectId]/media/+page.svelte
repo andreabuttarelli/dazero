@@ -89,7 +89,7 @@
 
   .filters { display: flex; align-items: center; gap: 6px; margin: 8px 0 18px; }
   .filter {
-    font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; padding: 7px 14px;
     color: var(--ink-soft); text-decoration: none; border: 1px solid transparent;
   }
   .filter:hover { color: var(--ink); }
@@ -102,7 +102,7 @@
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
   .tile {
-    position: relative; border-radius: 12px; overflow: hidden; background: var(--paper-2);
+    position: relative; overflow: hidden; background: var(--paper-2);
     border: 1px solid var(--line); display: flex; flex-direction: column; min-height: 160px;
   }
   .tile img, .tile video { width: 100%; height: 140px; object-fit: cover; display: block; }
@@ -117,7 +117,7 @@
 
   .badge {
     position: absolute; top: 8px; left: 8px; z-index: 1; font-size: 10px; font-weight: 700;
-    padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff;
+    padding: 2px 8px; background: rgba(0, 0, 0, 0.55); color: #fff;
   }
   .badge.generated { background: color-mix(in srgb, var(--accent, #6d4aff) 82%, #000); }
 

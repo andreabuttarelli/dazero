@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { currentPhaseIndex, gtmRowToPlan } from '$lib/server/gtm';
 import { currentWeekIndex } from '$lib/server/editorial-plan';
-import { hasWebHub, isPaidPlan, hasBacklinkNetwork } from '$lib/server/plans';
+import { isPaidPlan } from '$lib/server/plans';
 import { studioCompleteness } from '$lib/studio-completeness';
 import { aggregateRecentEngagement, type SocialHistoryRow } from '$lib/server/social-history-metrics';
 
@@ -13,13 +13,6 @@ export type PendingPostPreview = {
   caption: string | null;
   media_url: string | null;
   format: string | null;
-};
-
-export type PendingBlogPreview = {
-  id: string;
-  title: string | null;
-  status: string;
-  cover_url: string | null;
 };
 
 /** Un post gia' uscito, con la sua foto: e' cio' che la home mostra per dire che il lavoro esiste. */
@@ -39,13 +32,6 @@ export type ScheduledPostPreview = {
   scheduled_for: string;
 };
 
-export type ScheduledBlogPreview = {
-  id: string;
-  title: string | null;
-  cover_url: string | null;
-  scheduled_for: string;
-};
-
 export type StrategyOverview = {
   gtm: {
     ready: boolean;
@@ -59,44 +45,12 @@ export type StrategyOverview = {
   };
 };
 
-export type PublishOverview = {
-  queue: { pending: number; scheduled: number; failed: number; posts: PendingPostPreview[] };
-  calendar: { upcoming: number };
-  campaigns: { count: number };
-  analytics: { published: number; trackedPosts: number };
-  competitors: { count: number; posts: number };
-  web: { blogPending: number };
-  paid: boolean;
-};
-
-export type WebOverview = {
-  paid: boolean;
-  /** dazero cross-brand backlink network (the article link graph). */
-  network: {
-    enabled: boolean;
-    outgoing: number;
-    incoming: number;
-    openOpportunities: number;
-  };
-  library: {
-    pages: number;
-  };
-  blog: {
-    enabled: boolean;
-    articles: number;
-    published: number;
-    pending: number;
-    domains: number;
-  };
-};
-
 export type HomeOverview = {
   paid: boolean;
   setup: {
     studioPct: number;
     hasStrategy: boolean;
     hasEditorialPlan: boolean;
-    blogEnabled: boolean;
     socialAccounts: number;
   };
   queue: {
@@ -106,13 +60,6 @@ export type HomeOverview = {
     upcoming: ScheduledPostPreview[];
     /** Gli ultimi usciti davvero. La home apre su questi: e' l'unica prova che il prodotto lavora. */
     published: PublishedPostPreview[];
-  };
-  blog: {
-    pending: number;
-    published: number;
-    scheduled: number;
-    articles: PendingBlogPreview[];
-    upcoming: ScheduledBlogPreview[];
   };
   analysis: {
     published: number;
@@ -213,176 +160,6 @@ export async function loadStrategyOverview(
   };
 }
 
-export async function loadPublishOverview(
-  supabase: SupabaseClient,
-  brand: BrandRow
-): Promise<PublishOverview> {
-  const now = new Date();
-  const weekAhead = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  // Upgrade banner for autopublish / social connects — not Web hub (free matches Go).
-  const paid = isPaidPlan(brand.plan);
-
-  const [
-    { data: posts },
-    { data: pendingPreview },
-    { count: upcoming },
-    { data: campaignRows },
-    { count: trackedPosts },
-    { data: competitorRows },
-    { data: articles }
-  ] = await Promise.all([
-    supabase.from('posts').select('status').eq('brand_id', brand.id),
-    supabase
-      .from('posts')
-      .select('id, platform, caption, media_url, format')
-      .eq('brand_id', brand.id)
-      .eq('status', 'pending_user')
-      .order('created_at', { ascending: false })
-      .limit(6),
-    supabase
-      .from('posts')
-      .select('id', { count: 'exact', head: true })
-      .eq('brand_id', brand.id)
-      .eq('status', 'scheduled')
-      .gte('scheduled_for', now.toISOString())
-      .lte('scheduled_for', weekAhead.toISOString()),
-    supabase
-      .from('posts')
-      .select('campaign_id')
-      .eq('brand_id', brand.id)
-      .not('campaign_id', 'is', null),
-    supabase
-      .from('social_post_history')
-      .select('id', { count: 'exact', head: true })
-      .eq('brand_id', brand.id),
-    supabase.from('competitors').select('id, top_posts').eq('brand_id', brand.id),
-    paid
-      ? supabase.from('brand_articles').select('status').eq('brand_id', brand.id)
-      : Promise.resolve({ data: null })
-  ]);
-
-  const counts = { pending: 0, scheduled: 0, failed: 0, published: 0 };
-  for (const p of posts ?? []) {
-    const s = String(p.status ?? '');
-    if (s === 'pending_user') counts.pending++;
-    else if (s === 'scheduled') counts.scheduled++;
-    else if (s === 'failed') counts.failed++;
-    else if (s === 'published') counts.published++;
-  }
-
-  const campaignIds = new Set((campaignRows ?? []).map((r) => r.campaign_id).filter(Boolean));
-  const competitorPostCount = (competitorRows ?? []).reduce((n, r) => {
-    return n + (Array.isArray(r.top_posts) ? r.top_posts.length : 0);
-  }, 0);
-
-  const previewPosts: PendingPostPreview[] = (pendingPreview ?? []).map((p) => ({
-    id: p.id as string,
-    platform: p.platform ? String(p.platform) : null,
-    caption: p.caption ? String(p.caption) : null,
-    media_url: p.media_url ? String(p.media_url) : null,
-    format: p.format ? String(p.format) : null
-  }));
-
-  let blogPending = 0;
-  for (const a of articles ?? []) {
-    if (a.status === 'draft' || a.status === 'approved') blogPending++;
-  }
-
-  return {
-    paid,
-    queue: {
-      pending: counts.pending,
-      scheduled: counts.scheduled,
-      failed: counts.failed,
-      posts: previewPosts
-    },
-    calendar: { upcoming: upcoming ?? 0 },
-    campaigns: { count: campaignIds.size },
-    analytics: { published: counts.published, trackedPosts: trackedPosts ?? 0 },
-    competitors: { count: (competitorRows ?? []).length, posts: competitorPostCount },
-    web: { blogPending }
-  };
-}
-
-export async function loadWebOverview(
-  supabase: SupabaseClient,
-  brand: BrandRow & { blog_config?: unknown }
-): Promise<WebOverview> {
-  const paid = hasWebHub(brand.plan);
-  if (!paid) {
-    return {
-      paid: false,
-      network: { enabled: false, outgoing: 0, incoming: 0, openOpportunities: 0 },
-      library: { pages: 0 },
-      blog: { enabled: false, articles: 0, published: 0, pending: 0, domains: 0 }
-    };
-  }
-
-  const [
-    { count: libraryPages },
-    { data: articles },
-    { count: domains },
-    { data: brandRow },
-    { count: netOut },
-    { count: netIn },
-    { count: netOpp }
-  ] = await Promise.all([
-    supabase
-      .from('brand_pages')
-      .select('id', { count: 'exact', head: true })
-      .eq('brand_id', brand.id)
-      .eq('active', true),
-    supabase.from('brand_articles').select('status').eq('brand_id', brand.id),
-    supabase
-      .from('brand_sites')
-      .select('id', { count: 'exact', head: true })
-      .eq('brand_id', brand.id),
-    supabase.from('brands').select('blog_config').eq('id', brand.id).maybeSingle(),
-    supabase
-      .from('brand_backlink_placements')
-      .select('id', { count: 'exact', head: true })
-      .eq('source_brand_id', brand.id)
-      .neq('status', 'removed'),
-    supabase
-      .from('brand_backlink_placements')
-      .select('id', { count: 'exact', head: true })
-      .eq('target_brand_id', brand.id)
-      .neq('status', 'removed'),
-    supabase
-      .from('brand_backlink_opportunities')
-      .select('id', { count: 'exact', head: true })
-      .eq('brand_id', brand.id)
-      .eq('status', 'open')
-  ]);
-
-  let published = 0;
-  let pending = 0;
-  for (const a of articles ?? []) {
-    if (a.status === 'published') published++;
-    else if (a.status === 'draft' || a.status === 'approved') pending++;
-  }
-  const blogCfg = (brandRow?.blog_config ?? brand.blog_config) as { enabled?: boolean } | null;
-
-  return {
-    paid: true,
-    network: {
-      enabled: hasBacklinkNetwork(brand.plan) &&
-        (brandRow?.blog_config as { backlinkNetwork?: boolean } | null)?.backlinkNetwork !== false,
-      outgoing: netOut ?? 0,
-      incoming: netIn ?? 0,
-      openOpportunities: netOpp ?? 0
-    },
-    library: { pages: libraryPages ?? 0 },
-    blog: {
-      enabled: blogCfg?.enabled === true,
-      articles: articles?.length ?? 0,
-      published,
-      pending,
-      domains: domains ?? 0
-    }
-  };
-}
-
 export type PostFactRow = {
   status?: string | null;
   scheduled_for?: string | null;
@@ -401,53 +178,17 @@ export function derivePostCounts(rows: PostFactRow[] | null | undefined): PostCo
   return out;
 }
 
-export type BlogFactRow = {
-  id?: string | null;
-  title?: string | null;
-  status?: string | null;
-  cover_image?: string | null;
-  scheduled_for?: string | null;
-};
-
-/**
- * Articles that will auto-publish: approved AND holding a slot that has not passed.
- * Drafts with a slot are deliberately excluded — they still need a human — which mirrors
- * the `status = 'approved'` filter of the two queries this replaces.
- *
- * Timestamps compare as ISO strings, which is only sound because both sides are UTC ISO-8601
- * from Postgres; `nowIso` is built the same way by the caller.
- */
-export function deriveUpcomingBlogs(
-  rows: BlogFactRow[] | null | undefined,
-  nowIso: string,
-  limit = 5
-): { count: number; previews: ScheduledBlogPreview[] } {
-  const upcoming = (rows ?? [])
-    .filter((a) => a.status === 'approved' && a.scheduled_for && String(a.scheduled_for) >= nowIso)
-    .sort((a, b) => String(a.scheduled_for).localeCompare(String(b.scheduled_for)));
-  return {
-    count: upcoming.length,
-    previews: upcoming.slice(0, limit).map((a) => ({
-      id: a.id as string,
-      title: a.title ? String(a.title) : null,
-      cover_url: a.cover_image ? String(a.cover_image) : null,
-      scheduled_for: String(a.scheduled_for)
-    }))
-  };
-}
-
 export async function loadHomeOverview(
   supabase: SupabaseClient,
-  brand: BrandRow & { blog_config?: unknown; name?: string },
+  brand: BrandRow & { name?: string },
   extras?: {
     studioPct?: number;
     strategySetup?: { gtm?: boolean; plan?: boolean };
     socialAccountCount?: number;
   }
 ): Promise<HomeOverview> {
-  // Home upgrade CTA is for autopublish/socials; Web/Leads are unlocked on free.
+  // Home upgrade CTA is for autopublish/socials.
   const paid = isPaidPlan(brand.plan);
-  const webUnlocked = hasWebHub(brand.plan);
   // Snapshot metrics are lifetime totals on each post — there is no daily engagement series.
   // Overview therefore looks at posts published in the last 30 days (not 7): a 7-day publish
   // window was almost always empty, which made likes/views read as 0 even when the brand had
@@ -462,8 +203,6 @@ export async function loadHomeOverview(
     { count: trackedPosts },
     { data: recentHistoryRows },
     { data: lastStatsSync },
-    { data: blogRows },
-    { count: blogPublishedCount },
     { data: publishedPosts }
   ] = await Promise.all([
     // One index-only read answers every post COUNT this page shows (pending, scheduled,
@@ -511,25 +250,6 @@ export async function loadHomeOverview(
       .order('synced_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
-    // Pending blogs to review: all drafts (even if they have a tentative slot),
-    // plus approved articles that are not yet scheduled.
-    // Draft + approved articles in one read. The upcoming-preview rows and the
-    // scheduled count are both derived from it below (an approved article with a future
-    // slot is exactly the "will auto-publish" set), which is three round trips saved.
-    // `published` stays its own count: it is the one figure not derivable from this set,
-    // and deriving it would mean fetching every article a brand has ever published.
-    supabase
-      .from('brand_articles')
-      .select('id, title, status, cover_image, scheduled_for')
-      .eq('brand_id', brand.id)
-      .in('status', ['draft', 'approved'])
-      .order('created_at', { ascending: false })
-      .limit(200),
-    supabase
-      .from('brand_articles')
-      .select('id', { count: 'exact', head: true })
-      .eq('brand_id', brand.id)
-      .eq('status', 'published'),
     // Gli ultimi post usciti, con la foto. Sei e non di piu': la striscia della home ne mostra
     // quattro e i due di scorta coprono quelli senza immagine, che nella striscia non entrano.
     supabase
@@ -584,39 +304,12 @@ export async function loadHomeOverview(
     published_at: p.published_at ? String(p.published_at) : null
   }));
 
-  // Exclude already-approved+scheduled articles from the review queue.
-  // Return the full pending set — Overview shows a 5-item preview, then paginates on expand.
-  const pendingBlogs: PendingBlogPreview[] = (blogRows ?? [])
-    .filter((a) => {
-      if (a.status === 'draft') return true;
-      if (a.status === 'approved' && !a.scheduled_for) return true;
-      return false;
-    })
-    .map((a) => ({
-      id: a.id as string,
-      title: a.title ? String(a.title) : null,
-      status: String(a.status),
-      cover_url: a.cover_image ? String(a.cover_image) : null
-    }));
-
-  // "Will auto-publish" = approved with a slot still ahead of us. Both the preview and the
-  // count come out of `blogRows`, which already contains every draft and approved article.
-  const { count: scheduledBlogCount, previews: upcomingBlogPreviews } = deriveUpcomingBlogs(
-    blogRows as BlogFactRow[] | null,
-    nowIso
-  );
-
-  // blog_config rides on the brand row the layout already loaded (BRAND_SHELL_SELECT),
-  // so this no longer re-reads `brands` for it.
-  const blogCfg = brand.blog_config as { enabled?: boolean } | null;
-
   return {
     paid,
     setup: {
       studioPct: extras?.studioPct ?? 0,
       hasStrategy: extras?.strategySetup?.gtm ?? false,
       hasEditorialPlan: extras?.strategySetup?.plan ?? false,
-      blogEnabled: blogCfg?.enabled === true,
       socialAccounts: extras?.socialAccountCount ?? 0
     },
     queue: {
@@ -625,13 +318,6 @@ export async function loadHomeOverview(
       posts,
       upcoming: upcomingPostPreviews,
       published: publishedPostPreviews
-    },
-    blog: {
-      pending: pendingBlogs.length,
-      published: blogPublishedCount ?? 0,
-      scheduled: scheduledBlogCount,
-      articles: pendingBlogs,
-      upcoming: upcomingBlogPreviews
     },
     analysis: {
       published: postCounts.published,

@@ -15,10 +15,10 @@
 
 <style>
   .pglyph {
-    width: 16px; height: 16px; border-radius: 5px; display: inline-flex; align-items: center;
+    width: 16px; height: 16px; display: inline-flex; align-items: center;
     justify-content: center; color: #fff; font-size: 8px; font-weight: 700; flex: 0 0 auto;
   }
   .pglyph svg { width: 11px; height: 11px; }
-  .pglyph.lg { width: 30px; height: 30px; border-radius: 9px; font-size: 11px; }
+  .pglyph.lg { width: 30px; height: 30px; font-size: 11px; }
   .pglyph.lg svg { width: 17px; height: 17px; }
 </style>

@@ -1,7 +1,7 @@
 import { swallow } from '$lib/server/swallow';
 import { GEMINI_MAX_OUTPUT_TOKENS } from '$lib/server/ai-output-limits';
 import { tool, stepCountIs, hasToolCall, type ModelMessage, type UIMessage } from 'ai';
-import { harnessStreamText } from '$lib/server/harness';
+import { streamAgentText } from '$lib/server/agent-stream';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { transform } from 'sucrase';
@@ -669,14 +669,10 @@ Workflow:
 When the user message is ANY QC brief — MOTION CRAFT QC, REFERENCE FIDELITY FAILED, or SELLABILITY QC (verdict FIX/KILL) — you MUST apply every issue and the mandatory next test before you finish. Craft notes (transitions, easing, overlap, type, UI mockups) come first; reference-fidelity notes (missing or altered beats, broken order) come next; ads/organic sellability notes (hook, CTA, proof) come after. Do not argue with the score. Call replace_source or write_source — a text reply without a source change is a failure, and calling finish without one is the same failure with a nicer ending.
 `;
 
-	const result = harnessStreamText({
-		brandId,
-		userId,
+	const result = streamAgentText({
 		agent: 'motion_video',
-		mode: selected.length ? 'edit' : 'create',
-		model: motion.modelId,
-		provider: motion.provider,
-		surface: 'chat'
+		surface: 'chat',
+		model: motion.modelId
 	}, {
 		model: motion.model,
 		maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS,
@@ -1109,7 +1105,7 @@ When the user message is ANY QC brief — MOTION CRAFT QC, REFERENCE FIDELITY FA
 				}
 			})
 		}),
-		onFinish: ({ totalUsage, steps }) => {
+		onFinish: ({ totalUsage, steps }: { totalUsage?: unknown; steps?: unknown[] }) => {
 			void recordReferenceUse().catch((error) => { swallow('record reference use', error); return undefined; });
 			// I file di questa run se ne vanno con lei: la VM è del brand e la spegne il suo timeout,
 			// ma lasciarci dentro il workspace di un turno finito è il modo in cui due giri dello
@@ -1133,7 +1129,7 @@ When the user message is ANY QC brief — MOTION CRAFT QC, REFERENCE FIDELITY FA
 				context: createMode ? 'motion-video:create' : 'motion-video:edit'
 			});
 		},
-		onError: ({ error }) => {
+		onError: ({ error }: { error?: unknown }) => {
 			void base.close();
 			opts.onSliceEnd?.({
 				finished: calledFinish,

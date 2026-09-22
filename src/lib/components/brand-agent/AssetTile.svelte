@@ -38,14 +38,12 @@
     min-width: 0;
     text-decoration: none;
     color: inherit;
-    border-radius: 10px;
   }
   .frame {
     position: relative;
     display: block;
     aspect-ratio: 1;
     border: 1px solid var(--line, #ededef);
-    border-radius: 10px;
     overflow: hidden;
     background: var(--paper-2, #f9f9f9);
   }
@@ -66,7 +64,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
     color: #fff;
     background: color-mix(in oklab, #000 50%, transparent);
     pointer-events: none;

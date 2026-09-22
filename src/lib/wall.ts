@@ -4,8 +4,7 @@
  * `$lib/server/wall.ts` reads the database and is server-only by SvelteKit's own rule; the pages and
  * the card component need the same tag list, the same platform list and the same card shape to
  * render it. Duplicating either list would mean a filter chip that silently matches nothing the day
- * one of the two drifts, so the vocabulary lives here and the server module imports it — the same
- * split `composio-catalog.ts` uses.
+ * one of the two drifts, so the vocabulary lives here and the server module imports it.
  *
  * Nothing in this file touches the network, the database or `$env/dynamic/private`, which is what
  * makes it safe to pull into a `.svelte` file.

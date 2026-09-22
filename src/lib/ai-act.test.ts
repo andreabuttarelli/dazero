@@ -144,7 +144,6 @@ describe('prompt and notice copy', () => {
     const notice = aiActUserNotice(hits, 'it');
     expect(notice.startsWith('> ')).toBe(true);
     expect(notice).toContain('art. 5');
-    expect(notice).toContain('/terms');
     expect(notice.split('\n').every((l) => l === '' || l.startsWith('>'))).toBe(true);
 
     const en = aiActUserNotice(screenForProhibitedPractice('Prey on elderly people'), 'en');

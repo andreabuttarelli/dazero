@@ -40,16 +40,20 @@
         <div class="fh">{$_(`app.settings.video.slots.${slot.i18n}`)}</div>
         <div class="fs">{$_(`app.settings.video.slots.${slot.i18n}Desc`)}</div>
       </div>
-      <form method="POST" action="?/updateMediaModel" use:enhance class="vd-form">
-        <input type="hidden" name="slot" value={slot.id} />
-        <select name="model" class="vd-select">
-          <option value="" selected={!slot.current}>{$_('app.settings.video.modelDefault')}</option>
-          {#each slot.choices as m (m.id)}
-            <option value={m.id} selected={m.id === slot.current}>{m.label}</option>
-          {/each}
-        </select>
-        <button class="mini connect" type="submit">{$_('app.settings.save')}</button>
-      </form>
+      {#if !slot.choices.length && !slot.synced}
+        <span class="vd-warn">{$_('app.settings.video.catalogueNotSynced')}</span>
+      {:else}
+        <form method="POST" action="?/updateMediaModel" use:enhance class="vd-form">
+          <input type="hidden" name="slot" value={slot.id} />
+          <select name="model" class="vd-select">
+            <option value="" selected={!slot.current}>{$_('app.settings.video.modelDefault')}</option>
+            {#each slot.choices as m (m.id)}
+              <option value={m.id} selected={m.id === slot.current}>{m.label}</option>
+            {/each}
+          </select>
+          <button class="mini connect" type="submit">{$_('app.settings.save')}</button>
+        </form>
+      {/if}
     </div>
   {/each}
   <div class="field">
@@ -112,13 +116,14 @@
   .vi-field { flex-direction: column; align-items: stretch; gap: 10px; }
   .vi-form { display: flex; flex-direction: column; gap: 8px; width: 100%; }
   .vi-text {
-    width: 100%; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--line);
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line);
     background: var(--paper); color: var(--ink); font: inherit; font-size: 13px;
     line-height: 1.5; resize: vertical; min-height: 88px;
   }
   .vi-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .vd-select {
-    padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line);
+    padding: 7px 10px; border: 1px solid var(--line);
     background: var(--paper); color: var(--ink); font: inherit; font-size: 13px;
   }
+  .vd-warn { color: #c0392b; font-size: 13px; }
 </style>

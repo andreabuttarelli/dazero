@@ -110,8 +110,6 @@
   box-sizing: border-box;
   padding: 12px 16px;
   border: none;
-  border-radius: 16px;
-  border-top-left-radius: 6px;
   background: var(--paper-3);
   color: var(--ink);
   font-size: 13.5px;
@@ -142,8 +140,6 @@
   min-width: 0;
   padding: 12px 14px;
   border: 1px solid color-mix(in srgb, var(--accent-solid) 55%, transparent);
-  border-radius: 16px;
-  border-bottom-right-radius: 5px;
   /* --accent-solid e non --accent: il bianco sull'accento pieno stava a 2,58:1 (app.css). */
   background: var(--accent-solid);
   color: #fff;
@@ -227,13 +223,11 @@
   letter-spacing: 0;
   background: var(--paper-2);
   padding: 1px 5px;
-  border-radius: 5px;
 }
 
 .chat-msg pre code {
   background: none;
   padding: 0;
-  border-radius: 0;
 }
 
 .chat-msg blockquote {
@@ -300,13 +294,11 @@
 .chat-msg-cell .md-table-wrap {
   margin: 10px 0;
   border: 1px solid var(--line-2);
-  border-radius: 10px;
 }
 
 .chat-msg-cell pre {
   margin: 8px 0;
   padding: 12px 14px;
-  border-radius: 10px;
   border: 1px solid var(--line-2);
   background: var(--paper);
 }
@@ -364,7 +356,6 @@ img.chat-zoomable {
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: 10px;
   border: 1px solid var(--line);
   -webkit-tap-highlight-color: transparent;
 }
@@ -383,11 +374,6 @@ img.chat-zoomable {
 
   .chat-turn-face {
     display: none;
-  }
-
-  /* L'angolo smussato verso l'avatar non ha più un volto a cui puntare. */
-  .chat-msg-cell {
-    border-top-left-radius: 16px;
   }
 
   .chat-msg-cell,

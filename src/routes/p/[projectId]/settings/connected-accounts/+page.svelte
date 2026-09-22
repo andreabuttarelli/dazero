@@ -133,7 +133,6 @@
 <style>
   .skeleton .glyph, .skeleton .h, .skeleton .s {
     background: var(--line, #e5e5e5);
-    border-radius: 6px;
     animation: pulse 1.2s ease-in-out infinite;
   }
   .skeleton .h { width: 160px; height: 14px; margin-bottom: 6px; }

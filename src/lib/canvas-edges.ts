@@ -53,6 +53,9 @@ export type FlowEdge = {
   kind: CanvasEdgeKind;
   /** Assente su `groups_with`: stare insieme non ha un verso, e una freccia ne inventerebbe uno. */
   markerEnd?: { type: 'arrowclosed' };
+  /** La porta di `target` su cui questo arco atterra (`ConnectorType` di `connectors.ts`). Assente
+   *  sull'unico attacco generico di prima, o su un arco verso un nodo senza porte tipizzate. */
+  targetHandle?: string | null;
 };
 
 export function toFlowEdges(rows: CanvasEdgeRow[]): FlowEdge[] {

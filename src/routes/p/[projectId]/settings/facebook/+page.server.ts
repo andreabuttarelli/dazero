@@ -110,9 +110,6 @@ export const actions: Actions = {
   // Finalise the connection to the chosen Page, then re-sync accounts (incl. the linked Instagram).
   select: async ({ request, params, url, locals: { supabase } }) => {
     const form = await request.formData();
-    // Where to return after connecting. Carried as a hidden field because the form posts to
-    // `?/select`, which drops the original `?return=…` query string the load saw.
-    const dest = form.get('dest') === 'activate' ? 'activate' : 'settings';
     const pageId = String(form.get('pageId') ?? '');
     const tempToken = String(form.get('tempToken') ?? '');
     const connectToken = String(form.get('connectToken') ?? '');
@@ -141,13 +138,13 @@ export const actions: Actions = {
         tempToken,
         connectToken,
         userProfile,
-        redirectUrl: `${url.origin}/p/${params.projectId}/${dest === 'activate' ? 'activate' : 'settings/connected-accounts'}?connected=1`
+        redirectUrl: `${url.origin}/p/${params.projectId}/settings/connected-accounts?connected=1`
       });
       await syncBrandAccounts(supabase, brand);
     } catch (e) {
       return fail(500, { error: e instanceof Error ? e.message : 'connect_failed' });
     }
 
-    throw redirect(303, `/p/${params.projectId}/${dest === 'activate' ? 'activate' : 'settings/connected-accounts'}?connected=1`);
+    throw redirect(303, `/p/${params.projectId}/settings/connected-accounts?connected=1`);
   }
 };

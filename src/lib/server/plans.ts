@@ -115,65 +115,13 @@ export function countForFrequency(frequency?: string | null): number {
   return 7;
 }
 
-// Default blog cadence (articles/week) when blog_config.articlesPerWeek is unset — an explicit
-// value set by the user always wins (clamped by blogArticlesPerWeekMax).
-// Go ~3/week, Starter daily, Pro 3× Starter (~21/week).
-export const BLOG_ARTICLES_PER_WEEK: Record<string, number> = {
-  go: 3,
-  starter: 7,
-  pro: 21
-};
-
-export function blogArticlesPerWeek(plan: string | null | undefined): number {
-  return BLOG_ARTICLES_PER_WEEK[plan ?? ''] ?? BLOG_ARTICLES_PER_WEEK.go;
-}
-
-/** Max articles/week the user may set in blog settings — derived from the monthly ceiling. */
-export function blogArticlesPerWeekMax(plan: string | null | undefined): number {
-  return Math.max(1, Math.ceil(blogArticlesPerMonth(plan) / 4));
-}
-
-// HARD ceiling on AI-generated articles per calendar month. Distinct from BLOG_ARTICLES_PER_WEEK,
-// which is the *cadence* (how the month is spread): the cadence can be raised by the user in blog
-// settings up to blogArticlesPerWeekMax, this cannot. It bounds the batch entry points (month plan
-// + autopilot drip); generating ONE article from a typed topic stays available past the cap.
-//
-// Ladder: Go 15 / Starter 30 (2× Go) / Pro 90 (3× Starter).
-export const BLOG_ARTICLES_PER_MONTH: Record<string, number> = {
-  go: 15,
-  starter: 30,
-  pro: 90,
-  scale: 90
-};
-
-export function blogArticlesPerMonth(plan: string | null | undefined): number {
-  return BLOG_ARTICLES_PER_MONTH[plan ?? ''] ?? BLOG_ARTICLES_PER_MONTH.go;
-}
-
-// Extra languages each article may be translated into, on the top tier only. The cap above counts
-// ORIGINALS, so a Pro brand at the ceiling ships 90 originals + 270 translations.
-export const BLOG_TRANSLATION_LANGUAGES: Record<string, number> = {
-  go: 0,
-  starter: 0,
-  pro: 3,
-  scale: 3
-};
-
-export function blogTranslationLanguages(plan: string | null | undefined): number {
-  return BLOG_TRANSLATION_LANGUAGES[plan ?? ''] ?? 0;
-}
-
 export {
   isPaidPlan,
   canConnectSocials,
   hasSocialPublishing,
-  hasBlogIntegrations,
-  hasBlogCustomDomain,
   hasFullChatContext,
   CHAT_CONTEXT_CAP_TOKENS,
-  hasWebHub,
-  hasAds,
-  hasBacklinkNetwork
+  hasAds
 } from '$lib/plans';
 
 // Plan ladder (cheapest → top), with display labels — used by the settings Upgrade flow.

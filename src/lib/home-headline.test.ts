@@ -14,8 +14,7 @@ const post = (id: string) => ({ id, platform: 'instagram', caption: 'c', media_u
 const pub = (id: string, at: string) => ({ id, platform: 'instagram', caption: 'c', media_url: 'u', published_at: at });
 
 const base = {
-  queue: { pending: 0, scheduled: 0, posts: [], upcoming: [], published: [] },
-  blog: { pending: 0 }
+  queue: { pending: 0, scheduled: 0, posts: [], upcoming: [], published: [] }
 };
 
 describe('homeHeadline', () => {
@@ -43,13 +42,6 @@ describe('homeHeadline', () => {
     expect(h.kind).toBe('published');
     expect(h.post?.id).toBe('p1');
     expect(h.recent).toBe(2);
-  });
-
-  it('un articolo da rivedere conta quanto un post: la coda non è solo social', () => {
-    const h = homeHeadline({ ...base, blog: { pending: 2 } });
-    expect(h.kind).toBe('approve');
-    expect(h.waiting).toBe(2);
-    expect(h.post).toBeNull();
   });
 
   it('brand nuovo: non si finge un risultato che non c’è', () => {

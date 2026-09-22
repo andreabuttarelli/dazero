@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fakeDb } from '$lib/server/db/fake-db';
 import type { Db } from '$lib/server/db/client';
-import { expireStuckRuns, runGenNode, RUN_STALE_MS } from './generate';
+import { expireStuckRuns, reconcileVideoNodeRuns, runGenNode, RUN_STALE_MS } from './generate';
 
 const ORG = '11111111-1111-1111-1111-111111111111';
 const NODE = '22222222-2222-2222-2222-222222222222';
@@ -67,6 +67,9 @@ const freshNodeRow = {
 
 const { generateImagesWithoutBrand } = vi.hoisted(() => ({ generateImagesWithoutBrand: vi.fn() }));
 vi.mock('$lib/server/media-generate', () => ({ generateImagesWithoutBrand }));
+
+const { finishVideoRender } = vi.hoisted(() => ({ finishVideoRender: vi.fn() }));
+vi.mock('$lib/server/video', () => ({ finishVideoRender }));
 
 // `upstreamInputsFor` chiede sempre le modalità del modello quando il nodo ne ha uno: senza
 // questo mock il test colpirebbe il vero gateway (assente in test) e il modello risulterebbe
@@ -470,5 +473,273 @@ describe('rigenerare un nodo che ha già un risultato non lo perde se il nuovo g
     expect(data.refId).toBe('asset-before');
     expect(data.running).toBe(false);
     expect(data.error).toBeTruthy();
+  });
+});
+
+/**
+ * IL PONTE CHE `runGenNode` NON COSTRUISCE DA SOLO: un video torna `queued` e resta lì finché
+ * qualcosa non chiude `node_runs`. `reconcileVideoNodeRuns` è quel qualcosa — legge la riga
+ * `node_runs` in coda (running + external_job_id), la reclama, chiede a `finishVideoRender` (qui
+ * finto) se il fornitore ha finito, e sui tre esiti scrive lo stesso contratto di `runGenNode`:
+ * `done` deposita l'asset e spegne `running`, `pending` rilascia il claim senza consumare un
+ * tentativo, `failed` chiude il giro E il nodo insieme, mai l'uno senza l'altro.
+ */
+function videoReconcileDb(initial: {
+  node: { id: string; orgId: string; data: Record<string, unknown>; version: number };
+  run: { id: string; taskId: string; attempts?: number };
+}) {
+  const nodeState = { data: { ...initial.node.data }, version: initial.node.version };
+  const runState = {
+    id: initial.run.id,
+    org_id: initial.node.orgId,
+    node_id: initial.node.id,
+    prompt: 'a dancing cat',
+    model: 'grok-imagine-video-1-5-preview',
+    params: { aspectRatio: '1:1', duration: 1 },
+    status: 'running',
+    error: null as string | null,
+    output_asset_id: null as string | null,
+    external_job_id: initial.run.taskId,
+    cost_usd: null as number | null,
+    attempts: initial.run.attempts ?? 0,
+    actor_id: 'user-1',
+    started_at: new Date().toISOString(),
+    finished_at: null as string | null
+  };
+  const insertedAssets: Array<{ url: string; type: string; source: string }> = [];
+
+  const nodeRow = () => ({
+    id: initial.node.id,
+    canvas_id: 'canvas',
+    project_id: 'project',
+    type: 'video',
+    display_name: null,
+    x: 0,
+    y: 0,
+    z: 0,
+    width: null,
+    height: null,
+    data: nodeState.data,
+    version: nodeState.version
+  });
+
+  const db = {
+    from(table: string) {
+      if (table === 'node_runs') {
+        return {
+          select: () => ({
+            eq: () => ({
+              not: () => ({
+                order: () => ({
+                  limit: async () => ({ data: runState.status === 'running' ? [{ ...runState }] : [], error: null })
+                })
+              })
+            })
+          }),
+          update: (patch: Record<string, unknown>) => ({
+            eq: (col1: string, val1: string) => ({
+              eq: (col2: string, val2: string) => {
+                const finish = async () => {
+                  if (val1 !== runState.id) return { data: null, error: null };
+                  Object.assign(runState, patch);
+                  return { data: { ...runState }, error: null };
+                };
+                return {
+                  eq: (col3: string, expected: string) => ({
+                    select: () => ({ maybeSingle: async () => {
+                      if (expected !== 'running' && expected !== 'finishing') return { data: null, error: null };
+                      if (runState.status !== expected) return { data: null, error: null };
+                      return finish();
+                    } }),
+                    then: (resolve: (v: { data: null; error: null }) => void) => {
+                      if (runState.status === expected) {
+                        Object.assign(runState, patch);
+                      }
+                      resolve({ data: null, error: null });
+                    }
+                  }),
+                  then: (resolve: (v: { data: null; error: null }) => void) => {
+                    Object.assign(runState, patch);
+                    resolve({ data: null, error: null });
+                  }
+                };
+              }
+            })
+          })
+        };
+      }
+
+      if (table === 'nodes') {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                is: () => ({ maybeSingle: async () => ({ data: nodeRow(), error: null }) })
+              })
+            })
+          }),
+          update: (patch: { data: Record<string, unknown>; version: number }) => ({
+            eq: () => ({
+              eq: () => ({
+                eq: (column: string, expectedVersion: number) => ({
+                  select: () => ({
+                    maybeSingle: async () => {
+                      if (column !== 'version' || expectedVersion !== nodeState.version) {
+                        return { data: null, error: null };
+                      }
+                      nodeState.data = patch.data;
+                      nodeState.version = patch.version;
+                      return { data: nodeRow(), error: null };
+                    }
+                  })
+                })
+              })
+            })
+          })
+        };
+      }
+
+      if (table === 'video_renders') {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({
+                data: {
+                  id: 'render-1',
+                  task_id: runState.external_job_id,
+                  model: runState.model,
+                  prompt: runState.prompt,
+                  duration_seconds: 1,
+                  resolution: '480p',
+                  cover_url: null,
+                  persist_opts: { captions: false, tighten: false },
+                  submitted_at: new Date().toISOString()
+                },
+                error: null
+              })
+            })
+          })
+        };
+      }
+
+      if (table === 'assets') {
+        return {
+          insert: (payload: { url: string; type: string; source: string }) => ({
+            select: () => ({
+              single: async () => {
+                insertedAssets.push(payload);
+                return {
+                  data: {
+                    id: 'asset-video-1',
+                    project_id: 'project',
+                    type: payload.type,
+                    url: payload.url,
+                    content: null,
+                    mime_type: 'video/mp4',
+                    bytes: null,
+                    width: null,
+                    height: null,
+                    duration_s: 1,
+                    source: payload.source,
+                    source_node_id: initial.node.id,
+                    created_at: new Date().toISOString()
+                  },
+                  error: null
+                };
+              }
+            })
+          })
+        };
+      }
+
+      if (table === 'canvas_events') {
+        return {
+          insert: (payload: Record<string, unknown>) => ({
+            select: () => ({
+              single: async () => ({ data: { id: 1, created_at: new Date().toISOString(), ...payload }, error: null })
+            })
+          })
+        };
+      }
+
+      throw new Error(`videoReconcileDb: unhandled table "${table}"`);
+    }
+  };
+
+  return {
+    db: db as unknown as Db,
+    currentNode: () => ({ data: nodeState.data, version: nodeState.version }),
+    currentRun: () => ({ ...runState }),
+    insertedAssets
+  };
+}
+
+describe('reconcileVideoNodeRuns chiude un video in coda quando il fornitore ha finito', () => {
+  beforeEach(() => {
+    finishVideoRender.mockReset();
+  });
+
+  it('done: deposita un asset video, spegne running e scrive il costo', async () => {
+    finishVideoRender.mockResolvedValue({
+      status: 'done',
+      url: 'https://storage.example/media/user-1/generated/clip.mp4',
+      durationSeconds: 1,
+      resolution: '480p'
+    });
+
+    const { db, currentNode, currentRun, insertedAssets } = videoReconcileDb({
+      node: { id: NODE, orgId: ORG, data: { prompt: 'a dancing cat', model: 'grok-imagine-video-1-5-preview', running: true }, version: 3 },
+      run: { id: RUN, taskId: 'openrouter:job-1' }
+    });
+
+    const result = await reconcileVideoNodeRuns(db);
+
+    expect(result).toMatchObject({ checked: 1, done: 1, failed: 0, pending: 0 });
+    expect(insertedAssets).toHaveLength(1);
+    expect(insertedAssets[0]).toMatchObject({ type: 'video', source: 'generated', url: expect.stringContaining('clip.mp4') });
+
+    expect(currentRun().status).toBe('done');
+    expect(currentRun().output_asset_id).toBe('asset-video-1');
+
+    const data = currentNode().data as { running?: boolean; error?: string | null; refId?: string };
+    expect(data.running).toBe(false);
+    expect(data.error).toBeNull();
+    expect(data.refId).toBe('asset-video-1');
+  });
+
+  it('pending: rilascia il claim senza consumare un tentativo', async () => {
+    finishVideoRender.mockResolvedValue({ status: 'pending' });
+
+    const { db, currentNode, currentRun } = videoReconcileDb({
+      node: { id: NODE, orgId: ORG, data: { running: true }, version: 1 },
+      run: { id: RUN, taskId: 'openrouter:job-2' }
+    });
+
+    const result = await reconcileVideoNodeRuns(db);
+
+    expect(result).toMatchObject({ checked: 1, done: 0, failed: 0, pending: 1 });
+    expect(currentRun().status).toBe('running');
+    expect(currentRun().attempts).toBe(0);
+    // Il nodo non si tocca finché il fornitore non ha detto sì o no.
+    expect((currentNode().data as { running?: boolean }).running).toBe(true);
+  });
+
+  it('failed dopo il tetto dei tentativi: chiude la run E riaccende il nodo insieme', async () => {
+    finishVideoRender.mockResolvedValue({ status: 'failed', error: 'provider rejected the job' });
+
+    const { db, currentNode, currentRun } = videoReconcileDb({
+      node: { id: NODE, orgId: ORG, data: { prompt: 'a dancing cat', model: 'grok-imagine-video-1-5-preview', running: true }, version: 5 },
+      run: { id: RUN, taskId: 'openrouter:job-3', attempts: 7 }
+    });
+
+    const result = await reconcileVideoNodeRuns(db);
+
+    expect(result).toMatchObject({ checked: 1, done: 0, failed: 1, pending: 0 });
+    expect(currentRun().status).toBe('failed');
+    expect(currentRun().error).toContain('provider rejected the job');
+
+    const data = currentNode().data as { running?: boolean; error?: string | null };
+    expect(data.running).toBe(false);
+    expect(data.error).toContain('provider rejected the job');
   });
 });

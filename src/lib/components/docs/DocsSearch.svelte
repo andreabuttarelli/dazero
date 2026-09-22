@@ -155,7 +155,6 @@
     width: min(560px, calc(100vw - 32px));
     background: var(--paper, #fff);
     border: 1px solid var(--line, #d2d2d7);
-    border-radius: 14px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
     overflow: hidden;
   }
@@ -189,7 +188,6 @@
   .docs-search-esc {
     font-size: 11px;
     padding: 2px 6px;
-    border-radius: 5px;
     border: 1px solid var(--line, #d2d2d7);
     color: var(--ink-soft, #6e6e73);
     background: var(--paper-2, #f5f5f7);
@@ -216,7 +214,6 @@
     background: transparent;
     text-align: left;
     padding: 10px 12px;
-    border-radius: 9px;
     cursor: pointer;
     font: inherit;
     color: var(--ink, #1d1d1f);
