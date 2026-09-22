@@ -19,7 +19,7 @@ import {
 describe('la nav del brand', () => {
   it("HUB_TABS è l'inventario delle pagine, inchiodato (pin)", () => {
     expect(HUB_TABS).toEqual({
-      brand: [{ key: 'identity', path: '/studio' }],
+      brand: [{ key: 'identity', path: '/settings/brand' }],
       publish: [
         { key: 'calendar', path: '/calendar' },
         { key: 'manualPosting', path: '/manual-posting' }
@@ -69,7 +69,7 @@ describe('la nav del brand', () => {
       ['', 'app.nav2.home'],
       ['/media', 'app.nav2.materials'],
       ['/calendar', 'app.hub.publish.calendar'],
-      ['/studio', 'app.hub.brand.identity']
+      ['/settings/brand', 'app.hub.brand.identity']
     ]);
   });
 
