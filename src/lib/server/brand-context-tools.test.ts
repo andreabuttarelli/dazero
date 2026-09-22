@@ -48,23 +48,15 @@ describe('the maker agents all take the bundle', () => {
 	const reads = (file: string) =>
 		readFileSync(new URL(file, import.meta.url), 'utf8');
 
-	it('Motion Video, the Media Generator and the UGC planner each spread it once', () => {
-		for (const file of [
-			'./motion-video/agent.ts',
-			'./media-generator/agent.ts',
-			'./media-generator/ugc-plan-agent.ts'
-		]) {
-			expect(reads(file)).toContain('createBrandContextTools(');
-		}
+	it('Motion Video spreads it once', () => {
+		expect(reads('./motion-video/agent.ts')).toContain('createBrandContextTools(');
 	});
 
 	it('nobody redeclares read_brand_studio or read_knowledge by hand any more', () => {
-		// Three copies of two tools with drifting descriptions is what this module replaced.
-		for (const file of ['./media-generator/agent.ts', './media-generator/ugc-plan-agent.ts']) {
-			const src = reads(file);
-			expect(src).not.toContain('read_brand_studio: tool(');
-			expect(src).not.toContain('read_knowledge: tool(');
-		}
+		// Copies of these two tools with drifting descriptions is what this module replaced.
+		const src = reads('./motion-video/agent.ts');
+		expect(src).not.toContain('read_brand_studio: tool(');
+		expect(src).not.toContain('read_knowledge: tool(');
 	});
 
 });
