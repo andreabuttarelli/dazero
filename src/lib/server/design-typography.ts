@@ -1,29 +1,34 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ALL_SHORTLIST_FONTS, DEFAULT_FONT, FONT_SHORTLIST, GraphicStyleSchema, type GraphicStyle } from '$lib/design/typography';
-import { loadGraphicFont } from '$lib/server/design-render';
 import { aiStructured } from '$lib/server/ai-text';
 
 /**
  * Choosing and validating the typography a brand's graphics are set in.
  *
- * The bug this exists to kill: brand_kit.fonts is scraped from the website, so the graphic renderer
- * was setting posts in whatever face the site happened to load — usually a serif display chosen for
- * a 96px hero, which at post scale reads as "the AI picked a random serif". And when the name did
- * not resolve on Google Fonts it fell back to Inter silently, so the brand could not tell whether
- * its font was being used at all.
+ * The bug this exists to kill: brand_kit.fonts is scraped from the website, so the typography
+ * proposal used to pick whatever face the site happened to load — usually a serif display chosen
+ * for a 96px hero, which at post scale reads as "the AI picked a random serif". And when the name
+ * did not resolve on Google Fonts it fell back to Inter silently, so the brand could not tell
+ * whether its font was being used at all.
  */
 
+// Google's CSS endpoint hands out ttf when asked with a UA that predates woff2, which is also
+// how it confirms a family exists: no ttf urls in the response means Google Fonts doesn't serve it.
+const LEGACY_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.30 (KHTML, like Gecko)';
+
 /**
- * Is this family actually renderable? The check is a real fetch through the renderer's own loader,
- * not a lookup in a list we would have to keep in sync — if it comes back as something else, Google
- * Fonts does not serve it and a graphic set in it would silently be Inter.
+ * Is this family actually on Google Fonts? A real fetch against their CSS endpoint, not a lookup
+ * in a list we would have to keep in sync — if nothing comes back, the family isn't there and a
+ * brand kit set to it would be a font name nobody can act on.
  */
 export async function fontIsAvailable(family: string): Promise<boolean> {
   const name = family.trim();
   if (!name) return false;
   try {
-    const { family: got } = await loadGraphicFont(name);
-    return got.toLowerCase() === name.toLowerCase();
+    const url = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(name)}`;
+    const css = await fetch(url, { headers: { 'user-agent': LEGACY_UA } });
+    if (!css.ok) return false;
+    return /src:\s*url\(https:\/\/[^)]+\.ttf\)/.test(await css.text());
   } catch {
     return false;
   }
