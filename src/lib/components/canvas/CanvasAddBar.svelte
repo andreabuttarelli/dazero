@@ -22,14 +22,27 @@
    * sbagliato.
    */
   import Keyboard from '@lucide/svelte/icons/keyboard';
+  import Upload from '@lucide/svelte/icons/upload';
   import { CANVAS_ADDABLE, ADDABLE_LABEL, type Addable } from '$lib/canvas/addable';
   import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
   import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
   import { CANVAS_SHORTCUTS } from '$lib/canvas/shortcuts';
 
-  let { onpick }: { onpick?: (what: Addable) => void } = $props();
+  let { onpick, onupload }: { onpick?: (what: Addable) => void; onupload?: (file: File) => void } = $props();
 
   let showKeys = $state(false);
+  let fileInput = $state<HTMLInputElement | null>(null);
+
+  function pickFile() {
+    fileInput?.click();
+  }
+
+  function fileChosen(e: Event) {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) { onupload?.(file); }
+    input.value = '';
+  }
 
   const isMac =
     typeof navigator !== 'undefined' &&
@@ -44,29 +57,48 @@
     {@const Icon = ADDABLE_ICON[what]}
     <!-- Il numero nel `title` è il posto in cui la scorciatoia si incontra SENZA cercarla: la
          scheda accanto la elenca, ma la si apre solo sospettando che esista. -->
-    <button
-      type="button"
-      title={`${ADDABLE_LABEL[what]} (${i + 1})`}
-      aria-label={ADDABLE_LABEL[what]}
-      draggable="true"
-      onclick={() => onpick?.(what)}
-      ondragstart={(e) => e.dataTransfer?.setData(CANVAS_DRAG_MEDIUM, what)}
-    >
-      <Icon size={17} strokeWidth={1.7} />
-      <span>{ADDABLE_LABEL[what]}</span>
-    </button>
+    <span class="tool">
+      <button
+        type="button"
+        title={`${ADDABLE_LABEL[what]} (${i + 1})`}
+        aria-label={ADDABLE_LABEL[what]}
+        draggable="true"
+        onclick={() => onpick?.(what)}
+        ondragstart={(e) => e.dataTransfer?.setData(CANVAS_DRAG_MEDIUM, what)}
+      >
+        <Icon size={17} strokeWidth={1.7} />
+      </button>
+      <span class="tooltip" role="tooltip">{ADDABLE_LABEL[what]}</span>
+    </span>
   {/each}
 
-  <button
-    type="button"
-    class="keys-toggle"
-    title="Scorciatoie da tastiera"
-    aria-label="Scorciatoie da tastiera"
-    aria-expanded={showKeys}
-    onclick={() => (showKeys = !showKeys)}
-  >
-    <Keyboard size={17} strokeWidth={1.7} />
-  </button>
+  <span class="tool">
+    <button type="button" title="Carica file" aria-label="Carica file" onclick={pickFile}>
+      <Upload size={17} strokeWidth={1.7} />
+    </button>
+    <span class="tooltip" role="tooltip">Carica file</span>
+  </span>
+  <input
+    bind:this={fileInput}
+    type="file"
+    class="sr-only"
+    accept="image/png,image/jpeg,image/webp,image/gif,image/avif,video/mp4,video/webm,video/quicktime,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xls,text/html,text/csv,text/plain,text/markdown,.xml,.rss,.atom,.ipynb"
+    onchange={fileChosen}
+  />
+
+  <span class="tool">
+    <button
+      type="button"
+      class="keys-toggle"
+      title="Scorciatoie da tastiera"
+      aria-label="Scorciatoie da tastiera"
+      aria-expanded={showKeys}
+      onclick={() => (showKeys = !showKeys)}
+    >
+      <Keyboard size={17} strokeWidth={1.7} />
+    </button>
+    <span class="tooltip" role="tooltip">Scorciatoie da tastiera</span>
+  </span>
 
   {#if showKeys}
     <!-- Generata da `CANVAS_SHORTCUTS`, che è la stessa lista che i tasti usano: una scheda
@@ -93,25 +125,30 @@
     left: 50%;
     transform: translateX(-50%);
     display: flex;
+    align-items: center;
     gap: 3px;
     padding: 4px;
-    border-radius: 999px;
+    border-radius: 0;
     background: var(--paper, #fff);
     border: 1px solid var(--line-2, #d2d2d7);
     box-shadow: 0 4px 18px rgb(0 0 0 / 0.1);
   }
 
+  .tool {
+    position: relative;
+    display: inline-flex;
+  }
+
   button {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
+    justify-content: center;
+    padding: 8px;
     font: inherit;
-    font-size: 12.5px;
     color: var(--ink, #1d1d1f);
     background: none;
     border: none;
-    border-radius: 999px;
+    border-radius: 0;
     cursor: grab;
   }
   button:hover,
@@ -123,9 +160,48 @@
   }
 
   .keys-toggle {
-    padding: 6px 9px;
     cursor: pointer;
     color: var(--ink-soft, #6e6e73);
+  }
+
+  .tooltip {
+    position: absolute;
+    z-index: 13;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    white-space: nowrap;
+    font-size: 11px;
+    color: var(--ink, #1d1d1f);
+    background: var(--paper, #fff);
+    border: 1px solid var(--line-2, #d2d2d7);
+    border-radius: 0;
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.1);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+  }
+  .tool:hover .tooltip,
+  .tool:focus-within .tooltip {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tooltip {
+      transition: none;
+    }
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   /* Sopra la barra e non sotto: sotto uscirebbe dal riquadro della tela e verrebbe tagliata. */
@@ -141,7 +217,7 @@
     margin: 0;
     padding: 6px;
     list-style: none;
-    border-radius: 12px;
+    border-radius: 0;
     background: var(--paper, #fff);
     border: 1px solid var(--line-2, #d2d2d7);
     box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
@@ -168,21 +244,10 @@
     height: 18px;
     padding: 0 4px;
     border: 1px solid var(--line, #e5e5e5);
-    border-radius: 5px;
+    border-radius: 0;
     background: var(--paper-2, #f9f9f9);
     font-family: inherit;
     font-size: 11px;
     color: var(--ink-soft, #6e6e73);
-  }
-
-  /* Su schermo stretto restano le icone: quattro etichette affiancate mangerebbero la tela, che è
-     la cosa che si sta guardando. */
-  @media (max-width: 560px) {
-    button span {
-      display: none;
-    }
-    button {
-      padding: 8px;
-    }
   }
 </style>
