@@ -1,229 +1,163 @@
 <script lang="ts">
-  // Stessa cornice di `/app/[brand]`: Tailwind + shadcn, sidebar fissa, area contenuto.
-  // Il tenant nell'URL è il PROGETTO, non il brand — che resta una proprietà del progetto.
+  /**
+   * IL GUSCIO DEL PROGETTO: tela infinita al centro, rail flottante a sinistra, chat a destra —
+   * la stessa gerarchia per ogni rotta sotto `/p/[projectId]`, di cui il canvas è la HOME
+   * (`+page.server.ts` reindirizza già alla prima tela).
+   *
+   * La cromatura del canvas (rail, top bar, chat, fogli) monta SOLO sopra la rotta della tela
+   * (`/c/[canvasId]`): le altre rotte (Assets, Brands, Ads, Settings) restano pagine intere — è
+   * così che rispondono a un link diretto, un refresh o uno schermo mobile, e su desktop il rail
+   * apre le stesse pagine come pannello o foglio invece di navigarci sopra.
+   */
   import '$lib/styles/tailwind.css';
-  import * as Sidebar from '$lib/components/ui/sidebar/index.js';
-  import DashboardSidebar, {
-    type NavGroup,
-    type SwitcherBrand
-  } from '$lib/components/DashboardSidebar.svelte';
-  import { page } from '$app/stores';
-  import { _ } from 'svelte-i18n';
-  import House from '@lucide/svelte/icons/house';
-  import Images from '@lucide/svelte/icons/images';
-  import CalendarDays from '@lucide/svelte/icons/calendar-days';
-  import Palette from '@lucide/svelte/icons/palette';
-  import Send from '@lucide/svelte/icons/send';
-  import Megaphone from '@lucide/svelte/icons/megaphone';
-  import Library from '@lucide/svelte/icons/library';
-  import Frame from '@lucide/svelte/icons/frame';
-  import Building from '@lucide/svelte/icons/building';
-  import { NAV_SECTION, NAV_TEAM_SPACES, NAV_OFF_SIDEBAR, type NavIconId } from '$lib/workbench-paths';
-  import { SHELL_LAYOUT, readSidebarPanePx, writeSidebarPanePx } from '$lib/shell-prefs';
+  import { page } from '$app/state';
+  import { onDestroy } from 'svelte';
+  import CanvasTopBar from '$lib/components/canvas/CanvasTopBar.svelte';
+  import FloatingRail from '$lib/components/canvas/FloatingRail.svelte';
+  import CanvasLeftPanel from '$lib/components/canvas/CanvasLeftPanel.svelte';
+  import CanvasChatPanel from '$lib/components/canvas/CanvasChatPanel.svelte';
+  import CanvasSheet from '$lib/components/canvas/CanvasSheet.svelte';
+  import CanvasMobileTabs from '$lib/components/canvas/CanvasMobileTabs.svelte';
+  import CanvasMobileMore from '$lib/components/canvas/CanvasMobileMore.svelte';
+  import { openSheet } from '$lib/canvas/sheet-nav';
+  import { sheetEntryForPath, type NavEntry } from '$lib/shell-nav';
+  import { readChatOpen, writeChatOpen } from '$lib/shell-prefs';
   import { browser } from '$app/environment';
 
   let { data, children } = $props();
 
-  const base = $derived(`/p/${data.project.id}`);
-  const path = $derived($page.url.pathname);
-  const brandSlug = $derived(data.brand?.slug ?? '');
-  const brandName = $derived(data.project.name);
-  const settingsHref = `${base}/settings`;
+  const CANVAS_ROUTE_ID = '/p/[projectId]/c/[canvasId]';
+  const onCanvasRoute = $derived(page.route.id === CANVAS_ROUTE_ID);
 
-  const userInitials = $derived(
-    (data.profile.name ?? data.profile.email ?? '?')
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w: string) => w[0])
-      .join('')
-      .toUpperCase() || '?'
-  );
+  const projectId = $derived(data.project.id);
+  const canvasId = $derived(page.params.canvasId ?? '');
+  const currentCanvas = $derived(data.canvases.find((c: { id: string }) => c.id === canvasId));
+  const activeSheetId = $derived(page.state.sheet ? sheetEntryForPath(page.state.sheet.path)?.id ?? null : null);
 
-  const PAGE_ICONS: Record<NavIconId, unknown> = {
-    home: House,
-    images: Images,
-    calendar: CalendarDays,
-    palette: Palette,
-    send: Send,
-    megaphone: Megaphone,
-    library: Library,
-    building: Building
-  };
+  let leftPanel = $state<'assets' | 'brands' | null>(null);
+  let chatOpen = $state(browser ? readChatOpen() : true);
+  let mobileMoreOpen = $state(false);
+  let mobileView = $state<'canvas' | 'chat'>('canvas');
 
-  function navTeamHref(teamPath: string) {
-    const segment = teamPath.replace(/^\//, '');
-    return segment ? `${base}/${segment}` : base;
+  const MOBILE_QUERY = '(max-width: 767px)';
+  let isMobile = $state(browser ? matchMedia(MOBILE_QUERY).matches : false);
+  if (browser) {
+    const mql = matchMedia(MOBILE_QUERY);
+    const onChange = () => (isMobile = mql.matches);
+    mql.addEventListener('change', onChange);
+    onDestroy(() => mql.removeEventListener('change', onChange));
   }
 
-  /**
-   * DUE REGIONI, DUE DOMANNE.
-   *
-   * Tele sono dove si lavora: oggetti che si aprono. Pagine sono il resto del progetto.
-   * `section: true` è obbligatorio — senza, la label diventa un hub a una riga e le voci spariscono.
-   */
-  function navGroups(): NavGroup[] {
-    const boards: NavGroup = {
-      label: NAV_SECTION.boards,
-      section: true,
-      scroll: true,
-      emptyLabel: NAV_SECTION.boardsEmpty,
-      items: data.canvases.map((c: { id: string; name: string; href: string }) => ({
-        href: c.href,
-        label: c.name,
-        icon: Frame,
-        kind: 'board' as const,
-        active: path === c.href
-      }))
-    };
-
-    const pageItems = [...NAV_TEAM_SPACES, ...NAV_OFF_SIDEBAR].map((t) => {
-      const href = navTeamHref(t.path);
-      return {
-        href,
-        label: $_(t.labelKey),
-        icon: PAGE_ICONS[t.icon],
-        active: path === href || (href !== base && path.startsWith(`${href}/`)),
-        key: t.path || 'home'
-      };
-    });
-
-    return [boards, { label: NAV_SECTION.pages, section: true, items: pageItems }];
+  function toggleChat() {
+    chatOpen = !chatOpen;
+    writeChatOpen(chatOpen);
   }
 
-  const groups = $derived(navGroups());
-
-  /** Lo switcher è sul PROGETTO: un progetto è un insieme di tele con le sue pagine. */
-  const switcherBrands = $derived<SwitcherBrand[]>(
-    data.projects.map((p: { id: string; name: string; slug: string; href: string; active: boolean }) => ({
-      id: p.id,
-      name: p.name,
-      slug: p.slug,
-      logoUrl: null,
-      href: p.href
-    }))
-  );
-
-  let sidebarPanePx = $state(browser ? readSidebarPanePx() : SHELL_LAYOUT.SIDEBAR_W_DEFAULT);
-  function clampSidebarW(px: number) {
-    return Math.min(SHELL_LAYOUT.SIDEBAR_W_MAX, Math.max(SHELL_LAYOUT.SIDEBAR_W_MIN, Math.round(px)));
+  function onRailPanel(entry: NavEntry) {
+    leftPanel = leftPanel === entry.id ? null : (entry.id as 'assets' | 'brands');
   }
-  function onSidebarResizeStart(e: PointerEvent) {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startW = sidebarPanePx;
-    const target = e.currentTarget as HTMLElement;
-    target.setPointerCapture(e.pointerId);
-    const onMove = (ev: PointerEvent) => {
-      sidebarPanePx = clampSidebarW(startW + (ev.clientX - startX));
-    };
-    const onUp = (ev: PointerEvent) => {
-      target.releasePointerCapture(e.pointerId);
-      target.removeEventListener('pointermove', onMove);
-      target.removeEventListener('pointerup', onUp);
-      target.removeEventListener('pointercancel', onUp);
-      writeSidebarPanePx(sidebarPanePx);
-    };
-    target.addEventListener('pointermove', onMove);
-    target.addEventListener('pointerup', onUp);
-    target.addEventListener('pointercancel', onUp);
+
+  function onRailSheet(entry: NavEntry) {
+    void openSheet(projectId, entry.path);
+  }
+
+  function onMobileTab(tab: { id: string }) {
+    if (tab.id === 'canvas' || tab.id === 'chat') {
+      mobileView = tab.id;
+      return;
+    }
+    if (tab.id === 'more') {
+      mobileMoreOpen = true;
+    }
   }
 </script>
 
-<div class="page">
-  <Sidebar.Provider
-    style={`--sidebar-width: ${sidebarPanePx}px; --sidebar-width-icon: 3.25rem;`}
-  >
-    <DashboardSidebar
-      {brandName}
-      brandWebsite={data.brand?.website ?? data.project.slug}
-      brandInitials={(brandName ?? '?').slice(0, 2).toUpperCase()}
-      brandHref={base}
-      navGroups={groups}
-      {settingsHref}
-      settingsLabel={$_('app.nav.settings')}
-      userName={data.profile.name ?? data.profile.email}
-      userEmail={data.profile.email}
-      userAvatarUrl={data.profile.avatarUrl ?? ''}
-      {userInitials}
-      brandPlan={''}
-      signOutLabel={$_('app.account.signOut')}
-      {brandSlug}
-      projectId={data.project.id}
-      {switcherBrands}
+<div class="project-shell">
+  {#if onCanvasRoute && !isMobile}
+    <CanvasTopBar
+      projectName={data.project.name}
+      projects={data.projects.map((p: { id: string; name: string; href: string }) => ({ id: p.id, name: p.name, href: p.href }))}
+      canvasName={currentCanvas?.name ?? ''}
+      canvases={data.canvases}
+      {chatOpen}
+      onToggleChat={toggleChat}
     />
-    <div
-      class="sidebar-split-handle"
-      role="separator"
-      aria-orientation="vertical"
-      aria-label={$_('app.shell.resizeSidebar')}
-      tabindex="0"
-      onpointerdown={onSidebarResizeStart}
-    ></div>
 
-    <Sidebar.Inset class="bg-[var(--paper-2)] border-0">
-      <div class="main">
-        <div class="wb-frame">
-          <div class="content-shell">
-            {@render children()}
-          </div>
-        </div>
+    <div class="canvas-row">
+      <div class="canvas-stage">
+        {@render children()}
+        <FloatingRail
+          activePanel={leftPanel}
+          activeSheet={activeSheetId}
+          onPanel={onRailPanel}
+          onSheet={onRailSheet}
+        />
+        {#if leftPanel}
+          <CanvasLeftPanel
+            {projectId}
+            kind={leftPanel}
+            labelKey={leftPanel === 'assets' ? 'app.nav2.materials' : 'app.nav2.brands'}
+            onclose={() => (leftPanel = null)}
+          />
+        {/if}
+        <CanvasSheet {projectId} />
       </div>
-    </Sidebar.Inset>
-  </Sidebar.Provider>
+
+      <CanvasChatPanel {projectId} brandSlug={data.brand?.slug ?? ''} open={chatOpen} />
+    </div>
+  {:else if onCanvasRoute && isMobile}
+    <div class="mobile-canvas">
+      <div class="mobile-view" class:is-hidden={mobileView !== 'canvas'}>
+        {@render children()}
+      </div>
+      {#if mobileView === 'chat'}
+        <div class="mobile-chat">
+          <CanvasChatPanel {projectId} brandSlug={data.brand?.slug ?? ''} open={true} />
+        </div>
+      {/if}
+    </div>
+    <CanvasMobileTabs {projectId} active={mobileView} onselect={onMobileTab} />
+    <CanvasMobileMore {projectId} open={mobileMoreOpen} onOpenChange={(open) => (mobileMoreOpen = open)} />
+  {:else}
+    {@render children()}
+  {/if}
 </div>
 
 <style>
-  .page {
-    background: var(--paper-2);
-    min-height: 100dvh;
-  }
-  .sidebar-split-handle {
-    display: none;
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: var(--sidebar-width);
-    width: 5px;
-    margin-left: -2px;
-    z-index: 30;
-    cursor: col-resize;
-    touch-action: none;
-    background: transparent;
-  }
-  @media (min-width: 1024px) {
-    .sidebar-split-handle {
-      display: block;
-    }
-  }
-  .main {
+  .project-shell {
     height: 100dvh;
-    margin: 0;
     display: flex;
     flex-direction: column;
-    background: var(--paper);
-    overflow: hidden;
-    border: 0;
-    min-width: 0;
+    background: var(--paper-2, #f9f9f9);
   }
-  .wb-frame {
-    min-width: 0;
+
+  .canvas-row {
     flex: 1 1 auto;
     min-height: 0;
-    overflow: hidden;
+    display: flex;
+  }
+
+  .canvas-stage {
     position: relative;
-    display: flex;
-    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
   }
-  .content-shell {
-    width: 100%;
-    max-width: none;
-    margin-inline: 0;
-    padding: 0;
-    box-sizing: border-box;
+
+  .mobile-canvas {
     flex: 1 1 auto;
     min-height: 0;
-    display: flex;
-    flex-direction: column;
+    position: relative;
+  }
+  .mobile-view {
+    height: 100%;
+  }
+  .mobile-view.is-hidden {
+    display: none;
+  }
+  .mobile-chat {
+    position: absolute;
+    inset: 0;
   }
 </style>
