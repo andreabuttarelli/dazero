@@ -159,7 +159,6 @@ const STUB_TEXT = `throw new Error('not available in the open build')\n\nexport 
 // Sorgente dentro una stringa normale: un parser lo distinguerebbe da un import, un'espressione
 // regolare no. Sono due, si nominano qui e si vedono insieme.
 const DANGLING_ALLOWLIST = [
-  { file: "scripts/bake-motion-library.ts", specifier: "./V${i}" },
   { file: "src/lib/server/chat/loop-guard.test.ts", specifier: "./motion-trailer-1x1" },
 ]
 
