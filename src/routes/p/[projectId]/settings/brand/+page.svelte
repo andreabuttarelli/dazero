@@ -40,6 +40,8 @@
       <button class="btn ghost" type="submit" disabled={busy}>Create brand</button>
     </form>
 
+    <a href={`/p/${data.project.id}/brands/new`} class="wizard-link">Create a brand with the wizard</a>
+
     {#if form?.error}<p class="msg warn">{form.error}</p>{/if}
   </section>
 {:else}
@@ -110,6 +112,8 @@
     border: 1px solid var(--line); padding: 9px 10px; font-family: inherit;
   }
   .create-form { display: flex; gap: 8px; align-items: flex-end; }
+  .wizard-link { font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; }
+  .wizard-link:hover { text-decoration: underline; }
 
   .logo-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .logo-slot {
