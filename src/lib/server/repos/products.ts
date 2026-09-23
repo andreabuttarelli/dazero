@@ -148,3 +148,52 @@ export async function deleteNodeProducts(db: Db, scope: { orgId: string; nodeId:
     throw error;
   }
 }
+
+/**
+ * IL CATALOGO DI UN BRAND APPENA CREATO — non di un nodo. `NEW_DATABASE_STRUCTURE.md` lo dice
+ * esplicito: «la sincronizzazione è una sola, per brand» (`unique (brand_id, platform,
+ * external_id)`), un asse diverso da `products_node_external_idx` che governa
+ * `upsertNodeProducts` sopra. Il wizard non ha un `products` node da cui appendere le righe — il
+ * brand non esiste ancora quando l'analisi del sito gira — quindi scrive qui, con `node_id`
+ * assente, non `null` esplicito: un `onConflict` su `node_id` con due NULL non collide mai in
+ * Postgres, e lasciarlo fuori dalla riga evita di far leva su quel comportamento per sbaglio.
+ */
+export async function insertBrandProducts(
+  db: Db,
+  input: {
+    orgId: string;
+    brandId: string;
+    platform: StorePlatform;
+    products: FetchedProduct[];
+  }
+): Promise<number> {
+  if (!input.products.length) {
+    return 0;
+  }
+
+  const syncedAt = new Date().toISOString();
+  const rows = input.products.map((p) => ({
+    org_id: input.orgId,
+    brand_id: input.brandId,
+    platform: input.platform,
+    external_id: p.externalId,
+    handle: p.handle,
+    title: p.title,
+    description: p.description,
+    price: p.price,
+    currency: p.currency,
+    url: p.url,
+    images: p.images as Json,
+    available: p.available,
+    synced_at: syncedAt
+  }));
+
+  const { error } = await db
+    .from('products')
+    .upsert(rows, { onConflict: 'brand_id,platform,external_id' });
+
+  if (error) {
+    throw error;
+  }
+  return rows.length;
+}

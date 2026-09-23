@@ -5,12 +5,13 @@
  * che parte porta quell'`onConflict`, non che Postgres lo rispetti (quello lo fa il vincolo).
  */
 import { describe, expect, it } from 'vitest';
-import { fakeDb } from '$lib/server/db/fake-db';
-import { listNodeProducts, upsertNodeProducts, deleteNodeProducts } from './products';
+import { fakeDb, filtersOf } from '$lib/server/db/fake-db';
+import { listNodeProducts, upsertNodeProducts, deleteNodeProducts, insertBrandProducts } from './products';
 
 const ORG = '11111111-1111-1111-1111-111111111111';
 const PROJECT = '22222222-2222-2222-2222-222222222222';
 const NODE = '33333333-3333-3333-3333-333333333333';
+const BRAND = '55555555-5555-5555-5555-555555555555';
 
 const product = {
   externalId: '9001',
@@ -121,5 +122,36 @@ describe('deleteNodeProducts', () => {
     const filters = Object.fromEntries(call.filters);
     expect(filters.org_id).toBe(ORG);
     expect(filters.node_id).toBe(NODE);
+  });
+});
+
+describe('insertBrandProducts: il catalogo trovato dal wizard, per brand', () => {
+  it('non scrive niente quando non c\'è nessun prodotto', async () => {
+    const { db, calls } = fakeDb({});
+    const count = await insertBrandProducts(db, { orgId: ORG, brandId: BRAND, platform: 'shopify', products: [] });
+    expect(count).toBe(0);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('scrive con upsert su (brand_id, platform, external_id), node_id assente', async () => {
+    const { db, calls } = fakeDb({});
+    const count = await insertBrandProducts(db, {
+      orgId: ORG,
+      brandId: BRAND,
+      platform: 'shopify',
+      products: [product]
+    });
+
+    expect(count).toBe(1);
+    const call = calls.find((c) => c.table === 'products' && c.op === 'upsert')!;
+    const rows = call.payload as Array<Record<string, unknown>>;
+    expect(rows[0]).toMatchObject({
+      org_id: ORG,
+      brand_id: BRAND,
+      platform: 'shopify',
+      external_id: '9001',
+      title: 'Widget'
+    });
+    expect(rows[0].node_id).toBeUndefined();
   });
 });
