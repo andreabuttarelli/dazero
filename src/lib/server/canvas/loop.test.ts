@@ -8,6 +8,12 @@ const { modalitiesOf } = vi.hoisted(() => ({ modalitiesOf: vi.fn() }));
 vi.mock('$lib/server/ai-models-sync', () => ({ modalitiesOf }));
 vi.mock('$lib/server/supabase-admin', () => ({ createAdminClient: () => ({}) }));
 
+const { readOrgBillingById, orgCreditsUsage } = vi.hoisted(() => ({
+  readOrgBillingById: vi.fn(),
+  orgCreditsUsage: vi.fn()
+}));
+vi.mock('$lib/server/credits', () => ({ readOrgBillingById, orgCreditsUsage }));
+
 import { planLoop, runLoop } from './loop';
 
 /**
@@ -46,6 +52,10 @@ beforeEach(() => {
   runGenNode.mockReset();
   modalitiesOf.mockReset();
   modalitiesOf.mockResolvedValue({ input: ['text', 'image'], output: ['image'], synced_at: 'now' });
+  readOrgBillingById.mockReset();
+  orgCreditsUsage.mockReset();
+  readOrgBillingById.mockResolvedValue({ orgId: ORG, plan: null, activatedAt: null, brandIds: [] });
+  orgCreditsUsage.mockResolvedValue({ used: 0, quota: 100_000, bonus: 0, remaining: 100_000, periodStart: new Date(), periodEnd: new Date(), percent: 0 });
 });
 
 describe('planLoop — il preventivo, senza girare niente', () => {
@@ -170,6 +180,20 @@ describe('runLoop — esegue col motore reale, mai una copia', () => {
     expect(out.results).toHaveLength(2);
     expect(out.results[0].outcome).toBe('done');
     expect(out.results[1].outcome).toBe('failed');
+  });
+
+  it('crediti insufficienti per l\'INTERO loop rifiutano PRIMA di girare — mai scoperti vuoti a metà', async () => {
+    orgCreditsUsage.mockResolvedValue({ used: 99_990, quota: 100_000, bonus: 0, remaining: 10, periodStart: new Date(), periodEnd: new Date(), percent: 99 });
+
+    const { db } = fakeDb({
+      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', repeat: 5 })],
+      nodes_connections: []
+    });
+
+    const out = await runLoop(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER, confirmed: true });
+
+    expect(out.kind).toBe('refused');
+    expect(runGenNode).not.toHaveBeenCalled();
   });
 
   it('deposita un nodo list di output con un item per combinazione riuscita', async () => {

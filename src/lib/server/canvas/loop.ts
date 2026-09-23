@@ -33,6 +33,8 @@ import { planCombinations, loopSafety, type LoopCombine, type PlannedCombination
 import { axesFrom, iterateSelectionFor, type LoopEdge, type LoopSourceNode } from '$lib/canvas/loop-axes';
 import { estimateLoopCredits, type LoopCostEstimate } from './loop-cost';
 import { upstreamInputsFor } from './upstream';
+import { readOrgBillingById, orgCreditsUsage } from '$lib/server/credits';
+import { createAdminClient } from '$lib/server/supabase-admin';
 import type { Actor } from '$lib/server/repos/actor';
 import type { GenMedium } from '$lib/canvas/gen-node';
 
@@ -259,6 +261,22 @@ async function depositOutputList(
   return created.id;
 }
 
+/**
+ * I CREDITI PER TUTTO IL LOOP, PRIMA DI GIRARE UNA SOLA COMBINAZIONE — CLAUDE.md lo chiede
+ * esplicito: non scoperti vuoti a metà strada. `runGenNode` non gatekeeps da sé (lo fa sempre
+ * chi chiama, `gateOrgAiAction` nella rotta/azione) — qui si fa la STESSA domanda ma sul totale
+ * stimato, non sulla singola generazione, con la stessa lettura (`readOrgBillingById` +
+ * `orgCreditsUsage`) che `gateOrgCreditsCore` usa per il cancello di un giro solo.
+ */
+async function wholeLoopCreditsAvailable(orgId: string, cost: LoopCostEstimate): Promise<boolean> {
+  const admin = createAdminClient();
+  const org = await readOrgBillingById(admin, orgId);
+  if (!org) return true;
+
+  const usage = await orgCreditsUsage(admin, org);
+  return usage.remaining >= cost.total;
+}
+
 export async function runLoop(db: Db, input: LoopRunInput): Promise<LoopRunOutcome> {
   const node = await findNode(db, { orgId: input.orgId, nodeId: input.nodeId });
   if (!node) {
@@ -272,11 +290,17 @@ export async function runLoop(db: Db, input: LoopRunInput): Promise<LoopRunOutco
   if (safety.verdict === 'refuse') {
     return { kind: 'refused', error: `troppe combinazioni (${safety.count}): dividi il loop` };
   }
+
+  const medium = (node.type === 'text' || node.type === 'video' ? node.type : 'image') as GenMedium;
+  const model = typeof node.data.model === 'string' ? node.data.model : null;
+  const cost = estimateLoopCredits({ medium, model, count: plan.combinations.length });
+
   if (safety.verdict === 'confirm' && !input.confirmed) {
-    const medium = (node.type === 'text' || node.type === 'video' ? node.type : 'image') as GenMedium;
-    const model = typeof node.data.model === 'string' ? node.data.model : null;
-    const cost = estimateLoopCredits({ medium, model, count: plan.combinations.length });
     return { kind: 'needs_confirmation', count: safety.count, cost };
+  }
+
+  if (!(await wholeLoopCreditsAvailable(input.orgId, cost))) {
+    return { kind: 'refused', error: 'credits_exhausted' };
   }
 
   const results: LoopComboOutcome[] = [];
