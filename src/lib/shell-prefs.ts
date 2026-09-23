@@ -3,7 +3,9 @@
 export const SHELL_PREF_KEYS = {
   sidebarOpen: 'dazero.sidebarOpen',
   sidebarPanePx: 'dazero.sidebarPanePx',
-  sidebarPane: 'dazero.sidebarPane'
+  sidebarPane: 'dazero.sidebarPane',
+  chatPanelPx: 'dazero.chatPanelPx',
+  chatOpen: 'dazero.chatOpen'
 } as const;
 
 export const SIDEBAR_PANES = ['chat', 'pages', 'assets'] as const;
@@ -98,3 +100,34 @@ export const SHELL_LAYOUT = {
   SIDEBAR_W_MIN,
   SIDEBAR_W_MAX
 } as const;
+
+const CHAT_PANEL_DEFAULT = 340;
+const CHAT_PANEL_MIN = 280;
+const CHAT_PANEL_MAX = 560;
+
+export const CHAT_PANEL = {
+  DEFAULT: CHAT_PANEL_DEFAULT,
+  MIN: CHAT_PANEL_MIN,
+  MAX: CHAT_PANEL_MAX
+} as const;
+
+export function readChatPanelPx(): number {
+  const n = Number(readRaw(SHELL_PREF_KEYS.chatPanelPx));
+  if (!Number.isFinite(n)) return CHAT_PANEL_DEFAULT;
+  return Math.min(CHAT_PANEL_MAX, Math.max(CHAT_PANEL_MIN, Math.round(n)));
+}
+
+export function writeChatPanelPx(px: number) {
+  writeRaw(SHELL_PREF_KEYS.chatPanelPx, String(Math.round(px)));
+}
+
+export function readChatOpen(fallback = true): boolean {
+  const raw = readRaw(SHELL_PREF_KEYS.chatOpen);
+  if (raw === '0' || raw === 'false') return false;
+  if (raw === '1' || raw === 'true') return true;
+  return fallback;
+}
+
+export function writeChatOpen(open: boolean) {
+  writeRaw(SHELL_PREF_KEYS.chatOpen, open ? 'true' : 'false');
+}
