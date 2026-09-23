@@ -69,6 +69,15 @@ export function videoCredits(model = videoModel('i2v')): number {
 /** Il testo di un batch — piano, produzione, revisione — che non cresce col numero di post. */
 export const BATCH_TEXT_CREDITS = credits(0.033 + 0.038 + 0.024);
 
+/**
+ * UNA generazione di un nodo testo della tela — non un batch (`BATCH_TEXT_CREDITS` sopra è la
+ * somma di TRE chiamate di pianificazione, non il prezzo di una sola). Stimata da una delle tre
+ * mediane misurate (`reviewSeeds`, il testo più vicino a un prompt libero senza un ruolo
+ * editoriale) finché un numero misurato apposta non la sostituisce — usata da `loop-cost.ts` per
+ * il preventivo di un loop su un nodo `text`, dove la sicurezza sta nel non SOTTOSTIMARE.
+ */
+export const TEXT_NODE_CREDITS = credits(0.024);
+
 /** Quante slide vale un carosello di cui nessuno ha ancora detto la lunghezza. */
 const DEFAULT_SLIDES = 5;
 
