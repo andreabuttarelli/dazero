@@ -56,9 +56,9 @@ describe('chat tiers', () => {
     const mod = (await import('./chat-tiers')) as Record<string, unknown>;
     expect(Object.keys(mod).filter((k) => /MULT|CreditMult/.test(k))).toEqual([]);
     const en = (await import('./i18n/locales/en.json')).default as unknown as {
-      chat: { tier: Record<string, string> };
+      chat?: { tier?: Record<string, string> };
     };
-    const tier = en.chat.tier;
+    const tier = en.chat?.tier ?? {};
     for (const [k, v] of Object.entries(tier)) {
       expect(`${k}:${v}`).not.toContain('{mult}');
     }
