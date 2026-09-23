@@ -33,9 +33,8 @@ const BRAND = { id: 'brand-1', slug: 'demo', plan: 'pro', status: 'active' };
 
 const IG = {
   platform: 'Instagram',
-  username: 'demo.brand',
+  handle: 'demo.brand',
   display_name: 'Demo Brand',
-  profile_url: 'https://instagram.com/demo.brand',
   status: 'active',
   connected_at: '2026-08-01T10:00:00.000Z'
 };
@@ -68,7 +67,7 @@ describe('GET /api/v1/brands/:slug/social/accounts', () => {
         platform: 'instagram',
         username: 'demo.brand',
         display_name: 'Demo Brand',
-        profile_url: 'https://instagram.com/demo.brand',
+        profile_url: null,
         status: 'active',
         connected_at: '2026-08-01T10:00:00.000Z'
       }
@@ -86,8 +85,8 @@ describe('GET /api/v1/brands/:slug/social/accounts', () => {
 
   it('non chiama rotta una piattaforma che ha anche un solo account vivo', async () => {
     const { body } = await read([
-      { ...IG, status: 'disconnected', username: 'vecchio' },
-      { ...IG, username: 'nuovo' }
+      { ...IG, status: 'disconnected', handle: 'vecchio' },
+      { ...IG, handle: 'nuovo' }
     ]);
 
     expect(body.connected_platforms).toEqual(['instagram']);

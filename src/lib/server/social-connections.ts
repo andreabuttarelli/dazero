@@ -43,17 +43,18 @@ export async function socialConnections(
   supabase: SupabaseClient,
   brand: BrandRef
 ): Promise<SocialConnections> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('social_accounts')
-    .select('platform, username, display_name, profile_url, status, connected_at')
+    .select('platform, handle, display_name, status, connected_at')
     .eq('brand_id', brand.id)
     .order('connected_at', { ascending: true });
+  if (error) throw error;
 
   const accounts: SocialAccount[] = (data ?? []).map((row) => ({
     platform: norm(row.platform),
-    username: row.username ?? null,
+    username: row.handle ?? null,
     display_name: row.display_name ?? null,
-    profile_url: row.profile_url ?? null,
+    profile_url: null,
     status: norm(row.status) || ACTIVE,
     connected_at: row.connected_at ?? null
   }));

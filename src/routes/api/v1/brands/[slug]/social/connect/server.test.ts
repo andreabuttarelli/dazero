@@ -35,9 +35,8 @@ const BRAND = { id: 'brand-1', slug: 'demo', plan: 'pro', status: 'active' };
 
 const IG = {
   platform: 'instagram',
-  username: 'demo.brand',
+  handle: 'demo.brand',
   display_name: 'Demo Brand',
-  profile_url: null,
   status: 'active',
   connected_at: '2026-08-01T10:00:00.000Z'
 };
@@ -111,7 +110,7 @@ describe('POST /api/v1/brands/:slug/social/connect', () => {
   });
 
   it('rifiuta quando i posti del piano sono finiti, che è un altro rimedio', async () => {
-    const full = Array.from({ length: 50 }, (_, i) => ({ ...IG, username: `a${i}` }));
+    const full = Array.from({ length: 50 }, (_, i) => ({ ...IG, handle: `a${i}` }));
 
     const { res, body } = await mint({ platform: 'tiktok' }, full);
 
