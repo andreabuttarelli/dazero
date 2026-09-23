@@ -978,3 +978,13 @@ h1, h2 { font-family: var(--serif); font-weight: var(--heading-weight); letter-s
 :root[data-theme="dark"] .sidebar { background: var(--paper-2); border-color: var(--line); }
 :root[data-theme="dark"] .assistant .reply button { background: var(--accent); color: #0a0a0a; }
 :root[data-theme="dark"] .mini.connect { background: var(--accent); color: #0a0a0a; }
+
+html[data-hydrating] :is(button, [role='button'], input, select, textarea, label, summary) {
+  pointer-events: none;
+  cursor: progress;
+  animation: awaiting-hydration 0s 200ms forwards;
+}
+
+@keyframes awaiting-hydration {
+  to { opacity: 0.55; }
+}

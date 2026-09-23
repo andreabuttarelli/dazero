@@ -13,7 +13,10 @@
     trackBookingClicks
   } from '$lib/analytics';
   import { initConsentForRegion } from '$lib/consent';
+  import { onMount } from 'svelte';
   let { children, data } = $props();
+
+  onMount(() => document.documentElement.removeAttribute('data-hydrating'));
 
   // Guard "chi sta guardando": il server ha già deciso (root +layout.server.ts), qui arriva solo il
   // booleano. Impostato SUBITO, fuori da un $effect: CookieBanner è un figlio e il suo onMount gira
