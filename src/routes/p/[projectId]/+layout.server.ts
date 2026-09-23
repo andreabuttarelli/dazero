@@ -8,6 +8,7 @@ import { chooseOrg } from '$lib/server/tenancy/context';
 import { ensureProfile } from '$lib/server/repos/profiles';
 import { PROJECT_BRAND_SHELL_SELECT, projectBrandShellOf, type ProjectBrandShell } from '$lib/server/projects/brand-shell';
 import { env } from '$env/dynamic/private';
+import type { Db } from '$lib/server/db/client';
 
 const FLAGS = {
   navTeam: env.FEATURE_NAV_TEAM === 'true'
@@ -31,8 +32,7 @@ export const load: LayoutServerLoad = async ({ params, locals }) => {
     throw error(500, 'sessione senza client');
   }
 
-  const profile = await ensureProfile(db, user);
-  const memberships = await listMemberships(db, user.id);
+  const [profile, memberships] = await Promise.all([ensureProfile(db, user), listMemberships(db, user.id)]);
   const found = await findProjectForUser(db, { projectId: params.projectId ?? '', memberships });
   if (!found) {
     throw error(404, 'questo progetto non esiste, o non è tuo');
@@ -40,22 +40,11 @@ export const load: LayoutServerLoad = async ({ params, locals }) => {
 
   const { orgId, project } = found;
   const membership = memberships.find((m) => m.org.id === orgId)!;
-  const projects = await listProjects(db, orgId);
-  const canvases = await listCanvases(db, { orgId, projectId: project.id });
-
-  let brand: ProjectBrandShell | null = null;
-  if (project.brandId) {
-    const { data, error: brandError } = await db
-      .from('brands')
-      .select(PROJECT_BRAND_SHELL_SELECT)
-      .eq('id', project.brandId)
-      .eq('org_id', orgId)
-      .maybeSingle();
-    if (brandError) {
-      throw error(500, brandError.message);
-    }
-    brand = data ? projectBrandShellOf(data) : null;
-  }
+  const [projects, canvases, brand] = await Promise.all([
+    listProjects(db, orgId),
+    listCanvases(db, { orgId, projectId: project.id }),
+    loadBrandShell(db, orgId, project.brandId)
+  ]);
 
   return {
     profile: { name: profile.name, email: profile.email, avatarUrl: profile.avatarUrl },
@@ -71,3 +60,19 @@ export const load: LayoutServerLoad = async ({ params, locals }) => {
     flags: FLAGS
   };
 };
+
+async function loadBrandShell(db: Db, orgId: string, brandId: string | null): Promise<ProjectBrandShell | null> {
+  if (!brandId) {
+    return null;
+  }
+  const { data, error: brandError } = await db
+    .from('brands')
+    .select(PROJECT_BRAND_SHELL_SELECT)
+    .eq('id', brandId)
+    .eq('org_id', orgId)
+    .maybeSingle();
+  if (brandError) {
+    throw error(500, brandError.message);
+  }
+  return data ? projectBrandShellOf(data) : null;
+}

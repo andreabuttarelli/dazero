@@ -82,14 +82,12 @@ async function scopeFor(locals: App.Locals, canvasId: string): Promise<Scope> {
 /** La storia dei giri, per nodo: quello che la striscia sotto il risultato deve poter mostrare. */
 async function loadGenRuns(
   db: Db,
-  scope: { orgId: string; canvasId: string }
+  scope: { orgId: string; nodes: Awaited<ReturnType<typeof listNodes>> }
 ): Promise<Record<string, unknown[]>> {
-  const nodes = await listNodes(db, scope);
-  const runs: Record<string, unknown[]> = {};
-  for (const node of nodes) {
-    runs[node.id] = await runsOf(db, { orgId: scope.orgId, nodeId: node.id });
-  }
-  return runs;
+  const entries = await Promise.all(
+    scope.nodes.map(async (node) => [node.id, await runsOf(db, { orgId: scope.orgId, nodeId: node.id })] as const)
+  );
+  return Object.fromEntries(entries);
 }
 
 /**
@@ -105,22 +103,21 @@ async function loadDownloaded(
   socialPosts: Record<string, unknown[]>;
   influencers: Record<string, { name: string; views: { id: string; label: string; url: string | null }[] }>;
 }> {
-  const products: Record<string, unknown[]> = {};
-  const socialPosts: Record<string, unknown[]> = {};
   const influencers: Record<string, { name: string; views: { id: string; label: string; url: string | null }[] }> = {};
+  const nodesOfType = (type: string) => scope.nodes.filter((node) => node.type === type);
 
-  for (const node of scope.nodes) {
-    if (node.type === 'products') {
-      products[node.id] = await listNodeProducts(db, { orgId: scope.orgId, nodeId: node.id });
-    }
-    if (node.type === 'social_account_feed') {
-      socialPosts[node.id] = await listNodeSocialPosts(db, { orgId: scope.orgId, nodeId: node.id });
-    }
-  }
-
-  await loadInfluencerViews(db, scope.nodes, influencers);
+  const [products, socialPosts] = await Promise.all([
+    perNode(nodesOfType('products'), (nodeId) => listNodeProducts(db, { orgId: scope.orgId, nodeId })),
+    perNode(nodesOfType('social_account_feed'), (nodeId) => listNodeSocialPosts(db, { orgId: scope.orgId, nodeId })),
+    loadInfluencerViews(db, scope.nodes, influencers)
+  ]);
 
   return { products, socialPosts, influencers };
+}
+
+async function perNode(nodes: { id: string }[], read: (nodeId: string) => Promise<unknown[]>): Promise<Record<string, unknown[]>> {
+  const entries = await Promise.all(nodes.map(async (node) => [node.id, await read(node.id)] as const));
+  return Object.fromEntries(entries);
 }
 
 /**
@@ -175,8 +172,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     canvasModelCatalogue()
   ]);
 
-  const runs = await loadGenRuns(db, { orgId, canvasId });
-  const { products, socialPosts, influencers } = await loadDownloaded(db, { orgId, canvasId, nodes });
+  const [runs, { products, socialPosts, influencers }] = await Promise.all([
+    loadGenRuns(db, { orgId, nodes }),
+    loadDownloaded(db, { orgId, canvasId, nodes })
+  ]);
 
   return { canvas, nodes, connections, catalogue, runs, products, socialPosts, influencers, projectId: params.projectId, orgId };
 };
@@ -259,12 +258,10 @@ export const actions: Actions = {
     const [nodes, connections] = await Promise.all([
       listNodes(scope.db, scope), listConnections(scope.db, scope)
     ]);
-    const runs = await loadGenRuns(scope.db, { orgId: scope.orgId, canvasId: scope.canvasId });
-    const { products, socialPosts, influencers } = await loadDownloaded(scope.db, {
-      orgId: scope.orgId,
-      canvasId: scope.canvasId,
-      nodes
-    });
+    const [runs, { products, socialPosts, influencers }] = await Promise.all([
+      loadGenRuns(scope.db, { orgId: scope.orgId, nodes }),
+      loadDownloaded(scope.db, { orgId: scope.orgId, canvasId: scope.canvasId, nodes })
+    ]);
     return { nodes, connections, runs, products, socialPosts, influencers };
   },
 

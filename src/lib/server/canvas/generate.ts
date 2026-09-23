@@ -543,17 +543,15 @@ export type RunWithText = NodeRun & { text: string | null };
  */
 export async function runsOf(db: Db, scope: { orgId: string; nodeId: string }): Promise<RunWithText[]> {
   const runs = await listNodeRuns(db, scope);
-  const out: RunWithText[] = [];
+  return Promise.all(runs.map(async (run) => ({ ...run, text: await outputText(db, scope.orgId, run.outputAssetId) })));
+}
 
-  for (const run of runs) {
-    let text: string | null = null;
-    if (run.outputAssetId) {
-      const asset = await findAsset(db, { orgId: scope.orgId, assetId: run.outputAssetId });
-      text = asset?.content ?? null;
-    }
-    out.push({ ...run, text });
+async function outputText(db: Db, orgId: string, assetId: string | null): Promise<string | null> {
+  if (!assetId) {
+    return null;
   }
-  return out;
+  const asset = await findAsset(db, { orgId, assetId });
+  return asset?.content ?? null;
 }
 
 export { claimRun, completeRun, failRun };
