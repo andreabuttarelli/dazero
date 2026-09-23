@@ -1,9 +1,12 @@
 /**
  * UN COLORE DEL CONTENT DIVENTA UN'IMMAGINE DA TRASCINARE — la stessa dottrina del logo del
  * brand (`brands/+page.server.ts`): `dragstart` è sincrono, quindi lo swatch nasce PRIMA che il
- * puntatore parta, non al volo. `media` è già il bucket pubblico dei loghi (`settings-actions.ts`,
+ * puntatore parta, non al volo. `media` è il bucket pubblico dei loghi (`settings-actions.ts`,
  * `studio-actions.ts`) — uno swatch ci sta accanto, senza bisogno del bucket privato
  * `canvas-assets` che chiede un `canvasId` che il pannello dei brand e il wizard non hanno.
+ * Pubblico per necessità, non per comodità: `assets.url` qui è un URL DUREVOLE consegnato al
+ * browser (mai firmato al momento della lettura, come `generated`/`upload`), perché lo swatch
+ * deve restare trascinabile ore o giorni dopo che la pagina che l'ha aperto è chiusa.
  *
  * IDEMPOTENTE PER COLORE, NON PER CHIAMATA — `colourSwatchPath` è una funzione pura dell'org e
  * dell'hex: lo stesso colore trascinato da due brand diversi della stessa org scrive lo stesso
