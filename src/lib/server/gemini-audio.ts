@@ -177,14 +177,17 @@ async function uploadAudio(
 	brandId: string,
 	wav: Buffer,
 	label: string
-): Promise<string> {
+): Promise<{ path: string; url: string }> {
 	const path = `${brandId}/voiceover/${crypto.randomUUID()}-${label}.wav`;
-	const { error } = await supabase.storage.from('media').upload(path, wav, {
+	const { error } = await supabase.storage.from('brand-knowledge').upload(path, wav, {
 		contentType: 'audio/wav',
 		upsert: false
 	});
 	if (error) throw new Error(`Audio upload failed: ${error.message}`);
-	return supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+	const { signKnowledgePaths } = await import('$lib/server/media-archive');
+	const url = (await signKnowledgePaths(supabase, [path])).get(path);
+	if (!url) throw new Error('Audio uploaded but could not be signed for reading.');
+	return { path, url };
 }
 
 /**
@@ -231,7 +234,7 @@ export async function generateVoiceOver(opts: {
 			// `wavFromPcm` è ciò che li scrive nell'intestazione che il PCM grezzo non ha.
 			assertCuttable(model, { ...spoken, bitsPerSample: TTS_PCM.bitsPerSample });
 			samples = samplesFromPcm(spoken.pcm);
-			fullUrl = await uploadAudio(opts.supabase, opts.brandId, wavFromPcm(spoken.pcm), 'full');
+			fullUrl = (await uploadAudio(opts.supabase, opts.brandId, wavFromPcm(spoken.pcm), 'full')).url;
 		}
 	} catch (e) {
 		logAiCall({
@@ -299,9 +302,9 @@ export async function cutVoiceOver(opts: {
 }): Promise<VoiceOverCutResult> {
 	// L'url arriva da un tool, cioè da un modello, cioè da un testo che l'utente o una pagina letta
 	// può influenzare: una fetch server-side su un indirizzo arbitrario parte da dentro la nostra
-	// rete. Si accetta solo ciò che abbiamo caricato noi.
-	const base = opts.supabase.storage.from('media').getPublicUrl('').data.publicUrl;
-	if (!opts.url.startsWith(base.split('/media/')[0] + '/media/')) {
+	// rete. Si accetta solo una URL firmata di questo brand in `brand-knowledge`.
+	const knowledgePrefix = `/object/sign/brand-knowledge/${opts.brandId}/voiceover/`;
+	if (!opts.url.includes(knowledgePrefix)) {
 		throw new Error('That is not a recording from this workspace.');
 	}
 	const res = await fetch(opts.url, { signal: AbortSignal.timeout(30_000) });
@@ -324,12 +327,12 @@ export async function cutVoiceOver(opts: {
 	const pieces = await Promise.all(
 		segments.map(async (seg, i) => ({
 			line: matched ? labels[i] : `piece ${i + 1}`,
-			url: await uploadAudio(
+			url: (await uploadAudio(
 				opts.supabase,
 				opts.brandId,
 				sliceToWav(samples, seg, format),
 				`p${i + 1}`
-			),
+			)).url,
 			durationSeconds: seg.durationSeconds,
 			startSeconds: seg.startSeconds
 		}))
@@ -421,7 +424,7 @@ export async function generateMusicBed(opts: {
 
 	const path = `${opts.brandId}/music/${crypto.randomUUID()}.mp3`;
 	const { error } = await opts.supabase.storage
-		.from('media')
+		.from('brand-knowledge')
 		.upload(path, Buffer.from(mp3), { contentType: 'audio/mpeg', upsert: false });
 	if (error) {
 		const e = new Error(`Music upload failed: ${error.message}`);
@@ -441,8 +444,12 @@ export async function generateMusicBed(opts: {
 		context: `music:${tier}:${seconds}s`
 	});
 
+	const { signKnowledgePaths } = await import('$lib/server/media-archive');
+	const url = (await signKnowledgePaths(opts.supabase, [path])).get(path);
+	if (!url) throw new Error('Music uploaded but could not be signed for reading.');
+
 	return {
-		url: opts.supabase.storage.from('media').getPublicUrl(path).data.publicUrl,
+		url,
 		durationSeconds: tier === 'clip' ? MUSIC_CLIP_SECONDS : probeMp3Duration(mp3) ?? seconds
 	};
 }
