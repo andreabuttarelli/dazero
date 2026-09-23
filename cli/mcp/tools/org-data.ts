@@ -102,10 +102,11 @@ export function registerOrgDataTools(server: McpServer) {
       title: 'Node data shapes',
       description:
         'What `data` must look like on a `nodes` row, per `type` — the JSON Schema `insert_row`/' +
-        '`update_row` actually enforce on `nodes`, not a guess. Omit `type` for all 10 at once; name ' +
-        'one to save tokens once you know which you need. Limits (aspect ratios, durations, prompt ' +
-        'length) are NOT here — those come from `get_media_models`, because they are a fact of the ' +
-        'model, not the node. Free.',
+        '`update_row` actually enforce on `nodes`, not a guess. Omit `type` for all 12 at once; name ' +
+        'one to save tokens once you know which you need. `list` holds N iteration values (images or ' +
+        'text, never mixed); `select` picks exactly one item back out of a list by a 1-based `index`. ' +
+        'Limits (aspect ratios, durations, prompt length) are NOT here — those come from ' +
+        '`get_media_models`, because they are a fact of the model, not the node. Free.',
       inputSchema: z.object({
         org,
         type: z
@@ -119,7 +120,9 @@ export function registerOrgDataTools(server: McpServer) {
             'social_post_mockup',
             'products',
             'ads',
-            'influencer'
+            'influencer',
+            'list',
+            'select'
           ])
           .optional()
       }),

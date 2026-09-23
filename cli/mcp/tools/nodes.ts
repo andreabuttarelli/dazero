@@ -58,4 +58,46 @@ export function registerNodeTools(server: McpServer) {
         })
       )
   );
+
+  server.registerTool(
+    'run_node_loop',
+    {
+      title: 'Run a generation node in a loop',
+      description:
+        'Generate many combinations from a node\'s `iterate` wires (or plain "repeat N" variants ' +
+        'when it has none), through the SAME engine `run_node_generation` calls — one real run per ' +
+        'combination, never a copy of it. Up to 50 combinations runs on the call; above 50 it comes ' +
+        'back `needs_confirmation` with the count and the credit cost — call again with `confirm: ' +
+        'true` to actually run it; above 1000 it is refused outright and the loop must be split. ' +
+        'Credits for the WHOLE loop are checked up front, before the first combination runs, not ' +
+        'discovered empty halfway. A failed combination never stops the others; completed results ' +
+        'land in an output `list` node next to this one, one item per combination, each labelled ' +
+        'with which values produced it.',
+      inputSchema: z.object({
+        org,
+        node_id: z.string(),
+        confirm: z.boolean().optional().describe('Required (true) to run above 50 combinations.')
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false }
+    },
+    async ({ org, node_id, confirm }) =>
+      withAuth((token) =>
+        call(token, 'POST', `/api/v1/org/nodes/${encodeURIComponent(node_id)}/loop`, org, { confirm: confirm ?? false })
+      )
+  );
+
+  server.registerTool(
+    'preview_node_loop',
+    {
+      title: 'Preview a node\'s loop',
+      description:
+        'How many combinations `run_node_loop` would run on this node right now, and what they ' +
+        'would cost — reads only, spends nothing. Call this before `run_node_loop` when the count ' +
+        'is not already known, rather than guessing at whether confirm will be needed.',
+      inputSchema: z.object({ org, node_id: z.string() }),
+      annotations: { readOnlyHint: true }
+    },
+    async ({ org, node_id }) =>
+      withAuth((token) => call(token, 'GET', `/api/v1/org/nodes/${encodeURIComponent(node_id)}/loop`, org))
+  );
 }

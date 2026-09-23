@@ -78,7 +78,7 @@ describe('mcp HTTP transport', () => {
     const listBody = await listRes.json();
     const names = (listBody.result?.tools ?? []).map((t: { name: string }) => t.name);
     expect(names).toContain('query');
-    expect(names.length).toBe(12);
+    expect(names.length).toBe(14);
   });
 
   /**
