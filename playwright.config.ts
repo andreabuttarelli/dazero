@@ -8,6 +8,10 @@ const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${E2E_PORT}`;
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // Un Zernio finto in locale, mai il vero: calendar.spec.ts programma/pubblica/cancella per
+  // davvero contro questo server, non contro l'account di nessuno. Deve partire PRIMA di
+  // webServer — è lì che ZERNIO_BASE_URL viene letta la prima volta.
+  globalSetup: './tests/e2e/fixtures/global-setup.ts',
   timeout: 30_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
@@ -30,7 +34,12 @@ export default defineConfig({
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
       PUBLIC_APP_URL: BASE_URL,
       ORIGIN: BASE_URL,
-      NO_HMR: '1'
+      NO_HMR: '1',
+      // Un mock Zernio, mai il vero: la firma di publish.ts è HTTP, quindi le spec che devono
+      // programmare/pubblicare puntano qui invece che a https://zernio.com — vedi
+      // calendar.spec.ts per il server che risponde su questa porta.
+      ...(process.env.ZERNIO_BASE_URL ? { ZERNIO_BASE_URL: process.env.ZERNIO_BASE_URL } : {}),
+      ZERNIO_API_KEY: process.env.ZERNIO_API_KEY ?? 'e2e-placeholder-zernio-key'
     }
   }
 });

@@ -4,8 +4,9 @@ import { resolveOrgCaller } from '$lib/server/org-data/auth';
 import { findPost, setPostStatus, POST_STATUSES, type PostStatus } from '$lib/server/repos/posts';
 
 /**
- * Solo lo STATO di un post — `draft → ready → archived`. Non tocca `scheduled_posts`: pubblicare
- * o programmare una consegna è un altro mestiere, e vive quando il worker di consegna sarà scritto.
+ * Solo lo STATO di un post — `draft → ready → archived`, il ciclo redazionale. Pubblicare o
+ * programmare una consegna è un altro mestiere, e vive in `[id]/deliveries` — Zernio è l'unica
+ * fonte di verità su quando esce e con che stato, questa rotta non la tocca.
  */
 export const PATCH: RequestHandler = async ({ request, params, url }) => {
   const bearer = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
