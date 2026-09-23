@@ -4,6 +4,17 @@ Lezioni imparate lavorando a questo repo: problemi veri, il segnale che li fa ri
 
 ## Ambiente e worktree
 
+### I tempi di idratazione misurati in dev non dicono niente
+In dev Vite serve centinaia di moduli non raggruppati e compila le pagine alla prima richiesta:
+la tela «idrata» in secondi anche quando in produzione ci mette mezzo secondo, e un taglio di
+100 KB non si vede. Segnale: numeri che cambiano del doppio fra due giri identici, e un `jsFiles`
+nell'ordine delle centinaia. Mossa: `npx vite build` e `npx vite preview --port 4180` (mai sulla
+5173 di chi lavora), poi Playwright con la cache disabilitata via CDP; per il dispositivo medio,
+`Emulation.setCPUThrottlingRate` 4 e rete Fast 4G. L'idratazione si legge da un bottone che ha
+i gestori di Svelte 5 (proprietà `Symbol` sull'elemento), non da `networkidle`. E una build in
+background va interrogata a intervalli brevi: aspettarla ferma oltre dieci minuti fa uccidere la
+sessione dal watchdog.
+
 ### Una cache letta di sincrono sceglie il modello sbagliato senza dire niente
 Spostato il default della chat da `LLM_DEFAULT_MODEL` a una riga in Supabase, la riga marcata
 diceva `z-ai/glm-5.3-flash` e il turno e` girato su `google/gemini-3.8-flash` — l'env. Nessun
