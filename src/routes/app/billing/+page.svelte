@@ -3,16 +3,6 @@
   import '$lib/styles/settings-shell.css';
 
   let { data, form } = $props();
-
-  const PLAN_LABELS: Record<string, string> = { go: 'Go', starter: 'Starter', pro: 'Pro' };
-  const planName = $derived(data.org.plan ? (PLAN_LABELS[data.org.plan] ?? data.org.plan) : null);
-  const planLabel = $derived(
-    planName
-      ? $_('app.settings.billing.planActive', { values: { plan: planName } })
-      : $_('app.settings.billing.noPlan')
-  );
-
-  const fmt = (iso: string) => new Date(iso).toLocaleDateString();
 </script>
 
 <section class="panel">
@@ -20,7 +10,7 @@
 
   <div class="field">
     <div class="ftxt">
-      <div class="fh">{planLabel}</div>
+      <div class="fh">{$_('app.account.billing.poolTitle')}</div>
       <div class="fs">{$_('app.account.billing.poolDesc')}</div>
     </div>
   </div>
@@ -38,45 +28,28 @@
       <div class="field"><div class="fs" style="color:#c0392b;">{form.billingError}</div></div>
     {/if}
 
-    {#if data.credits}
-      <div class="field">
-        <div class="ftxt">
-          <div class="fh">{$_('app.account.billing.poolTitle')}</div>
-          <div class="fs">
-            {$_('app.settings.usage.creditsUsed')}: {data.credits.used} / {data.credits.quota}
-            · {$_('app.account.billing.periodLabel', {
-              values: { start: fmt(data.credits.periodStart), end: fmt(data.credits.periodEnd) }
-            })}
-          </div>
-        </div>
+    <div class="field">
+      <div class="ftxt">
+        <div class="fh">{$_('app.settings.usage.creditsUsed')}</div>
+        <div class="fs">{data.credits.balance}</div>
       </div>
-    {/if}
+    </div>
 
     {#if data.hasBilling}
-      {#if data.atTopPlan}
-        <div class="field">
-          <div class="ftxt">
-            <div class="fh">{$_('app.settings.billing.topPlanTitle')}</div>
-            <div class="fs">{$_('app.settings.billing.topPlanDesc')}</div>
-          </div>
-          <a class="bbtn primary" href={`mailto:hi@dazero.co?subject=${encodeURIComponent('Custom plan — ' + data.org.name)}`}>{$_('app.settings.billing.talkToUs')}</a>
+      <div class="field">
+        <div class="ftxt">
+          <div class="fh">{$_('app.settings.billing.upgradeTitle')}</div>
+          <div class="fs">{$_('app.settings.billing.upgradeDesc')}</div>
         </div>
-      {:else}
-        <div class="field">
-          <div class="ftxt">
-            <div class="fh">{$_('app.settings.billing.upgradeTitle')}</div>
-            <div class="fs">{$_('app.settings.billing.upgradeDesc')}</div>
-          </div>
-          <div class="bill-actions">
-            {#each data.upgrades as p (p.key)}
-              <form method="POST" action={`?/upgrade`}>
-                <input type="hidden" name="plan" value={p.key} />
-                <button class="bbtn primary" type="submit">{$_('app.settings.upgrade.choose', { values: { plan: p.label } })}</button>
-              </form>
-            {/each}
-          </div>
+        <div class="bill-actions">
+          {#each data.credits.ladder as rung (rung.price)}
+            <form method="POST" action={`?/upgrade`}>
+              <input type="hidden" name="usd" value={rung.price} />
+              <button class="bbtn primary" type="submit">${rung.price}/mo — {rung.creditsSubscription} credits</button>
+            </form>
+          {/each}
         </div>
-      {/if}
+      </div>
       <div class="field">
         <div class="ftxt">
           <div class="fh">{$_('app.settings.billing.manage')}</div>
@@ -94,10 +67,10 @@
           <div class="fs">{$_('app.settings.billing.upgradeDesc')}</div>
         </div>
         <div class="bill-actions">
-          {#each data.upgrades as p (p.key)}
+          {#each data.credits.ladder as rung (rung.price)}
             <form method="POST" action={`?/upgrade`}>
-              <input type="hidden" name="plan" value={p.key} />
-              <button class="bbtn primary" type="submit">{$_('app.settings.upgrade.choose', { values: { plan: p.label } })}</button>
+              <input type="hidden" name="usd" value={rung.price} />
+              <button class="bbtn primary" type="submit">${rung.price}/mo — {rung.creditsSubscription} credits</button>
             </form>
           {/each}
         </div>

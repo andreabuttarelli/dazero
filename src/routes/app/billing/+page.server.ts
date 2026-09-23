@@ -1,8 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
-import { getCreditsUsage } from '$lib/server/credits';
+import { orgCreditBalance } from '$lib/server/credits';
 import { ensureOrgForUser } from '$lib/server/org';
-import { plansAbove, isTopPlan } from '$lib/server/plans';
+import { CREDIT_LADDER } from '$lib/server/credit-ladder';
 import {
   billingPortal,
   upgrade,
@@ -10,31 +10,15 @@ import {
   cancelPlan
 } from '$lib/server/settings-actions';
 
-const CREDITS_PER_USD = 100;
+const CREDITS_PER_USD_AI_SPEND = 200;
 
-type BrandRow = {
-  id: string;
-  name: string;
-  slug: string;
-  plan: string | null;
-  status: string | null;
-  activated_at: string | null;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
-};
-
-type OrgRow = {
-  id: string;
-  name: string;
-  owner_id: string;
-  plan: string | null;
-  stripe_customer_id: string | null;
-  brands: BrandRow[] | null;
-};
+type OrgRow = { id: string; name: string; stripe_customer_id: string | null };
+type BrandRow = { id: string; name: string; slug: string };
 
 /**
- * One subscription covers the whole organization, so this page answers for the org: its plan,
- * its pool, and which of its brands is spending it.
+ * One credit balance covers the whole organization (`orgs.stripe_customer_id`,
+ * `credit_ledger`/`org_credit_balance` — no `organizations` table, no `brands.plan`). This page
+ * answers for the org: its balance, the ladder, and which of its brands is spending it.
  */
 export const load: PageServerLoad = async ({ locals: { supabase } }) => {
   const {
@@ -45,74 +29,53 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
   const orgId = await ensureOrgForUser(supabase, user);
   if (!orgId) throw redirect(303, '/app');
 
-  const { data } = await supabase
-    .from('organizations')
-    .select(
-      'id, name, owner_id, plan, stripe_customer_id, brands(id, name, slug, plan, status, activated_at, stripe_customer_id, stripe_subscription_id)'
-    )
-    .eq('id', orgId)
-    .maybeSingle();
-  const org = data as OrgRow | null;
+  const [{ data: orgData }, { data: membership }, { data: brandRows }] = await Promise.all([
+    supabase.from('orgs').select('id, name, stripe_customer_id').eq('id', orgId).maybeSingle(),
+    supabase.from('orgs_members').select('role').eq('org_id', orgId).eq('user_id', user.id).maybeSingle(),
+    supabase.from('brands').select('id, name, slug').eq('org_id', orgId)
+  ]);
+  const org = orgData as OrgRow | null;
   if (!org) throw redirect(303, '/app');
 
-  const brands = org.brands ?? [];
-  // The brand the org bills through, for both rollout states: the org's own columns once it has
-  // been migrated, that brand's while it waits. Its slug is where the billing forms post.
-  const billingBrand = brands.find((b) => b.stripe_subscription_id && b.plan) ?? brands[0] ?? null;
-  const plan = org.plan ?? billingBrand?.plan ?? null;
+  const brands = (brandRows ?? []) as BrandRow[];
+  const billingBrand = brands[0] ?? null;
 
-  const empty = {
-    org: { id: org.id, name: org.name, plan },
-    credits: null,
-    brands: [] as { id: string; name: string; slug: string; credits: number }[],
-    hasBilling: false,
-    billingBrandSlug: null as string | null,
-    upgrades: plansAbove(plan),
-    atTopPlan: isTopPlan(plan),
-    isOwner: org.owner_id === user.id
-  };
-  if (!billingBrand) return empty;
+  const balance = await orgCreditBalance(supabase, orgId);
 
-  const credits = await getCreditsUsage(supabase, {
-    id: billingBrand.id,
-    plan: billingBrand.plan,
-    activated_at: billingBrand.activated_at,
-    status: billingBrand.status ?? 'active'
-  });
-
-  // Per-brand spend over the ORG's period, so the rows add up to the pool's "used".
   const spends = await Promise.all(
-    brands.map(async (b) => {
-      const { data: usd } = await supabase.rpc('sum_brand_ai_cost_usd', {
-        p_brand_id: b.id,
-        p_start: credits.periodStart.toISOString(),
-        p_end: credits.periodEnd.toISOString()
-      });
-      return {
-        id: b.id,
-        name: b.name,
-        slug: b.slug,
-        credits: Math.round(Number(usd ?? 0) * CREDITS_PER_USD)
-      };
-    })
+    brands.map(async (b) => ({
+      id: b.id,
+      name: b.name,
+      slug: b.slug,
+      credits: Math.round((await sumBrandCostUsd(supabase, b.id)) * CREDITS_PER_USD_AI_SPEND)
+    }))
   );
 
   return {
-    ...empty,
-    credits: {
-      used: credits.used,
-      quota: credits.quota,
-      bonus: credits.bonus,
-      remaining: credits.remaining,
-      percent: credits.percent,
-      periodStart: credits.periodStart.toISOString(),
-      periodEnd: credits.periodEnd.toISOString()
-    },
+    org: { id: org.id, name: org.name },
+    credits: { balance, ladder: CREDIT_LADDER },
     brands: spends,
-    hasBilling: !!(org.stripe_customer_id || billingBrand.stripe_customer_id),
-    billingBrandSlug: billingBrand.slug
+    hasBilling: !!org.stripe_customer_id,
+    billingBrandSlug: billingBrand?.slug ?? null,
+    isOwner: (membership as { role?: string } | null)?.role === 'owner'
   };
 };
+
+/** Provider cost for one brand over the current calendar month — the same reading credits.ts sums for the gate. */
+async function sumBrandCostUsd(supabase: App.Locals['supabase'], brandId: string): Promise<number> {
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+  const { data } = await supabase
+    .from('ai_calls')
+    .select('cost_usd')
+    .eq('brand_id', brandId)
+    .gte('created_at', start.toISOString())
+    .lt('created_at', end.toISOString());
+
+  return (data ?? []).reduce((sum: number, row: { cost_usd: number | null }) => sum + (row.cost_usd ?? 0), 0);
+}
 
 /**
  * The billing actions are the brand ones, unchanged: they resolve the org themselves and take the
@@ -127,13 +90,8 @@ async function billingBrandSlug(supabase: App.Locals['supabase']): Promise<strin
   const orgId = await ensureOrgForUser(supabase, user);
   if (!orgId) return null;
 
-  const { data } = await supabase
-    .from('organizations')
-    .select('brands(slug, plan, stripe_subscription_id)')
-    .eq('id', orgId)
-    .maybeSingle();
-  const brands = ((data as { brands?: BrandRow[] } | null)?.brands ?? []) as BrandRow[];
-  return (brands.find((b) => b.stripe_subscription_id && b.plan) ?? brands[0])?.slug ?? null;
+  const { data } = await supabase.from('brands').select('slug').eq('org_id', orgId).limit(1).maybeSingle();
+  return (data as { slug?: string } | null)?.slug ?? null;
 }
 
 function onBillingBrand(fn: (event: RequestEvent) => unknown) {
