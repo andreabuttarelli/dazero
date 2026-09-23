@@ -1848,3 +1848,26 @@ una scrittura respinta dalla RLS e un campo del provider mancante finivano tutti
 `store_failed`, e da UI erano indistinguibili. Mossa: ogni funzione che può fallire per più di un
 motivo torna QUALE motivo, fino al punto che lo scrive per chi guarda — un token enum senza un
 messaggio accanto è debuggabile solo da chi ha il database aperto.
+
+### Un `select`/`insert` su una colonna non ancora migrata risponde 42809, non 42703
+Il loop mode aggiungeva `nodes_connections.mode` — pensata, testata, scritta in una migration
+(`20260923_loop_nodes.sql`) — e il codice la leggeva/scriveva già, prima che qualcuno applicasse
+quella migration. Ogni apertura della tela finiva 500: non il 42703 ("colonna inesistente") che
+ci si aspetterebbe, ma **42809**, perché Postgres ha una funzione aggregata ordinata che si
+chiama anche lei `mode` — `select ... mode` senza la colonna risolve sul nome della funzione, non
+su un errore di colonna mancante. Lo stesso identico guasto sarebbe stato invisibile a un
+`grep` per "colonna non esiste": il messaggio non lo dice.
+
+Segnale: un `SELECT`/`INSERT` che nomina esplicitamente una colonna appena aggiunta a una
+migration rompe OGNI riga letta da quella tabella, non solo quelle che userebbero il campo nuovo
+— e se il nome scelto coincide con una funzione SQL, l'errore mente sulla causa.
+
+Mossa, diventata regola per il resto del task: **il codice vivo non dipende MAI da una
+migrazione non ancora applicata.** Si scrive la migration, si scrive il repo/adapter che la
+userà, ma la SELECT/INSERT reale resta com'era (default sicuro, es. `mode: 'fixed'` sempre)
+finché la migration non è confermata applicata — con i test che coprono il comportamento nuovo
+marcati `it.skip('... [in attesa di <nome_migration>.sql]')`, non cancellati: il nome della
+migration nel titolo del test è quello che dice a chi la riattiva cosa sbloccare. `node scripts/
+schema-drift-check.mjs` confronta col database VERO prima di ogni commit che tocca lo schema —
+va eseguito prima di fidarsi che una colonna nuova sia già leggibile, non dopo che va in
+produzione.
