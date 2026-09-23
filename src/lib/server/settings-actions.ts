@@ -10,7 +10,6 @@ import { emailLocale } from '$lib/server/email-i18n';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { RequestEvent } from '@sveltejs/kit';
 import { isChatTier, isGatewayModelTier } from '$lib/chat-tiers';
-import { isKnownTimezone } from '$lib/brand-fields';
 import { invalidateBrandNav } from '$lib/server/nav-cache';
 import { readUploadImage } from '$lib/server/raster-image';
 import { createAdminClient } from '$lib/server/supabase-admin';
@@ -19,14 +18,23 @@ import { billingLink } from '$lib/server/billing-links';
 
 const stripeApi = () => import('$lib/server/stripe');
 
-/** Shared brands (0077): members reach settings too; billing/team stay owner-only. */
+/** Shared brands: members reach settings too; billing/team stay owner-only. */
 export async function isBrandOwner(supabase: SupabaseClient, slug: string): Promise<boolean> {
-  const { data } = await supabase
-    .from('brands')
-    .select('id, organizations!inner(id)')
-    .eq('slug', slug)
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data: brand } = await supabase.from('brands').select('org_id').eq('slug', slug).maybeSingle();
+  if (!brand) return false;
+
+  const { data: membership } = await supabase
+    .from('orgs_members')
+    .select('role')
+    .eq('org_id', brand.org_id)
+    .eq('user_id', user.id)
     .maybeSingle();
-  return !!data;
+  return membership?.role === 'owner';
 }
 
 const FEEDBACK: Record<string, string> = {
@@ -199,16 +207,6 @@ export async function setChatDefaultTier({ request, params, locals: { supabase }
   if (error) return { error: error.message };
   invalidateBrandNav(params.brand!);
   return { chatTierSaved: true };
-}
-
-export async function setTimezone({ request, params, locals: { supabase } }: Ev) {
-  const data = await request.formData();
-  const tz = String(data.get('timezone') ?? '').trim();
-  if (!isKnownTimezone(tz)) return { error: 'Pick a timezone' };
-  const { error } = await supabase.from('brands').update({ timezone: tz }).eq('slug', params.brand!);
-  if (error) return { error: error.message };
-  invalidateBrandNav(params.brand!);
-  return { tzSaved: true };
 }
 
 /** Main brand website — drives Content Library crawl + SEO/GEO. Also mirrors onto brand_kit.source_url. */
