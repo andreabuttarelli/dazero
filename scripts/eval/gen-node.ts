@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env } from '../_shims/env-private';
-import { runGenNode } from '$lib/server/canvas/generate';
+import { runGenNode, reconcileVideoNodeRuns } from '$lib/server/canvas/generate';
 import { writeNodeData } from '$lib/server/repos/canvas';
 import { GPT_IMAGE_25_FLARE_MODEL } from '$lib/image-models';
 import { GROK_IMAGINE_VIDEO_MODEL } from '$lib/video-models';
+
+const VIDEO_COMPLETE = process.argv.includes('--video-complete');
 
 /**
  * `runGenNode` requires an explicit model for every medium, text included — `refuse()` in
@@ -50,6 +52,9 @@ const scenarios = new Map([
   ['A. text: run reaches done, asset text/generated, node clean', 'unrun'],
   ['A. image: run reaches done, asset image/generated, object downloadable', 'unrun'],
   ['A. video: run reaches queued, external_job_id set, node still running', 'unrun'],
+  ...(VIDEO_COMPLETE
+    ? ([['A. video: reconciled to done, stored in brand-knowledge, non-zero bytes, linked from asset', 'unrun']] as const)
+    : []),
   ['B. text: ai_calls row with non-null cost_usd', 'unrun'],
   ['B. image: ai_calls row with non-null cost_usd', 'unrun'],
   ['B. node_runs.cost_usd populated for text and image', 'unrun'],
@@ -277,6 +282,44 @@ try {
     assert.ok(videoRun.external_job_id, 'node_runs.external_job_id must be set for the queued video');
     console.log(`node_runs for queued video: status=${videoRun.status} external_job_id=${videoRun.external_job_id}`);
     passed('A. video: run reaches queued, external_job_id set, node still running');
+
+    if (VIDEO_COMPLETE) {
+      const scenarioName = 'A. video: reconciled to done, stored in brand-knowledge, non-zero bytes, linked from asset';
+      console.log('Polling the reconciler for the queued video (same engine the cron ticks every minute)...');
+
+      const deadline = Date.now() + 6 * 60_000;
+      let finalRun = await latestRun(videoNode.id);
+      while (finalRun.status === 'running' && Date.now() < deadline) {
+        await reconcileVideoNodeRuns(admin as never);
+        await new Promise((resolve) => setTimeout(resolve, 5_000));
+        finalRun = await latestRun(videoNode.id);
+      }
+
+      if (finalRun.status === 'running') {
+        throw new Error(`video never reconciled within the deadline (still running, external_job_id=${finalRun.external_job_id})`);
+      }
+      assert.equal(finalRun.status, 'done', `expected the reconciler to finish the video, got status=${finalRun.status} error=${finalRun.error}`);
+
+      const videoNodeRow = await checked(admin.from('nodes').select('data').eq('org_id', orgId).eq('id', videoNode.id).single());
+      const videoNodeData = videoNodeRow.data as { running?: boolean; refId?: string | null; error?: string | null };
+      assert.equal(videoNodeData.running, false);
+      assert.ok(videoNodeData.refId, 'node.data.refId must point at the deposited asset');
+
+      const asset = await checked(admin.from('assets').select('id, type, source, url, mime_type').eq('org_id', orgId).eq('id', videoNodeData.refId!).single());
+      assert.equal(asset.type, 'video');
+      assert.equal(asset.source, 'generated');
+      assert.ok(asset.url, 'asset.url must carry the brand-knowledge storage path');
+      storagePaths.push(asset.url as string);
+
+      const downloaded = await admin.storage.from(BUCKET).download(asset.url as string);
+      if (downloaded.error) {
+        throw new Error(`Storage download failed for ${asset.url}: ${downloaded.error.message}`);
+      }
+      assert.ok(downloaded.data.size > 0, `stored video must have non-zero bytes, got ${downloaded.data.size}`);
+      console.log(`Stored video bytes: ${downloaded.data.size}`);
+
+      passed(scenarioName);
+    }
   }
 
   // --- C. FAILURE PATH: invalid model, no spend -------------------------------
