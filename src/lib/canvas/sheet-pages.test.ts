@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { settingsPageLoader, settingsSectionOf } from './sheet-pages';
+import { SHEET_PAGE_LOADERS, settingsPageLoader, settingsSectionOf } from './sheet-pages';
 
 describe('settingsSectionOf: quale cartella sotto settings/ risponde a questo path', () => {
   it('la radice di settings apre connected-accounts, come fa il suo redirect', () => {
@@ -36,5 +36,14 @@ describe('settingsPageLoader: la sezione trova la sua pagina reale', () => {
 
   it('la radice di settings trova la stessa pagina di connected-accounts', () => {
     expect(settingsPageLoader('/settings')).toBe(settingsPageLoader('/settings/connected-accounts'));
+  });
+});
+
+describe('SHEET_PAGE_LOADERS: il foglio scarica le sue pagine solo quando si apre', () => {
+  it('calendar, ads e il guscio di settings sono moduli pigri, non import statici della tela', async () => {
+    for (const load of [SHEET_PAGE_LOADERS.calendar, SHEET_PAGE_LOADERS.ads, SHEET_PAGE_LOADERS.settingsLayout]) {
+      expect(typeof load).toBe('function');
+      expect((await load()).default).toBeTruthy();
+    }
   });
 });

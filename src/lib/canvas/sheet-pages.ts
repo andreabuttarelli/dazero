@@ -12,6 +12,12 @@ const SETTINGS_PAGE_MODULES = import.meta.glob<PageModule>(
   '/src/routes/p/[projectId]/settings/**/+page.svelte'
 );
 
+export const SHEET_PAGE_LOADERS = {
+  calendar: () => import('../../routes/p/[projectId]/calendar/+page.svelte') as Promise<PageModule>,
+  ads: () => import('../../routes/p/[projectId]/ads/social/+page.svelte') as Promise<PageModule>,
+  settingsLayout: () => import('../../routes/p/[projectId]/settings/+layout.svelte') as Promise<PageModule>
+};
+
 /** Il primo segmento sotto `settings/` — la sezione del GRUPPO, per evidenziare la voce attiva
  *  nello switcher. `ads/accounts` e `ads` sono due pagine diverse nello stesso gruppo "ads". */
 export function settingsSectionOf(path: string): string {

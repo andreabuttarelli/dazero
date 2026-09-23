@@ -3,13 +3,10 @@
   import { _ } from 'svelte-i18n';
   import * as Sheet from '$lib/components/ui/sheet/index.js';
   import { openSheet, closeSheet } from '$lib/canvas/sheet-nav';
-  import { settingsPageLoader } from '$lib/canvas/sheet-pages';
+  import { SHEET_PAGE_LOADERS, settingsPageLoader } from '$lib/canvas/sheet-pages';
   import { sheetEntryForPath } from '$lib/shell-nav';
   import { SETTINGS_GROUPS } from '$lib/components/settings/platforms';
   import { cn } from '$lib/utils';
-  import CalendarPage from '../../../routes/p/[projectId]/calendar/+page.svelte';
-  import AdsSocialPage from '../../../routes/p/[projectId]/ads/social/+page.svelte';
-  import SettingsLayout from '../../../routes/p/[projectId]/settings/+layout.svelte';
 
   let { projectId }: { projectId: string } = $props();
 
@@ -59,21 +56,27 @@
             {/each}
           </nav>
           <div class="settings-body">
-            <SettingsLayout data={sheet.data as never}>
-              {#snippet children()}
-                {#if settingsLoader}
-                  {#await settingsLoader() then { default: SettingsSectionPage }}
-                    <SettingsSectionPage data={sheet.data as never} form={null} />
-                  {/await}
-                {/if}
-              {/snippet}
-            </SettingsLayout>
+            {#await SHEET_PAGE_LOADERS.settingsLayout() then { default: SettingsLayout }}
+              <SettingsLayout data={sheet.data as never}>
+                {#snippet children()}
+                  {#if settingsLoader}
+                    {#await settingsLoader() then { default: SettingsSectionPage }}
+                      <SettingsSectionPage data={sheet.data as never} form={null} />
+                    {/await}
+                  {/if}
+                {/snippet}
+              </SettingsLayout>
+            {/await}
           </div>
         </div>
       {:else if entry.id === 'calendar'}
-        <CalendarPage data={sheet.data as never} />
+        {#await SHEET_PAGE_LOADERS.calendar() then { default: CalendarPage }}
+          <CalendarPage data={sheet.data as never} form={null} />
+        {/await}
       {:else if entry.id === 'ads'}
-        <AdsSocialPage data={sheet.data as never} form={null} />
+        {#await SHEET_PAGE_LOADERS.ads() then { default: AdsSocialPage }}
+          <AdsSocialPage data={sheet.data as never} form={null} />
+        {/await}
       {/if}
     </Sheet.Content>
   </Sheet.Root>
