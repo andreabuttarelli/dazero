@@ -32,7 +32,11 @@
     content: string | null;
   };
 
-  let { projectId }: { projectId: string } = $props();
+  /** `kind` filtra cosa scarica e mostra: la rail apre Assets o Brands separati, un pannello alla
+   *  volta (vedi CanvasLeftPanel.svelte); il default `'both'` è il comportamento di prima. */
+  let { projectId, kind = 'both' }: { projectId: string; kind?: 'assets' | 'brands' | 'both' } = $props();
+  const showAssets = $derived(kind !== 'brands');
+  const showBrands = $derived(kind !== 'assets');
 
   let assets = $state<PanelAsset[]>([]);
   let brands = $state<PanelBrand[]>([]);
@@ -63,8 +67,12 @@
     failed = false;
 
     Promise.all([
-      fetch(`/api/v1/projects/${id}/agent/assets`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
-      fetch(`/api/v1/projects/${id}/agent/brands`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      showAssets
+        ? fetch(`/api/v1/projects/${id}/agent/assets`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        : Promise.resolve({ assets: [] }),
+      showBrands
+        ? fetch(`/api/v1/projects/${id}/agent/brands`).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        : Promise.resolve({ brands: [] })
     ])
       .then(([assetsRes, brandsRes]: [{ assets?: PanelAsset[] }, { brands?: PanelBrand[] }]) => {
         if (!live) return;
@@ -101,7 +109,7 @@
     e.dataTransfer.setData(CANVAS_DRAG_MEDIUM, drag.type);
   }
 
-  const hasAnything = $derived(assets.length > 0 || brands.length > 0);
+  const hasAnything = $derived((showAssets && assets.length > 0) || (showBrands && brands.length > 0));
 </script>
 
 <div class="panel">
@@ -119,7 +127,7 @@
   {:else if !hasAnything}
     <p class="hint">Nothing to drag yet. Generate or upload something first.</p>
   {:else}
-    {#if assets.length}
+    {#if showAssets && assets.length}
       <h4 class="section">Assets</h4>
       <div class="grid">
         {#each assets as item (item.id)}
@@ -143,7 +151,7 @@
       </div>
     {/if}
 
-    {#if brands.length}
+    {#if showBrands && brands.length}
       <h4 class="section">Brands</h4>
       <div class="brand-list">
         {#each brands as brand (brand.id)}
