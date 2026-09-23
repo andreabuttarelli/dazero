@@ -50,8 +50,8 @@ type NodeColumns = Pick<
 
 type ConnectionColumns = Pick<
   Database['public']['Tables']['nodes_connections']['Row'],
-  'id' | 'canvas_id' | 'source_node_id' | 'target_node_id' | 'source_handle' | 'target_handle' | 'mode'
->;
+  'id' | 'canvas_id' | 'source_node_id' | 'target_node_id' | 'source_handle' | 'target_handle'
+> & { mode?: string | null };
 
 /** Gli stessi due valori di `nodes_connections_mode_check`. */
 export const WIRE_MODES = ['fixed', 'iterate'] as const;
@@ -104,7 +104,7 @@ export type DataWrite =
 const NODE_COLUMNS =
   'id, canvas_id, project_id, type, display_name, x, y, z, width, height, data, version';
 const CONNECTION_COLUMNS =
-  'id, canvas_id, source_node_id, target_node_id, source_handle, target_handle, mode';
+  'id, canvas_id, source_node_id, target_node_id, source_handle, target_handle';
 const CANVAS_COLUMNS = 'id, project_id, name, viewport';
 
 function toCanvas(row: CanvasColumns): Canvas {
@@ -141,7 +141,7 @@ function toConnection(row: ConnectionColumns): Connection {
     targetNodeId: row.target_node_id,
     sourceHandle: row.source_handle,
     targetHandle: row.target_handle,
-    mode: isWireMode(row.mode) ? row.mode : 'fixed'
+    mode: row.mode && isWireMode(row.mode) ? row.mode : 'fixed'
   };
 }
 
@@ -534,7 +534,6 @@ export async function createConnection(
       target_node_id: input.targetNodeId,
       source_handle: input.sourceHandle ?? null,
       target_handle: input.targetHandle ?? null,
-      mode: input.mode ?? 'fixed',
       ...edgeActorCols(input.actor)
     })
     .select(CONNECTION_COLUMNS)
