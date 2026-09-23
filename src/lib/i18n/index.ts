@@ -1,15 +1,15 @@
-import { register, init } from 'svelte-i18n';
+import { addMessages, init } from 'svelte-i18n';
 import { DEFAULT_LOCALE } from './locale';
+import main from './locales/en.json';
 
-register(DEFAULT_LOCALE, async () => {
-  const [main, docs] = await Promise.all([
-    import('./locales/en.json'),
-    import('./locales/docs/en.json')
-  ]);
-  return { ...main.default, docs: docs.default };
-});
+addMessages(DEFAULT_LOCALE, main);
 
 init({
   fallbackLocale: DEFAULT_LOCALE,
   initialLocale: DEFAULT_LOCALE
 });
+
+export async function loadDocsMessages(): Promise<void> {
+  const docs = await import('./locales/docs/en.json');
+  addMessages(DEFAULT_LOCALE, { docs: docs.default });
+}
