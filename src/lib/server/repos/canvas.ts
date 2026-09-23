@@ -50,8 +50,16 @@ type NodeColumns = Pick<
 
 type ConnectionColumns = Pick<
   Database['public']['Tables']['nodes_connections']['Row'],
-  'id' | 'canvas_id' | 'source_node_id' | 'target_node_id' | 'source_handle' | 'target_handle'
+  'id' | 'canvas_id' | 'source_node_id' | 'target_node_id' | 'source_handle' | 'target_handle' | 'mode'
 >;
+
+/** Gli stessi due valori di `nodes_connections_mode_check`. */
+export const WIRE_MODES = ['fixed', 'iterate'] as const;
+export type WireMode = (typeof WIRE_MODES)[number];
+
+export function isWireMode(x: string): x is WireMode {
+  return (WIRE_MODES as readonly string[]).includes(x);
+}
 
 type CanvasColumns = Pick<
   Database['public']['Tables']['canvases']['Row'],
@@ -84,6 +92,9 @@ export type Connection = {
   targetNodeId: string;
   sourceHandle: string | null;
   targetHandle: string | null;
+  /** Fisso (default) entra in OGNI iterazione di un loop a valle; `iterate` è un asse del
+   *  prodotto cartesiano/zip che `loop-plan.ts` calcola (CLAUDE.md — loop mode). */
+  mode: WireMode;
 };
 
 export type DataWrite =
@@ -93,7 +104,7 @@ export type DataWrite =
 const NODE_COLUMNS =
   'id, canvas_id, project_id, type, display_name, x, y, z, width, height, data, version';
 const CONNECTION_COLUMNS =
-  'id, canvas_id, source_node_id, target_node_id, source_handle, target_handle';
+  'id, canvas_id, source_node_id, target_node_id, source_handle, target_handle, mode';
 const CANVAS_COLUMNS = 'id, project_id, name, viewport';
 
 function toCanvas(row: CanvasColumns): Canvas {
@@ -129,7 +140,8 @@ function toConnection(row: ConnectionColumns): Connection {
     sourceNodeId: row.source_node_id,
     targetNodeId: row.target_node_id,
     sourceHandle: row.source_handle,
-    targetHandle: row.target_handle
+    targetHandle: row.target_handle,
+    mode: isWireMode(row.mode) ? row.mode : 'fixed'
   };
 }
 
@@ -509,6 +521,7 @@ export async function createConnection(
     targetNodeId: string;
     sourceHandle?: string | null;
     targetHandle?: string | null;
+    mode?: WireMode;
     actor?: Actor;
   }
 ): Promise<Connection> {
@@ -521,6 +534,7 @@ export async function createConnection(
       target_node_id: input.targetNodeId,
       source_handle: input.sourceHandle ?? null,
       target_handle: input.targetHandle ?? null,
+      mode: input.mode ?? 'fixed',
       ...edgeActorCols(input.actor)
     })
     .select(CONNECTION_COLUMNS)
@@ -596,6 +610,30 @@ export async function deleteConnection(
     },
     actor: input.actor
   });
+}
+
+/**
+ * FISSO O ITERATE: il toggle che rende un filo un asse del loop a valle (`loop-plan.ts`), non
+ * una nuova connessione — l'arco resta lo stesso, cambia solo come un nodo che genera lo legge.
+ * `null` quando l'arco non c'è (già cancellato, o mai stato di questa org): chi chiama tratta
+ * quel caso come farebbe con un 404, non con un'eccezione.
+ */
+export async function setConnectionMode(
+  db: Db,
+  input: { orgId: string; connectionId: string; mode: WireMode }
+): Promise<Connection | null> {
+  const { data, error } = await db
+    .from('nodes_connections')
+    .update({ mode: input.mode })
+    .eq('id', input.connectionId)
+    .eq('org_id', input.orgId)
+    .select(CONNECTION_COLUMNS)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  return data ? toConnection(data) : null;
 }
 
 /**

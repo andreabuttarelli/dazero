@@ -21,7 +21,9 @@ describe('NODE_DATA_SCHEMAS — una riga per tipo, tutti i 10 valori di nodes_ty
         'iframe',
         'image',
         'influencer',
+        'list',
         'products',
+        'select',
         'social_account_feed',
         'social_post_mockup',
         'text',
@@ -247,6 +249,62 @@ describe('validateNodeData — influencer', () => {
     const out = validateNodeData('influencer', {});
     expect(out.ok).toBe(false);
     if (!out.ok) expect(out.error).toMatch(/influencer_id/);
+  });
+});
+
+describe('validateNodeData — list', () => {
+  it('accetta una lista vuota (nasce vuota, si riempie dopo)', () => {
+    const out = validateNodeData('list', { item_kind: 'image', items: [] });
+    expect(out.ok).toBe(true);
+  });
+
+  it('accetta immagini con asset_id', () => {
+    const out = validateNodeData('list', {
+      item_kind: 'image',
+      items: [{ label: 'modello 1', asset_id: 'a1' }, { label: 'modello 2', asset_id: 'a2' }]
+    });
+    expect(out.ok).toBe(true);
+  });
+
+  it('accetta testo con text', () => {
+    const out = validateNodeData('list', {
+      item_kind: 'text',
+      items: [{ label: 'riga 1', text: 'ciao' }]
+    });
+    expect(out.ok).toBe(true);
+  });
+
+  it('rifiuta item_kind mancante', () => {
+    const out = validateNodeData('list', { items: [] });
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.error).toMatch(/item_kind/);
+  });
+
+  it('rifiuta un item_kind fuori enum', () => {
+    const out = validateNodeData('list', { item_kind: 'video', items: [] });
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.error).toMatch(/item_kind/);
+  });
+});
+
+describe('validateNodeData — select', () => {
+  it('accetta un index 1-based', () => {
+    const out = validateNodeData('select', { index: 1 });
+    expect(out.ok).toBe(true);
+  });
+
+  it('rifiuta index mancante', () => {
+    const out = validateNodeData('select', {});
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.error).toMatch(/index/);
+  });
+
+  it('rifiuta index zero o negativo: 1-based, non 0-based', () => {
+    const zero = validateNodeData('select', { index: 0 });
+    expect(zero.ok).toBe(false);
+
+    const negative = validateNodeData('select', { index: -1 });
+    expect(negative.ok).toBe(false);
   });
 });
 

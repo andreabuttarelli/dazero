@@ -1,9 +1,9 @@
 /**
  * LA FORMA DI `nodes.data`, UNA RIGA PER TIPO — l'eccezione che `graph.ts` chiede: dichiarata in
- * un posto solo, accanto al modello che la governa, così il tipo decimo è una riga e non un `if`
- * sparso in cinque file.
+ * un posto solo, accanto al modello che la governa, così il tipo dodicesimo è una riga e non un
+ * `if` sparso in cinque file.
  *
- * `nodes.type` ha un CHECK (`nodes_type_check`, vedi `org-data/checks.ts`) che ammette 10 valori.
+ * `nodes.type` ha un CHECK (`nodes_type_check`, vedi `org-data/checks.ts`) che ammette 12 valori.
  * Il CHECK ferma il `type` sbagliato; `data` è `jsonb` e Postgres accetta qualunque JSON — nessun
  * vincolo lo controlla. Un agente che chiama `insert_row('nodes', …)` doveva INDOVINARE la forma:
  * questo file è quella forma, e `validateNodeData` è la funzione che la applica.
@@ -195,6 +195,41 @@ const influencerSchema = z.object({
 });
 
 /**
+ * `list`: N valori, un `item_kind` solo — immagini o testo, mai mischiati, perché un'iterazione
+ * (`loop-plan.ts`) pesca un valore alla volta dallo stesso connettore per tutta la lista. Un
+ * `item` porta o `asset_id` (trascinato da un altro nodo/dalla libreria) o `text` (scritto o
+ * incollato a mano); mai entrambi vuoti — un item senza contenuto non è un'iterazione, è un buco.
+ */
+const LIST_ITEM_KINDS = ['image', 'text'] as const;
+
+const listItemSchema = z
+  .object({
+    label: z.string().optional(),
+    asset_id: z.string().optional(),
+    text: z.string().optional(),
+    url: z.string().optional()
+  })
+  .refine((v) => Boolean(v.asset_id) || Boolean(v.text) || Boolean(v.url), {
+    message: 'ogni item serve un asset_id, un text o un url'
+  });
+
+const listSchema = z.object({
+  item_kind: z.enum(LIST_ITEM_KINDS),
+  items: z.array(listItemSchema)
+});
+
+/**
+ * `select`: sceglie UN item da una lista a monte, per indice. `index` È 1-BASED — la stessa cifra
+ * che compare nel nodo e nel thumbnail cliccato, senza una traduzione da tenere sincronizzata fra
+ * UI e storage. Fuori range o lista vuota non è un errore di schema (dipende da un'altra riga, che
+ * questo file non vede): lo dice `resolveUpstreamInputs`, con `rejected`/`blocked` come ogni altro
+ * ingresso mancante.
+ */
+const selectSchema = z.object({
+  index: z.number().int().positive()
+});
+
+/**
  * LA TABELLA — un tipo nuovo è una riga qui, non un `if` in `write-tool.ts`. `nodes_type_check`
  * (vedi `org-data/checks.ts`) deve restare la stessa lista, e `node-data.test.ts` lo verifica.
  */
@@ -208,7 +243,9 @@ export const NODE_DATA_SCHEMAS = {
   social_post_mockup: socialPostMockupSchema,
   products: productsSchema,
   ads: adsSchema,
-  influencer: influencerSchema
+  influencer: influencerSchema,
+  list: listSchema,
+  select: selectSchema
 } as const;
 
 export type NodeType = keyof typeof NODE_DATA_SCHEMAS;

@@ -1371,6 +1371,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           id: string
+          mode: string
           org_id: string
           source_handle: string | null
           source_node_id: string
@@ -1384,6 +1385,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           id?: string
+          mode?: string
           org_id: string
           source_handle?: string | null
           source_node_id: string
@@ -1397,6 +1399,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           id?: string
+          mode?: string
           org_id?: string
           source_handle?: string | null
           source_node_id?: string

@@ -7,6 +7,7 @@ import {
   listNodes,
   listNodesByIds,
   moveNode,
+  setConnectionMode,
   writeNodeData
 } from '$lib/server/repos/canvas';
 import type { Db } from '$lib/server/db/client';
@@ -274,7 +275,7 @@ describe('la creazione porta sempre l org', () => {
   });
 
   it('un arco nasce sull org e sul canvas', async () => {
-    const { db, calls } = fakeDb({ nodes_connections: [{ id: 'c1', org_id: ORG, canvas_id: CANVAS, source_node_id: NODE, target_node_id: NODE, source_handle: null, target_handle: null, created_at: '2026-09-21T00:00:00Z' }] });
+    const { db, calls } = fakeDb({ nodes_connections: [{ id: 'c1', org_id: ORG, canvas_id: CANVAS, source_node_id: NODE, target_node_id: NODE, source_handle: null, target_handle: null, mode: 'fixed', created_at: '2026-09-21T00:00:00Z' }] });
 
     await createConnection(db, {
       orgId: ORG,
@@ -285,6 +286,34 @@ describe('la creazione porta sempre l org', () => {
     });
 
     expect(calls.find((c) => c.op === 'insert')!.payload).toMatchObject({ org_id: ORG, canvas_id: CANVAS });
+  });
+
+  it('un arco nasce fisso di default, senza che chi lo crea debba dirlo', async () => {
+    const { db, calls } = fakeDb({ nodes_connections: [{ id: 'c1', org_id: ORG, canvas_id: CANVAS, source_node_id: NODE, target_node_id: NODE, source_handle: null, target_handle: null, mode: 'fixed', created_at: '2026-09-21T00:00:00Z' }] });
+
+    await createConnection(db, { orgId: ORG, canvasId: CANVAS, sourceNodeId: NODE, targetNodeId: NODE });
+
+    expect(calls.find((c) => c.op === 'insert')!.payload).toMatchObject({ mode: 'fixed' });
+  });
+
+  it('un arco può nascere iterate: quel filo è un asse del loop', async () => {
+    const { db, calls } = fakeDb({ nodes_connections: [{ id: 'c1', org_id: ORG, canvas_id: CANVAS, source_node_id: NODE, target_node_id: NODE, source_handle: null, target_handle: null, mode: 'iterate', created_at: '2026-09-21T00:00:00Z' }] });
+
+    await createConnection(db, { orgId: ORG, canvasId: CANVAS, sourceNodeId: NODE, targetNodeId: NODE, mode: 'iterate' });
+
+    expect(calls.find((c) => c.op === 'insert')!.payload).toMatchObject({ mode: 'iterate' });
+  });
+
+  it('setConnectionMode cambia fixed/iterate dentro la propria org', async () => {
+    const connectionRow = { id: 'c1', org_id: ORG, canvas_id: CANVAS, source_node_id: NODE, target_node_id: NODE, source_handle: null, target_handle: null, mode: 'iterate' };
+    const { db, calls } = fakeDb({ nodes_connections: [connectionRow] }, { nodes_connections: [connectionRow] });
+
+    const out = await setConnectionMode(db, { orgId: ORG, connectionId: 'c1', mode: 'iterate' });
+
+    expect(out?.mode).toBe('iterate');
+    const update = calls.find((c) => c.op === 'update')!;
+    expect(update.payload).toMatchObject({ mode: 'iterate' });
+    expect(update.filters).toContainEqual(['org_id', ORG]);
   });
 
   it('un arco si cancella (soft) dentro la sua org', async () => {
