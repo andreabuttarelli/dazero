@@ -17,6 +17,10 @@ test.setTimeout(60_000);
 test('apri il progetto, la rail c\'è, Calendar si apre come foglio ed Esc torna alla tela', async ({ page, session }) => {
   await page.goto(`/p/${session.projectId}`);
   await page.waitForURL(new RegExp(`/p/${session.projectId}/c/`));
+  // La tela idrata dopo che il DOM del server è già lì: un click sparato prima che Svelte abbia
+  // agganciato `onclick` atterra su un bottone visivamente pronto ma ancora senza handler — la
+  // stessa corsa che `gotoHydrated` (`fixtures/session.ts`) risolve per il login.
+  await page.waitForLoadState('networkidle');
   const canvasUrl = page.url();
 
   await expect(page.getByRole('button', { name: 'Assets' })).toBeVisible();

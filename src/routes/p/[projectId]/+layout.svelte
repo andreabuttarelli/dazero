@@ -58,7 +58,11 @@
   }
 
   function onRailSheet(entry: NavEntry) {
-    void openSheet(projectId, entry.path);
+    // Un `preloadData` fallito (rete, un `load` che lancia) non deve sparire senza traccia: chi
+    // clicca vedrebbe la rail non fare niente, senza un solo indizio del perché.
+    openSheet(projectId, entry.path).catch((err) => {
+      console.error(`apertura del foglio "${entry.id}" fallita`, err);
+    });
   }
 
   function onMobileTab(tab: { id: string }) {
