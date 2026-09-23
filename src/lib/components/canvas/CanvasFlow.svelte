@@ -34,8 +34,10 @@
   import CanvasSelectionBridge from './CanvasSelectionBridge.svelte';
   import SelectionToolbar from './SelectionToolbar.svelte';
   import ConnectPicker from './ConnectPicker.svelte';
+  import CommonPropertiesPanel from './CommonPropertiesPanel.svelte';
   import type { SelectionActionId } from '$lib/canvas/selection-actions';
-  import type { GenMedium } from '$lib/canvas/gen-node';
+  import type { GenMedium, ModelChoice } from '$lib/canvas/gen-node';
+  import { commonPropertiesOf } from '$lib/canvas/common-properties';
   import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
   import { CANVAS_DRAG_FILLED_NODE, parseFilledNodeDrag, type FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { syncNodes } from '$lib/canvas/tile-sync';
@@ -88,6 +90,9 @@
     onPaste,
     onConnectNew,
     onConnectExisting,
+    nodeSummaries = [],
+    modelChoicesFor,
+    onCommonChange,
     tile
   }: {
     tiles?: Tile[];
@@ -136,6 +141,12 @@
     onConnectNew?: (ids: string[], medium: GenMedium, at: { x: number; y: number }) => void;
     /** "Collega a…": gli id scelti e il nodo su cui si è cliccato per chiudere la modalità bersaglio. */
     onConnectExisting?: (ids: string[], targetId: string) => void;
+    /** `type`/`data` di ogni tile — la forma grezza che `commonPropertiesOf` legge, non `Tile`. */
+    nodeSummaries?: { id: string; type: string; data: Record<string, unknown> }[];
+    /** I modelli offribili per un medium che genera, dal catalogo di chi monta la tela. */
+    modelChoicesFor?: (type: 'text' | 'image' | 'video') => ModelChoice[];
+    /** Il pannello delle proprietà comuni ha scritto: un campo, applicato a ogni nodo selezionato. */
+    onCommonChange?: (ids: string[], patch: { model?: string | null; aspectRatio?: string }) => void;
     /** Cosa disegnare dentro una tile. La tela non sa cosa mostra: lo decide chi la usa. */
     tile: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
   } = $props();
@@ -370,6 +381,19 @@
     SELECTION_RUN[id](selection.ids);
   }
 
+  /**
+   * IL PANNELLO COMPARE DA DUE NODI IN SU: su uno solo `GenNode.svelte` mostra già le sue
+   * proprietà addosso al nodo (vedi il commento lì), e un secondo pannello qui direbbe la stessa
+   * cosa due volte in due posti diversi.
+   */
+  const commonSelection = $derived(nodeSummaries.filter((n) => selection.ids.includes(n.id)));
+  const commonProperties = $derived(
+    selection.ids.length > 1 ? commonPropertiesOf(commonSelection) : commonPropertiesOf([])
+  );
+  const commonChoices = $derived(
+    commonProperties.type && modelChoicesFor ? modelChoicesFor(commonProperties.type) : []
+  );
+
   function pickConnectMedium(medium: GenMedium) {
     if (!connectPickerAt || !toFlow) { connectPickerAt = null; return; }
 
@@ -503,6 +527,13 @@
   {/if}
 
   <SelectionToolbar box={selection.box} count={selection.ids.length} onaction={runSelectionAction} />
+
+  <CommonPropertiesPanel
+    box={selection.box}
+    properties={commonProperties}
+    choices={commonChoices}
+    onchange={(patch) => onCommonChange?.(selection.ids, patch)}
+  />
 
   {#if connectPickerAt}
     <ConnectPicker at={connectPickerAt} onpick={pickConnectMedium} onclose={() => (connectPickerAt = null)} />

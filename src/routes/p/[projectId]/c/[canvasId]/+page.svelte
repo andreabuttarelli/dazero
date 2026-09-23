@@ -37,7 +37,7 @@
   import type { FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { tileNode } from '$lib/canvas/connect-rules';
   import { planDelete } from '$lib/canvas/delete-plan';
-  import { connectorsFor, type ConnectorType } from '$lib/canvas/connectors';
+  import { connectorsFor, orphanedByModelChange, type ConnectorType } from '$lib/canvas/connectors';
   import { planConnectSelection, type ConnectSource } from '$lib/canvas/connect-selection-plan';
   import {
     docData,
@@ -232,6 +232,15 @@
       })
     }))
   );
+
+  /** `type`/`data` grezzi di ogni tile — la forma che `commonPropertiesOf` legge, per il pannello
+   *  delle proprietà comuni: `tiles` porta già `node: CanvasNode`, un'astrazione diversa che non
+   *  ha `model`/`params` come campi diretti. */
+  const nodeSummaries = $derived(nodes.map((n) => ({ id: n.id, type: n.type, data: n.data })));
+
+  function modelChoicesFor(type: 'text' | 'image' | 'video'): ModelChoice[] {
+    return catalogue[type] ?? [];
+  }
 
   let failed = $state<string | null>(null);
   let peers = $state<PresencePeer[]>([]);
@@ -664,6 +673,54 @@
     }
   }
 
+  /**
+   * IL PANNELLO DELLE PROPRIETÀ COMUNI HA SCRITTO — un campo, applicato a ogni nodo selezionato
+   * con la stessa concorrenza ottimistica di `write`, ma N scritture indipendenti: la conferma sul
+   * modello che sgancerebbe degli archi (`orphanedByModelChange`) va chiesta PRIMA, guardando OGNI
+   * nodo selezionato — cambiare modello su cinque nodi e scoprire dopo che uno dei cinque aveva
+   * un arco che è appena sparito sarebbe la sorpresa che quella funzione esiste per evitare.
+   */
+  async function commonChange(ids: string[], patch: { model?: string | null; aspectRatio?: string }) {
+    const chosen = nodes.filter((n) => ids.includes(n.id));
+    if (!chosen.length) { return; }
+
+    if (patch.model !== undefined) {
+      const orphaned = chosen.flatMap((n) => {
+        if (n.type !== 'image' && n.type !== 'video') { return []; }
+        const model = catalogue[n.type]?.find((c) => c.id === patch.model);
+        const nextConnectors = connectorsFor(n.type, { input: model?.inputModalities ?? [] });
+        const wired: { edgeId: string; sourceNodeId: string; connector: ConnectorType }[] = edges
+          .filter((e) => e.target === n.id && e.targetHandle)
+          .map((e) => ({ edgeId: e.id, sourceNodeId: e.source, connector: e.targetHandle as ConnectorType }));
+        return orphanedByModelChange(wired, nextConnectors);
+      });
+
+      if (orphaned.length && !confirm(`${orphaned.length} collegamento/i cadranno con questo modello. Continuare?`)) {
+        return;
+      }
+      for (const drop of orphaned) { await disconnect(drop.edgeId); }
+    }
+
+    const items = chosen.map((n) => ({
+      node_id: n.id,
+      version: n.version,
+      patch: patch.aspectRatio !== undefined ? { ...patch, params: { ...(n.data.params as object), aspectRatio: patch.aspectRatio } } : patch
+    }));
+
+    const result = await post('batchWrite', { items: JSON.stringify(items) });
+    const results = (result?.results ?? []) as { nodeId: string; outcome: string; node?: CanvasNodeRecord }[];
+    const conflicts = results.filter((r) => r.outcome === 'conflict');
+    if (conflicts.length) {
+      failed = `${conflicts.length} nodo/i non salvati: modificati da qualcun altro nel frattempo`;
+    }
+
+    const written = results.filter((r) => r.outcome === 'written' && r.node).map((r) => r.node as CanvasNodeRecord);
+    if (written.length) {
+      const byId = new Map(written.map((n) => [n.id, n]));
+      nodes = nodes.map((n) => (byId.has(n.id) ? toTile(byId.get(n.id)!) : n));
+    }
+  }
+
   /** Una linea tolta sparisce subito e torna se il server rifiuta: l'attesa qui si vedrebbe. */
   async function disconnect(connectionId: string) {
     const removed = edges.find((e) => e.id === connectionId);
@@ -815,6 +872,9 @@
     onPaste={paste}
     onConnectNew={connectNew}
     onConnectExisting={connectExisting}
+    {nodeSummaries}
+    {modelChoicesFor}
+    onCommonChange={commonChange}
   >
     {#snippet tile({ id, selected })}
       {@const row = nodes.find((n) => n.id === id)}

@@ -527,6 +527,55 @@ export const actions: Actions = {
   },
 
   /**
+   * SCRIVERE LO STESSO CAMPO SU PIÙ NODI — il pannello delle proprietà comuni, quando cambia
+   * modello o formato su una selezione intera. UN CONFLITTO SU UN NODO NON FERMA GLI ALTRI: sono
+   * N scritture indipendenti (ognuna con la propria `version` attesa, come `write`), e riportare
+   * "conflict" per il nodo 3 mentre 1 e 2 sono andati a buon fine è più onesto di un rifiuto in
+   * blocco che butterebbe via due scritture riuscite per colpa di una terza.
+   */
+  batchWrite: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    let items: { node_id: string; version: number; patch: Record<string, unknown> }[];
+    try {
+      items = JSON.parse(String(fd.get('items') ?? '[]'));
+      if (!Array.isArray(items) || !items.length) {
+        return fail(400, { error: 'niente da scrivere' });
+      }
+    } catch {
+      return fail(400, { error: 'contenuto non leggibile' });
+    }
+
+    const known = new Map((await listNodes(scope.db, scope)).map((node) => [node.id, node]));
+
+    const results: { nodeId: string; outcome: 'written' | 'conflict' | 'not_found'; node?: CanvasNodeRecord }[] = [];
+    for (const item of items) {
+      const current = known.get(item.node_id);
+      if (!current) {
+        results.push({ nodeId: item.node_id, outcome: 'not_found' });
+        continue;
+      }
+
+      const written = await writeNodeData(scope.db, {
+        orgId: scope.orgId,
+        nodeId: item.node_id,
+        data: { ...current.data, ...item.patch },
+        expectedVersion: item.version,
+        actor: userActor(scope)
+      });
+
+      results.push(
+        written.outcome === 'conflict'
+          ? { nodeId: item.node_id, outcome: 'conflict' }
+          : { nodeId: item.node_id, outcome: 'written', node: written.node }
+      );
+    }
+
+    return { results };
+  },
+
+  /**
    * IL LINK PUBBLICO DI UN DOCUMENTO. Il token in chiaro esce qui e non torna più: resta solo
    * l'impronta, e «Nuovo link» ne conia un altro revocando quello di prima.
    */

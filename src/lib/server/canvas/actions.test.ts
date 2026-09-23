@@ -80,6 +80,48 @@ describe('canvas action input', () => {
   });
 });
 
+describe('batchWrite action', () => {
+  function event(fields: Record<string, string>, nodes: Record<string, unknown>[] = []) {
+    const fake = fakeDb({
+      orgs_members: [{ role: 'owner', orgs: { id: 'org', name: 'Org', slug: 'org' } }],
+      canvases: [{ id: 'canvas', project_id: 'project', name: 'Canvas', viewport: null }],
+      nodes
+    });
+    const body = new FormData();
+    for (const [key, value] of Object.entries(fields)) { body.set(key, value); }
+    return {
+      ...fake,
+      request: new Request('http://localhost/c/canvas', { method: 'POST', body }),
+      params: { canvasId: 'canvas' },
+      locals: { safeGetSession: async () => ({ session: {}, user: { id: 'user' } }), db: async () => fake.db }
+    };
+  }
+
+  it('rejects an empty batch, before writing', async () => {
+    const input = event({ items: '[]' });
+    const result = await actions.batchWrite(input as never);
+    expect(result).toMatchObject({ status: 400 });
+    expect(input.calls.some((call) => call.op === 'update')).toBe(false);
+  });
+
+  it('reports a node that does not exist on this canvas as not_found, without throwing', async () => {
+    const input = event({ items: JSON.stringify([{ node_id: 'ghost', version: 1, patch: { model: 'x' } }]) });
+    const result = (await actions.batchWrite(input as never)) as { results: { nodeId: string; outcome: string }[] };
+    expect(result.results).toEqual([{ nodeId: 'ghost', outcome: 'not_found' }]);
+  });
+
+  it('writes every node in the batch, merging the patch onto its current data', async () => {
+    const input = event(
+      { items: JSON.stringify([{ node_id: 'a', version: 1, patch: { model: 'x' } }]) },
+      [{ id: 'a', canvas_id: 'canvas', project_id: 'project', type: 'image', display_name: null, x: 0, y: 0, z: 0, width: null, height: null, data: { prompt: 'ciao' }, version: 1 }]
+    );
+    const result = (await actions.batchWrite(input as never)) as { results: { nodeId: string; outcome: string }[] };
+    expect(result.results).toEqual([{ nodeId: 'a', outcome: 'written', node: expect.anything() }]);
+    const update = input.calls.find((c) => c.table === 'nodes' && c.op === 'update');
+    expect(update?.payload).toMatchObject({ data: { prompt: 'ciao', model: 'x' } });
+  });
+});
+
 describe('connect action', () => {
   function event(fields: Record<string, string>) {
     const fake = fakeDb({
