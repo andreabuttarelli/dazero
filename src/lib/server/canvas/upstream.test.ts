@@ -465,3 +465,67 @@ describe('upstreamInputsFor — select: risolve ESATTAMENTE l\'item scelto dalla
     expect(out.rejected).toEqual([{ nodeId: SELECT_NODE, why: expect.stringContaining('non ancora') }]);
   });
 });
+
+describe('upstreamInputsFor — iterateSelection: UNA iterazione di un loop vede UN item, non la lista intera', () => {
+  it('un nodeId in iterateSelection fa risolvere quella list come un select a quell\'indice, per questa sola chiamata', async () => {
+    const { db } = fakeDb({
+      nodes: [
+        nodeRow(LIST_NODE, 'list', {
+          item_kind: 'image',
+          items: [{ label: 'a', asset_id: IMAGE_ASSET_1 }, { label: 'b', asset_id: IMAGE_ASSET_2 }]
+        }),
+        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: 'qwen3-pro' })
+      ],
+      nodes_connections: [
+        { id: 'e1', canvas_id: CANVAS, source_node_id: LIST_NODE, target_node_id: IMAGE_NODE, source_handle: null, target_handle: null }
+      ],
+      assets: [
+        { id: IMAGE_ASSET_1, project_id: 'p1', type: 'image', url: 'canvas-assets/a.png', content: null, mime_type: 'image/png', bytes: null, width: null, height: null, duration_s: null, source: 'upload', source_node_id: null, created_at: 'now' },
+        { id: IMAGE_ASSET_2, project_id: 'p1', type: 'image', url: 'canvas-assets/b.png', content: null, mime_type: 'image/png', bytes: null, width: null, height: null, duration_s: null, source: 'upload', source_node_id: null, created_at: 'now' }
+      ]
+    });
+
+    const first = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: IMAGE_NODE,
+      model: 'qwen3-pro',
+      medium: 'image',
+      iterateSelection: { [LIST_NODE]: 1 }
+    });
+    expect(first.referenceImageUrls).toEqual(['canvas-assets/a.png']);
+
+    const second = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: IMAGE_NODE,
+      model: 'qwen3-pro',
+      medium: 'image',
+      iterateSelection: { [LIST_NODE]: 2 }
+    });
+    expect(second.referenceImageUrls).toEqual(['canvas-assets/b.png']);
+  });
+
+  it('senza iterateSelection, la stessa lista alimenta ancora TUTTI i suoi item (comportamento fixed, invariato)', async () => {
+    const { db } = fakeDb({
+      nodes: [
+        nodeRow(LIST_NODE, 'list', {
+          item_kind: 'image',
+          items: [{ label: 'a', asset_id: IMAGE_ASSET_1 }, { label: 'b', asset_id: IMAGE_ASSET_2 }]
+        }),
+        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: 'qwen3-pro' })
+      ],
+      nodes_connections: [
+        { id: 'e1', canvas_id: CANVAS, source_node_id: LIST_NODE, target_node_id: IMAGE_NODE, source_handle: null, target_handle: null }
+      ],
+      assets: [
+        { id: IMAGE_ASSET_1, project_id: 'p1', type: 'image', url: 'canvas-assets/a.png', content: null, mime_type: 'image/png', bytes: null, width: null, height: null, duration_s: null, source: 'upload', source_node_id: null, created_at: 'now' },
+        { id: IMAGE_ASSET_2, project_id: 'p1', type: 'image', url: 'canvas-assets/b.png', content: null, mime_type: 'image/png', bytes: null, width: null, height: null, duration_s: null, source: 'upload', source_node_id: null, created_at: 'now' }
+      ]
+    });
+
+    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE, model: 'qwen3-pro', medium: 'image' });
+
+    expect(out.referenceImageUrls).toEqual(['canvas-assets/a.png', 'canvas-assets/b.png']);
+  });
+});

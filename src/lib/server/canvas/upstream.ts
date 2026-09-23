@@ -138,6 +138,29 @@ function listFeeding(node: CanvasNodeRecord, connections: Connection[], nodesByI
 }
 
 /**
+ * L'ITEM DI UNA LISTA ALL'INDICE DATO (1-based), risolto a testo o url — la stessa domanda che
+ * `select` fa sulla propria lista a monte, e che un'iterazione di loop fa su un asse `iterate`
+ * (`iterateSelection`, sotto): un indice fuori range o una lista vuota tornano "niente da dare",
+ * mai un valore a caso.
+ */
+async function itemAt(
+  db: Db,
+  orgId: string,
+  list: CanvasNodeRecord,
+  index: number
+): Promise<{ text: string | null; mediaUrl: string | null }> {
+  const { itemKind, items } = listItemsOf(list);
+  const item = index >= 1 && index <= items.length ? items[index - 1] : null;
+  if (!item) return { text: null, mediaUrl: null };
+
+  if (itemKind === 'text') {
+    return { text: item.text?.trim() ? item.text : null, mediaUrl: null };
+  }
+  const assetsById = await resolveItemAssets(db, orgId, [item]);
+  return { text: null, mediaUrl: await itemMediaUrl(item, assetsById) };
+}
+
+/**
  * IL VALORE CHE `select` PORTA A VALLE: l'item ALL'INDICE SCELTO (1-based, come `data.index`)
  * della lista a monte — MAI la lista intera. Fuori range, lista vuota o nessuna lista collegata
  * tornano tutti "niente da dare": lo stesso `text: null, mediaUrl: null` di un nodo mai girato, e
@@ -154,16 +177,8 @@ async function selectValue(
   const list = listFeeding(node, connections, nodesById);
   if (!list) return { text: null, mediaUrl: null };
 
-  const { itemKind, items } = listItemsOf(list);
   const index = typeof node.data.index === 'number' ? node.data.index : 0;
-  const item = index >= 1 && index <= items.length ? items[index - 1] : null;
-  if (!item) return { text: null, mediaUrl: null };
-
-  if (itemKind === 'text') {
-    return { text: item.text?.trim() ? item.text : null, mediaUrl: null };
-  }
-  const assetsById = await resolveItemAssets(db, orgId, [item]);
-  return { text: null, mediaUrl: await itemMediaUrl(item, assetsById) };
+  return itemAt(db, orgId, list, index);
 }
 
 async function toUpstreamNode(
@@ -171,7 +186,8 @@ async function toUpstreamNode(
   orgId: string,
   node: CanvasNodeRecord,
   connections: Connection[],
-  nodesById: Map<string, CanvasNodeRecord>
+  nodesById: Map<string, CanvasNodeRecord>,
+  iterateSelection: Record<string, number> = {}
 ): Promise<UpstreamNode> {
   if (node.type === 'influencer') {
     return {
@@ -186,6 +202,16 @@ async function toUpstreamNode(
 
   if (node.type === 'list') {
     const { itemKind } = listItemsOf(node);
+
+    // UN'ITERAZIONE DI LOOP VEDE UN ITEM SOLO — quando questo nodo è nella mappa, si risolve come
+    // farebbe un `select` su se stesso a quell'indice, non con l'intera lista (il comportamento
+    // `fixed`, invariato quando la mappa non lo nomina). Il resolver puro non lo sa: per lui è un
+    // nodo con `text`/`mediaUrl` singoli, esattamente come qualunque altro nodo sorgente.
+    if (node.id in iterateSelection) {
+      const value = await itemAt(db, orgId, node, iterateSelection[node.id]);
+      return { id: node.id, type: node.type, medium: itemKind === 'text' ? 'text' : 'image', model: null, text: value.text, mediaUrl: value.mediaUrl };
+    }
+
     if (itemKind === 'text') {
       const texts = listTexts(node);
       return { id: node.id, type: node.type, medium: 'text', model: null, text: texts.join('\n\n') || null, mediaUrl: null };
@@ -241,7 +267,16 @@ const BLOCKED_EMPTY: Omit<UpstreamInputs, 'blocked'> = {
  */
 export async function upstreamInputsFor(
   db: Db,
-  scope: { orgId: string; canvasId: string; nodeId: string; model?: string | null; medium?: 'text' | 'image' | 'video' }
+  scope: {
+    orgId: string;
+    canvasId: string;
+    nodeId: string;
+    model?: string | null;
+    medium?: 'text' | 'image' | 'video';
+    /** Un'iterazione di loop (`loop.ts`): quale item (1-based) di ogni `list` nominata qui vede
+     *  QUESTA chiamata, invece della lista intera. Assente = comportamento `fixed`, invariato. */
+    iterateSelection?: Record<string, number>;
+  }
 ): Promise<UpstreamInputs> {
   const checkable = scope.model && (scope.medium === 'image' || scope.medium === 'video');
   const modalities = checkable ? await modalitiesFor(scope.model!, scope.medium as 'image' | 'video') : null;
@@ -259,7 +294,10 @@ export async function upstreamInputsFor(
   ]);
 
   const nodesById = new Map(nodeRows.map((n) => [n.id, n]));
-  const nodes = await Promise.all(nodeRows.map((n) => toUpstreamNode(db, scope.orgId, n, connectionRows, nodesById)));
+  const iterateSelection = scope.iterateSelection ?? {};
+  const nodes = await Promise.all(
+    nodeRows.map((n) => toUpstreamNode(db, scope.orgId, n, connectionRows, nodesById, iterateSelection))
+  );
   const edges = connectionRows.map(toUpstreamEdge);
 
   return resolveUpstreamInputs(nodes, edges, scope.nodeId, modalities ?? { input: [] });
