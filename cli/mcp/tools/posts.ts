@@ -47,17 +47,21 @@ export function registerPostTools(server: McpServer) {
       title: 'Promote to a post',
       description:
         'Turn material into a post: this is what makes something publishable, distinct from ' +
-        'writing to a node. Give it a brand, a caption and its media (asset ids already in this ' +
-        'org). `sources` optionally links back to the nodes it came from. Lands as `draft`; nothing ' +
-        'is scheduled or published from here. Free.',
+        'writing to a node. Two ways in: give it a brand, a caption and its media (asset ids ' +
+        'already in this org) directly — or give it `node_ids` and let it resolve each node to its ' +
+        'asset itself (uploaded or generated), ordered by canvas reading order (top-to-bottom, ' +
+        'left-to-right), with text/doc nodes becoming the caption. `sources` optionally links back ' +
+        'to the nodes it came from when using the direct form. Lands as `draft`; nothing is ' +
+        'scheduled or published from here. Free.',
       inputSchema: z.object({
         org,
         brand_id: z.string(),
-        caption: z.string().min(1),
+        caption: z.string().min(1).optional(),
         media: z.array(z.object({ assetId: z.string(), order: z.number().int(), role: z.string().optional() })).optional(),
         title: z.string().optional(),
         link_url: z.string().optional(),
-        sources: z.array(z.object({ node_id: z.string(), role: z.enum(['caption', 'media', 'reference']).optional() })).optional()
+        sources: z.array(z.object({ node_id: z.string(), role: z.enum(['caption', 'media', 'reference']).optional() })).optional(),
+        node_ids: z.array(z.string()).optional().describe('Resolve these canvas nodes into the post instead of passing caption/media directly.')
       }),
       annotations: { readOnlyHint: false, destructiveHint: false }
     },

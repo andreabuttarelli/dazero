@@ -80,12 +80,16 @@ async function writeZernioPostIds(db: Db, input: { orgId: string; postId: string
 
 type DeliveryAccount = { id: string; platform: Platform; zernioAccountId: string };
 
-async function findAccounts(db: Db, input: { brandId: string; accountIds: string[] }): Promise<DeliveryAccount[]> {
+async function findAccounts(
+  db: Db,
+  input: { orgId: string; brandId: string; accountIds: string[] }
+): Promise<DeliveryAccount[]> {
   if (!input.accountIds.length) return [];
 
   const { data, error } = await db
     .from('social_accounts')
     .select('id, platform, zernio_account_id')
+    .eq('org_id', input.orgId)
     .eq('brand_id', input.brandId)
     .in('id', input.accountIds);
 
@@ -141,7 +145,7 @@ export async function scheduleDelivery(
   const post = await findPostForDelivery(db, { orgId: input.orgId, postId: input.postId });
   if (!post) throw new Error(`post_not_found: ${input.postId}`);
 
-  const accounts = await findAccounts(db, { brandId: post.brandId, accountIds: input.accountIds });
+  const accounts = await findAccounts(db, { orgId: input.orgId, brandId: post.brandId, accountIds: input.accountIds });
   const assets = await resolveMediaAssets(db, { orgId: input.orgId, media: post.media });
   const mediaKinds = assets.map((a) => ({ kind: a.type as 'image' | 'video' }));
   const mediaUrls = assets.map((a) => a.url).filter((u): u is string => Boolean(u));
@@ -213,7 +217,7 @@ export async function deliveryStatus(
   const accountIds = Object.keys(post.zernioPostIds);
   if (!accountIds.length) return [];
 
-  const accounts = await findAccounts(db, { brandId: post.brandId, accountIds });
+  const accounts = await findAccounts(db, { orgId: input.orgId, brandId: post.brandId, accountIds });
   const platformOf = new Map(accounts.map((a) => [a.id, a.platform]));
 
   const results: AccountDeliveryStatus[] = [];
