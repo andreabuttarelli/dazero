@@ -12,15 +12,17 @@ export async function getBrandsList(supabase: SupabaseClient, onlyIds: string[] 
   if (onlyIds && !onlyIds.length) return [];
   let q = supabase
     .from('brands')
-    .select('id, name, slug, plan, status, timezone');
+    .select('id, name, slug');
   if (onlyIds) q = q.in('id', onlyIds);
-  const { data: brands } = await q.order('name');
+  const { data: brands, error } = await q.order('name');
+  if (error) throw error;
 
   if (!brands?.length) return [];
 
   const ids = brands.map(b => b.id);
-  const { data: posts } = await supabase
-    .from('posts').select('brand_id').in('brand_id', ids).eq('status', 'pending_user');
+  const { data: posts, error: postsError } = await supabase
+    .from('posts').select('brand_id').in('brand_id', ids).eq('status', 'ready');
+  if (postsError) throw postsError;
 
   const pendingCounts = new Map<string, number>();
   for (const p of posts ?? []) pendingCounts.set(p.brand_id, (pendingCounts.get(p.brand_id) ?? 0) + 1);
@@ -34,41 +36,25 @@ export async function getBrandsList(supabase: SupabaseClient, onlyIds: string[] 
 // ── Brand detail ────────────────────────────────────────────────────────
 
 export async function getBrandDetail(supabase: SupabaseClient, brandId: string) {
-  const [pendingRes, runsRes, productsRes, accountsRes, postsStatusRes, historyRes, kitRes] = await Promise.all([
+  const [pendingRes, productsRes, accountsRes, brandRes] = await Promise.all([
     supabase.from('posts').select('id', { count: 'exact', head: true })
-      .eq('brand_id', brandId).eq('status', 'pending_user'),
-    supabase.from('scheduler_runs').select('status, posts_created, created_at, error')
-      .eq('brand_id', brandId).order('created_at', { ascending: false }).limit(3),
+      .eq('brand_id', brandId).eq('status', 'ready'),
     supabase.from('products').select('id', { count: 'exact', head: true })
       .eq('brand_id', brandId),
     supabase.from('social_accounts').select('id', { count: 'exact', head: true })
       .eq('brand_id', brandId),
-    supabase.from('posts').select('status').eq('brand_id', brandId),
-    supabase.from('social_post_history').select('id', { count: 'exact', head: true })
-      .eq('brand_id', brandId),
-    supabase.from('brand_kit').select('about, brand_colors, logos, favicon_url')
-      .eq('brand_id', brandId).maybeSingle(),
+    supabase.from('brands').select('logo_url')
+      .eq('id', brandId).maybeSingle(),
   ]);
-
-  const statusCounts = new Map<string, number>();
-  for (const row of postsStatusRes.data ?? []) {
-    statusCounts.set(row.status, (statusCounts.get(row.status) ?? 0) + 1);
+  for (const res of [pendingRes, productsRes, accountsRes, brandRes]) {
+    if (res.error) throw res.error;
   }
-
-  const kit = kitRes.data;
-  const logos = (kit?.logos as Array<{ url?: string }> | null) ?? null;
-  const logoUrl = logos?.find(l => l?.url)?.url ?? kit?.favicon_url ?? null;
 
   return {
     pendingCount: pendingRes.count ?? 0,
-    runs: runsRes.data ?? [],
     productCount: productsRes.count ?? 0,
     accountCount: accountsRes.count ?? 0,
-    scheduledCount: statusCounts.get('scheduled') ?? 0,
-    publishedCount: statusCounts.get('published') ?? 0,
-    hasHistory: (historyRes.count ?? 0) > 0,
-    kit: kit ? { about: kit.about, brand_colors: kit.brand_colors } : null,
-    logoUrl,
+    logoUrl: brandRes.data?.logo_url ?? null,
   };
 }
 

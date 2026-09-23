@@ -1,6 +1,6 @@
 import { loadSession } from '../lib/auth.ts';
 import { api } from '../lib/api.ts';
-import { table, statusBadge, c } from '../lib/display.ts';
+import { table, c } from '../lib/display.ts';
 
 export async function cmdBrands() {
   const session = await loadSession();
@@ -16,12 +16,10 @@ export async function cmdBrands() {
   console.log(c.bold(`\n${brands.length} brand\n`));
 
   table(
-    ['Brand', 'Slug', 'Piano', 'Status', 'Pending'],
+    ['Brand', 'Slug', 'Pending'],
     brands.map((b) => [
       c.bold(b.name),
       c.dim(b.slug),
-      b.plan ?? '—',
-      statusBadge(b.status ?? ''),
       b.pendingCount > 0 ? c.yellow(String(b.pendingCount)) : c.dim('0'),
     ])
   );

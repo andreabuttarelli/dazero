@@ -113,22 +113,14 @@ export type BrandSummary = {
   id: string;
   name: string;
   slug: string;
-  plan: string | null;
-  status: string | null;
-  timezone: string;
   pendingCount: number;
 };
 
 export type BrandDetail = {
   brand: BrandSummary;
   pendingCount: number;
-  runs: { status: string; posts_created: number; created_at: string; error: string | null }[];
   productCount: number;
   accountCount: number;
-  scheduledCount: number;
-  publishedCount: number;
-  hasHistory: boolean;
-  kit: { about: string | null; brand_colors: unknown } | null;
   logoUrl: string | null;
 };
 

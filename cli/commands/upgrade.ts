@@ -10,9 +10,6 @@ export async function cmdUpgrade(slug: string) {
   const brand = detail.brand;
 
   console.log(c.bold(`\nUpgrade — ${brand.name}\n`));
-  console.log(`  Piano attuale: ${c.bold(brand.plan ?? '—')}`);
-  console.log(`  Status: ${brand.status ?? '—'}`);
-  console.log();
 
   const url = `${process.env.PUBLIC_APP_URL}/app/billing`;
   console.log(`  Apertura pagina di upgrade…`);

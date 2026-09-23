@@ -27,9 +27,6 @@ Lista tutti i brand dell'utente.
     "id": "uuid",
     "name": "My Brand",
     "slug": "my-brand",
-    "plan": "pro",
-    "status": "active",
-    "timezone": "Europe/Rome",
     "pendingCount": 3
   }
 ]
@@ -44,13 +41,8 @@ Dettaglio completo di un brand.
 {
   "brand": { ... },
   "pendingCount": 3,
-  "runs": [{ "status": "completed", "posts_created": 5, "created_at": "...", "error": null }],
   "productCount": 12,
   "accountCount": 3,
-  "scheduledCount": 8,
-  "publishedCount": 45,
-  "hasHistory": true,
-  "kit": { "about": "...", "brand_colors": ["#fff"] },
   "logoUrl": "https://..."
 }
 ```
