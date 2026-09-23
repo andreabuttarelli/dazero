@@ -44,6 +44,12 @@ export type GenParams = {
   aspectRatio?: string;
   duration?: number;
   audio?: boolean;
+  /** Quante varianti semplici in loop, quando il nodo non ha archi `iterate` (`loop-plan.ts`,
+   *  CLAUDE.md — "repeat N"). Con degli assi collegati non conta: le combinazioni le dettano i
+   *  valori, non questo numero. */
+  repeat?: number;
+  /** Cartesiano (default, assente) o accoppiato indice-per-indice — `loop-plan.ts::LoopCombine`. */
+  combine?: 'product' | 'zip';
 };
 
 /**

@@ -44,13 +44,20 @@ function listItemsOf(node: CanvasNodeRecord): ListItem[] {
   return Array.isArray(node.data.items) ? (node.data.items as ListItem[]) : [];
 }
 
+/** `repeat`/`combine` vivono in `data.params` — lo stesso `GenParams` che `aspectRatio`/`duration`/
+ *  `audio` già usano (`canvas-node-data.ts::genData`), non un campo top-level nuovo: un nodo che
+ *  genera ha UN oggetto di parametri, non due posti diversi a seconda di quale parametro è. */
+function paramsOf(node: CanvasNodeRecord): Record<string, unknown> {
+  return (node.data.params ?? {}) as Record<string, unknown>;
+}
+
 function repeatOf(node: CanvasNodeRecord): number {
-  const raw = node.data.repeat;
+  const raw = paramsOf(node).repeat;
   return typeof raw === 'number' && raw >= 1 ? Math.round(raw) : 1;
 }
 
 function combineOf(node: CanvasNodeRecord): LoopCombine {
-  return node.data.combine === 'zip' ? 'zip' : 'product';
+  return paramsOf(node).combine === 'zip' ? 'zip' : 'product';
 }
 
 async function axesForNode(db: Db, scope: { orgId: string; canvasId: string; nodeId: string }) {

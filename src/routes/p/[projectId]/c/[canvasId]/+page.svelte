@@ -477,6 +477,35 @@
   }
 
   /**
+   * IL LOOP: preventivo, poi conferma solo se serve, poi esecuzione — la stessa separazione di
+   * `loop.ts`. Il preventivo (`loop_plan`) non spende, e chi guarda deve poter vedere quante
+   * generazioni e quanti crediti PRIMA che il clic diventi irreversibile (CLAUDE.md). Sopra 50
+   * combinazioni la conferma è nativa (`confirm()`): un modale su misura sarebbe più lavoro per
+   * un percorso che, sopra la soglia, è già raro di suo.
+   */
+  async function runLoop(id: string) {
+    const plan = await post('loop_plan', { node_id: id });
+    if (!plan) return;
+
+    const safety = plan.safety as { verdict: 'run' | 'confirm' | 'refuse'; count: number } | undefined;
+    if (!safety || safety.verdict === 'refuse') {
+      failed = `troppe combinazioni: dividi il loop`;
+      return;
+    }
+
+    if (safety.verdict === 'confirm') {
+      const cost = plan.cost as { total: number } | undefined;
+      const ok = confirm(
+        `Genera ${safety.count} combinazioni (${cost?.total ?? '?'} crediti)?`
+      );
+      if (!ok) return;
+    }
+
+    await post('run_loop', { node_id: id, confirm: safety.verdict === 'confirm' ? '1' : '0' });
+    await refresh();
+  }
+
+  /**
    * SBLOCCARE UNA CORSA CHE NON TORNA. Ottimista come il trascinamento: subito spento sullo
    * schermo, e scritto solo alla fine — il nodo altrimenti resterebbe «in corso» a vita quando
    * il provider non risponde più o la scheda è stata chiusa a metà giro.
@@ -1041,6 +1070,7 @@
             catalogueSynced={mediumCatalogue[gen.medium].synced}
             onchange={(patch) => write(id, genData({ ...gen, ...patch }))}
             onrun={() => run(id, gen)}
+            onrunloop={() => runLoop(id)}
             onunlock={() => unlock(id)}
             onshow={(runId) => restore(id, gen, runId)}
           >

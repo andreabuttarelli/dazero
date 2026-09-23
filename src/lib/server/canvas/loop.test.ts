@@ -61,7 +61,7 @@ beforeEach(() => {
 describe('planLoop — il preventivo, senza girare niente', () => {
   it('nessun asse: repeat N vale N varianti, e il costo è N × il prezzo unitario', async () => {
     const { db } = fakeDb({
-      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', repeat: 3 })],
+      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', params: { repeat: 3 } })],
       nodes_connections: []
     });
 
@@ -125,7 +125,7 @@ describe('planLoop — il preventivo, senza girare niente', () => {
 describe('runLoop — esegue col motore reale, mai una copia', () => {
   it('sopra 50 varianti (repeat) senza `confirmed: true` chiede conferma, mai gira', async () => {
     const { db } = fakeDb({
-      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'x', model: 'qwen3-pro', repeat: 51 })],
+      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'x', model: 'qwen3-pro', params: { repeat: 51 } })],
       nodes_connections: []
     });
 
@@ -137,7 +137,7 @@ describe('runLoop — esegue col motore reale, mai una copia', () => {
 
   it('sopra 1000 varianti (repeat) rifiuta senza girare nulla, anche con confirmed:true', async () => {
     const { db } = fakeDb({
-      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'x', model: 'qwen3-pro', repeat: 1001 })],
+      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'x', model: 'qwen3-pro', params: { repeat: 1001 } })],
       nodes_connections: []
     });
 
@@ -149,7 +149,7 @@ describe('runLoop — esegue col motore reale, mai una copia', () => {
 
   it('chiama runGenNode UNA volta per variante, con lo stesso motore del bottone Genera', async () => {
     const { db } = fakeDb({
-      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', repeat: 2 }, 5)],
+      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', params: { repeat: 2 } }, 5)],
       nodes_connections: []
     });
 
@@ -166,7 +166,7 @@ describe('runLoop — esegue col motore reale, mai una copia', () => {
 
   it('un fallimento su una variante non ferma le altre — i risultati completati sopravvivono', async () => {
     const { db } = fakeDb({
-      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', repeat: 2 }, 5)],
+      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', params: { repeat: 2 } }, 5)],
       nodes_connections: []
     });
 
@@ -186,7 +186,7 @@ describe('runLoop — esegue col motore reale, mai una copia', () => {
     orgCreditsUsage.mockResolvedValue({ used: 99_990, quota: 100_000, bonus: 0, remaining: 10, periodStart: new Date(), periodEnd: new Date(), percent: 99 });
 
     const { db } = fakeDb({
-      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', repeat: 5 })],
+      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', params: { repeat: 5 } })],
       nodes_connections: []
     });
 
@@ -198,7 +198,7 @@ describe('runLoop — esegue col motore reale, mai una copia', () => {
 
   it('deposita un nodo list di output con un item per combinazione riuscita', async () => {
     const { db, calls } = fakeDb({
-      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', repeat: 2 }, 5)],
+      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', params: { repeat: 2 } }, 5)],
       nodes_connections: []
     });
 

@@ -34,6 +34,7 @@
     selected = false,
     onchange,
     onrun,
+    onrunloop,
     onshow,
     onunlock,
     result
@@ -52,6 +53,10 @@
     selected?: boolean;
     onchange?: (patch: Partial<GenNode>) => void;
     onrun?: () => void;
+    /** Genera in loop — N combinazioni degli archi `iterate`, o N varianti (`repeat`) senza
+     *  assi. Il nodo non pianifica né chiede conferma da sé: chi lo usa lo fa (`loop_plan`
+     *  prima, poi `run_loop`), la stessa separazione fra preventivo ed esecuzione di `loop.ts`. */
+    onrunloop?: () => void;
     /** Rimettere in vetrina un giro di prima. Il nodo non sa scrivere: chiede a chi lo usa. */
     onshow?: (runId: string) => void;
     /** Sblocca una corsa che non torna più. Senza, il bottone resta spento per sempre. */
@@ -164,6 +169,22 @@
         audio
       </label>
     {/if}
+
+    <!-- REPEAT N: varianti semplici quando il nodo non ha archi `iterate` (`loop-plan.ts`,
+         CLAUDE.md — "repeat N" per N varianti dello stesso prompt). Con degli assi collegati
+         questo campo non conta — le combinazioni le dettano i valori, non un numero qui. -->
+    <label class="gen-duration" title="Quante varianti generare in loop, quando il nodo non ha assi collegati">
+      <input
+        type="number"
+        class="gen-field gen-number"
+        min="1"
+        max="1000"
+        value={typeof node.params.repeat === 'number' ? node.params.repeat : 1}
+        oninput={(e) => patchParams({ repeat: Math.max(1, Math.round(Number(e.currentTarget.value) || 1)) })}
+        aria-label="Ripeti N volte (loop)"
+      />
+      <span class="gen-unit">×</span>
+    </label>
   </header>
   {/if}
 
@@ -231,6 +252,11 @@
           {blocked}{#if tooLong && choice?.maxPromptChars}
             ({node.prompt.length}/{choice.maxPromptChars}){/if}
         </span>
+      {/if}
+      {#if onrunloop}
+        <button type="button" class="gen-loop" onclick={() => onrunloop?.()} disabled={!canRun}>
+          Loop
+        </button>
       {/if}
       <button type="button" onclick={() => onrun?.()} disabled={!canRun}>
         {state === 'done' ? 'Rifai' : 'Genera'}
@@ -519,6 +545,15 @@
   button:disabled {
     opacity: 0.35;
     cursor: default;
+  }
+  /* Secondario a "Genera": stesso posto, meno peso — il loop è l'azione meno frequente delle due. */
+  .gen-loop {
+    background: var(--paper, #fff);
+    color: var(--ink, #1d1d1f);
+    border: 1px solid var(--line-2, #d2d2d7);
+  }
+  .gen-loop:hover:not(:disabled) {
+    background: var(--paper-2, #f9f9f9);
   }
 
   .gen-dots {
