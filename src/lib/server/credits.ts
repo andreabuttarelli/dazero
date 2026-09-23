@@ -171,6 +171,19 @@ export async function orgPlanForBrand(
   return (await resolveOrgBilling(supabase, brandId))?.plan ?? null;
 }
 
+// ── Ledger balance ───────────────────────────────────────────────────────────────
+// Il saldo vero: `credit_ledger` sommato (grant − debit, righe non scadute), letto dalla RPC
+// `org_credit_balance` — non da `ai_calls` sommato contro una quota fissa (vedi sotto). Ogni
+// chiamata AI prezzata scrive già un debito qui (ai-log.ts): questo è l'unico posto che LEGGE
+// quel saldo per decidere se una spesa nuova può passare.
+
+/** Il saldo crediti dell'org, dalla RPC `org_credit_balance` (grant − debit, credit_ledger). */
+export async function orgCreditBalance(supabase: SupabaseClient, orgId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('org_credit_balance', { _org_id: orgId });
+  if (error) throw new Error(`org_credit_balance failed: ${error.message}`);
+  return Number(data ?? 0);
+}
+
 // ── Usage query ──────────────────────────────────────────────────────────────────
 
 const CREDITS_PER_USD = 100;
@@ -394,15 +407,32 @@ export async function gateOrgCreditsCore(orgId: string): Promise<void> {
   let usage: CreditsUsage;
   try {
     const admin = createAdminClient();
-    const org = await readOrgBillingById(admin, orgId);
-    if (!org) return;
-    usage = await orgCreditsUsage(admin, org);
+    usage = await ledgerCreditsUsage(admin, orgId);
     gateCache.set(orgId, { usage, at: Date.now() });
   } catch (e) {
     reportFailOpen(orgId, e);
     return;
   }
   assertCreditsAvailable(usage);
+}
+
+/**
+ * Il saldo `credit_ledger` travestito da `CreditsUsage`, per il cancello e per la cache che già
+ * esiste — non un secondo concetto di "quota", solo il saldo vero letto una volta. `quota`/`used`
+ * qui sono display: quello che decide è `remaining`, ed è il saldo stesso.
+ */
+async function ledgerCreditsUsage(supabase: SupabaseClient, orgId: string): Promise<CreditsUsage> {
+  const balance = await orgCreditBalance(supabase, orgId);
+  const now = new Date();
+  return {
+    used: 0,
+    quota: Math.max(0, balance),
+    bonus: 0,
+    remaining: Math.max(0, balance),
+    periodStart: now,
+    periodEnd: now,
+    percent: 0
+  };
 }
 
 /**
@@ -419,10 +449,14 @@ export async function gateCreditsCore(brandId: string): Promise<void> {
   // the same one, instead of each paying for its own copy of the same numbers.
   let admin: SupabaseClient | null = null;
   let cacheKey = brandId;
+  let orgId: string | null = null;
   try {
     admin = createAdminClient();
     const org = await resolveOrgBilling(admin, brandId);
-    if (org) cacheKey = org.orgId;
+    if (org) {
+      cacheKey = org.orgId;
+      orgId = org.orgId;
+    }
   } catch (e) {
     reportFailOpen(brandId, e);
     return;
@@ -438,14 +472,19 @@ export async function gateCreditsCore(brandId: string): Promise<void> {
 
   let usage: CreditsUsage | null = null;
   try {
-    const { data: brand, error } = await admin.from('brands').select('id').eq('id', brandId).maybeSingle();
-    if (error) throw new Error(`brands lookup failed: ${error.message}`);
-    if (!brand) return;
-    // `plan`/`status`/`activated_at` are not columns on the new `brands` — see the OrgBilling
-    // doc above. getCreditsUsage reads the quota from the org (always free-tier today) and
-    // ignores brand.plan/activated_at when an org is resolved.
-    usage = await getCreditsUsage(admin, { id: brand.id, plan: null, activated_at: null, status: 'active' });
-    gateCache.set(cacheKey, { usage, at: Date.now() });
+    if (orgId) {
+      // Il saldo vero è dell'org, non del brand: due brand dello stesso org leggono lo stesso saldo.
+      usage = await ledgerCreditsUsage(admin, orgId);
+      gateCache.set(cacheKey, { usage, at: Date.now() });
+    } else {
+      const { data: brand, error } = await admin.from('brands').select('id').eq('id', brandId).maybeSingle();
+      if (error) throw new Error(`brands lookup failed: ${error.message}`);
+      if (!brand) return;
+      // Un brand senza org risolvibile (dato inconsistente) non ha un saldo da leggere — fallback
+      // alla quota free, per non lasciare la spesa senza alcun tetto.
+      usage = await getCreditsUsage(admin, { id: brand.id, plan: null, activated_at: null, status: 'active' });
+      gateCache.set(cacheKey, { usage, at: Date.now() });
+    }
   } catch (e) {
     reportFailOpen(brandId, e);
     return;

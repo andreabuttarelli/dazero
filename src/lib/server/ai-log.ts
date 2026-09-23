@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { gatewayRate } from '$lib/server/openrouter-models';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { GEMINI_FLASH, geminiFlash, isGeminiFlashId, isKieFlashId, kieFlashId, NANO_BANANA_PRO, isNanoBananaProId, geminiVisualCreditShare } from '$lib/server/google-models';
+import { billedCreditsFor } from '$lib/server/credit-ladder';
 import type { Database } from '$lib/database.types';
 
 type AiCallInsert = Database['public']['Tables']['ai_calls']['Insert'];
@@ -496,6 +497,8 @@ export function logAiCall(entry: AiCallLog): void {
         const { ensureGatewayModels } = await import('$lib/server/openrouter-models');
         await ensureGatewayModels();
       }
+      const costUsd = computeCostUsd(entry, plan);
+      const billedCredits = costUsd != null && costUsd > 0 ? billedCreditsFor(costUsd) : null;
       const row: AiCallInsert = {
         org_id: orgId,
         brand_id: brandId,
@@ -508,7 +511,8 @@ export function logAiCall(entry: AiCallLog): void {
         reasoning_tokens: entry.thinkingTokens ?? null,
         cached_tokens: entry.cachedTokens ?? null,
         total_tokens: sumTokens(entry),
-        cost_usd: computeCostUsd(entry, plan),
+        cost_usd: costUsd,
+        billed_credits: billedCredits,
         provider_credits: entry.providerCredits ?? null,
         status,
         error: entry.error ? String(entry.error).slice(0, 500) : null,
@@ -520,9 +524,25 @@ export function logAiCall(entry: AiCallLog): void {
       };
       // Tipizzata contro AiCallInsert (generato da database.types.ts): una colonna sbagliata qui
       // è un errore di compilazione, non più un console.warn scoperto in produzione.
-      const { error } = await admin.from('ai_calls').insert(row);
+      const { data: inserted, error } = await admin.from('ai_calls').insert(row).select('id').single();
       if (error) {
         console.error(`[ai-log] insert failed for operation "${operation}":`, error.message, row);
+        return;
+      }
+      // Il debito è qui, non altrove: OGNI generazione passa da logAiCall, quindi questo è l'unico
+      // posto che deve addebitare — due punti che scrivono `credit_ledger` per la stessa spesa
+      // divergerebbero al primo cambio (CLAUDE.md, "scattered conditions").
+      if (billedCredits && billedCredits > 0) {
+        const { error: ledgerError } = await admin.from('credit_ledger').insert({
+          org_id: orgId,
+          kind: 'debit',
+          source: 'ai_usage',
+          amount: billedCredits,
+          ai_call_id: (inserted as { id: string }).id
+        });
+        if (ledgerError) {
+          console.error(`[ai-log] credit_ledger debit failed for operation "${operation}":`, ledgerError.message);
+        }
       }
     })();
   } catch {

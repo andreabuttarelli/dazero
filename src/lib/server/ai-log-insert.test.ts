@@ -32,27 +32,36 @@ let lastError: { message: string } | null = null;
 
 vi.mock('./supabase-admin', () => ({
   createAdminClient: () => ({
-    from: (table: string) => ({
-      insert: async (row: Record<string, unknown>) => {
-        if (table !== 'ai_calls') return { error: null };
+    from: (table: string) => {
+      if (table === 'credit_ledger') return { insert: async () => ({ error: null }) };
 
-        const unknownCols = Object.keys(row).filter((k) => !REAL_COLUMNS.has(k));
-        if (unknownCols.length > 0) {
-          lastError = { message: `Could not find the '${unknownCols[0]}' column of 'ai_calls' in the schema cache` };
-          return { error: lastError };
-        }
+      return {
+        insert: (row: Record<string, unknown>) => ({
+          select: () => ({
+            single: async () => {
+              if (table !== 'ai_calls') return { data: null, error: null };
 
-        const missing = REQUIRED_COLUMNS.filter((k) => row[k] === undefined || row[k] === null);
-        if (missing.length > 0) {
-          lastError = { message: `null value in column "${missing[0]}" of relation "ai_calls" violates not-null constraint` };
-          return { error: lastError };
-        }
+              const unknownCols = Object.keys(row).filter((k) => !REAL_COLUMNS.has(k));
+              if (unknownCols.length > 0) {
+                lastError = { message: `Could not find the '${unknownCols[0]}' column of 'ai_calls' in the schema cache` };
+                return { data: null, error: lastError };
+              }
 
-        rows.push(row);
-        lastError = null;
-        return { error: null };
-      }
-    })
+              const missing = REQUIRED_COLUMNS.filter((k) => row[k] === undefined || row[k] === null);
+              if (missing.length > 0) {
+                lastError = { message: `null value in column "${missing[0]}" of relation "ai_calls" violates not-null constraint` };
+                return { data: null, error: lastError };
+              }
+
+              const id = `call-${rows.length + 1}`;
+              rows.push({ ...row, id });
+              lastError = null;
+              return { data: { id }, error: null };
+            }
+          })
+        })
+      };
+    }
   })
 }));
 
