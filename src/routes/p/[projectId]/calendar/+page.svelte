@@ -15,11 +15,14 @@
   let scheduledForByPost = $state<Record<string, string>>({});
   let busy = $state<string | null>(null);
 
+  function isSelected(postId: string, accountId: string): boolean {
+    return (selectedAccounts[postId] ?? []).includes(accountId);
+  }
+
   function toggleAccount(postId: string, accountId: string) {
     const current = selectedAccounts[postId] ?? [];
-    selectedAccounts[postId] = current.includes(accountId)
-      ? current.filter((id) => id !== accountId)
-      : [...current, accountId];
+    const next = current.includes(accountId) ? current.filter((id) => id !== accountId) : [...current, accountId];
+    selectedAccounts = { ...selectedAccounts, [postId]: next };
   }
 
   function mediaKinds(post: CalendarPost): { kind: 'image' | 'video' }[] {
@@ -119,11 +122,12 @@
             <div class="account-picker">
               {#each accounts as account (account.id)}
                 {#if !delivered.has(account.id)}
-                  <label class="account-option">
+                  <label class="account-option" for={`account-${post.id}-${account.id}`}>
                     <input
+                      id={`account-${post.id}-${account.id}`}
                       type="checkbox"
-                      checked={(selectedAccounts[post.id] ?? []).includes(account.id)}
-                      onchange={() => toggleAccount(post.id, account.id)}
+                      checked={isSelected(post.id, account.id)}
+                      onclick={() => toggleAccount(post.id, account.id)}
                     />
                     <PlatformGlyph platform={account.platform} />
                     {account.handle ?? account.displayName ?? account.platform}

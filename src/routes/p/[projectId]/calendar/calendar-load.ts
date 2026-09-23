@@ -56,9 +56,28 @@ export async function buildCalendarData(
   const withDeliveries = await Promise.all(
     posts.map(async (post) => ({
       ...post,
-      deliveries: await repos.deliveryStatus(input.db, input.publisher, { orgId: input.orgId, postId: post.id })
+      deliveries: await deliveriesOrEmpty(repos, input, post.id)
     }))
   );
 
   return { brand, brands, accounts, posts: withDeliveries };
+}
+
+/**
+ * `posts.zernio_post_ids` esiste solo dopo che la migration
+ * (`supabase/canvas-migrations/20260922_drop_scheduled_posts.sql`) è applicata — scritta, non
+ * ancora eseguita. Finché non lo è, ogni post appare senza consegne invece di far cadere l'intera
+ * pagina con un 500: non è una bugia (non dice "pubblicato" quando non lo è), è la stessa verità
+ * che avrebbe un post appena creato, mai consegnato.
+ */
+async function deliveriesOrEmpty(
+  repos: CalendarRepos,
+  input: { orgId: string; db: Db; publisher: SocialPublisher },
+  postId: string
+): Promise<AccountDeliveryStatus[]> {
+  try {
+    return await repos.deliveryStatus(input.db, input.publisher, { orgId: input.orgId, postId });
+  } catch {
+    return [];
+  }
 }

@@ -82,7 +82,21 @@ export async function startMockZernio(port: number): Promise<MockZernio> {
     });
   });
 
-  await new Promise<void>((resolve) => server.listen(port, resolve));
+  // Un crash a metà run (es. un test che va in timeout) può lasciare un mock precedente vivo
+  // sulla stessa porta: EADDRINUSE qui altrimenti butta giù l'intero processo Playwright con uno
+  // stack trace che non dice "un mock Zernio è già lì", solo "la porta è occupata". Riusarlo è
+  // corretto — è lo stesso doppio dietro il mock, solo di un run precedente.
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        server.close();
+        resolve();
+        return;
+      }
+      reject(err);
+    });
+    server.listen(port, resolve);
+  });
 
   return {
     url: `http://127.0.0.1:${port}`,

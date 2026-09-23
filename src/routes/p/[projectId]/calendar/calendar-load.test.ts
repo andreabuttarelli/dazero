@@ -63,4 +63,12 @@ describe('buildCalendarData: progetto con brand', () => {
 
     expect(data.posts[0].deliveries).toEqual([]);
   });
+
+  it('se deliveryStatus fallisce (zernio_post_ids non ancora migrata) il post appare comunque, senza consegne', async () => {
+    const r = repos({ deliveryStatus: vi.fn().mockRejectedValue(new Error('column posts.zernio_post_ids does not exist')) });
+
+    const data = await buildCalendarData(r, { orgId: ORG, brandId: BRAND, db: {} as never, publisher: {} as never });
+
+    expect(data.posts).toEqual([{ ...posts[0], deliveries: [] }]);
+  });
 });
