@@ -88,6 +88,8 @@
     onDuplicate,
     onCopy,
     onPaste,
+    onUndo,
+    onRedo,
     onConnectNew,
     onConnectExisting,
     nodeSummaries = [],
@@ -133,6 +135,10 @@
     onCopy?: (ids: string[]) => void;
     /** ⌘V: incolla, al centro di quel che si sta guardando adesso. */
     onPaste?: (at: { x: number; y: number }) => void;
+    /** ⌘Z: annulla l'ultimo gesto di questa scheda. */
+    onUndo?: () => void;
+    /** ⇧⌘Z: ripete l'ultimo gesto annullato. */
+    onRedo?: () => void;
     /**
      * "Collega a nuovo…": la scelta del tipo la fa questo componente (`ConnectPicker`), il nodo e
      * i fili li fa chi monta la tela — la stessa divisione di `onCreate`, dove il PUNTO lo decide
@@ -507,6 +513,8 @@
       onduplicate={onDuplicate}
       oncopy={onCopy}
       onpaste={onPaste}
+      onundo={onUndo}
+      onredo={onRedo}
     />
     <CanvasSelectionBridge onchange={(next) => (selection = next)} />
     <Background gap={24} />

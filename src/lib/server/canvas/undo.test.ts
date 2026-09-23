@@ -177,6 +177,54 @@ describe('undo action: refuses instead of clobbering a peer change', () => {
   });
 });
 
+describe('undo action: returns the redo gesture, with the version undo left behind', () => {
+  it('a node.update undo returns a redo item expecting the version the undo write produced', async () => {
+    const input = event(
+      {
+        items: JSON.stringify([
+          {
+            kind: 'node.update',
+            nodeId: NODE,
+            before: { data: { prompt: 'vecchio' } },
+            after: { data: { prompt: 'nuovo' } },
+            expectedVersion: 3
+          }
+        ])
+      },
+      {
+        nodes: [
+          { id: NODE, canvas_id: 'canvas', project_id: 'project', type: 'text', display_name: null, x: 0, y: 0, z: 0, width: null, height: null, data: { prompt: 'nuovo' }, version: 3 }
+        ]
+      }
+    );
+    const result = (await actions.undo(input as never)) as unknown as {
+      outcome: string;
+      redo: { items: { kind: string; nodeId: string; before: unknown; after: unknown; expectedVersion: number }[] };
+    };
+    expect(result.outcome).toBe('undone');
+    expect(result.redo.items).toEqual([
+      { kind: 'node.update', nodeId: NODE, before: { data: { prompt: 'vecchio' } }, after: { data: { prompt: 'nuovo' } }, expectedVersion: 4 }
+    ]);
+  });
+
+  it('a node.create undo (soft-delete) returns a redo item that restores it', async () => {
+    const input = event(
+      { items: JSON.stringify([{ kind: 'node.create', nodeId: NODE, after: { type: 'text', position: { x: 0, y: 0, z: 0 }, data: {} } }]) },
+      {
+        nodes: [
+          { id: NODE, canvas_id: 'canvas', project_id: 'project', type: 'text', display_name: null, x: 0, y: 0, z: 0, width: null, height: null, data: {}, version: 1 }
+        ]
+      }
+    );
+    const result = (await actions.undo(input as never)) as unknown as {
+      outcome: string;
+      redo: { items: { kind: string; nodeId: string }[] };
+    };
+    expect(result.outcome).toBe('undone');
+    expect(result.redo.items).toEqual([{ kind: 'node.delete', nodeId: NODE, before: { type: 'text', position: { x: 0, y: 0, z: 0 }, data: {} } }]);
+  });
+});
+
 describe('undo action: edge.create/edge.delete', () => {
   it('deletes the edge a connect gesture made', async () => {
     const input = event(

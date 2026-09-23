@@ -13,6 +13,8 @@
    * Qui si fa l'altra metà — quale riga sta dietro una tile, e cosa si scrive quando cambia.
    */
   import { createWriteQueue } from '$lib/canvas/write-queue';
+  import { createUndoStack } from '$lib/canvas/undo-stack';
+  import type { Gesture, UndoItem } from '$lib/canvas/undo-plan';
   import { connectCanvas } from '$lib/realtime/canvas-channel';
   import type { PresencePeer } from '$lib/realtime/presence-peers';
   import { createSupabaseBrowserClient } from '$lib/supabase/client';
@@ -248,6 +250,15 @@
   let snapshotVersion = 0;
   const enqueue = createWriteQueue();
 
+  /**
+   * LO STACK DI QUESTA SCHEDA — non dell'utente, non del database: `undo-stack.ts` lo dice in
+   * testa al file, e vale anche qui. Un gesto entra dopo che il server l'ha già scritto (mai
+   * prima: annullare un gesto che il server ha rifiutato annullerebbe qualcosa che non è mai
+   * successo), con l'inversa già in mano — `before`/`after` che il server ha appena restituito, o
+   * che il client teneva già per costruire la richiesta.
+   */
+  const undoStack = createUndoStack();
+
   let productsOverride = $state<Record<string, Product[]> | null>(null);
   let socialPostsOverride = $state<Record<string, SocialPost[]> | null>(null);
   const products = $derived(productsOverride ?? productsByNode);
@@ -363,6 +374,11 @@
     return iframeNodeSize();
   }
 
+  /** Un `node.create` di un nodo appena nato: l'inversa è un soft-delete, `checkGesture` la sa già. */
+  function createGesture(node: CanvasNodeRecord): Gesture {
+    return { items: [{ kind: 'node.create', nodeId: node.id, after: { type: node.type, position: node.position, data: node.data } }] };
+  }
+
   async function create(what: Addable, at: { x: number; y: number }) {
     const { w, h } = sizeForAddable(what);
 
@@ -379,6 +395,7 @@
     }
 
     nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created)];
+    undoStack.push(createGesture(created));
   }
 
   /**
@@ -401,6 +418,7 @@
     }
 
     nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created)];
+    undoStack.push(createGesture(created));
   }
 
   /**
@@ -568,6 +586,17 @@
         return;
       }
       nodes = nodes.map((node) => node.id === id ? { ...node, version: written.version } : node);
+      undoStack.push({
+        items: [
+          {
+            kind: 'node.update',
+            nodeId: id,
+            before: { data: current.data },
+            after: { data: next },
+            expectedVersion: current.version
+          }
+        ]
+      });
       if (!pending) { void refresh(); }
     });
   }
@@ -590,6 +619,9 @@
     }
 
     edges = [...edges.filter((edge) => edge.id !== created.id), toEdge(created)];
+    undoStack.push({
+      items: [{ kind: 'edge.create', edgeId: created.id, sourceNodeId: created.sourceNodeId, targetNodeId: created.targetNodeId }]
+    });
   }
 
   /**
@@ -620,6 +652,7 @@
     if (!node) { return; }
 
     nodes = [...nodes.filter((n) => n.id !== node.id), toTile(node)];
+    const items: UndoItem[] = [{ kind: 'node.create', nodeId: node.id, after: { type: node.type, position: node.position, data: node.data } }];
 
     const plan = planConnectSelection({ sources, target: { kind: medium, modalities } });
     for (const wire of plan.wires) {
@@ -630,11 +663,15 @@
         target_handle: wire.connector
       });
       const connection = (res?.connection ?? null) as Connection | null;
-      if (connection) { edges = [...edges.filter((e) => e.id !== connection.id), toEdge(connection)]; }
+      if (connection) {
+        edges = [...edges.filter((e) => e.id !== connection.id), toEdge(connection)];
+        items.push({ kind: 'edge.create', edgeId: connection.id, sourceNodeId: connection.sourceNodeId, targetNodeId: connection.targetNodeId });
+      }
     }
     if (plan.rejected.length) {
       failed = `Non collegato: ${plan.rejected.map((r) => r.why).join('; ')}`;
     }
+    undoStack.push({ items });
   }
 
   /**
@@ -658,6 +695,7 @@
     const modalities = { input: choice?.inputModalities ?? [] };
 
     const plan = planConnectSelection({ sources, target: { kind: target.type, modalities } });
+    const items: UndoItem[] = [];
     for (const wire of plan.wires) {
       const res = await post('connect', {
         source_node_id: wire.sourceId,
@@ -666,11 +704,15 @@
         target_handle: wire.connector
       });
       const connection = (res?.connection ?? null) as Connection | null;
-      if (connection) { edges = [...edges.filter((e) => e.id !== connection.id), toEdge(connection)]; }
+      if (connection) {
+        edges = [...edges.filter((e) => e.id !== connection.id), toEdge(connection)];
+        items.push({ kind: 'edge.create', edgeId: connection.id, sourceNodeId: connection.sourceNodeId, targetNodeId: connection.targetNodeId });
+      }
     }
     if (plan.rejected.length) {
       failed = `Non collegato: ${plan.rejected.map((r) => r.why).join('; ')}`;
     }
+    if (items.length) { undoStack.push({ items }); }
   }
 
   /**
@@ -680,9 +722,17 @@
    * nodo selezionato — cambiare modello su cinque nodi e scoprire dopo che uno dei cinque aveva
    * un arco che è appena sparito sarebbe la sorpresa che quella funzione esiste per evitare.
    */
+  /**
+   * IL PANNELLO DELLE PROPRIETÀ COMUNI SCRIVE UN GESTO SOLO — quanti nodi cambiano e quanti fili
+   * cadono, la stessa regola del cambio di modello su un nodo singolo: annullarlo a metà (un
+   * nodo tornato al vecchio modello, un altro no, o un filo che non è tornato) è peggio di non
+   * annullare niente.
+   */
   async function commonChange(ids: string[], patch: { model?: string | null; aspectRatio?: string }) {
     const chosen = nodes.filter((n) => ids.includes(n.id));
     if (!chosen.length) { return; }
+
+    const droppedEdges: UndoItem[] = [];
 
     if (patch.model !== undefined) {
       const orphaned = chosen.flatMap((n) => {
@@ -698,7 +748,10 @@
       if (orphaned.length && !confirm(`${orphaned.length} collegamento/i cadranno con questo modello. Continuare?`)) {
         return;
       }
-      for (const drop of orphaned) { await disconnect(drop.edgeId); }
+      for (const drop of orphaned) {
+        const item = await disconnect(drop.edgeId, false);
+        if (item) { droppedEdges.push(item); }
+      }
     }
 
     const items = chosen.map((n) => ({
@@ -719,13 +772,32 @@
       const byId = new Map(written.map((n) => [n.id, n]));
       nodes = nodes.map((n) => (byId.has(n.id) ? toTile(byId.get(n.id)!) : n));
     }
+
+    const writeItems: UndoItem[] = results
+      .filter((r) => r.outcome === 'written' && r.node)
+      .map((r) => {
+        const before = chosen.find((n) => n.id === r.nodeId)!;
+        const node = r.node as CanvasNodeRecord;
+        return { kind: 'node.update', nodeId: r.nodeId, before: { data: before.data }, after: { data: node.data }, expectedVersion: before.version };
+      });
+
+    if (droppedEdges.length || writeItems.length) {
+      undoStack.push({ items: [...droppedEdges, ...writeItems] });
+    }
   }
 
-  /** Una linea tolta sparisce subito e torna se il server rifiuta: l'attesa qui si vedrebbe. */
-  async function disconnect(connectionId: string) {
+  /**
+   * Una linea tolta sparisce subito e torna se il server rifiuta: l'attesa qui si vedrebbe.
+   *
+   * `pushGesture` È SPENTO quando chi chiama fa parte di un gesto più grande — il cambio di
+   * modello di `commonChange`, sotto, che sgancia N fili come parte di UN SOLO Ctrl+Z: spingere
+   * qui un gesto a testa lo spezzerebbe in N+1, e annullarne uno solo lascerebbe il modello
+   * cambiato con un filo tornato e gli altri no.
+   */
+  async function disconnect(connectionId: string, pushGesture = true): Promise<UndoItem | null> {
     const removed = edges.find((e) => e.id === connectionId);
     if (!removed) {
-      return;
+      return null;
     }
 
     edges = edges.filter((e) => e.id !== connectionId);
@@ -733,7 +805,12 @@
     const done = await post('disconnect', { connection_id: connectionId });
     if (!done) {
       edges = [...edges, removed];
+      return null;
     }
+
+    const item: UndoItem = { kind: 'edge.delete', edgeId: removed.id, sourceNodeId: removed.source, targetNodeId: removed.target };
+    if (pushGesture) { undoStack.push({ items: [item] }); }
+    return item;
   }
 
   /**
@@ -759,12 +836,22 @@
       node_ids: plan.itemIds.join(','),
       connection_ids: plan.edgeIds.join(',')
     });
-    if (done) {
+    if (!done) {
+      nodes = [...nodes, ...goneNodes];
+      edges = [...edges, ...goneEdges];
       return;
     }
 
-    nodes = [...nodes, ...goneNodes];
-    edges = [...edges, ...goneEdges];
+    undoStack.push({
+      items: [
+        ...goneEdges.map((e): UndoItem => ({ kind: 'edge.delete', edgeId: e.id, sourceNodeId: e.source, targetNodeId: e.target })),
+        ...goneNodes.map((n): UndoItem => ({
+          kind: 'node.delete',
+          nodeId: n.id,
+          before: { type: n.type, position: { x: n.x, y: n.y, z: 0 }, size: { width: n.w, height: n.h }, data: n.data, version: n.version }
+        }))
+      ]
+    });
   }
 
   /**
@@ -774,12 +861,27 @@
    * creazione. Niente ottimismo qui: un duplicato che compare e poi sparisce (il server rifiuta)
    * è più confuso di un'attesa breve, e a differenza di un `move` non c'è "prima" a cui tornare.
    */
+  /**
+   * ⌘D/⌘V: UN GESTO SOLO, anche se sono N nodi e M archi nati insieme — annullarne metà (i nodi
+   * tornano al vuoto ma un arco fra loro resta) è peggio di non annullare niente, la stessa
+   * regola del cambio di modello che sgancia connessioni.
+   */
+  function createManyGesture(created: CanvasNodeRecord[], connected: Connection[]): Gesture {
+    return {
+      items: [
+        ...created.map((n): UndoItem => ({ kind: 'node.create', nodeId: n.id, after: { type: n.type, position: n.position, data: n.data } })),
+        ...connected.map((c): UndoItem => ({ kind: 'edge.create', edgeId: c.id, sourceNodeId: c.sourceNodeId, targetNodeId: c.targetNodeId }))
+      ]
+    };
+  }
+
   async function duplicate(ids: string[]) {
     const result = await post('duplicate', { node_ids: ids.join(',') });
     const created = (result?.nodes ?? []) as CanvasNodeRecord[];
     const connected = (result?.connections ?? []) as Connection[];
     if (created.length) { nodes = [...nodes, ...created.map(toTile)]; }
     if (connected.length) { edges = [...edges, ...connected.map(toEdge)]; }
+    if (created.length) { undoStack.push(createManyGesture(created, connected)); }
   }
 
   /**
@@ -831,6 +933,47 @@
     const connected = (result?.connections ?? []) as Connection[];
     if (created.length) { nodes = [...nodes, ...created.map(toTile)]; }
     if (connected.length) { edges = [...edges, ...connected.map(toEdge)]; }
+    if (created.length) { undoStack.push(createManyGesture(created, connected)); }
+  }
+
+  /**
+   * ⌘Z / ⇧⌘Z: UNA SOLA AZIONE SERVER PER ENTRAMBI — annullare un gesto e ripeterne uno annullato
+   * sono la STESSA domanda a `undoGesture` (lato server): applica le inverse del gesto che riceve
+   * e restituisce IL GESTO CHE ANNULLA QUELLO — che per un redo è di nuovo un gesto da poter
+   * annullare, con la versione che QUESTA scrittura ha lasciato, non quella di prima. Per questo
+   * chi chiama non rimette da sé il gesto appena tolto sul lato opposto: aspetta quello che il
+   * server restituisce (`onAccepted`) e spinge quello.
+   *
+   * UN RIFIUTO (409, un collega ha toccato lo stesso nodo) NON SPINGE NIENTE: le premesse del
+   * gesto sono già cadute, e rimetterlo in circolo lo farebbe fallire di nuovo nello stesso modo
+   * — `failed` dice perché, in chiaro.
+   */
+  async function applyUndo(gesture: Gesture, onAccepted: (redo: Gesture) => void) {
+    const result = await post('undo', { items: JSON.stringify(gesture.items) });
+    if (!result) {
+      failed = 'Annullamento non riuscito: riprova';
+      return;
+    }
+    if (result.outcome !== 'undone') {
+      const reason = typeof result.reason === 'string' ? result.reason : 'un altro ha già cambiato questo nodo';
+      failed = `Annullamento saltato: ${reason}`;
+      return;
+    }
+    await refresh();
+    const redo = result.redo as Gesture | undefined;
+    if (redo) { onAccepted(redo); }
+  }
+
+  async function undo() {
+    const gesture = undoStack.popUndo();
+    if (!gesture) { return; }
+    await applyUndo(gesture, (redo) => undoStack.pushRedo(redo));
+  }
+
+  async function redo() {
+    const gesture = undoStack.popRedo();
+    if (!gesture) { return; }
+    await applyUndo(gesture, (redo) => undoStack.pushUndo(redo));
   }
 
   /**
@@ -870,6 +1013,8 @@
     onDuplicate={duplicate}
     onCopy={copy}
     onPaste={paste}
+    onUndo={undo}
+    onRedo={redo}
     onConnectNew={connectNew}
     onConnectExisting={connectExisting}
     {nodeSummaries}

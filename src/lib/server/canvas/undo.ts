@@ -20,6 +20,28 @@ import {
 } from '$lib/canvas/undo-plan';
 
 /**
+ * L'ITEM CHE ⇧⌘Z RIAPPLICHEREBBE, per ogni `UndoItem` appena annullato — UNA RIGA PER KIND, come
+ * `inverseOf` che questa tabella rispecchia al contrario. Non è "l'inversa dell'inversa" presa
+ * alla lettera: `node.update` porta la VERSIONE CHE L'UNDO HA LASCIATO (`expectedVersion + 1`,
+ * quella che `writeNodeData` scrive), non quella originale — un redo che si aspettasse la
+ * versione di prima del turno troverebbe sempre un conflitto.
+ */
+function redoItemOf(item: UndoItem): UndoItem {
+  switch (item.kind) {
+    case 'node.create':
+      return { kind: 'node.delete', nodeId: item.nodeId, before: item.after };
+    case 'node.delete':
+      return { kind: 'node.create', nodeId: item.nodeId, after: item.before };
+    case 'node.update':
+      return { kind: 'node.update', nodeId: item.nodeId, before: item.before, after: item.after, expectedVersion: item.expectedVersion + 1 };
+    case 'edge.create':
+      return { kind: 'edge.delete', edgeId: item.edgeId, sourceNodeId: item.sourceNodeId, targetNodeId: item.targetNodeId };
+    case 'edge.delete':
+      return { kind: 'edge.create', edgeId: item.edgeId, sourceNodeId: item.sourceNodeId, targetNodeId: item.targetNodeId };
+  }
+}
+
+/**
  * L'ESECUZIONE DI UN GESTO DI UNDO, LATO SERVER.
  *
  * `checkGesture` (puro, `undo-plan.ts`) decide se applicare o rifiutare; questo file legge lo
@@ -35,7 +57,7 @@ import {
  * annullando, non del lavoro di qualcun altro.
  */
 export type UndoOutcome =
-  | { outcome: 'undone' }
+  | { outcome: 'undone'; redo: Gesture }
   | { outcome: 'refused'; reason: StaleReason };
 
 async function currentNodeState(db: Db, orgId: string, nodeId: string, ownEdgeIds: Set<string>): Promise<CurrentNodeState> {
@@ -124,5 +146,5 @@ export async function undoGesture(
     await applyWrite(db, input.orgId, input.canvasId, write, input.actor);
   }
 
-  return { outcome: 'undone' };
+  return { outcome: 'undone', redo: { items: input.gesture.items.map(redoItemOf) } };
 }

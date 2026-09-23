@@ -6,20 +6,24 @@ import type { Gesture } from './undo-plan';
  * diverse, ed è corretto così. Questo modulo è quella storia: una pila di gesti fatti da QUESTA
  * mano, in memoria, che ⌘Z cammina all'indietro e ⇧⌘Z in avanti.
  *
- * OGNI POP APPLICA — NON RIMUOVE E BASTA. `pop` non decide se il gesto va ancora bene (quello è
- * `checkGesture`, lato server): sposta il gesto dallo stack di undo a quello di redo e lo
- * restituisce a chi chiama, che tenta la scrittura. Se il server rifiuta (stale), chi chiama non
- * lo rimette nello stack di redo con `pushRedo` — un gesto rifiutato non deve poter tornare con
- * ⇧⌘Z, perché le sue premesse sono già cadute una volta.
+ * POP NON SPOSTA DA SOLO — chi chiama decide se il lato opposto riceve qualcosa, e SOLO dopo che
+ * il server ha confermato la scrittura. `popUndo` toglie un gesto dallo stack di undo e basta:
+ * se il server lo rifiuta (stale), quel gesto è semplicemente perso, non "spostato e sbagliato".
+ * Se lo accetta, chi chiama fa `pushRedo` con IL GESTO CHE IL SERVER RESTITUISCE — non con quello
+ * appena tolto: un `node.update` annullato lascia il nodo a una versione nuova, e un redo che si
+ * aspettasse la versione di prima troverebbe sempre un conflitto. La stessa cosa, all'incontrario,
+ * per `popRedo`/`pushUndo`.
  *
- * UN GESTO NUOVO SVUOTA IL REDO: la stessa regola di ogni editor — fare qualcosa dopo un undo
- * rende irraggiungibile quello che era stato annullato più indietro, perché applicarlo di nuovo
- * scriverebbe sopra uno stato che non esiste più.
+ * UN GESTO NUOVO (`push`) SVUOTA IL REDO: la stessa regola di ogni editor — fare qualcosa dopo un
+ * undo rende irraggiungibile quello che era stato annullato più indietro, perché applicarlo di
+ * nuovo scriverebbe sopra uno stato che non esiste più.
  */
 export type UndoStack = {
   push: (gesture: Gesture) => void;
   popUndo: () => Gesture | null;
   popRedo: () => Gesture | null;
+  pushRedo: (gesture: Gesture) => void;
+  pushUndo: (gesture: Gesture) => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
 };
@@ -33,22 +37,10 @@ export function createUndoStack(): UndoStack {
       undo.push(gesture);
       redo.length = 0;
     },
-    popUndo(): Gesture | null {
-      const gesture = undo.pop();
-      if (!gesture) {
-        return null;
-      }
-      redo.push(gesture);
-      return gesture;
-    },
-    popRedo(): Gesture | null {
-      const gesture = redo.pop();
-      if (!gesture) {
-        return null;
-      }
-      undo.push(gesture);
-      return gesture;
-    },
+    popUndo: () => undo.pop() ?? null,
+    popRedo: () => redo.pop() ?? null,
+    pushRedo: (gesture: Gesture) => redo.push(gesture),
+    pushUndo: (gesture: Gesture) => undo.push(gesture),
     canUndo: () => undo.length > 0,
     canRedo: () => redo.length > 0
   };

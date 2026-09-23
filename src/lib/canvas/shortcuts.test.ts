@@ -84,6 +84,22 @@ describe('duplicare, copiare, incollare', () => {
   });
 });
 
+describe('annullare e ripetere', () => {
+  it('⌘Z (e Ctrl+Z) annullano', () => {
+    expect(matchCanvasShortcut(ev('z', { metaKey: true }))).toEqual({ id: 'undo' });
+    expect(matchCanvasShortcut(ev('z', { ctrlKey: true }))).toEqual({ id: 'undo' });
+  });
+
+  it('⇧⌘Z ripete, lo stesso tasto con shift', () => {
+    expect(matchCanvasShortcut(ev('z', { metaKey: true, shiftKey: true }))).toEqual({ id: 'redo' });
+    expect(matchCanvasShortcut(ev('z', { ctrlKey: true, shiftKey: true }))).toEqual({ id: 'redo' });
+  });
+
+  it('mentre si scrive, ⌘Z non è nostro', () => {
+    expect(matchCanvasShortcut(ev('z', { metaKey: true, target: TEXTAREA }))).toBeNull();
+  });
+});
+
 describe('quello che i tasti fanno sulla tela', () => {
   it('Backspace e Delete cancellano la selezione', () => {
     expect(matchCanvasShortcut(ev('Backspace'))?.id).toBe('delete');
@@ -183,7 +199,7 @@ describe('la scheda che le elenca', () => {
     const listed = new Set(CANVAS_SHORTCUTS.map((s) => s.id));
     for (const id of [
       'delete', 'deselect', 'select-all', 'add', 'fit', 'zoom-in', 'zoom-out', 'nudge',
-      'duplicate', 'copy', 'paste'
+      'duplicate', 'copy', 'paste', 'undo', 'redo'
     ]) {
       expect(listed).toContain(id);
     }

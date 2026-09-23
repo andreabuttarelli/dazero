@@ -25,7 +25,10 @@ import { clearDocShare, setDocShare } from '$lib/server/repos/doc-share';
 import { isCanvasEdgeKind } from '$lib/canvas-edges';
 import { canvasModelCatalogue } from '$lib/server/canvas-catalogue';
 import { runGenNode, runsOf } from '$lib/server/canvas/generate';
+import { planLoop, runLoop } from '$lib/server/canvas/loop';
 import { duplicateNodes } from '$lib/server/canvas/duplicate';
+import { undoGesture } from '$lib/server/canvas/undo';
+import type { Gesture, UndoItem } from '$lib/canvas/undo-plan';
 import { gateOrgAiAction } from '$lib/server/cli-auth';
 import { listNodeProducts } from '$lib/server/repos/products';
 import { listNodeSocialPosts } from '$lib/server/repos/social-posts';
@@ -189,6 +192,47 @@ function coord(value: FormDataEntryValue | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * UN `UndoItem` COSÌ COM'È ARRIVATO DAL CLIENT: nessuna validazione di forma oltre "ha un kind che
+ * conosciamo e gli id/record che quel kind richiede". Il client l'ha costruito da quello che il
+ * server gli aveva già restituito (`inverseOf` legge `before`/`after` di scritture già avvenute),
+ * quindi qui non si rivalida `data` come farebbe `create` — è `checkGesture` a decidere se vale
+ * ancora applicarlo, guardando lo stato fresco, non la forma del payload.
+ */
+function parseUndoItem(raw: unknown): UndoItem | null {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const item = raw as Record<string, unknown>;
+
+  if (item.kind === 'node.create' && typeof item.nodeId === 'string') {
+    return { kind: 'node.create', nodeId: item.nodeId, after: (item.after as Record<string, unknown>) ?? {} };
+  }
+  if (item.kind === 'node.delete' && typeof item.nodeId === 'string') {
+    return { kind: 'node.delete', nodeId: item.nodeId, before: (item.before as Record<string, unknown>) ?? {} };
+  }
+  if (
+    item.kind === 'node.update' &&
+    typeof item.nodeId === 'string' &&
+    Number.isInteger(item.expectedVersion)
+  ) {
+    return {
+      kind: 'node.update',
+      nodeId: item.nodeId,
+      before: (item.before as Record<string, unknown>) ?? {},
+      after: (item.after as Record<string, unknown>) ?? {},
+      expectedVersion: item.expectedVersion as number
+    };
+  }
+  if (item.kind === 'edge.create' && typeof item.edgeId === 'string' && typeof item.sourceNodeId === 'string' && typeof item.targetNodeId === 'string') {
+    return { kind: 'edge.create', edgeId: item.edgeId, sourceNodeId: item.sourceNodeId, targetNodeId: item.targetNodeId };
+  }
+  if (item.kind === 'edge.delete' && typeof item.edgeId === 'string' && typeof item.sourceNodeId === 'string' && typeof item.targetNodeId === 'string') {
+    return { kind: 'edge.delete', edgeId: item.edgeId, sourceNodeId: item.sourceNodeId, targetNodeId: item.targetNodeId };
+  }
+  return null;
+}
+
 type SyncNodeOutcome = { ok: true; synced: number; extra?: Record<string, unknown> } | { ok: false; error: string };
 
 /** `products`: `type`/`url`/`limit`/`after`/`only_first_photo` sono la query — `productsOf` li legge già validati. */
@@ -307,6 +351,60 @@ export const actions: Actions = {
     if (out.kind === 'conflict') { return fail(409, { conflict: true }); }
     return out;
   },
+
+  /**
+   * IL PREVENTIVO DEL LOOP: quante combinazioni, quanti crediti — MAI un gate crediti, un
+   * preventivo non spende (CLAUDE.md: il nodo mostra il costo prima del clic).
+   */
+  loop_plan: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const nodeId = String(fd.get('node_id') ?? '');
+    if (!nodeId) {
+      return fail(400, { error: 'richiesta non valida' });
+    }
+
+    try {
+      return await planLoop(scope.db, { orgId: scope.orgId, canvasId: scope.canvasId, nodeId });
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'loop_plan_failed';
+      return fail(message === 'node_not_found' ? 404 : 400, { error: message });
+    }
+  },
+
+  /**
+   * IL LOOP: stesso motore di `run`, una volta per combinazione — vedi `loop.ts` per il perché
+   * in sequenza. Sopra 50 combinazioni serve `confirm=1` esplicito nel form, sopra 1000 si
+   * rifiuta comunque.
+   */
+  run_loop: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const nodeId = String(fd.get('node_id') ?? '');
+    if (!nodeId) {
+      return fail(400, { error: 'richiesta non valida' });
+    }
+
+    const denied = await gateOrgAiAction(scope.orgId, undefined);
+    if (denied) {
+      return denied;
+    }
+
+    const out = await runLoop(scope.db, {
+      orgId: scope.orgId,
+      projectId: scope.canvas.projectId,
+      canvasId: scope.canvasId,
+      nodeId,
+      userId: scope.userId,
+      confirmed: fd.get('confirm') === '1'
+    });
+
+    if (out.kind === 'refused') { return fail(400, { error: out.error }); }
+    return out;
+  },
+
   /**
    * SINCRONIZZARE UN NODO `products` O `social_account_feed`. Non è `run`: non c'è un provider
    * asincrono da rincorrere, il giro finisce dentro questa stessa richiesta — quindi lo stato si
@@ -793,5 +891,49 @@ export const actions: Actions = {
     }
 
     return { nodes, connections };
+  },
+
+  /**
+   * ⌘Z: ANNULLA UN GESTO, non un item — vedi `undo-plan.ts::checkGesture`. Il client manda gli
+   * `UndoItem` del suo stack (uno per il gesto più uno per ogni `edge.delete` che un cambio di
+   * modello ha portato con sé), e questa azione li applica con GLI STESSI repo di ogni scrittura
+   * ordinaria: la stessa concorrenza ottimistica, lo stesso soft-delete, la stessa riga in
+   * `canvas_events` attribuita a chi ha premuto Ctrl+Z.
+   *
+   * UN RIFIUTO NON È UN 500: `409` con una `reason` leggibile — un collega ha cambiato lo stesso
+   * nodo nel frattempo, o l'ha già cancellato, o ci ha agganciato un arco che questo undo
+   * cancellerebbe senza saperlo. Mai una scrittura silenziosa sopra il lavoro di un altro.
+   */
+  undo: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    let raw: unknown[];
+    try {
+      raw = JSON.parse(String(fd.get('items') ?? '[]'));
+      if (!Array.isArray(raw) || !raw.length) {
+        return fail(400, { error: 'niente da annullare' });
+      }
+    } catch {
+      return fail(400, { error: 'contenuto non leggibile' });
+    }
+
+    const items = raw.map(parseUndoItem);
+    if (items.some((item) => item === null)) {
+      return fail(400, { error: 'gesto non valido' });
+    }
+
+    const gesture: Gesture = { items: items as UndoItem[] };
+    const result = await undoGesture(scope.db, {
+      orgId: scope.orgId,
+      canvasId: scope.canvasId,
+      gesture,
+      actor: userActor(scope)
+    });
+
+    if (result.outcome === 'refused') {
+      return fail(409, { reason: result.reason });
+    }
+    return { outcome: 'undone', redo: result.redo };
   }
 };
