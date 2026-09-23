@@ -85,6 +85,12 @@ export type UpstreamNode = {
   id: string;
   /** Il tipo così come sta su `nodes.type` — la mappa verso `graph.ts` è UNA riga, `toCanvasKind`. */
   type: string;
+  /** Il MEDIUM di questo nodo, quando `type` da solo non basta a dirlo — `list` e `select` sono
+   *  contenitori: portano immagini o testo secondo `item_kind`/quel che il loro upstream porta,
+   *  non un medium fisso come `image`/`video`/`text`. Assente = si ricava da `type` come sempre
+   *  (`toCanvasKind`); presente = questo file si fida, perché solo l'adattatore server
+   *  (`upstream.ts`) sa leggere `item_kind` o risalire alla lista che un `select` referenzia. */
+  medium?: Medium;
   model?: string | null;
   /** Il testo che questo nodo dà a valle, quando ne ha uno: `data.content` per un `doc`, il testo
    *  dell'ultimo giro per un `text`. Assente = non ha nulla da dare (non ancora girato). */
@@ -174,7 +180,10 @@ function toCanvasKind(type: string): CanvasNode['kind'] {
 }
 
 function toCanvasNode(node: UpstreamNode): CanvasNode {
-  return { id: node.id, kind: toCanvasKind(node.type), model: node.model ?? null };
+  // `medium` esplicito vince su `type`: `list`/`select` non hanno un medium fisso come `image` o
+  // `video`, lo dice il chiamante che ha già letto `item_kind` o risalito alla lista referenziata.
+  const kind: CanvasNode['kind'] = node.medium ?? toCanvasKind(node.type);
+  return { id: node.id, kind, model: node.model ?? null };
 }
 
 /**

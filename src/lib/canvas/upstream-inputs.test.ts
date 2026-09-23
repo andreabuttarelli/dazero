@@ -527,3 +527,89 @@ describe('resolveUpstreamInputs — un influencer porta tutte le sue viste, non 
     expect(out.startFrameUrl).toBe('https://cdn/front.png');
   });
 });
+
+describe('resolveUpstreamInputs — list: fisso, porta TUTTI i suoi item, come un influencer', () => {
+  it('una lista immagini su un filo fisso alimenta ogni item come riferimento', () => {
+    const nodes = [
+      node({ id: 'i1', type: 'image', model: 'qwen3-pro' }),
+      node({ id: 'l1', type: 'list', mediaUrls: ['https://cdn/a.png', 'https://cdn/b.png', 'https://cdn/c.png'] })
+    ];
+    const edges = [edge({ id: 'e1', sourceNodeId: 'l1', targetNodeId: 'i1' })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'i1', TEXT_IMAGE);
+
+    expect(out.referenceImageUrls).toEqual(['https://cdn/a.png', 'https://cdn/b.png', 'https://cdn/c.png']);
+    expect(out.rejected).toEqual([]);
+  });
+
+  it('una lista di testo su un filo fisso concatena ogni riga', () => {
+    const nodes = [
+      node({ id: 't1', type: 'text' }),
+      node({ id: 'l1', type: 'list', medium: 'text', text: 'riga uno' })
+    ];
+    const edges = [edge({ id: 'e1', sourceNodeId: 'l1', targetNodeId: 't1' })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 't1', TEXT_ONLY);
+
+    expect(out.text).toEqual(['riga uno']);
+  });
+
+  it('una lista vuota non alimenta niente, e lo dice come un influencer senza viste', () => {
+    const nodes = [node({ id: 'i1', type: 'image' }), node({ id: 'l1', type: 'list' })];
+    const edges = [edge({ id: 'e1', sourceNodeId: 'l1', targetNodeId: 'i1' })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'i1', TEXT_IMAGE);
+
+    expect(out.referenceImageUrls).toEqual([]);
+    expect(out.rejected).toEqual([{ nodeId: 'l1', why: expect.stringContaining('non ancora') }]);
+  });
+});
+
+describe('resolveUpstreamInputs — select: sceglie ESATTAMENTE un item, mai la lista intera', () => {
+  it('un select immagine porta la sola immagine scelta come riferimento singolo', () => {
+    const nodes = [
+      node({ id: 'i1', type: 'image' }),
+      node({ id: 's1', type: 'select', mediaUrl: 'https://cdn/chosen.png' })
+    ];
+    const edges = [edge({ id: 'e1', sourceNodeId: 's1', targetNodeId: 'i1' })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'i1', TEXT_IMAGE);
+
+    expect(out.referenceImageUrls).toEqual(['https://cdn/chosen.png']);
+    expect(out.rejected).toEqual([]);
+  });
+
+  it('un select testo alimenta il prompt come un nodo testo', () => {
+    const nodes = [
+      node({ id: 'i1', type: 'image' }),
+      node({ id: 's1', type: 'select', medium: 'text', text: 'la riga scelta' })
+    ];
+    const edges = [edge({ id: 'e1', sourceNodeId: 's1', targetNodeId: 'i1' })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'i1', TEXT_IMAGE);
+
+    expect(out.text).toEqual(['la riga scelta']);
+  });
+
+  it('un select fuori range (o su una lista vuota) non alimenta niente, e lo dice — mai un valore a caso', () => {
+    const nodes = [node({ id: 'i1', type: 'image' }), node({ id: 's1', type: 'select' })];
+    const edges = [edge({ id: 'e1', sourceNodeId: 's1', targetNodeId: 'i1' })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'i1', TEXT_IMAGE);
+
+    expect(out.referenceImageUrls).toEqual([]);
+    expect(out.rejected).toEqual([{ nodeId: 's1', why: expect.stringContaining('non ancora') }]);
+  });
+
+  it('un select può alimentare un fotogramma, come un\'immagine qualunque', () => {
+    const nodes = [
+      node({ id: 'v1', type: 'video' }),
+      node({ id: 's1', type: 'select', mediaUrl: 'https://cdn/chosen.png' })
+    ];
+    const edges = [edge({ id: 'e1', sourceNodeId: 's1', targetNodeId: 'v1', targetHandle: FIRST_FRAME_HANDLE })];
+
+    const out = resolveUpstreamInputs(nodes, edges, 'v1', TEXT_IMAGE_VIDEO_AUDIO);
+
+    expect(out.startFrameUrl).toBe('https://cdn/chosen.png');
+  });
+});
