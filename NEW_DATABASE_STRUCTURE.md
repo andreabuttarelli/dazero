@@ -509,23 +509,71 @@ resta nel codice.
 **? I cicli.** `A → B → A` non li ferma niente qui. Se una catena si esegue a cascata, un ciclo gira
 per sempre: o si vieta in `connect-rules.ts`, o si mette un limite di profondità in esecuzione.
 
-## influencers
+## influencers / influencer_views
+
+Personaggi ricorrenti — un volto coerente fra immagini e video generati. Il legame vero è verso i
+nodi generativi (§ nodes, sotto: un nodo `influencer` sulla tela porta `data.influencer_id`, e le
+sue viste alimentano il connettore `images` di un nodo `image`/`video` a valle), non verso
+`brand_id`: un influencer non è del brand, è riusabile fra brand e progetti diversi — un talent
+del catalogo tanto quanto un volto che un'org si crea da sola.
 
 ```
-id            uuid pk
-org_id        uuid not null references orgs(id) on delete cascade
-brand_id      uuid references brands(id) on delete set null
-name          text not null
-description   text
-pictures      jsonb            -- [{ asset_id | url }]
-created_at
-updated_at
+influencers
+  id            uuid pk
+  org_id        uuid references orgs(id) on delete cascade   -- NULLABLE, vedi sotto
+  template_of   uuid references influencers(id) on delete set null
+  name          text not null
+  slug          text not null
+  gender        text
+  age           integer
+  ethnicity     text
+  body_type     text
+  height_band   text
+  summary       text
+  traits        jsonb not null default '{}'
+  source        text not null default 'generated'
+                check (source in ('catalogue', 'generated', 'upload'))
+  builder       jsonb            -- le opzioni del character builder, per riaprirlo identico
+  consent       boolean not null default false
+  actor_kind    text not null default 'user'
+  actor_id      uuid references profiles(id)
+  created_at
+  updated_at
+  deleted_at
+
+  unique (coalesce(org_id, '00000000-…'::uuid), slug) where deleted_at is null
+
+influencer_views
+  id             uuid pk
+  influencer_id  uuid not null references influencers(id) on delete cascade
+  org_id         uuid references orgs(id) on delete cascade   -- rispecchia influencers.org_id
+  view_key       text not null   -- 'face-front' | 'body-front' | 'face-three-quarter' | …
+  label          text not null
+  storage_path   text not null
+  mime_type      text
+  width          integer
+  height         integer
+  sort_order     integer not null default 0
+  created_at
+
+  unique (influencer_id, view_key)
 ```
 
-**? A cosa serve.** Nella bozza è l'unica tabella senza `org_id` e senza relazioni. Se sono
-personaggi ricorrenti per i contenuti generati (volto coerente tra immagini e video), allora il
-legame vero è verso i nodi generativi — e `pictures` dovrebbe puntare ad `assets`, non a URL
-sciolti. Se è un'altra cosa, dimmi quale.
+**`org_id` NULLABLE — la vera deviazione dalle altre 26 tabelle**, e non una svista: `null` è il
+**catalogo globale**, seminato da 54 talent presi dal prodotto precedente
+(`scripts/import-anomalia-talents.ts`). Ogni org lo legge (RLS: `org_id is null or org_id in
+(select auth_org_ids())`), nessuna lo scrive — solo lo script di import, con la service-role key,
+scrive righe a `org_id = null`. Un'org che crea un proprio influencer (dall'IA o da foto caricate)
+ottiene `org_id` valorizzato, visibile solo a lei.
+
+`influencer_views` porta le viste (frontale, profilo, corpo intero…) come `nodes`/`assets`: una
+tabella per l'anagrafica, una per le immagini — un influencer ha più viste, non una sola.
+`org_id` è ripetuto qui invece di letto per join dal padre: la RLS di una tabella guarda la
+PROPRIA colonna, mai quella di un'altra attraverso una subquery, la stessa scelta già fatta per
+`nodes.org_id` accanto a `nodes.canvas_id`.
+
+`template_of` è il clone: "usa come modello" copia un influencer (di catalogo o di un'altra org,
+quando condiviso) dentro l'org di chi guarda, con le opzioni del builder già pre-compilate.
 
 ---
 

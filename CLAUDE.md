@@ -58,16 +58,20 @@ porta il padre.
 | Ads (solo Meta) | `ad_accounts` `ad_campaigns` `ad_creatives` `competitor_ads` |
 | Sorgenti | `social_posts` (feed scaricati) |
 | Agenti | `chat_threads` `chat_messages` `ai_calls` |
+| Influencer | `influencers` `influencer_views` |
 
 **I vincoli che non si scoprono leggendo i nomi:**
 
-- **`org_id` su ogni tabella** (tranne `post_sources`), e la RLS è attiva su tutte e 26 con
+- **`org_id` su ogni tabella** (tranne `post_sources`), e la RLS è attiva su tutte con
   `auth_org_ids()`. **La service-role key la scavalca**: ogni uso va dichiarato in
   `src/lib/server/db/service-role-uses.ts`, che è un argomento obbligatorio di
-  `createServiceRoleDb`.
+  `createServiceRoleDb`. **`influencers`/`influencer_views` sono la deviazione dichiarata**:
+  `org_id` è **nullable**, e `null` è il catalogo globale (seminato da
+  `scripts/import-anomalia-talents.ts` con la service-role key) — ogni org lo legge, nessuna lo
+  scrive; un'org che crea un proprio influencer ottiene `org_id` valorizzato, visibile solo a lei.
 - **`nodes.data jsonb`** porta il payload per tipo (`text` `image` `video` `doc` `iframe`
-  `social_account_feed` `social_post_mockup` `products` `ads`). Una tabella sola: i campi per
-  tipo sarebbero ~40, quasi tutti NULL, e il mockup è un albero.
+  `social_account_feed` `social_post_mockup` `products` `ads` `influencer`). Una tabella sola: i
+  campi per tipo sarebbero ~40, quasi tutti NULL, e il mockup è un albero.
 - **`nodes.version`**: la posizione è last-write-wins, `data` va in concorrenza ottimistica
   (`where version = $atteso`; zero righe = conflitto, mai un successo silenzioso).
 - **`nodes.deleted_at`**: cancellazione morbida, e ogni lettura filtra `deleted_at is null`.
@@ -80,7 +84,11 @@ porta il padre.
   `replica identity full` — senza, un DELETE arriva con la sola chiave primaria.
 - **Storage**: bucket `brand-knowledge` (`${userId}/media/...`) e `canvas-assets`
   (`${orgId}/${projectId}/...`), entrambi privati. Nascono da una migration: erano mancanti sul
-  progetto nuovo e ogni generazione immagine falliva con `store_failed`.
+  progetto nuovo e ogni generazione immagine falliva con `store_failed`. Bucket `influencers`
+  (privato anche lui): `catalogue/<influencerId>/...` (letto da chiunque abbia una sessione) e
+  `<orgId>/<influencerId>/...` (letto solo dalla propria org) — la sola policy di lettura del
+  primo confronta il segmento con la STRINGA `'catalogue'`, non con un `org_id` in `auth_org_ids()`
+  come ogni altra policy di questo bucket e di `canvas-assets`.
 
 I tipi vengono **generati** (`npm run db:types` → `src/lib/database.types.ts`), mai scritti a
 mano: sono ciò che trasforma una colonna sbagliata in un errore di compilazione invece che in un
