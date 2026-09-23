@@ -78,6 +78,10 @@ create table public.influencer_views (
 create index influencer_views_influencer_id_idx on public.influencer_views (influencer_id, sort_order);
 create index influencer_views_org_id_idx on public.influencer_views (org_id);
 
+-- `scripts/import-anomalia-talents.ts` ripete la stessa vista (`face-front`, `body-front`, …) a
+-- ogni corsa: senza questo indice, un secondo giro duplicherebbe ogni riga invece di aggiornarla.
+create unique index influencer_views_influencer_view_key on public.influencer_views (influencer_id, view_key);
+
 alter table public.influencers enable row level security;
 alter table public.influencer_views enable row level security;
 

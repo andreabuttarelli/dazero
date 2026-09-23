@@ -23,6 +23,7 @@
     "check:motion-chain": "vitest run src/lib/motion-video/chain.test.ts --reporter=verbose",
     "test:e2e": "playwright test",
     "bake:motion-library": "vite-node --config scripts/vite-node.config.ts scripts/bake-motion-library.ts",
+    "import:anomalia-talents": "vite-node --config scripts/vite-node.config.ts scripts/import-anomalia-talents.ts",
     "db:migrate": "node --env-file-if-exists=.env scripts/db-migrate.mjs",
     "test:realtime-policies": "node scripts/realtime-policy-harness.mjs",
     "db:seed": "node --env-file-if-exists=.env scripts/db-seed.mjs",
