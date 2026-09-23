@@ -237,3 +237,56 @@ describe('paste action', () => {
     expect(input.calls.filter((call) => call.table === 'nodes' && call.op === 'insert')).toHaveLength(1);
   });
 });
+
+describe('loop_plan/run_loop — la stessa porta del loop, dentro la tela', () => {
+  function loopEvent(fields: Record<string, string>) {
+    const fake = fakeDb({
+      orgs_members: [{ role: 'owner', orgs: { id: 'org', name: 'Org', slug: 'org' } }],
+      canvases: [{ id: 'canvas', project_id: 'project', name: 'Canvas', viewport: null }],
+      nodes: [
+        {
+          id: 'gen-node',
+          org_id: 'org',
+          project_id: 'project',
+          canvas_id: 'canvas',
+          type: 'image',
+          display_name: null,
+          x: 0,
+          y: 0,
+          z: 0,
+          width: null,
+          height: null,
+          data: { prompt: 'un gatto', model: 'qwen3-pro' },
+          version: 1
+        }
+      ],
+      nodes_connections: []
+    });
+    const body = new FormData();
+    for (const [key, value] of Object.entries(fields)) { body.set(key, value); }
+    return {
+      ...fake,
+      request: new Request('http://localhost/c/canvas', { method: 'POST', body }),
+      params: { canvasId: 'canvas' },
+      locals: { safeGetSession: async () => ({ session: {}, user: { id: 'user' } }), db: async () => fake.db }
+    };
+  }
+
+  it('loop_plan rejects a missing node_id, before touching the database', async () => {
+    const input = loopEvent({});
+    const result = await actions.loop_plan(input as never);
+    expect(result).toMatchObject({ status: 400 });
+  });
+
+  it('loop_plan returns a preview for a node with no iterate wires: one plain variant, never gated on credits', async () => {
+    const input = loopEvent({ node_id: 'gen-node' });
+    const result = await actions.loop_plan(input as never);
+    expect(result).toMatchObject({ combinations: [{ label: '', values: {} }], safety: { verdict: 'run' } });
+  });
+
+  it('run_loop rejects a missing node_id, before touching the database', async () => {
+    const input = loopEvent({});
+    const result = await actions.run_loop(input as never);
+    expect(result).toMatchObject({ status: 400 });
+  });
+});
