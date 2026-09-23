@@ -18,6 +18,15 @@ declare global {
     interface PageData {
       session: Session | null;
     }
+    interface PageState {
+      /**
+       * Un foglio flottante aperto sopra la tela (Ads/Settings — Calendar quando torna, vedi
+       * `src/lib/shell-nav.ts`), via shallow routing. `path` è l'URL che il foglio mostra; `data`
+       * è quel che il `load` di quella rotta ha restituito — `preloadData` lo porta prima del
+       * `pushState`, così il foglio non nasce vuoto.
+       */
+      sheet?: { path: string; data: Record<string, unknown> } | null;
+    }
     // interface Error {}
     // interface Platform {}
   }
