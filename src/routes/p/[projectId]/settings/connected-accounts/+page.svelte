@@ -81,7 +81,7 @@
         <div class="glyph" style={`background:${pm?.bg ?? '#7c5cff'}`}>
           {#if ICONS[pk]}<svg viewBox="0 0 24 24" fill="#fff"><path d={ICONS[pk].path} /></svg>{:else}{pm?.glyph ?? (a.platform ?? '?').slice(0, 2).toUpperCase()}{/if}
         </div>
-        <div class="nm"><div class="h">{a.display_name ?? a.username ?? a.platform}</div><div class="s">{a.platform}{a.username ? ` · @${a.username}` : ''}</div></div>
+        <div class="nm"><div class="h">{a.display_name ?? a.handle ?? a.platform}</div><div class="s">{a.platform}{a.handle ? ` · @${a.handle}` : ''}</div></div>
         {#if confirmingDisconnect === a.id}
           <form method="POST" action="?/disconnect" use:enhance={withDisconnectSpinner(a.id)} class="disc-confirm" aria-busy={disconnecting === a.id}>
             <input type="hidden" name="id" value={a.id} />

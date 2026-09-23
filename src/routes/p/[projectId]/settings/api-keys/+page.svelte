@@ -49,14 +49,12 @@
             <div class="apikey-meta">
               <code class="apikey-prefix">{k.key_prefix}…</code>
               <span class="apikey-scope">
-                {#if k.permissions?.scopes?.includes('write')}
+                {#if k.scopes?.includes('write')}
                   <span class="scope-badge write">{$_('app.settings.apiKeys.write')}</span>
                 {/if}
                 <span class="scope-badge read">{$_('app.settings.apiKeys.read')}</span>
               </span>
-              {#if k.permissions?.brand_ids === '*'}
-                <span class="scope-badge all">{$_('app.settings.apiKeys.allBrands')}</span>
-              {/if}
+              <span class="scope-badge all">{$_('app.settings.apiKeys.allBrands')}</span>
             </div>
             <div class="apikey-dates">
               {$_('app.settings.apiKeys.created')}: {new Date(k.created_at).toLocaleDateString()}
@@ -114,13 +112,6 @@
           <div class="apikey-scopes">
             <label class="cx-reason sel"><input type="checkbox" checked disabled /> {$_('app.settings.apiKeys.read')}</label>
             <label class="cx-reason"><input type="checkbox" name="write" value="true" /> {$_('app.settings.apiKeys.write')}</label>
-          </div>
-        </div>
-        <div class="apikey-form-field">
-          <label>{$_('app.settings.apiKeys.brandScope')}</label>
-          <div class="apikey-scopes">
-            <label class="cx-reason sel"><input type="radio" name="all_brands" value="false" checked /> {$_('app.settings.apiKeys.thisBrandOnly')}</label>
-            <label class="cx-reason"><input type="radio" name="all_brands" value="true" /> {$_('app.settings.apiKeys.allBrands')}</label>
           </div>
         </div>
         <div class="cx-actions">

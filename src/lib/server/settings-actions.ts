@@ -288,7 +288,7 @@ export async function invite({ request, params, url, cookies, locals: { supabase
 
   const { data: brand } = await supabase
     .from('brands')
-    .select('id, name')
+    .select('id, name, org_id')
     .eq('slug', params.brand!)
     .maybeSingle();
   if (!brand) return fail(404, { teamError: 'Brand not found' });
@@ -299,22 +299,28 @@ export async function invite({ request, params, url, cookies, locals: { supabase
   if (!user) return fail(401, { teamError: 'Not authenticated' });
   if (email === user.email?.toLowerCase()) return fail(400, { teamError: 'That’s you' });
 
-  const { error } = await supabase.from('brand_invites').insert({
-    brand_id: brand.id,
-    email,
-    brand_name: brand.name,
-    inviter_email: user.email ?? null,
-    invited_by: user.id
-  });
-  if (error) {
-    return fail(400, { teamError: error.code === '23505' ? 'Already invited' : error.message });
+  // orgs_invites è a livello di organizzazione (nessun brand_id): invitare da una pagina di
+  // settings di UN brand invita comunque nell'org intera — è per questo che ogni brand la vede.
+  const { createInvite } = await import('$lib/server/repos/invites');
+  let token: string;
+  try {
+    ({ token } = await createInvite(supabase, {
+      orgId: brand.org_id,
+      email,
+      role: 'member',
+      invitedBy: user.id
+    }));
+  } catch (e) {
+    const code = (e as { code?: string } | null)?.code;
+    const message = e instanceof Error ? e.message : 'Could not create the invite';
+    return fail(400, { teamError: code === '23505' ? 'Already invited' : message });
   }
 
   let emailSent = true;
   try {
     const locale = emailLocale(cookies.get('locale'));
     const inviter = user.email ?? 'A teammate';
-    const acceptUrl = `${url.origin}/app?view=invites`;
+    const acceptUrl = `${url.origin}/app?view=invites&invite_token=${encodeURIComponent(token)}`;
     await sendEmail({
       to: email,
       subject: brandInviteEmailSubject(locale, brand.name, inviter),
@@ -327,23 +333,24 @@ export async function invite({ request, params, url, cookies, locals: { supabase
   return { teamInvited: true, emailSent };
 }
 
-export async function revokeInvite({ request, locals: { supabase } }: Ev) {
+export async function revokeInvite({ request, params, locals: { supabase } }: Ev) {
   const fd = await request.formData();
   const id = String(fd.get('invite_id') ?? '');
   if (!id) return fail(400, { teamError: 'Missing invite' });
 
-  const { data: inv } = await supabase
-    .from('brand_invites')
-    .select('id, brand_id, accepted_by')
-    .eq('id', id)
+  const { data: brand } = await supabase
+    .from('brands')
+    .select('org_id')
+    .eq('slug', params.brand!)
     .maybeSingle();
-  if (!inv) return fail(404, { teamError: 'Invite not found' });
+  if (!brand) return fail(404, { teamError: 'Brand not found' });
 
-  if (inv.accepted_by) {
-    await supabase.from('brand_members').delete().eq('brand_id', inv.brand_id).eq('user_id', inv.accepted_by);
+  const { revokeInvite: revokeInviteRepo } = await import('$lib/server/repos/invites');
+  try {
+    await revokeInviteRepo(supabase, { orgId: brand.org_id, inviteId: id });
+  } catch (e) {
+    return fail(500, { teamError: e instanceof Error ? e.message : 'Could not revoke the invite' });
   }
-  const { error } = await supabase.from('brand_invites').delete().eq('id', inv.id);
-  if (error) return fail(500, { teamError: error.message });
   return { teamRevoked: true };
 }
 
@@ -351,21 +358,18 @@ export async function createApiKey({ request, params, locals: { supabase } }: Ev
   const data = await request.formData();
   const name = String(data.get('key_name') ?? '').trim() || 'API Key';
   const writeAccess = String(data.get('write') ?? '') === 'true';
-  const allBrands = String(data.get('all_brands') ?? '') === 'true';
 
+  // api_keys.org_id è NOT NULL e non c'è una colonna per limitare la chiave a un sottoinsieme dei
+  // brand dell'org (vedi ApiKeyInfo in cli-auth.ts): ogni chiave vale già per ogni brand dell'org.
   const { data: brand } = await supabase
     .from('brands')
-    .select('id')
+    .select('org_id')
     .eq('slug', params.brand!)
     .maybeSingle();
   if (!brand) return fail(404, { apiKeyError: 'Brand not found' });
 
   const { raw, hash, prefix } = await generateApiKey();
-
-  const permissions = {
-    brand_ids: allBrands ? '*' : [brand.id],
-    scopes: writeAccess ? ['read', 'write'] : ['read']
-  };
+  const scopes = writeAccess ? ['read', 'write'] : ['read'];
 
   const {
     data: { user }
@@ -374,19 +378,26 @@ export async function createApiKey({ request, params, locals: { supabase } }: Ev
 
   const { error } = await supabase
     .from('api_keys')
-    .insert({ user_id: user.id, name, key_hash: hash, key_prefix: prefix, permissions });
+    .insert({ org_id: brand.org_id, user_id: user.id, name, key_hash: hash, key_prefix: prefix, scopes });
 
   if (error) return fail(500, { apiKeyError: error.message });
 
   return { apiKeyCreated: true, apiKeyRaw: raw, apiKeyName: name };
 }
 
-export async function revokeApiKey({ request, locals: { supabase } }: Ev) {
+export async function revokeApiKey({ request, params, locals: { supabase } }: Ev) {
   const data = await request.formData();
   const id = String(data.get('key_id') ?? '');
   if (!id) return fail(400, { apiKeyError: 'Missing key ID' });
 
-  const { error } = await supabase.from('api_keys').delete().eq('id', id);
+  const { data: brand } = await supabase
+    .from('brands')
+    .select('org_id')
+    .eq('slug', params.brand!)
+    .maybeSingle();
+  if (!brand) return fail(404, { apiKeyError: 'Brand not found' });
+
+  const { error } = await supabase.from('api_keys').delete().eq('id', id).eq('org_id', brand.org_id);
   if (error) return fail(500, { apiKeyError: error.message });
 
   return { apiKeyRevoked: true };

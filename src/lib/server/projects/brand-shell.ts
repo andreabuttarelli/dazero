@@ -12,10 +12,11 @@ import { error } from '@sveltejs/kit';
  * `brand.ads_settings`…) e ognuna delle funzioni che li usa accetta già `null` — è la stessa
  * forma che il billing sullo schema nuovo non ha ancora, non un contratto da riscrivere qui.
  */
-export const PROJECT_BRAND_SHELL_SELECT = 'id, name, slug, website';
+export const PROJECT_BRAND_SHELL_SELECT = 'id, org_id, name, slug, website';
 
 type BrandShellRow = {
   id: string;
+  org_id: string;
   name: string;
   slug: string;
   website: string | null;
@@ -23,6 +24,7 @@ type BrandShellRow = {
 
 export type ProjectBrandShell = {
   id: string;
+  org_id: string;
   name: string;
   slug: string;
   website: string | null;
@@ -40,6 +42,7 @@ export type ProjectBrandShell = {
 export function projectBrandShellOf(row: BrandShellRow): ProjectBrandShell {
   return {
     id: row.id,
+    org_id: row.org_id,
     name: row.name,
     slug: row.slug,
     website: row.website,
