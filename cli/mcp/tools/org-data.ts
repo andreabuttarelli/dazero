@@ -102,14 +102,25 @@ export function registerOrgDataTools(server: McpServer) {
       title: 'Node data shapes',
       description:
         'What `data` must look like on a `nodes` row, per `type` — the JSON Schema `insert_row`/' +
-        '`update_row` actually enforce on `nodes`, not a guess. Omit `type` for all 9 at once; name ' +
+        '`update_row` actually enforce on `nodes`, not a guess. Omit `type` for all 10 at once; name ' +
         'one to save tokens once you know which you need. Limits (aspect ratios, durations, prompt ' +
         'length) are NOT here — those come from `get_media_models`, because they are a fact of the ' +
         'model, not the node. Free.',
       inputSchema: z.object({
         org,
         type: z
-          .enum(['text', 'image', 'video', 'doc', 'iframe', 'social_account_feed', 'social_post_mockup', 'products', 'ads'])
+          .enum([
+            'text',
+            'image',
+            'video',
+            'doc',
+            'iframe',
+            'social_account_feed',
+            'social_post_mockup',
+            'products',
+            'ads',
+            'influencer'
+          ])
           .optional()
       }),
       annotations: { readOnlyHint: true }
