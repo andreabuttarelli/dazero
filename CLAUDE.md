@@ -176,6 +176,22 @@ esponevano — nello stesso cambiamento.
 
 Che la CLI usi una cosa **non è un argomento per tenerla**: è l'argomento per aggiornare la CLI.
 
+## Una funzione non esiste finché non è collegata (una regola, non un'abitudine)
+
+Costruire il pezzo non basta. Una funzione è finita solo quando è **collegata da capo a capo**
+(punto d'ingresso nella UI → handler/action → funzione server → database o provider → quello che
+l'utente vede) e chi l'ha scritta ha **seguito quel percorso nel codice**, file per file. Il
+report lo dice: *clic su X in `A.svelte` → `action` in `B/+page.server.ts` → `fn` in `C.ts` →
+tabella D*.
+
+Il test giusto è quello che esercita il collegamento vero: un test della route/action che chiama
+la funzione server reale, non un mock della cosa che si sta collegando. **Playwright non serve
+per ogni funzione**: costa tempo e budget. Si tiene per pochi percorsi critici (il canvas si apre,
+genera, crea un post, il calendario), sull'harness condiviso in `tests/e2e/fixtures/`.
+
+Il 22/09/2026 i connettori tipizzati esistevano nella logica e nessun componente li disegnava, e
+il calendario puntava a colonne mai esistite: la suite era verde in entrambi i casi.
+
 ## Two changelogs, always both (a rule, not a habit)
 
 Every change a user can notice updates **two**, in the same commit. Both are **one file per
