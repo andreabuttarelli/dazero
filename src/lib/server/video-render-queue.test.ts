@@ -19,14 +19,9 @@ vi.mock('$lib/server/ai-log', () => ({
 }));
 
 const saveRenderedVideoToLibrary = vi.fn();
-const addUsage = vi.fn();
 
 vi.mock('$lib/server/brand-media', () => ({
 	saveRenderedVideoToLibrary: (...args: unknown[]) => saveRenderedVideoToLibrary(...args)
-}));
-vi.mock('$lib/server/usage', () => ({
-	addUsage: (...args: unknown[]) => addUsage(...args),
-	monthKey: () => '2026-09'
 }));
 
 /** In-memory tables where a conditional UPDATE really re-checks the row it matched. */
@@ -115,8 +110,6 @@ beforeEach(() => {
 	finishVideoRender.mockReset();
 	saveRenderedVideoToLibrary.mockReset();
 	saveRenderedVideoToLibrary.mockResolvedValue({ mediaId: 'media-1' });
-	addUsage.mockReset();
-	addUsage.mockResolvedValue(undefined);
 });
 
 describe('reconcileVideoRenders', () => {
@@ -374,22 +367,6 @@ describe('reconcileVideoRenders', () => {
 		expect(tables.video_renders[0].status).toBe('done');
 	});
 
-	// L'allocazione mensile si contava solo dentro il ramo del post, e questo apriva un arbitraggio:
-	// genero in libreria, attacco dopo, e il video non conta mai. Un video è un video.
-	it('conta il video sull allocazione mensile anche senza un post', async () => {
-		finishVideoRender.mockResolvedValue({
-			status: 'done',
-			url: 'https://cdn/clip.mp4',
-			durationSeconds: 12,
-			resolution: '720p'
-		});
-		const { client } = makeDb({ video_renders: [renderRow({ post_id: null })] });
-
-		await reconcile(client);
-
-		expect(addUsage).toHaveBeenCalledWith(expect.anything(), 'brand-1', '2026-09', { videos: 1 });
-	});
-
 	it('non deposita in libreria un clip che un post ha gia preso', async () => {
 		finishVideoRender.mockResolvedValue({
 			status: 'done',
@@ -467,8 +444,6 @@ describe('reconcileVideoRenders', () => {
 		expect(tables.video_renders[0].status).toBe('rendering');
 		expect(tables.video_renders[0].attempts).toBe(1);
 		expect(tables.video_renders[0].error).toBe('could not read the rendered clip (403)');
-		// Un clip che non è atterrato non consuma l'allocazione mensile del brand.
-		expect(addUsage).not.toHaveBeenCalled();
 	});
 });
 

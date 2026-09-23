@@ -611,11 +611,10 @@ export type VideoJobResult =
   | Extract<GenerateMediaResult, { ok: false }>;
 
 async function startVideo(opts: GenerateMediaOpts): Promise<VideoJobResult> {
-  const [{ createAdminClient }, { countOutstandingVideoRenders, submitAndTrackVideoRender }] =
-    await Promise.all([
-      import('$lib/server/supabase-admin'),
-      import('$lib/server/video-render-queue')
-    ]);
+  const [{ createAdminClient }, { submitAndTrackVideoRender }] = await Promise.all([
+    import('$lib/server/supabase-admin'),
+    import('$lib/server/video-render-queue')
+  ]);
   const admin = createAdminClient();
 
   // Senza brand non c'è niente da leggere: valgono i default del prodotto. Andarci lo stesso
@@ -679,17 +678,9 @@ async function startVideo(opts: GenerateMediaOpts): Promise<VideoJobResult> {
     }
   }
 
-  // L'allocazione mensile dei video è del PIANO di un brand. Senza brand non c'è un piano da
-  // interrogare: il tetto è il saldo crediti dell'organizzazione, che la rotta guarda prima di qui.
-  if (opts.brandId) {
-    const { remaining } = await import('$lib/server/usage');
-    const budget = await remaining(admin, opts.brandId, brand?.plan, brand?.timezone ?? 'Europe/Rome');
-
-    // I render in volo contano sull'allowance: il numero mensile si addebita quando il clip atterra,
-    // e guardare solo `usage` lascerebbe spendere lo stesso budget più volte di fila.
-    const inFlight = await countOutstandingVideoRenders(admin, opts.brandId);
-    if (budget.videos - inFlight <= 0) return { ok: false, error: 'video_budget_exhausted' };
-  }
+  // Il tetto è il saldo crediti dell'organizzazione — `gateAiAction`/`gateOrgAiAction` lo guardano
+  // già prima di qui, a monte di questa funzione. `brand_usage` non esiste più: non c'è una
+  // seconda allocazione mensile da controllare.
 
   let submitReason: string | undefined;
   const submitted = await submitAndTrackVideoRender({

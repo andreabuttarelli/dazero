@@ -258,34 +258,6 @@ async function applyToLibrary(
 }
 
 /**
- * L'allocazione mensile la consuma un clip che ATTERRA, ovunque atterri — su un post o in
- * libreria. Contarla solo nel ramo del post apriva un arbitraggio: genero in libreria, attacco
- * dopo, e il video non conta mai. Un video è un video.
- *
- * Addebitare all'invio invece — come facevano i chiamanti, perché era lì che un clip esisteva —
- * lascerebbe che dieci render rifiutati si mangino il margine di un mese.
- */
-async function chargeMonthlyVideo(admin: SupabaseClient, row: VideoRenderRow): Promise<void> {
-	// L'allocazione è del PIANO di un brand. Una riga senza brand non ha un piano da consumare: la
-	// paga il saldo crediti dell'organizzazione, che il cancello ha già guardato prima dell'invio.
-	if (!row.brand_id) return;
-
-	try {
-		const { addUsage, monthKey } = await import('$lib/server/usage');
-		const { data: brand } = await admin
-			.from('brands')
-			.select('timezone')
-			.eq('id', row.brand_id)
-			.maybeSingle();
-		await addUsage(admin, row.brand_id, monthKey((brand?.timezone as string) ?? 'Europe/Rome'), {
-			videos: 1
-		});
-	} catch (e) {
-		console.error('[video-render] usage accounting failed:', e);
-	}
-}
-
-/**
  * Dove si reclama un clip atterrato, una riga per padrone. Senza brand non c'è una libreria in cui
  * depositarlo — `brand_media` dice `brand_id in (select auth_brand_ids())`, e `NULL in (…)` vale
  * NULL — quindi il clip si ritrova sulla riga stessa, che `settle` chiude con `media_url`.
@@ -460,7 +432,6 @@ export async function reconcileVideoRenders(
 					.then(undefined, () => {});
 				continue;
 			}
-			await chargeMonthlyVideo(admin, raw);
 			await settle(admin, raw, { status: 'done', media_url: outcome.url });
 			await notifyThread(
 				admin,
