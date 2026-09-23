@@ -5,7 +5,7 @@ const LinkSchema = z
   .string()
   .describe('One-time Stripe URL. Give it to the account owner and keep no copy');
 
-const PlanSchema = z.object({ key: z.string(), label: z.string() });
+const PlanSchema = z.object({ usd: z.number(), label: z.string() });
 
 const PortalInputSchema = z.object({}).strict();
 
@@ -16,18 +16,18 @@ const PortalResultSchema = z.object({
 
 const CheckoutInputSchema = z
   .object({
-    plan: z
-      .string()
-      .min(1)
+    usd: z
+      .number()
+      .positive()
       .optional()
-      .describe('Plan key the human wants, e.g. "pro". Refused if the org cannot move up to it')
+      .describe('Monthly subscription rung the human wants, e.g. 30. Must be one of CREDIT_LADDER\'s prices')
   })
   .strict();
 
 const CheckoutResultSchema = z.object({
   ok: z.literal(true),
   url: LinkSchema,
-  plans: z.array(PlanSchema).describe('The plans the hosted page will offer')
+  plans: z.array(PlanSchema).describe('The subscription rungs the hosted page will offer')
 });
 
 /**

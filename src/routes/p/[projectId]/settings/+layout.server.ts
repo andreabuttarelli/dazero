@@ -1,5 +1,5 @@
 import type { LayoutServerLoad } from './$types';
-import { accountLimit, plansAbove, isTopPlan } from '$lib/server/plans';
+import { accountLimit } from '$lib/server/plans';
 import { isBrandOwner } from '$lib/server/settings-actions';
 import { orgBillingForBrand } from '$lib/server/org-billing';
 import { requireBrand } from '$lib/server/projects/brand-shell';
@@ -19,8 +19,6 @@ export const load: LayoutServerLoad = async ({ parent, url, locals: { supabase }
       limit: 0,
       used: 0,
       hasBilling: false,
-      upgrades: [],
-      atTopPlan: false,
       apiKeys: [],
       isOwner: false,
       invites: []
@@ -62,8 +60,6 @@ export const load: LayoutServerLoad = async ({ parent, url, locals: { supabase }
     used: list.filter((a) => a.status === 'active').length,
     // The org pays, so a free brand sitting next to a paying sibling still has billing to show.
     hasBilling: !!billing?.customerId,
-    upgrades: plansAbove(billing?.plan ?? brand.plan),
-    atTopPlan: isTopPlan(billing?.plan ?? brand.plan),
     apiKeys: apiKeys ?? [],
     isOwner,
     invites: invites ?? []

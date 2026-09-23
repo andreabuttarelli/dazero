@@ -4,14 +4,16 @@ import { orgBillingForBrand } from './org-billing';
 type Row = Record<string, any>;
 
 /**
- * organizations + brands in both rollout shapes: an org that has had its turn carries the
- * billing columns, one that has not still leaves them on its paying brand.
+ * orgs porta stripe_customer_id/stripe_subscription_id DIRETTAMENTE (20260922_org_billing.sql):
+ * niente `organizations`, niente `brands.plan`/`brands.stripe_*` — quelle tabelle/colonne non
+ * esistono sullo schema nuovo. Un brand non porta più nulla di suo: solo org_id, per risalire.
  */
 function makeDb(org: Row | null, brands: Row[]) {
 	return {
 		from: (table: string) => {
 			if (table === 'brands') {
 				const filters: Record<string, unknown> = {};
+				const matching = () => brands.filter((b) => Object.entries(filters).every(([k, v]) => b[k] === v));
 				const chain = {
 					select: () => chain,
 					eq: (k: string, v: unknown) => {
@@ -19,20 +21,19 @@ function makeDb(org: Row | null, brands: Row[]) {
 						return chain;
 					},
 					maybeSingle: async () => {
-						const row = brands.find((b) => Object.entries(filters).every(([k, v]) => b[k] === v));
+						const row = matching()[0];
 						return { data: row ? { org_id: row.org_id } : null, error: null };
-					}
+					},
+					then: (resolve: (v: { data: unknown; error: null }) => void) =>
+						resolve({ data: matching().map((b) => ({ id: b.id })), error: null })
 				};
 				return chain;
 			}
-			if (table === 'organizations') {
+			if (table === 'orgs') {
 				const chain = {
 					select: () => chain,
 					eq: () => chain,
-					maybeSingle: async () => ({
-						data: org ? { ...org, brands } : null,
-						error: null
-					})
+					maybeSingle: async () => ({ data: org, error: null })
 				};
 				return chain;
 			}
@@ -41,91 +42,61 @@ function makeDb(org: Row | null, brands: Row[]) {
 	};
 }
 
-const MIGRATED = {
+const ORG = {
 	id: 'org-1',
-	plan: 'pro',
 	stripe_customer_id: 'cus_org',
 	stripe_subscription_id: 'sub_org'
 };
 
-const NOT_MIGRATED = {
+const NO_CUSTOMER = {
 	id: 'org-1',
-	plan: null,
 	stripe_customer_id: null,
 	stripe_subscription_id: null
 };
 
-const PAYING_BRAND = {
-	id: 'b1',
-	slug: 'paying',
-	org_id: 'org-1',
-	plan: 'pro',
-	stripe_customer_id: 'cus_brand',
-	stripe_subscription_id: 'sub_brand'
-};
-
-const FREE_SIBLING = {
-	id: 'b2',
-	slug: 'free',
-	org_id: 'org-1',
-	plan: null,
-	stripe_customer_id: null,
-	stripe_subscription_id: null
-};
+const PAYING_BRAND = { id: 'b1', slug: 'paying', org_id: 'org-1' };
+const FREE_SIBLING = { id: 'b2', slug: 'free', org_id: 'org-1' };
 
 describe('orgBillingForBrand', () => {
-	it('uses the org ids once the org has been migrated', async () => {
-		const db = makeDb(MIGRATED, [PAYING_BRAND]);
+	it('reads the Stripe customer/subscription off orgs directly', async () => {
+		const db = makeDb(ORG, [PAYING_BRAND]);
 		const billing = await orgBillingForBrand(db as never, { slug: 'paying' });
 
 		expect(billing).toMatchObject({
 			orgId: 'org-1',
 			customerId: 'cus_org',
-			subscriptionId: 'sub_org',
-			plan: 'pro'
+			subscriptionId: 'sub_org'
 		});
 	});
 
-	it('falls back to the paying brand while the org waits its turn', async () => {
-		const db = makeDb(NOT_MIGRATED, [PAYING_BRAND]);
-		const billing = await orgBillingForBrand(db as never, { slug: 'paying' });
-
-		expect(billing).toMatchObject({
-			customerId: 'cus_brand',
-			subscriptionId: 'sub_brand',
-			plan: 'pro'
-		});
-	});
-
-	it("answers for a free brand with its paying sibling's subscription", async () => {
-		const db = makeDb(NOT_MIGRATED, [FREE_SIBLING, PAYING_BRAND]);
+	it('answers the same for a free brand of a paying org — billing belongs to the org', async () => {
+		const db = makeDb(ORG, [FREE_SIBLING, PAYING_BRAND]);
 		const billing = await orgBillingForBrand(db as never, { slug: 'free' });
 
-		// The naive fallback — the caller's own brand — answers "no billing here" and hides the
-		// billing UI from an org that pays.
-		expect(billing).toMatchObject({
-			customerId: 'cus_brand',
-			subscriptionId: 'sub_brand',
-			plan: 'pro'
-		});
+		expect(billing).toMatchObject({ customerId: 'cus_org', subscriptionId: 'sub_org' });
 	});
 
-	it('reports no billing when nothing in the org pays', async () => {
-		const db = makeDb(NOT_MIGRATED, [FREE_SIBLING]);
+	it('reports no customer when the org never paid', async () => {
+		const db = makeDb(NO_CUSTOMER, [FREE_SIBLING]);
 		const billing = await orgBillingForBrand(db as never, { slug: 'free' });
 
-		expect(billing).toMatchObject({ customerId: null, subscriptionId: null, plan: null });
+		expect(billing).toMatchObject({ customerId: null, subscriptionId: null });
 	});
 
 	it('counts the org brands, so deleting one of several can spare the subscription', async () => {
-		const db = makeDb(MIGRATED, [PAYING_BRAND, FREE_SIBLING]);
+		const db = makeDb(ORG, [PAYING_BRAND, FREE_SIBLING]);
 		const billing = await orgBillingForBrand(db as never, { slug: 'paying' });
 
 		expect(billing?.brandCount).toBe(2);
 	});
 
 	it('is null for a brand that is not there', async () => {
-		const db = makeDb(MIGRATED, [PAYING_BRAND]);
+		const db = makeDb(ORG, [PAYING_BRAND]);
 		expect(await orgBillingForBrand(db as never, { slug: 'ghost' })).toBeNull();
+	});
+
+	it('is null when the org row itself cannot be read', async () => {
+		const db = makeDb(null, [PAYING_BRAND]);
+		expect(await orgBillingForBrand(db as never, { slug: 'paying' })).toBeNull();
 	});
 });

@@ -1,39 +1,23 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-// Which Stripe customer and subscription a brand bills through.
-//
-// One subscription belongs to an ORGANIZATION and covers every brand under it. The rollout runs
-// one org at a time, so both shapes are live at once: an org that has had its turn carries the
-// ids itself, one that has not still leaves them on whichever of its brands pays. Every read is
-// org-first and falls back to that brand — never to the caller's own brand, which may be a free
-// sibling of a paying org and would answer "nothing here" for an org that pays.
-//
-// Twin of resolveOrgBilling() in credits.ts (PR #210, quota and period side): same two reads,
-// different fields. Once both are on dev they should become one call.
+// Which Stripe customer and subscription an org bills through. Billing is org-level, not brand-
+// level (20260922_org_billing.sql: `orgs.stripe_customer_id`/`stripe_subscription_id` directly —
+// no `organizations` table, no `brands.plan`/`brands.stripe_*`). One subscription covers every
+// brand under the org — a free brand sitting next to a paying sibling answers with the SAME
+// customer, never "nothing here".
 
 export type OrgBilling = {
 	orgId: string;
 	customerId: string | null;
 	subscriptionId: string | null;
-	plan: string | null;
 	/** Brands under the org — deleting one of several must not cancel what covers the others. */
 	brandCount: number;
 };
 
-type BrandRow = {
-	id: string;
-	slug: string;
-	plan: string | null;
-	stripe_customer_id: string | null;
-	stripe_subscription_id: string | null;
-};
-
 type OrgRow = {
 	id: string;
-	plan: string | null;
 	stripe_customer_id: string | null;
 	stripe_subscription_id: string | null;
-	brands?: BrandRow[];
 };
 
 export async function orgBillingForBrand(
@@ -52,32 +36,33 @@ export async function orgBillingForBrand(
 	const orgId = (row as { org_id?: string } | null)?.org_id;
 	if (!orgId) return null;
 
-	const { data } = await supabase
-		.from('organizations')
-		.select(
-			'id, plan, stripe_customer_id, stripe_subscription_id, brands(id, slug, plan, stripe_customer_id, stripe_subscription_id)'
-		)
-		.eq('id', orgId)
-		.maybeSingle();
-	const org = data as OrgRow | null;
-	if (!org) return null;
+	return orgBillingById(supabase, orgId);
+}
 
-	const brands = org.brands ?? [];
-	const paying = brands.find((b) => b.stripe_customer_id);
+/** Same reading for a caller that already holds the org id and has no brand to reach it through. */
+export async function orgBillingById(
+	supabase: SupabaseClient,
+	orgId: string
+): Promise<OrgBilling | null> {
+	const [{ data: orgData }, { data: brandRows }] = await Promise.all([
+		supabase.from('orgs').select('id, stripe_customer_id, stripe_subscription_id').eq('id', orgId).maybeSingle(),
+		supabase.from('brands').select('id').eq('org_id', orgId)
+	]);
+	const org = orgData as OrgRow | null;
+	if (!org) return null;
 
 	return {
 		orgId: org.id,
-		customerId: org.stripe_customer_id ?? paying?.stripe_customer_id ?? null,
-		subscriptionId: org.stripe_subscription_id ?? paying?.stripe_subscription_id ?? null,
-		plan: org.plan ?? paying?.plan ?? null,
-		brandCount: brands.length
+		customerId: org.stripe_customer_id,
+		subscriptionId: org.stripe_subscription_id,
+		brandCount: (brandRows ?? []).length
 	};
 }
 
 /**
- * Billing authority, not brand access. A collaborator reaches a shared brand (0077) and must not
- * reach the owner's payment pages through it. The predicate is written out instead of leaned on
- * RLS because the API-key path runs as service role, where RLS proves nothing.
+ * Billing authority, not brand access. A collaborator reaches a shared brand and must not reach
+ * the owner's payment pages through it. Written out instead of leaned on RLS because the
+ * API-key path runs as service role, where RLS proves nothing.
  */
 export async function isOrgOwner(
 	supabase: SupabaseClient,
@@ -85,10 +70,10 @@ export async function isOrgOwner(
 	userId: string
 ): Promise<boolean> {
 	const { data } = await supabase
-		.from('organizations')
-		.select('id')
-		.eq('id', orgId)
-		.eq('owner_id', userId)
+		.from('orgs_members')
+		.select('role')
+		.eq('org_id', orgId)
+		.eq('user_id', userId)
 		.maybeSingle();
-	return !!data;
+	return (data as { role?: string } | null)?.role === 'owner';
 }

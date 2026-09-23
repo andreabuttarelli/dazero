@@ -42,7 +42,6 @@ const ORG_BILLING = {
 	orgId: 'org-1',
 	customerId: 'cus_org',
 	subscriptionId: 'sub_org',
-	plan: 'starter',
 	brandCount: 2
 };
 
@@ -74,16 +73,18 @@ beforeEach(() => {
 });
 
 describe('POST /api/v1/brands/:slug/billing/checkout', () => {
-	it('hands back the checkout url and the plans the human will be offered', async () => {
+	it('hands back the checkout url and the subscription rungs the human will be offered', async () => {
 		const { res, body } = await call();
 
 		expect(res.status).toBe(200);
 		expect(res.headers.get('location')).toBeNull();
-		expect(body).toEqual({ ok: true, url: CHECKOUT_URL, plans: [{ key: 'pro', label: 'Pro' }] });
+		expect(body.ok).toBe(true);
+		expect(body.url).toBe(CHECKOUT_URL);
+		expect(body.plans).toContainEqual({ usd: 30, label: '$30/mo' });
 	});
 
 	it('sends the ORG subscription to the hosted plan picker, naming no price', async () => {
-		await call({ plan: 'pro' });
+		await call({ usd: 30 });
 
 		expect(createBillingPortalSession).toHaveBeenCalledWith({
 			customerId: 'cus_org',
@@ -100,7 +101,7 @@ describe('POST /api/v1/brands/:slug/billing/checkout', () => {
 	});
 
 	it('never charges, never changes a plan, never cancels', async () => {
-		await call({ plan: 'pro' });
+		await call({ usd: 30 });
 
 		expect(cancelSubscriptionAtPeriodEnd).not.toHaveBeenCalled();
 		expect(applyRetentionCoupon).not.toHaveBeenCalled();
@@ -115,12 +116,12 @@ describe('POST /api/v1/brands/:slug/billing/checkout', () => {
 		expect(structured).not.toHaveBeenCalled();
 	});
 
-	it('refuses a plan the org cannot move up to, before touching Stripe', async () => {
-		const { res, body } = await call({ plan: 'go' });
+	it('refuses a rung that is not on the ladder, before touching Stripe', async () => {
+		const { res, body } = await call({ usd: 7 });
 
 		expect(res.status).toBe(400);
 		expect(body.error).toBe('unknown_plan');
-		expect(body.plans).toEqual([{ key: 'pro', label: 'Pro' }]);
+		expect(body.plans).toContainEqual({ usd: 30, label: '$30/mo' });
 		expect(createBillingPortalSession).not.toHaveBeenCalled();
 	});
 

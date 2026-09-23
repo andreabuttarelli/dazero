@@ -8,11 +8,6 @@ import { SET_BRAND_SETTINGS } from './brand-settings';
 import { GET_MEDIA_MODELS, SET_MEDIA_MODEL } from './media-models';
 import { SOCIAL_CONNECT_LINK } from './social';
 import { ENHANCE_PROMPT } from './prompts';
-import {
-  CREATE_SHARE,
-  REVOKE_SHARE,
-  SHARED_VIEW_TYPES,
-} from './shares';
 import { UPDATE_PRODUCT } from './studio';
 
 export type EndpointFailure = { readonly error: string; readonly status: number };
@@ -76,14 +71,12 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   ADS_REMIX,
   BILLING_PORTAL_LINK,
   CHECKOUT_LINK,
-  CREATE_SHARE,
   ENHANCE_PROMPT,
   GET_MEDIA_MODELS,
   IMPORT_MEDIA_URL,
   DELETE_ROW,
   INSERT_ROW,
   QUERY_DATABASE,
-  REVOKE_SHARE,
   SET_BRAND_SETTINGS,
   SET_MEDIA_MODEL,
   SOCIAL_CONNECT_LINK,
@@ -130,7 +123,6 @@ export {
  * nessuno di essi e' un endpoint del registry, quindi nessuno diventa un tool.
  */
 export { LIST_MEDIA_READ } from './posts';
-export { LIST_SHARES_READ } from './shares';
 export { LIST_SOCIAL_ACCOUNTS_READ } from './social';
 
 export { QUERY_DATABASE, QUERY_OPS, QUERY_TABLE_NAMES, QUERY_DEFAULT_ROWS, QUERY_MAX_ROWS } from './query';
@@ -150,11 +142,6 @@ export type { MediaModelSlotId } from './media-models';
 export { ENHANCE_PROMPT } from './prompts';
 export { UPDATE_PRODUCT } from './studio';
 export {
-  CREATE_SHARE,
-  REVOKE_SHARE,
-  SHARED_VIEW_TYPES,
-};
-export {
   AUTOMATION_CADENCES,
   AUTOMATION_JOBS,
   AUTOMATION_STATES
@@ -163,7 +150,6 @@ export type { AutomationJob } from './automations';
 export { SOCIAL_CONNECT_LINK } from './social';
 export { BILLING_PORTAL_LINK, CHECKOUT_LINK };
 export type { BillingPortalLinkResult, CheckoutLinkInput, CheckoutLinkResult } from './billing';
-export type { CreateShareInput, CreateShareResult, SharedViewType } from './shares';
 export { INSERT_ROW, UPDATE_ROW, DELETE_ROW, UPDATE_MAX_ROWS, DELETE_MAX_ROWS } from './write';
 export { TABLE_CHECKS, WRITABLE_COLUMNS } from './write-rules';
 

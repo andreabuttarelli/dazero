@@ -3,7 +3,8 @@ import { hasManyTenants } from '$lib/server/tenancy';
 import { fail, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { syncBrandAccounts, disconnectAccount } from '$lib/server/zernio';
-import { isPaidPlan, canConnectSocials, plansAbove } from '$lib/server/plans';
+import { canConnectSocials } from '$lib/server/plans';
+import { CREDIT_LADDER } from '$lib/server/credit-ladder';
 import { generateApiKey } from '$lib/server/cli-auth';
 import { sendEmail, brandInviteEmailSubject, brandInviteEmailHtml, brandInviteEmailText } from '$lib/server/email';
 import { emailLocale } from '$lib/server/email-i18n';
@@ -70,13 +71,14 @@ export async function billingPortal({ request, params, url, locals: { supabase }
 export async function upgrade({ request, params, url, locals: { supabase } }: Ev) {
   if (!(await isBrandOwner(supabase, params.brand!))) return fail(403, { billingError: 'Owner only' });
   const data = await request.formData();
-  const plan = String(data.get('plan') ?? '');
+  const usd = Number(data.get('usd') ?? '');
 
   const billing = await orgBillingForBrand(supabase, { slug: params.brand! });
   if (!billing) return fail(404, { billingError: 'Brand not found' });
-  // Same ladder as the settings modal / chat widget — Go included only while FEATURE_PLAN_GO is on.
-  if (!plansAbove(billing.plan).some((p) => p.key === plan)) {
-    return fail(400, { billingError: 'Unknown plan' });
+  // The rungs the subscription checkout offers — the portal names no price of its own (see
+  // billing-links.ts), so the choice made here has to be one of ours.
+  if (!CREDIT_LADDER.some((rung) => rung.price === usd)) {
+    return fail(400, { billingError: 'Unknown subscription tier' });
   }
 
   const link = await billingLink(supabase, {
@@ -116,7 +118,6 @@ export async function cancelPlan({ request, params, locals: { supabase } }: Ev) 
   const comment = String(data.get('explanation') ?? '').trim();
 
   const billing = await orgBillingForBrand(supabase, { slug: params.brand! });
-  if (!isPaidPlan(billing?.plan)) return fail(400, { billingError: 'No paid plan to cancel.' });
   if (!billing?.subscriptionId) return fail(400, { billingError: 'No active subscription.' });
 
   let endsAt: string | null = null;
