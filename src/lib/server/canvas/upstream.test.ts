@@ -14,6 +14,8 @@ const VIDEO_NODE = '66666666-6666-6666-6666-666666666666';
 const SOURCE_VIDEO_NODE = '77777777-7777-7777-7777-777777777777';
 const ASSET = '55555555-5555-5555-5555-555555555555';
 const VIDEO_ASSET = '88888888-8888-8888-8888-888888888888';
+const INFLUENCER_NODE = '99999999-9999-9999-9999-999999999999';
+const INFLUENCER_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 
 const MODEL = 'bytedance/seedance-2-5';
 
@@ -122,6 +124,112 @@ describe('upstreamInputsFor — dal database alla forma pura', () => {
 
     expect(out.blocked).toBeNull();
     expect(modalitiesOf).not.toHaveBeenCalled();
+  });
+});
+
+describe('upstreamInputsFor — un nodo influencer, dal database vero fino al resolver', () => {
+  /**
+   * IL GIRO REALE, NON SOLO IL RESOLVER PURO: `resolveUpstreamInputs` (testato a parte in
+   * `upstream-inputs.test.ts`) accetta già `mediaUrls`, ma questo file è quello che li COSTRUISCE
+   * da `influencer_views` — senza questa lettura, un influencer collegato alla tela darebbe
+   * sempre zero riferimenti, non un problema di logica ma di collegamento mancante (CLAUDE.md:
+   * "una funzione non esiste finché non è collegata"). Qui si prova che `toUpstreamNode` legge
+   * `influencer_views`, le firma e le passa nell'ordine giusto.
+   */
+  it('le viste di un influencer collegato diventano referenceImageUrls, firmate e ordinate', async () => {
+    const { db } = fakeDb({
+      nodes: [
+        nodeRow(INFLUENCER_NODE, 'influencer', { influencer_id: INFLUENCER_ID }),
+        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: 'qwen3-pro' })
+      ],
+      nodes_connections: [
+        {
+          id: 'e1',
+          canvas_id: CANVAS,
+          source_node_id: INFLUENCER_NODE,
+          target_node_id: IMAGE_NODE,
+          source_handle: null,
+          target_handle: null
+        }
+      ],
+      // `fakeDb` non applica `.order()` davvero — quello è compito di Postgres, non di questo
+      // codice — quindi le righe arrivano già nell'ordine che `sort_order` produrrebbe: questo
+      // test prova che `toUpstreamNode` LEGGE e passa `influencer_views` intatte, non che
+      // Supabase sappia ordinare una `select`.
+      influencer_views: [
+        {
+          id: 'v1',
+          influencer_id: INFLUENCER_ID,
+          view_key: 'face-front',
+          label: 'Face · Front',
+          storage_path: `catalogue/${INFLUENCER_ID}/face-front.webp`,
+          mime_type: 'image/webp',
+          width: 1024,
+          height: 1365,
+          sort_order: 10
+        },
+        {
+          id: 'v2',
+          influencer_id: INFLUENCER_ID,
+          view_key: 'body-front',
+          label: 'Body · Front',
+          storage_path: `catalogue/${INFLUENCER_ID}/body-front.webp`,
+          mime_type: 'image/webp',
+          width: 1024,
+          height: 1365,
+          sort_order: 20
+        }
+      ],
+      assets: []
+    });
+
+    const out = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: IMAGE_NODE,
+      model: 'qwen3-pro',
+      medium: 'image'
+    });
+
+    expect(out.blocked).toBeNull();
+    expect(out.referenceImageUrls).toEqual([
+      `https://signed.example/influencers/catalogue/${INFLUENCER_ID}/face-front.webp`,
+      `https://signed.example/influencers/catalogue/${INFLUENCER_ID}/body-front.webp`
+    ]);
+    expect(out.referenceImageUrl).toBe(out.referenceImageUrls[0]);
+    expect(out.rejected).toEqual([]);
+  });
+
+  it('un influencer senza viste ancora importate non alimenta niente, e non spacca il giro', async () => {
+    const { db } = fakeDb({
+      nodes: [
+        nodeRow(INFLUENCER_NODE, 'influencer', { influencer_id: INFLUENCER_ID }),
+        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: MODEL })
+      ],
+      nodes_connections: [
+        {
+          id: 'e1',
+          canvas_id: CANVAS,
+          source_node_id: INFLUENCER_NODE,
+          target_node_id: IMAGE_NODE,
+          source_handle: null,
+          target_handle: null
+        }
+      ],
+      influencer_views: [],
+      assets: []
+    });
+
+    const out = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: IMAGE_NODE,
+      model: MODEL,
+      medium: 'image'
+    });
+
+    expect(out.referenceImageUrls).toEqual([]);
+    expect(out.rejected).toEqual([{ nodeId: INFLUENCER_NODE, why: expect.stringContaining('non ancora') }]);
   });
 });
 

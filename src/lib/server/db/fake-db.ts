@@ -90,7 +90,26 @@ export function fakeDb(rows: Record<string, unknown[]>, options: FakeOptions = {
       upsert: (payload: unknown) => builder(table, 'upsert', payload),
       update: (payload: unknown) => builder(table, 'update', payload),
       delete: () => builder(table, 'delete')
-    })
+    }),
+    storage: {
+      from: (bucket: string) => ({
+        createSignedUrl: async (path: string) => {
+          calls.push({ table: `storage:${bucket}`, op: 'sign', filters: [['path', path]] });
+          return { data: { signedUrl: `https://signed.example/${bucket}/${path}` }, error: null };
+        },
+        createSignedUrls: async (paths: string[]) => {
+          calls.push({ table: `storage:${bucket}`, op: 'sign', filters: [['paths', paths]] });
+          return {
+            data: paths.map((path) => ({ path, signedUrl: `https://signed.example/${bucket}/${path}` })),
+            error: null
+          };
+        },
+        upload: async (path: string) => {
+          calls.push({ table: `storage:${bucket}`, op: 'upload', filters: [['path', path]] });
+          return { data: { path }, error: null };
+        }
+      })
+    }
   } as unknown as Db;
 
   return { db, calls };

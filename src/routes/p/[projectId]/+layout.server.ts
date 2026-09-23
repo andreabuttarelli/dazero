@@ -6,7 +6,7 @@ import { listCanvases } from '$lib/server/repos/canvas';
 import { findProjectForUser } from '$lib/server/projects/lookup';
 import { chooseOrg } from '$lib/server/tenancy/context';
 import { ensureProfile } from '$lib/server/repos/profiles';
-import { PROJECT_BRAND_SHELL_SELECT, type ProjectBrandShell } from '$lib/server/projects/brand-shell';
+import { PROJECT_BRAND_SHELL_SELECT, projectBrandShellOf, type ProjectBrandShell } from '$lib/server/projects/brand-shell';
 import { env } from '$env/dynamic/private';
 
 const FLAGS = {
@@ -45,13 +45,16 @@ export const load: LayoutServerLoad = async ({ params, locals }) => {
 
   let brand: ProjectBrandShell | null = null;
   if (project.brandId) {
-    const { data } = await db
+    const { data, error: brandError } = await db
       .from('brands')
       .select(PROJECT_BRAND_SHELL_SELECT)
       .eq('id', project.brandId)
       .eq('org_id', orgId)
       .maybeSingle();
-    brand = (data as ProjectBrandShell | null) ?? null;
+    if (brandError) {
+      throw error(500, brandError.message);
+    }
+    brand = data ? projectBrandShellOf(data) : null;
   }
 
   return {

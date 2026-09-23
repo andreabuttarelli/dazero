@@ -1,6 +1,7 @@
 import type { Db } from '$lib/server/db/client';
 import { listConnections, listNodes, type CanvasNodeRecord, type Connection } from '$lib/server/repos/canvas';
 import { findAsset } from '$lib/server/repos/assets';
+import { listInfluencerViews, signInfluencerViewFiles } from '$lib/server/repos/influencers';
 import {
   resolveUpstreamInputs,
   type UpstreamEdge,
@@ -55,7 +56,36 @@ function sourceMediaUrl(asset: { url: string | null } | null): string | null {
   return asset?.url ?? null;
 }
 
+/**
+ * LE VISTE DI UN NODO `influencer`, GIÀ NELL'ORDINE GIUSTO — `listInfluencerViews` ordina per
+ * `sort_order`, questo file non riordina niente: `resolveUpstreamInputs` consuma `mediaUrls`
+ * com'è, come il suo stesso commento dichiara. Un influencer senza `influencer_id` valido (una
+ * riga malformata, mai dovrebbe accadere dopo `validateNodeData`) torna un elenco vuoto — lo
+ * stesso "niente da dare" di un nodo mai girato, non un errore che ferma la tela.
+ */
+async function influencerMediaUrls(db: Db, node: CanvasNodeRecord): Promise<string[]> {
+  const influencerId = typeof node.data.influencer_id === 'string' ? node.data.influencer_id : null;
+  if (!influencerId) return [];
+
+  const views = await listInfluencerViews(db, influencerId);
+  if (!views.length) return [];
+
+  const signed = await signInfluencerViewFiles(db, views.map((v) => v.storagePath));
+  return views.map((v) => signed.get(v.storagePath)).filter((url): url is string => Boolean(url));
+}
+
 async function toUpstreamNode(db: Db, orgId: string, node: CanvasNodeRecord): Promise<UpstreamNode> {
+  if (node.type === 'influencer') {
+    return {
+      id: node.id,
+      type: node.type,
+      model: null,
+      text: null,
+      mediaUrl: null,
+      mediaUrls: await influencerMediaUrls(db, node)
+    };
+  }
+
   const refId = typeof node.data.refId === 'string' ? node.data.refId : null;
   const asset = refId ? await findAsset(db, { orgId, assetId: refId }) : null;
 

@@ -52,4 +52,30 @@ describe('canvas action input', () => {
     expect(result).not.toMatchObject({ status: 400 });
     expect(input.calls.some((call) => call.op === 'insert')).toBe(true);
   });
+
+  /**
+   * IL GIRO REALE: `InfluencersPanel.svelte::onDragStart` costruisce lo stesso `FilledNodeDrag`
+   * che `influencerDrag()` produce — `CanvasFlow.svelte::onDrop` lo passa a `createFilled`, che
+   * chiama questa stessa `POST ?/create` con `type: 'influencer'` e `data: {influencer_id}`. Qui
+   * si prova che l'azione VERA — non un mock del validatore — accetta quella forma esatta e la
+   * scrive: la stessa `validateNodeData('influencer', ...)` che il CHECK del database impone.
+   */
+  it('accepts an influencer node dragged in from the panel, the same shape influencerDrag builds', async () => {
+    const input = event({
+      type: 'influencer',
+      x: '0',
+      y: '0',
+      data: JSON.stringify({ influencer_id: 'inf-1' })
+    });
+    const result = await actions.create(input as never);
+    expect(result).not.toMatchObject({ status: 400 });
+    expect(input.calls.some((call) => call.op === 'insert')).toBe(true);
+  });
+
+  it('rejects an influencer node without influencer_id, before writing', async () => {
+    const input = event({ type: 'influencer', x: '0', y: '0', data: '{}' });
+    const result = await actions.create(input as never);
+    expect(result).toMatchObject({ status: 400 });
+    expect(input.calls.some((call) => call.op === 'insert')).toBe(false);
+  });
 });
