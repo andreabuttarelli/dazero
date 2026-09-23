@@ -43,7 +43,8 @@ export default defineConfig({
   server: { hmr, fs: { allow: ['..', ...(nodeModulesReal ? [nodeModulesReal] : [])] } },
   plugins: [sentrySvelteKit({
     org: "021-6z",
-    project: "021-1m"
+    project: "021-1m",
+    autoInstrument: { load: false, serverLoad: true }
   }), sveltekit(), tailwindcss()],
   // Modern baselines: skip legacy transforms (e.g. Array.from) that PSI flags as unused
   // on current Chrome/Safari/Firefox. Aligns with "Baseline widely available" guidance.
