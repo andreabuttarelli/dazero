@@ -21,7 +21,7 @@ export async function getBrandsList(supabase: SupabaseClient, onlyIds: string[] 
 
   const ids = brands.map(b => b.id);
   const { data: posts, error: postsError } = await supabase
-    .from('posts').select('brand_id').in('brand_id', ids).eq('status', 'ready');
+    .from('posts').select('brand_id').in('brand_id', ids).eq('status', 'pending_user');
   if (postsError) throw postsError;
 
   const pendingCounts = new Map<string, number>();
@@ -38,7 +38,7 @@ export async function getBrandsList(supabase: SupabaseClient, onlyIds: string[] 
 export async function getBrandDetail(supabase: SupabaseClient, brandId: string) {
   const [pendingRes, productsRes, accountsRes, brandRes] = await Promise.all([
     supabase.from('posts').select('id', { count: 'exact', head: true })
-      .eq('brand_id', brandId).eq('status', 'ready'),
+      .eq('brand_id', brandId).eq('status', 'pending_user'),
     supabase.from('products').select('id', { count: 'exact', head: true })
       .eq('brand_id', brandId),
     supabase.from('social_accounts').select('id', { count: 'exact', head: true })

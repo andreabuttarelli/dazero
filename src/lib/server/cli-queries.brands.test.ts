@@ -54,13 +54,13 @@ function matches(row: Record<string, unknown>, f: Filter): boolean {
 type SupabaseLike = Parameters<typeof getBrandsList>[0];
 
 describe('getBrandsList sullo schema nuovo', () => {
-  it('legge solo colonne reali di brands e conta i post pronti come pendenti', async () => {
+  it('legge solo colonne reali di brands e conta i post in attesa come pendenti', async () => {
     const client = fakeSupabase({
       brands: [{ id: 'b1', name: 'Acme', slug: 'acme' }],
       posts: [
-        { brand_id: 'b1', status: 'ready' },
-        { brand_id: 'b1', status: 'ready' },
-        { brand_id: 'b1', status: 'draft' }
+        { brand_id: 'b1', status: 'pending_user' },
+        { brand_id: 'b1', status: 'pending_user' },
+        { brand_id: 'b1', status: 'approved' }
       ]
     });
 
@@ -71,11 +71,11 @@ describe('getBrandsList sullo schema nuovo', () => {
 });
 
 describe('getBrandDetail sullo schema nuovo', () => {
-  it('conta prodotti, account e post pronti senza nominare colonne inesistenti', async () => {
+  it('conta prodotti, account e post in attesa senza nominare colonne inesistenti', async () => {
     const client = fakeSupabase({
       posts: [
-        { brand_id: 'b1', status: 'ready' },
-        { brand_id: 'b1', status: 'archived' }
+        { brand_id: 'b1', status: 'pending_user' },
+        { brand_id: 'b1', status: 'published' }
       ],
       products: [{ brand_id: 'b1' }],
       social_accounts: [{ brand_id: 'b1' }, { brand_id: 'b1' }]
