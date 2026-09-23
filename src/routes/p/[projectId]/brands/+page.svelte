@@ -21,10 +21,14 @@
 <div class="brands-page">
   <PageHead title="Brands" subtitle="Every brand your org has. Drag a logo, a text or the content onto a canvas." />
 
+  <div class="toolbar">
+    <a class="btn primary" href={`/p/${data.project.id}/brands/new`}>+ New brand</a>
+  </div>
+
   {#if !data.brands.length}
     <div class="empty">
       <h3>No brands yet</h3>
-      <p>A brand appears here once your org has one.</p>
+      <p>Create one to get started.</p>
     </div>
   {:else}
     <div class="grid">
@@ -47,7 +51,7 @@
 
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div class="names" draggable="true" ondragstart={(e) => onFieldDragStart(e, brand, 'text')}>
-              <h3>{brand.name}</h3>
+              <h3><a href={`/p/${data.project.id}/brands/${brand.slug}`}>{brand.name}</a></h3>
               {#if brand.shortDescription}
                 <p class="short">{brand.shortDescription}</p>
               {/if}
@@ -68,6 +72,12 @@
 
 <style>
   .brands-page { max-width: var(--content-max, 1100px); margin: 0 auto; padding: 0; }
+
+  .toolbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+  .btn.primary {
+    background: var(--ink); color: var(--paper); border: 1px solid var(--ink);
+    padding: 8px 14px; font-size: 13px; text-decoration: none;
+  }
 
   .empty { text-align: center; padding: 48px 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
   .empty h3 { margin: 0; font-size: 18px; }
@@ -90,6 +100,8 @@
 
   .names { flex: 1; min-width: 0; cursor: grab; }
   .names h3 { margin: 0; font-size: 14px; }
+  .names h3 a { color: inherit; text-decoration: none; }
+  .names h3 a:hover { text-decoration: underline; }
   .short { margin: 2px 0 0; font-size: 12px; color: var(--ink-soft); line-height: 1.4; }
 
   .content {
