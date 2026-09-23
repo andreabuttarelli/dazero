@@ -10,6 +10,7 @@ import { signKnowledgePaths } from '$lib/server/media-archive';
 import { structured } from '$lib/server/research';
 
 const BUCKET = 'brand-knowledge';
+const PUBLIC_MEDIA_BUCKET = 'media';
 
 export type BrandMediaKind = 'image' | 'video';
 
@@ -611,12 +612,12 @@ export async function copyLibraryImageToPublicUrl(
   const safeMime = mime.startsWith('image/') ? mime : 'image/jpeg';
   const ext = safeMime.includes('png') ? 'png' : safeMime.includes('webp') ? 'webp' : 'jpg';
   const path = `${opts.userId}/library/${crypto.randomUUID()}.${ext}`;
-  const { error: upErr } = await supabase.storage.from('media').upload(path, buf, {
+  const { error: upErr } = await supabase.storage.from(PUBLIC_MEDIA_BUCKET).upload(path, buf, {
     contentType: safeMime === 'image/jpg' ? 'image/jpeg' : safeMime,
     upsert: false
   });
   if (upErr) return { error: upErr.message };
-  const image_url = supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+  const image_url = supabase.storage.from(PUBLIC_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
   if (!image_url) return { error: 'Upload of library media failed' };
   await recordBrandMediaUse(supabase, opts.brandId, [media.id]);
   return {

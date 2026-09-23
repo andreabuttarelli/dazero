@@ -37,6 +37,8 @@ export type PreviewPost = {
 
 const MAX_COMPETITOR_MOOD_IMAGES = 4;
 
+const POST_MEDIA_BUCKET = 'media';
+
 function platformKey(platform: string | null | undefined): string {
   const p = String(platform ?? '').toLowerCase().trim();
   return p === 'twitter' ? 'x' : p;
@@ -790,7 +792,7 @@ export async function uploadPostImage(supabase: SupabaseClient, userId: string, 
   bytes = await markImage(bytes, mime, DIGITAL_SOURCE_TYPE.synthetic);
   const ext = mime.includes('jpeg') || mime.includes('jpg') ? 'jpg' : mime.includes('webp') ? 'webp' : 'png';
   const path = `${userId}/onboarding/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from('media').upload(path, bytes, {
+  const { error } = await supabase.storage.from(POST_MEDIA_BUCKET).upload(path, bytes, {
     contentType: mime,
     upsert: false
   });
@@ -798,7 +800,7 @@ export async function uploadPostImage(supabase: SupabaseClient, userId: string, 
     console.error('[uploadPostImage] storage upload failed:', error.message);
     return undefined;
   }
-  return supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+  return supabase.storage.from(POST_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
 /** Publish raw image bytes as a public post media URL (platform aspect crop). Used for Media library reuse. */
@@ -815,10 +817,10 @@ export async function publishImageBufferAsPostMedia(
   const safeMime = mime.startsWith('image/') ? mime : 'image/jpeg';
   const ext = safeMime.includes('png') ? 'png' : safeMime.includes('webp') ? 'webp' : 'jpg';
   const path = `${userId}/library/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from('media').upload(path, bytes, {
+  const { error } = await supabase.storage.from(POST_MEDIA_BUCKET).upload(path, bytes, {
     contentType: safeMime === 'image/jpg' ? 'image/jpeg' : safeMime,
     upsert: false
   });
   if (error) return undefined;
-  return supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+  return supabase.storage.from(POST_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
 }
