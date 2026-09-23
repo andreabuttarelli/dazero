@@ -4,8 +4,9 @@
    *
    * `/p/<progetto>/assets` e `/p/<progetto>/brands` hanno la stessa card, ma sono un'altra
    * rotta: un `dragstart` lì non arriva a un `ondrop` qui, la navigazione li separa. Questo
-   * pannello vive nella sidebar (`DashboardSidebar`, pannello "assets"), che sta SEMPRE accanto
-   * alla tela — è l'unico posto da cui trascinare davvero funziona senza aprire due schede.
+   * pannello vive in `CanvasLeftPanel`, aperto dalla rail flottante (`FloatingRail.svelte`), che
+   * sta SEMPRE accanto alla tela — è l'unico posto da cui trascinare davvero funziona senza
+   * aprire due schede.
    *
    * `assetDrag`/`brandFieldDrag` (`drag-payload.ts`) costruiscono lo stesso pacchetto delle
    * pagine dedicate: una card di qui e una di là finiscono sulla tela nello stesso modo.
