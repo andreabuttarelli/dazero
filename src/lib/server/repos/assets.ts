@@ -109,6 +109,32 @@ export async function findAsset(
   return data ? toAsset(data) : null;
 }
 
+/**
+ * PIÙ ASSET IN UN GIRO SOLO — un `list` con N item risolti da `asset_id` non fa N letture separate
+ * (`findAsset` in un ciclo), la stessa disciplina di `listNodesByIds` in `repos/canvas.ts`. Un id
+ * assente dal risultato (cancellato, di un'altra org) è semplicemente fuori dalla mappa — chi
+ * chiama lo tratta come "niente da dare", non come un errore che ferma la lista.
+ */
+export async function findAssets(
+  db: Db,
+  input: { orgId: string; assetIds: string[] }
+): Promise<Map<string, Asset>> {
+  if (!input.assetIds.length) {
+    return new Map();
+  }
+
+  const { data, error } = await db
+    .from('assets')
+    .select(ASSET_COLUMNS)
+    .eq('org_id', input.orgId)
+    .in('id', input.assetIds);
+
+  if (error) {
+    throw error;
+  }
+  return new Map((data ?? []).map((row) => [row.id, toAsset(row)]));
+}
+
 export async function insertAsset(
   db: Db,
   input: {
