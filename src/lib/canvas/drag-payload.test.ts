@@ -3,6 +3,8 @@ import {
   DRAG_NODE_KIND,
   assetDrag,
   brandFieldDrag,
+  colourDrag,
+  handleDrag,
   influencerDrag,
   parseFilledNodeDrag,
   serializeFilledNodeDrag,
@@ -129,6 +131,32 @@ describe('cosa diventa un nodo trascinato da fuori la tela', () => {
     it('serializza e riparsa come ogni altro nodo pieno', () => {
       const drag = influencerDrag({ id: 'inf-1' });
       expect(parseFilledNodeDrag(serializeFilledNodeDrag(drag))).toEqual(drag);
+    });
+  });
+
+  describe('colourDrag: un chip colore diventa un nodo image già riempito', () => {
+    it('diventa un nodo image con l\'assetId dello swatch già creato', () => {
+      const drag = colourDrag({ hex: '#1a2b3c', assetId: 'asset-1', url: '/swatch.png' });
+      expect(drag?.type).toBe('image');
+      expect(drag?.data).toMatchObject({ assetId: 'asset-1', url: '/swatch.png', name: '#1a2b3c' });
+      expect(validateNodeData('image', drag!.data).ok).toBe(true);
+    });
+
+    it('senza asset già pronto non si trascina: dragstart è sincrono, non può materializzarlo al volo', () => {
+      expect(colourDrag({ hex: '#1a2b3c', assetId: null, url: null })).toBeNull();
+    });
+  });
+
+  describe('handleDrag: un chip piattaforma diventa un nodo social_account_feed già riempito', () => {
+    it('diventa un nodo social_account_feed con platform e handle dal chip', () => {
+      const drag = handleDrag({ platform: 'instagram', handle: 'acme' });
+      expect(drag?.type).toBe('social_account_feed');
+      expect(drag?.data).toEqual({ platform: 'instagram', handle: 'acme' });
+      expect(validateNodeData('social_account_feed', drag!.data).ok).toBe(true);
+    });
+
+    it('una piattaforma fuori dal CHECK non si trascina', () => {
+      expect(handleDrag({ platform: 'snapchat', handle: 'acme' })).toBeNull();
     });
   });
 });

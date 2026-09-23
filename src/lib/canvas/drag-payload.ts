@@ -14,6 +14,8 @@
  */
 import { genNodeSize } from './gen-node';
 import { docNodeSize } from './doc-node';
+import { socialFeedNodeSize } from './social-feed-node';
+import { SOCIAL_PLATFORMS } from './node-data';
 
 export type DragAssetKind = 'image' | 'video' | 'document';
 export type DragBrandField = 'logo' | 'text' | 'content';
@@ -21,6 +23,7 @@ export type DragBrandField = 'logo' | 'text' | 'content';
 export const DRAG_NODE_KIND: {
   asset: Record<DragAssetKind, 'image' | 'video' | 'doc'>;
   brand: Record<DragBrandField, 'image' | 'text' | 'doc'>;
+  chip: { colour: 'image'; handle: 'social_account_feed' };
 } = {
   asset: {
     image: 'image',
@@ -31,6 +34,10 @@ export const DRAG_NODE_KIND: {
     logo: 'image',
     text: 'text',
     content: 'doc'
+  },
+  chip: {
+    colour: 'image',
+    handle: 'social_account_feed'
   }
 };
 
@@ -89,7 +96,7 @@ export function influencerNodeSize(): { w: number; h: number } {
 export const CANVAS_DRAG_FILLED_NODE = 'application/x-dazero-filled-node';
 
 export type FilledNodeDrag = {
-  type: 'image' | 'video' | 'text' | 'doc' | 'influencer';
+  type: 'image' | 'video' | 'text' | 'doc' | 'influencer' | 'social_account_feed';
   data: Record<string, unknown>;
   w: number;
   h: number;
@@ -169,11 +176,50 @@ export function influencerDrag(influencer: { id: string }): FilledNodeDrag {
   return { type: 'influencer', data: influencerNodeData(influencer.id), ...influencerNodeSize() };
 }
 
+/**
+ * UN CHIP COLORE, TRASCINATO DAL MARKDOWN DI UN BRAND — diventa un'immagine statica dello stesso
+ * tipo di un logo trascinato (`brandFieldDrag`), non un nodo generato: `assetId` deve esistere
+ * già quando il puntatore parte, perché `dragstart` è sincrono e non può materializzare uno
+ * swatch al volo (vedi il commento in cima al file). Chi chiama prepara l'asset PRIMA — la stessa
+ * regola di `logoAssetId` in `brands/+page.server.ts`.
+ */
+export function colourDrag(swatch: { hex: string; assetId: string | null; url: string | null }): FilledNodeDrag | null {
+  if (!swatch.assetId || !swatch.url) return null;
+  return {
+    type: 'image',
+    data: staticMediaData({ assetId: swatch.assetId, url: swatch.url, name: swatch.hex, mimeType: 'image/png' }),
+    ...genNodeSize('image')
+  };
+}
+
+/**
+ * UN CHIP PIATTAFORMA, TRASCINATO DAL MARKDOWN DI UN BRAND — diventa un nodo `social_account_feed`
+ * già con `platform`/`handle` valorizzati, come se qualcuno l'avesse appena compilato a mano.
+ * Nessun `null`: un handle scritto nel content esiste già per costruzione, ma la piattaforma deve
+ * stare nel CHECK (`SOCIAL_PLATFORMS`) — un valore fuori tabella non produce un nodo che poi il
+ * database rifiuterebbe.
+ */
+export function handleDrag(chip: { platform: string; handle: string }): FilledNodeDrag | null {
+  if (!(SOCIAL_PLATFORMS as readonly string[]).includes(chip.platform)) return null;
+  return {
+    type: 'social_account_feed',
+    data: { platform: chip.platform, handle: chip.handle },
+    ...socialFeedNodeSize()
+  };
+}
+
 export function serializeFilledNodeDrag(drag: FilledNodeDrag): string {
   return JSON.stringify(drag);
 }
 
-const FILLED_NODE_DRAG_TYPES = new Set<FilledNodeDrag['type']>(['image', 'video', 'text', 'doc', 'influencer']);
+const FILLED_NODE_DRAG_TYPES = new Set<FilledNodeDrag['type']>([
+  'image',
+  'video',
+  'text',
+  'doc',
+  'influencer',
+  'social_account_feed'
+]);
 
 export function parseFilledNodeDrag(raw: string): FilledNodeDrag | null {
   try {
