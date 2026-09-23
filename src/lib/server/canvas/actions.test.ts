@@ -80,6 +80,41 @@ describe('canvas action input', () => {
   });
 });
 
+describe('connect action', () => {
+  function event(fields: Record<string, string>) {
+    const fake = fakeDb({
+      orgs_members: [{ role: 'owner', orgs: { id: 'org', name: 'Org', slug: 'org' } }],
+      canvases: [{ id: 'canvas', project_id: 'project', name: 'Canvas', viewport: null }],
+      nodes: [
+        { id: 'a', canvas_id: 'canvas', project_id: 'project', type: 'text', display_name: null, x: 0, y: 0, z: 0, width: null, height: null, data: {}, version: 1 },
+        { id: 'b', canvas_id: 'canvas', project_id: 'project', type: 'image', display_name: null, x: 0, y: 0, z: 0, width: null, height: null, data: {}, version: 1 }
+      ]
+    });
+    const body = new FormData();
+    for (const [key, value] of Object.entries(fields)) { body.set(key, value); }
+    return {
+      ...fake,
+      request: new Request('http://localhost/c/canvas', { method: 'POST', body }),
+      params: { canvasId: 'canvas' },
+      locals: { safeGetSession: async () => ({ session: {}, user: { id: 'user' } }), db: async () => fake.db }
+    };
+  }
+
+  it('writes the target_handle when given one, for wiring onto a typed port', async () => {
+    const input = event({ source_node_id: 'a', target_node_id: 'b', kind: 'derives_from', target_handle: 'text' });
+    await actions.connect(input as never);
+    const insert = input.calls.find((c) => c.table === 'nodes_connections' && c.op === 'insert');
+    expect(insert?.payload).toMatchObject({ target_handle: 'text' });
+  });
+
+  it('leaves target_handle null when none is given, same as before', async () => {
+    const input = event({ source_node_id: 'a', target_node_id: 'b', kind: 'derives_from' });
+    await actions.connect(input as never);
+    const insert = input.calls.find((c) => c.table === 'nodes_connections' && c.op === 'insert');
+    expect(insert?.payload).toMatchObject({ target_handle: null });
+  });
+});
+
 describe('duplicate action', () => {
   function event(fields: Record<string, string>, nodes: Record<string, unknown>[] = []) {
     const fake = fakeDb({

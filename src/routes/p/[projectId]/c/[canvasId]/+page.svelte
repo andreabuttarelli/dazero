@@ -38,6 +38,7 @@
   import { tileNode } from '$lib/canvas/connect-rules';
   import { planDelete } from '$lib/canvas/delete-plan';
   import { connectorsFor, type ConnectorType } from '$lib/canvas/connectors';
+  import { planConnectSelection, type ConnectSource } from '$lib/canvas/connect-selection-plan';
   import {
     docData,
     docOf,
@@ -582,6 +583,87 @@
     edges = [...edges.filter((edge) => edge.id !== created.id), toEdge(created)];
   }
 
+  /**
+   * "COLLEGA A NUOVO…": un nodo del tipo scelto nasce a destra della selezione, GIÀ CON UN
+   * MODELLO — il primo del catalogo per quel medium — perché senza modello un nodo `image`/`video`
+   * non ha porte (`connectorsOfNode`, sopra: `!choice` → `[]`), e il piano di collegamento
+   * troverebbe zero connettori su un nodo appena nato. Il piano stesso (`planConnectSelection`) è
+   * lo stesso che decide un collegamento a un nodo ESISTENTE (`connectExisting`, sotto): la
+   * domanda "quale porta per quale sorgente" non cambia perché il bersaglio è appena nato.
+   */
+  async function connectNew(ids: string[], medium: GenMedium, at: { x: number; y: number }) {
+    const sources: ConnectSource[] = nodes
+      .filter((n) => ids.includes(n.id))
+      .map((n) => ({ id: n.id, type: n.type }));
+    if (!sources.length) { return; }
+
+    const model = catalogue[medium]?.[0]?.id ?? null;
+    const modalities = model ? { input: catalogue[medium].find((c) => c.id === model)?.inputModalities ?? [] } : { input: [] };
+
+    const { w, h } = genNodeSize(medium);
+    const created = await post('create', {
+      type: medium,
+      x: at.x - w / 2,
+      y: at.y - h / 2,
+      data: JSON.stringify({ ...newNodeRow(medium), model })
+    });
+    const node = (created?.node ?? null) as CanvasNodeRecord | null;
+    if (!node) { return; }
+
+    nodes = [...nodes.filter((n) => n.id !== node.id), toTile(node)];
+
+    const plan = planConnectSelection({ sources, target: { kind: medium, modalities } });
+    for (const wire of plan.wires) {
+      const res = await post('connect', {
+        source_node_id: wire.sourceId,
+        target_node_id: node.id,
+        kind: 'derives_from',
+        target_handle: wire.connector
+      });
+      const connection = (res?.connection ?? null) as Connection | null;
+      if (connection) { edges = [...edges.filter((e) => e.id !== connection.id), toEdge(connection)]; }
+    }
+    if (plan.rejected.length) {
+      failed = `Non collegato: ${plan.rejected.map((r) => r.why).join('; ')}`;
+    }
+  }
+
+  /**
+   * "COLLEGA A…": la stessa domanda di `connectNew`, su un nodo che c'è già — le sue porte vengono
+   * dal SUO modello attuale, non da uno appena scelto.
+   */
+  async function connectExisting(ids: string[], targetId: string) {
+    const target = nodes.find((n) => n.id === targetId);
+    if (!target || (target.type !== 'text' && target.type !== 'image' && target.type !== 'video')) {
+      failed = 'Questo nodo non riceve collegamenti';
+      return;
+    }
+
+    const sources: ConnectSource[] = nodes
+      .filter((n) => ids.includes(n.id) && n.id !== targetId)
+      .map((n) => ({ id: n.id, type: n.type }));
+    if (!sources.length) { return; }
+
+    const model = typeof target.data.model === 'string' ? target.data.model : null;
+    const choice = model ? catalogue[target.type]?.find((c) => c.id === model) : null;
+    const modalities = { input: choice?.inputModalities ?? [] };
+
+    const plan = planConnectSelection({ sources, target: { kind: target.type, modalities } });
+    for (const wire of plan.wires) {
+      const res = await post('connect', {
+        source_node_id: wire.sourceId,
+        target_node_id: targetId,
+        kind: 'derives_from',
+        target_handle: wire.connector
+      });
+      const connection = (res?.connection ?? null) as Connection | null;
+      if (connection) { edges = [...edges.filter((e) => e.id !== connection.id), toEdge(connection)]; }
+    }
+    if (plan.rejected.length) {
+      failed = `Non collegato: ${plan.rejected.map((r) => r.why).join('; ')}`;
+    }
+  }
+
   /** Una linea tolta sparisce subito e torna se il server rifiuta: l'attesa qui si vedrebbe. */
   async function disconnect(connectionId: string) {
     const removed = edges.find((e) => e.id === connectionId);
@@ -731,6 +813,8 @@
     onDuplicate={duplicate}
     onCopy={copy}
     onPaste={paste}
+    onConnectNew={connectNew}
+    onConnectExisting={connectExisting}
   >
     {#snippet tile({ id, selected })}
       {@const row = nodes.find((n) => n.id === id)}

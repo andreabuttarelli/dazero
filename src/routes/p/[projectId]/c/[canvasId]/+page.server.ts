@@ -575,6 +575,7 @@ export const actions: Actions = {
     const sourceNodeId = String(fd.get('source_node_id') ?? '');
     const targetNodeId = String(fd.get('target_node_id') ?? '');
     const kind = String(fd.get('kind') ?? '');
+    const targetHandle = fd.get('target_handle');
     if (!sourceNodeId || !targetNodeId || !isCanvasEdgeKind(kind)) {
       return fail(400, { error: 'collegamento non valido' });
     }
@@ -592,6 +593,10 @@ export const actions: Actions = {
       sourceNodeId,
       targetNodeId,
       sourceHandle: kind,
+      // La porta tipizzata (`ConnectorType`) su cui questo arco atterra — assente per la maggior
+      // parte dei gesti (l'attacco generico d'origine), presente quando chi collega SA già quale
+      // porta vuole: "Collega a nuovo…"/"Collega a…" sulla selezione (`connect-selection-plan.ts`).
+      targetHandle: typeof targetHandle === 'string' && targetHandle ? targetHandle : null,
       actor: userActor(scope)
     });
 

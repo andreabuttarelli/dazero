@@ -68,7 +68,7 @@ export type CanvasCommand =
   | { id: 'nudge'; dx: number; dy: number }
   | { id: Exclude<CanvasCommandId, 'add' | 'nudge'> };
 
-const PASTE_MOD_KEYS: Record<string, CanvasCommandId> = { d: 'duplicate', c: 'copy', v: 'paste' };
+const PASTE_MOD_KEYS: Record<string, 'duplicate' | 'copy' | 'paste'> = { d: 'duplicate', c: 'copy', v: 'paste' };
 
 /** L'argomento di `add`, per chi ha in mano un comando e non sa ancora quale sia. */
 export function addableOf(c: CanvasCommand): Addable | null {

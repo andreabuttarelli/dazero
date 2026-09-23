@@ -31,6 +31,11 @@
   import CanvasPointer from './CanvasPointer.svelte';
   import CanvasAddBar from './CanvasAddBar.svelte';
   import CanvasKeys from './CanvasKeys.svelte';
+  import CanvasSelectionBridge from './CanvasSelectionBridge.svelte';
+  import SelectionToolbar from './SelectionToolbar.svelte';
+  import ConnectPicker from './ConnectPicker.svelte';
+  import type { SelectionActionId } from '$lib/canvas/selection-actions';
+  import type { GenMedium } from '$lib/canvas/gen-node';
   import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
   import { CANVAS_DRAG_FILLED_NODE, parseFilledNodeDrag, type FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { syncNodes } from '$lib/canvas/tile-sync';
@@ -81,6 +86,8 @@
     onDuplicate,
     onCopy,
     onPaste,
+    onConnectNew,
+    onConnectExisting,
     tile
   }: {
     tiles?: Tile[];
@@ -121,6 +128,14 @@
     onCopy?: (ids: string[]) => void;
     /** ⌘V: incolla, al centro di quel che si sta guardando adesso. */
     onPaste?: (at: { x: number; y: number }) => void;
+    /**
+     * "Collega a nuovo…": la scelta del tipo la fa questo componente (`ConnectPicker`), il nodo e
+     * i fili li fa chi monta la tela — la stessa divisione di `onCreate`, dove il PUNTO lo decide
+     * `CanvasFlow` e la SCRITTURA la pagina. `at` è già in unità di tela, a destra della selezione.
+     */
+    onConnectNew?: (ids: string[], medium: GenMedium, at: { x: number; y: number }) => void;
+    /** "Collega a…": gli id scelti e il nodo su cui si è cliccato per chiudere la modalità bersaglio. */
+    onConnectExisting?: (ids: string[], targetId: string) => void;
     /** Cosa disegnare dentro una tile. La tela non sa cosa mostra: lo decide chi la usa. */
     tile: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
   } = $props();
@@ -298,6 +313,70 @@
     if (chosen.nodes.length) onDelete?.(chosen.nodes);
   }
 
+  /**
+   * LA BARRA DELLA SELEZIONE. `CanvasSelectionBridge` vive dentro `SvelteFlow` e riporta qui id e
+   * riquadro a ogni cambio — la barra stessa vive fuori, sotto, perché non ha bisogno del contesto
+   * della libreria, solo di coordinate già pronte.
+   */
+  let selection = $state<{ ids: string[]; box: { x: number; y: number; width: number } | null }>({
+    ids: [],
+    box: null
+  });
+
+  /**
+   * "COLLEGA A NUOVO…": apre `ConnectPicker` a destra del riquadro della selezione — lo stesso
+   * `selection.box`, già in coordinate di schermo, che disegna la barra. La posizione del nodo
+   * nuovo si converte in unità di tela solo alla scelta del tipo (`pickConnectMedium`): prima non
+   * serve, e la selezione può muoversi mentre il menù è aperto.
+   */
+  let connectPickerAt = $state<{ x: number; y: number } | null>(null);
+
+  /**
+   * "COLLEGA A…": la tela entra in modalità bersaglio — il prossimo clic su UN nodo (non sullo
+   * sfondo, non su uno già nella selezione) lo sceglie come destinazione e chiude la modalità.
+   * `targeting` porta gli id della selezione che l'ha aperta: la barra può nel frattempo perdere
+   * quella selezione (l'utente clicca altrove prima di scegliere) senza perdere QUALI nodi
+   * andavano collegati.
+   */
+  let targeting = $state<string[] | null>(null);
+
+  function onNodeClick({ node }: { node: Node }) {
+    if (!targeting) return;
+    if (targeting.includes(node.id)) return;
+
+    onConnectExisting?.(targeting, node.id);
+    targeting = null;
+  }
+
+  /**
+   * COSA FA OGNI BOTTONE DELLA BARRA — una tabella, non un `if` per azione: la stessa idea di
+   * `RUN` in `CanvasKeys.svelte`, qui perché lo stato della selezione (`selection.ids`) vive in
+   * questo componente e non in quello.
+   */
+  const SELECTION_RUN: Record<SelectionActionId, (ids: string[]) => void> = {
+    duplicate: (ids) => onDuplicate?.(ids),
+    'connect-new': () => {
+      if (!selection.box) return;
+      connectPickerAt = { x: selection.box.x + selection.box.width + 24, y: selection.box.y };
+    },
+    'connect-existing': (ids) => {
+      targeting = ids;
+    },
+    delete: (ids) => onDelete?.(ids)
+  };
+
+  function runSelectionAction(id: SelectionActionId) {
+    if (!selection.ids.length) return;
+    SELECTION_RUN[id](selection.ids);
+  }
+
+  function pickConnectMedium(medium: GenMedium) {
+    if (!connectPickerAt || !toFlow) { connectPickerAt = null; return; }
+
+    onConnectNew?.(selection.ids, medium, toFlow(connectPickerAt));
+    connectPickerAt = null;
+  }
+
   // La conversione schermo → tela arriva da `CanvasPointer` DOPO il mount — serve al trascinamento
   // (`onDrop`) e al clic sulla barra (`addAtCentre`). `$state` e non un `let` semplice: in una
   // variabile non reattiva chi la legge prima del mount vedrebbe il `null` di partenza per sempre.
@@ -386,6 +465,7 @@
     onnodedragstop={onNodeDragStop}
     onconnect={onConnected}
     onedgeclick={onEdgeClick}
+    onnodeclick={onNodeClick}
     {isValidConnection}
     onconnectend={() => (refusal = null)}
     panOnScroll
@@ -404,6 +484,7 @@
       oncopy={onCopy}
       onpaste={onPaste}
     />
+    <CanvasSelectionBridge onchange={(next) => (selection = next)} />
     <Background gap={24} />
   </SvelteFlow>
 
@@ -413,8 +494,18 @@
     <p class="edge-refusal" role="status">{refusal}</p>
   {/if}
 
+  {#if targeting}
+    <p class="edge-refusal" role="status">Scegli il nodo a cui collegare — Esc per annullare</p>
+  {/if}
+
   {#if onCreate}
     <CanvasAddBar onpick={addAtCentre} onupload={onUpload} />
+  {/if}
+
+  <SelectionToolbar box={selection.box} count={selection.ids.length} onaction={runSelectionAction} />
+
+  {#if connectPickerAt}
+    <ConnectPicker at={connectPickerAt} onpick={pickConnectMedium} onclose={() => (connectPickerAt = null)} />
   {/if}
 
   {#if picked && (onEdgeRetype || onEdgeDelete)}
@@ -451,6 +542,8 @@
     if (e.key !== 'Escape') return;
     picked = null;
     refusal = null;
+    connectPickerAt = null;
+    targeting = null;
   }}
 />
 
