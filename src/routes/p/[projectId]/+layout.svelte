@@ -34,7 +34,7 @@
   const currentCanvas = $derived(data.canvases.find((c: { id: string }) => c.id === canvasId));
   const activeSheetId = $derived(page.state.sheet ? sheetEntryForPath(page.state.sheet.path)?.id ?? null : null);
 
-  let leftPanel = $state<'assets' | 'brands' | null>(null);
+  let leftPanel = $state<'assets' | 'brands' | 'influencers' | null>(null);
   let chatOpen = $state(browser ? readChatOpen() : true);
   let mobileMoreOpen = $state(false);
   let mobileView = $state<'canvas' | 'chat'>('canvas');
@@ -54,7 +54,7 @@
   }
 
   function onRailPanel(entry: NavEntry) {
-    leftPanel = leftPanel === entry.id ? null : (entry.id as 'assets' | 'brands');
+    leftPanel = leftPanel === entry.id ? null : (entry.id as 'assets' | 'brands' | 'influencers');
   }
 
   function onRailSheet(entry: NavEntry) {
@@ -96,7 +96,7 @@
           <CanvasLeftPanel
             {projectId}
             kind={leftPanel}
-            labelKey={leftPanel === 'assets' ? 'app.nav2.materials' : 'app.nav2.brands'}
+            labelKey={leftPanel === 'assets' ? 'app.nav2.materials' : leftPanel === 'brands' ? 'app.nav2.brands' : 'app.nav2.influencers'}
             onclose={() => (leftPanel = null)}
           />
         {/if}

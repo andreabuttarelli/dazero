@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { NAV_ENTRIES, navEntriesByGroup, navHref, sheetEntryForPath, MOBILE_TABS, MOBILE_MORE_ENTRIES } from './shell-nav';
 
 describe('la rail: due gruppi, un comportamento a testa', () => {
-  it('il gruppo "panel" è Assets e Brands, in quest\'ordine', () => {
-    expect(navEntriesByGroup('panel').map((e) => e.id)).toEqual(['assets', 'brands']);
+  it('il gruppo "panel" è Assets, Brands e Influencers, in quest\'ordine', () => {
+    expect(navEntriesByGroup('panel').map((e) => e.id)).toEqual(['assets', 'brands', 'influencers']);
   });
 
-  it('il gruppo "workbench" è Ads, Settings, in quest\'ordine', () => {
-    expect(navEntriesByGroup('workbench').map((e) => e.id)).toEqual(['ads', 'settings']);
+  it('il gruppo "workbench" è Calendar, Ads, Settings, in quest\'ordine', () => {
+    expect(navEntriesByGroup('workbench').map((e) => e.id)).toEqual(['calendar', 'ads', 'settings']);
   });
 
   it('ogni voce del gruppo panel apre un pannello, ogni voce workbench un foglio', () => {
@@ -26,6 +26,7 @@ describe('la rail: due gruppi, un comportamento a testa', () => {
 
 describe('sheetEntryForPath: quale voce apre il foglio', () => {
   it('un path esatto apre il suo foglio', () => {
+    expect(sheetEntryForPath('/calendar')?.id).toBe('calendar');
     expect(sheetEntryForPath('/ads/social')?.id).toBe('ads');
     expect(sheetEntryForPath('/settings/connected-accounts')?.id).toBe('settings');
   });
@@ -41,16 +42,16 @@ describe('sheetEntryForPath: quale voce apre il foglio', () => {
   });
 
   it('uno slash finale non cambia il verdetto', () => {
-    expect(sheetEntryForPath('/ads/social/')?.id).toBe('ads');
+    expect(sheetEntryForPath('/calendar/')?.id).toBe('calendar');
   });
 });
 
 describe('la barra mobile', () => {
-  it('ha quattro voci fisse, Canvas · Chat · Ads · More', () => {
-    expect(MOBILE_TABS.map((t) => t.id)).toEqual(['canvas', 'chat', 'ads', 'more']);
+  it('ha quattro voci fisse, Canvas · Chat · Calendar · More', () => {
+    expect(MOBILE_TABS.map((t) => t.id)).toEqual(['canvas', 'chat', 'calendar', 'more']);
   });
 
-  it('"More" raccoglie tutto tranne Ads, che ha già la sua voce', () => {
-    expect(MOBILE_MORE_ENTRIES.map((e) => e.id)).toEqual(['assets', 'brands', 'settings']);
+  it('"More" raccoglie tutto tranne Calendar, che ha già la sua voce', () => {
+    expect(MOBILE_MORE_ENTRIES.map((e) => e.id)).toEqual(['assets', 'brands', 'influencers', 'ads', 'settings']);
   });
 });

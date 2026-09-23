@@ -7,22 +7,23 @@
   import { sheetEntryForPath } from '$lib/shell-nav';
   import { SETTINGS_GROUPS } from '$lib/components/settings/platforms';
   import { cn } from '$lib/utils';
+  import CalendarPage from '../../../routes/p/[projectId]/calendar/+page.svelte';
   import AdsSocialPage from '../../../routes/p/[projectId]/ads/social/+page.svelte';
   import SettingsLayout from '../../../routes/p/[projectId]/settings/+layout.svelte';
 
   let { projectId }: { projectId: string } = $props();
 
   /**
-   * IL FOGLIO FLOTTANTE su Ads/Settings — "usati AL POSTO della tela" (CLAUDE.md). Le pagine
-   * sono le stesse che rispondono a un link diretto o a un refresh: un'implementazione, due
-   * presentazioni. `page.state.sheet` arriva da `openSheet` (shallow routing, `sheet-nav.ts`) e
-   * porta già il `data` del loro `load` — questo componente non ne rifà uno suo.
+   * IL FOGLIO FLOTTANTE su Calendar/Ads/Settings — "usati AL POSTO della tela" (CLAUDE.md). Le
+   * pagine sono le stesse che rispondono a un link diretto o a un refresh: un'implementazione,
+   * due presentazioni. `page.state.sheet` arriva da `openSheet` (shallow routing, `sheet-nav.ts`)
+   * e porta già il `data` del loro `load` — questo componente non ne rifà uno suo.
    *
    * Settings ha 13 sezioni che cambiano nel tempo (Agent F ne aggiunge): `settingsPageLoader`
    * (`sheet-pages.ts`) le trova per cartella con `import.meta.glob`, una sezione nuova non
    * richiede una riga qui, e lo switcher qui sotto legge lo stesso `SETTINGS_GROUPS` di Agent F —
-   * non un elenco duplicato. Ads non ha sotto-sezioni, quindi resta importata diretta — la stessa
-   * asimmetria che ha già il filesystem delle rotte.
+   * non un elenco duplicato. Calendar e Ads non hanno sotto-sezioni, quindi restano importate
+   * dirette — la stessa asimmetria che ha già il filesystem delle rotte.
    */
   const sheet = $derived(page.state.sheet ?? null);
   const entry = $derived(sheet ? sheetEntryForPath(sheet.path) : null);
@@ -69,6 +70,8 @@
             </SettingsLayout>
           </div>
         </div>
+      {:else if entry.id === 'calendar'}
+        <CalendarPage data={sheet.data as never} />
       {:else if entry.id === 'ads'}
         <AdsSocialPage data={sheet.data as never} form={null} />
       {/if}

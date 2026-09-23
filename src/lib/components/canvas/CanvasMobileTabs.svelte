@@ -3,19 +3,19 @@
   import { MOBILE_TABS, type MobileTab } from '$lib/shell-nav';
   import LayoutGrid from '@lucide/svelte/icons/layout-grid';
   import MessageCircle from '@lucide/svelte/icons/message-circle';
-  import Megaphone from '@lucide/svelte/icons/megaphone';
+  import CalendarDays from '@lucide/svelte/icons/calendar-days';
   import MoreHorizontal from '@lucide/svelte/icons/more-horizontal';
   import type { Component } from 'svelte';
 
   const ICONS: Record<MobileTab['icon'], Component<{ size?: number }>> = {
     'layout-grid': LayoutGrid,
     'message-circle': MessageCircle,
-    megaphone: Megaphone,
+    'calendar-days': CalendarDays,
     'more-horizontal': MoreHorizontal
   };
 
   /**
-   * LA BARRA MOBILE: Canvas · Chat · Ads · More, ognuna la sua rotta intera (CLAUDE.md).
+   * LA BARRA MOBILE: Canvas · Chat · Calendar · More, ognuna la sua rotta intera (CLAUDE.md).
    * `active` confronta l'id, non l'URL: "canvas" e "chat" non hanno un `path` proprio (sono la
    * stessa pagina canvas, con la chat aperta o chiusa — vedi `+layout.svelte`), quindi lo decide
    * chi monta questo componente, non un confronto con `page.url` che qui non avrebbe niente da

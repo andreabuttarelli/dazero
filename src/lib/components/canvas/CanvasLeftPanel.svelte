@@ -1,13 +1,17 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
   import ProjectDragPanel from './ProjectDragPanel.svelte';
+  import InfluencersPanel from './InfluencersPanel.svelte';
   import X from '@lucide/svelte/icons/x';
 
   /**
-   * IL PANNELLO ACCANTO ALLA TELA — Assets o Brands, uno alla volta (CLAUDE.md: "One left panel
-   * at a time"). La tela resta interattiva dietro: non è un `Sheet`, è un riquadro non modale che
-   * la rail apre e chiude, e da cui si trascina direttamente su `CanvasFlow` (`ProjectDragPanel`
-   * fa già questo — qui solo l'intestazione e la chiusura).
+   * IL PANNELLO ACCANTO ALLA TELA — Assets, Brands o Influencers, uno alla volta (CLAUDE.md: "One
+   * left panel at a time"). La tela resta interattiva dietro: non è un `Sheet`, è un riquadro non
+   * modale che la rail apre e chiude, e da cui si trascina direttamente su `CanvasFlow`.
+   *
+   * `influencers` delega tutto — intestazione compresa — a `InfluencersPanel`, componente
+   * autonomo con i propri filtri (genere/età/etnia) che `ProjectDragPanel` non ha: qui non si
+   * ripete un'intestazione sopra un'altra.
    */
   let {
     projectId,
@@ -16,23 +20,29 @@
     onclose
   }: {
     projectId: string;
-    kind: 'assets' | 'brands';
+    kind: 'assets' | 'brands' | 'influencers';
     labelKey: string;
     onclose: () => void;
   } = $props();
 </script>
 
-<div class="left-panel">
-  <div class="left-panel-head">
-    <h3>{$_(labelKey)}</h3>
-    <button type="button" class="close" onclick={onclose} aria-label={$_('app.shell.closePanel')}>
-      <X size={14} />
-    </button>
+{#if kind === 'influencers'}
+  <div class="left-panel">
+    <InfluencersPanel {projectId} {onclose} />
   </div>
-  <div class="left-panel-body">
-    <ProjectDragPanel {projectId} {kind} />
+{:else}
+  <div class="left-panel">
+    <div class="left-panel-head">
+      <h3>{$_(labelKey)}</h3>
+      <button type="button" class="close" onclick={onclose} aria-label={$_('app.shell.closePanel')}>
+        <X size={14} />
+      </button>
+    </div>
+    <div class="left-panel-body">
+      <ProjectDragPanel {projectId} {kind} />
+    </div>
   </div>
-</div>
+{/if}
 
 <style>
   .left-panel {
