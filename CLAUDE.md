@@ -88,7 +88,12 @@ porta il padre.
   (privato anche lui): `catalogue/<influencerId>/...` (letto da chiunque abbia una sessione) e
   `<orgId>/<influencerId>/...` (letto solo dalla propria org) — la sola policy di lettura del
   primo confronta il segmento con la STRINGA `'catalogue'`, non con un `org_id` in `auth_org_ids()`
-  come ogni altra policy di questo bucket e di `canvas-assets`.
+  come ogni altra policy di questo bucket e di `canvas-assets`. Bucket `media`, PUBBLICO
+  (`20260923_media_bucket.sql`, non ancora applicata) — non per la produzione AI riusabile, che va
+  in `brand-knowledge`/`signKnowledgePaths` come ogni altro asset `generated`, ma per ciò che deve
+  restare un URL nudo, durevole oltre la sessione: avatar (`${userId}/profile/...`), logo del brand
+  (`${userId}/studio/...`, `${brandId}/logo-...`) e swatch di un colore trascinato sulla tela
+  (`colours/${orgId}/${hex}.png`).
 
 I tipi vengono **generati** (`npm run db:types` → `src/lib/database.types.ts`), mai scritti a
 mano: sono ciò che trasforma una colonna sbagliata in un errore di compilazione invece che in un
