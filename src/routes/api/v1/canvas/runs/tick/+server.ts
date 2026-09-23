@@ -6,8 +6,6 @@ import { cronAuthorized } from '$lib/server/cron-auth';
 import { expireStuckRuns, reconcileVideoNodeRuns } from '$lib/server/canvas/generate';
 import { pruneOldCanvasEvents } from '$lib/server/canvas/retention';
 
-export const config = { maxDuration: 60 };
-
 const USE = SERVICE_ROLE_USES.find((u) => u.path.startsWith('src/routes/api/v1/canvas/runs/tick'))!;
 
 /**
