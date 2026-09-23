@@ -79,3 +79,84 @@ describe('canvas action input', () => {
     expect(input.calls.some((call) => call.op === 'insert')).toBe(false);
   });
 });
+
+describe('duplicate action', () => {
+  function event(fields: Record<string, string>, nodes: Record<string, unknown>[] = []) {
+    const fake = fakeDb({
+      orgs_members: [{ role: 'owner', orgs: { id: 'org', name: 'Org', slug: 'org' } }],
+      canvases: [{ id: 'canvas', project_id: 'project', name: 'Canvas', viewport: null }],
+      nodes,
+      nodes_connections: []
+    });
+    const body = new FormData();
+    for (const [key, value] of Object.entries(fields)) { body.set(key, value); }
+    return {
+      ...fake,
+      request: new Request('http://localhost/c/canvas', { method: 'POST', body }),
+      params: { canvasId: 'canvas' },
+      locals: { safeGetSession: async () => ({ session: {}, user: { id: 'user' } }), db: async () => fake.db }
+    };
+  }
+
+  it('rejects a request with no ids, before writing', async () => {
+    const input = event({ node_ids: '' });
+    const result = await actions.duplicate(input as never);
+    expect(result).toMatchObject({ status: 400 });
+    expect(input.calls.some((call) => call.op === 'insert')).toBe(false);
+  });
+
+  it('creates a copy of an existing node', async () => {
+    const input = event({ node_ids: 'a' }, [
+      { id: 'a', canvas_id: 'canvas', project_id: 'project', type: 'text', display_name: null, x: 0, y: 0, z: 0, width: null, height: null, data: { prompt: 'ciao' }, version: 1 }
+    ]);
+    const result = await actions.duplicate(input as never);
+    expect(result).not.toMatchObject({ status: 400 });
+    expect(input.calls.some((call) => call.table === 'nodes' && call.op === 'insert')).toBe(true);
+  });
+});
+
+describe('paste action', () => {
+  function event(fields: Record<string, string>) {
+    const fake = fakeDb({
+      orgs_members: [{ role: 'owner', orgs: { id: 'org', name: 'Org', slug: 'org' } }],
+      canvases: [{ id: 'canvas', project_id: 'project', name: 'Canvas', viewport: null }],
+      nodes: [],
+      nodes_connections: []
+    });
+    const body = new FormData();
+    for (const [key, value] of Object.entries(fields)) { body.set(key, value); }
+    return {
+      ...fake,
+      request: new Request('http://localhost/c/canvas', { method: 'POST', body }),
+      params: { canvasId: 'canvas' },
+      locals: { safeGetSession: async () => ({ session: {}, user: { id: 'user' } }), db: async () => fake.db }
+    };
+  }
+
+  it('rejects a request with no nodes, before writing', async () => {
+    const input = event({ nodes: '[]', edges: '[]' });
+    const result = await actions.paste(input as never);
+    expect(result).toMatchObject({ status: 400 });
+    expect(input.calls.some((call) => call.op === 'insert')).toBe(false);
+  });
+
+  it('rejects a node whose data does not match its type, before writing any of the batch', async () => {
+    const input = event({
+      nodes: JSON.stringify([{ type: 'text', data: { no_prompt: true }, x: 0, y: 0 }]),
+      edges: '[]'
+    });
+    const result = await actions.paste(input as never);
+    expect(result).toMatchObject({ status: 400 });
+    expect(input.calls.some((call) => call.op === 'insert')).toBe(false);
+  });
+
+  it('creates every pasted node', async () => {
+    const input = event({
+      nodes: JSON.stringify([{ type: 'text', data: { prompt: 'ciao' }, x: 10, y: 20 }]),
+      edges: '[]'
+    });
+    const result = await actions.paste(input as never);
+    expect(result).not.toMatchObject({ status: 400 });
+    expect(input.calls.filter((call) => call.table === 'nodes' && call.op === 'insert')).toHaveLength(1);
+  });
+});

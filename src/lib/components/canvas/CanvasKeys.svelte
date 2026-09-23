@@ -23,7 +23,10 @@
   let {
     onadd,
     ondelete,
-    onmove
+    onmove,
+    onduplicate,
+    oncopy,
+    onpaste
   }: {
     /** Aggiungi una tile del tipo chiesto, dove chi monta la tela decide. */
     onadd?: (what: Addable) => void;
@@ -38,9 +41,15 @@
     ondelete?: (picked: { nodes: string[]; edges: string[] }) => void;
     /** Dove una tile è finita, con lo stesso contratto del trascinamento. */
     onmove?: (id: string, x: number, y: number) => void;
+    /** ⌘D: duplica la selezione, con gli id come SvelteFlow li conosce. */
+    onduplicate?: (ids: string[]) => void;
+    /** ⌘C: copia la selezione negli appunti di chi monta la tela. */
+    oncopy?: (ids: string[]) => void;
+    /** ⌘V: incolla, al centro di quel che si sta guardando. */
+    onpaste?: (at: { x: number; y: number }) => void;
   } = $props();
 
-  const { fitView, zoomIn, zoomOut, getNodes, getEdges, updateNode } = useSvelteFlow();
+  const { fitView, zoomIn, zoomOut, getNodes, getEdges, updateNode, screenToFlowPosition } = useSvelteFlow();
 
   const selected = (): Node[] => getNodes().filter((n) => n.selected);
 
@@ -68,6 +77,13 @@
    * e il prossimo comando si aggiunge con una riga. Il registro decide QUALE; questa tabella
    * decide COME, e le due liste stanno una accanto all'altra.
    */
+  /** Il centro di quel che si sta guardando ADESSO, in unità di tela: dove un ⌘V senza puntatore
+   *  atterra. `innerWidth/innerHeight` bastano — è un centro approssimato, non un punto esatto
+   *  chiesto dall'utente, come lo è `addAtCentre` per la barra. */
+  function screenCentre(): { x: number; y: number } {
+    return screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  }
+
   const RUN: Record<CanvasCommand['id'], (c: CanvasCommand) => void> = {
     add: (c) => c.id === 'add' && onadd?.(c.what),
     nudge: (c) => c.id === 'nudge' && nudge(c.dx, c.dy),
@@ -80,7 +96,16 @@
     'select-all': () => setSelection(true),
     fit: () => void fitView(),
     'zoom-in': () => zoomIn(),
-    'zoom-out': () => zoomOut()
+    'zoom-out': () => zoomOut(),
+    duplicate: () => {
+      const ids = selected().map((n) => n.id);
+      if (ids.length) onduplicate?.(ids);
+    },
+    copy: () => {
+      const ids = selected().map((n) => n.id);
+      if (ids.length) oncopy?.(ids);
+    },
+    paste: () => onpaste?.(screenCentre())
   };
 
   function onKeydown(e: KeyboardEvent) {

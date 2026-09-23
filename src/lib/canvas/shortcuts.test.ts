@@ -57,6 +57,31 @@ describe('mentre si scrive, la tela non tocca la tastiera', () => {
     expect(matchCanvasShortcut(ev('a', { metaKey: true, target: TEXTAREA }))).toBeNull();
     expect(matchCanvasShortcut(ev('a', { ctrlKey: true, target: EDITABLE }))).toBeNull();
   });
+
+  it('nemmeno duplica, copia o incolla — ⌘C/⌘V hanno già un senso su un campo', () => {
+    expect(matchCanvasShortcut(ev('d', { metaKey: true, target: TEXTAREA }))).toBeNull();
+    expect(matchCanvasShortcut(ev('c', { metaKey: true, target: TEXTAREA }))).toBeNull();
+    expect(matchCanvasShortcut(ev('v', { metaKey: true, target: TEXTAREA }))).toBeNull();
+  });
+});
+
+describe('duplicare, copiare, incollare', () => {
+  it('⌘D duplica la selezione', () => {
+    expect(matchCanvasShortcut(ev('d', { metaKey: true }))).toEqual({ id: 'duplicate' });
+    expect(matchCanvasShortcut(ev('d', { ctrlKey: true }))).toEqual({ id: 'duplicate' });
+  });
+
+  it('⌘C copia la selezione', () => {
+    expect(matchCanvasShortcut(ev('c', { metaKey: true }))).toEqual({ id: 'copy' });
+  });
+
+  it('⌘V incolla dove punta lo schermo', () => {
+    expect(matchCanvasShortcut(ev('v', { metaKey: true }))).toEqual({ id: 'paste' });
+  });
+
+  it('⌘⇧D non è duplica: un secondo tasto sulla stessa lettera confonderebbe', () => {
+    expect(matchCanvasShortcut(ev('d', { metaKey: true, shiftKey: true }))).toBeNull();
+  });
 });
 
 describe('quello che i tasti fanno sulla tela', () => {
@@ -72,13 +97,6 @@ describe('quello che i tasti fanno sulla tela', () => {
   it('⌘A (e Ctrl+A) selezionano tutto', () => {
     expect(matchCanvasShortcut(ev('a', { metaKey: true }))?.id).toBe('select-all');
     expect(matchCanvasShortcut(ev('A', { ctrlKey: true }))?.id).toBe('select-all');
-  });
-
-  it('duplicare non è un tasto, finché non è una scrittura', () => {
-    // Copiare il solo disegno darebbe una tile che sparisce alla prossima apertura: un tasto che
-    // perde lavoro è peggio di un tasto che non c'è.
-    expect(matchCanvasShortcut(ev('d', { metaKey: true }))).toBeNull();
-    expect(matchCanvasShortcut(ev('d', { metaKey: true, shiftKey: true }))).toBeNull();
   });
 
   it('i numeri aggiungono, nello stesso ordine della barra', () => {
@@ -163,7 +181,10 @@ describe('la scheda che le elenca', () => {
     // Una scheda scritta a mano accanto al riconoscimento diverge al primo tasto cambiato, e a
     // divergere è sempre quella che l'utente legge.
     const listed = new Set(CANVAS_SHORTCUTS.map((s) => s.id));
-    for (const id of ['delete', 'deselect', 'select-all', 'add', 'fit', 'zoom-in', 'zoom-out', 'nudge']) {
+    for (const id of [
+      'delete', 'deselect', 'select-all', 'add', 'fit', 'zoom-in', 'zoom-out', 'nudge',
+      'duplicate', 'copy', 'paste'
+    ]) {
       expect(listed).toContain(id);
     }
   });

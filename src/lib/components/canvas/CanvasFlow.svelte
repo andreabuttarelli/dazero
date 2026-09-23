@@ -35,7 +35,7 @@
   import { CANVAS_DRAG_FILLED_NODE, parseFilledNodeDrag, type FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { syncNodes } from '$lib/canvas/tile-sync';
   import { CANVAS_EDGE_KINDS, EDGE_KIND_LABEL, type CanvasEdgeKind, type FlowEdge } from '$lib/canvas-edges';
-  import { CANVAS_ADDABLE, ADDABLE_LABEL, isAddable, type Addable } from '$lib/canvas/addable';
+  import { isAddable, type Addable } from '$lib/canvas/addable';
   import { DEFAULT_EDGE_KIND, edgeKindsFor, verdictBetween } from '$lib/canvas/connect-rules';
   import { connectorAccepts } from '$lib/canvas/connector-ports';
   import { isListValued, type ConnectorType } from '$lib/canvas/connectors';
@@ -78,6 +78,9 @@
     onCreate,
     onCreateFilled,
     onUpload,
+    onDuplicate,
+    onCopy,
+    onPaste,
     tile
   }: {
     tiles?: Tile[];
@@ -101,17 +104,23 @@
     onEdgeDelete?: (edgeId: string) => void;
     /** Il verso di una linea che c'è già: si corregge, non si rifà. */
     onEdgeRetype?: (edgeId: string, kind: CanvasEdgeKind) => void;
-    /** Una tile nuova chiesta col doppio clic, col punto già in unità di tela. */
+    /** Una tile nuova chiesta dalla barra o dal trascinamento, col punto già in unità di tela. */
     onCreate?: (what: Addable, at: { x: number; y: number }) => void;
     /**
      * Una tile che nasce già PIENA — trascinata dalla libreria degli asset o dai brand, non dal
-     * menù del doppio clic. `onDrop` la prova PRIMA del fallback `onCreate`: un file che ha già
+     * click sulla barra. `onDrop` la prova PRIMA del fallback `onCreate`: un file che ha già
      * un `assetId` non deve mai diventare un nodo vuoto perché il ramo sbagliato ha guardato per
      * primo.
      */
     onCreateFilled?: (drag: FilledNodeDrag, at: { x: number; y: number }) => void;
     /** Un file scelto dalla barra: la tela non lo carica da sé, lo passa a chi la monta. */
     onUpload?: (file: File) => void;
+    /** ⌘D: duplica la selezione, con gli id come SvelteFlow li conosce. */
+    onDuplicate?: (ids: string[]) => void;
+    /** ⌘C: copia la selezione negli appunti di chi monta la tela. */
+    onCopy?: (ids: string[]) => void;
+    /** ⌘V: incolla, al centro di quel che si sta guardando adesso. */
+    onPaste?: (at: { x: number; y: number }) => void;
     /** Cosa disegnare dentro una tile. La tela non sa cosa mostra: lo decide chi la usa. */
     tile: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
   } = $props();
@@ -289,38 +298,10 @@
     if (chosen.nodes.length) onDelete?.(chosen.nodes);
   }
 
-  /**
-   * IL MENÙ DEL DOPPIO CLIC.
-   *
-   * Si apre dove si è cliccato e porta tutto ciò che si può aggiungere. Tiene DUE punti: quello
-   * dello schermo, che serve a disegnarlo, e quello della tela, che è dove il nodo andrà —
-   * separati perché la tela si può scorrere mentre il menù è aperto, e un solo punto darebbe un
-   * nodo che nasce altrove.
-   */
-  let menu = $state<{ screen: { x: number; y: number }; flow: { x: number; y: number } } | null>(null);
-  // `$state` e non un `let` semplice: la conversione arriva da `CanvasPointer` DOPO il mount, e in
-  // una variabile non reattiva il gestore del doppio clic continuerebbe a leggere il `null` di
-  // partenza — il menù non si aprirebbe mai, e senza errori.
+  // La conversione schermo → tela arriva da `CanvasPointer` DOPO il mount — serve al trascinamento
+  // (`onDrop`) e al clic sulla barra (`addAtCentre`). `$state` e non un `let` semplice: in una
+  // variabile non reattiva chi la legge prima del mount vedrebbe il `null` di partenza per sempre.
   let toFlow = $state<((p: { x: number; y: number }) => { x: number; y: number }) | null>(null);
-
-  function openMenu(e: MouseEvent) {
-    if (!onCreate || !toFlow) return;
-    // Solo sullo sfondo: doppio clic su una tile è un gesto suo (aprire, rinominare), e aprirci
-    // sopra un menù di creazione lo ruberebbe.
-    if ((e.target as HTMLElement)?.closest('.svelte-flow__node')) return;
-
-    e.preventDefault();
-    menu = {
-      screen: { x: e.clientX, y: e.clientY },
-      flow: toFlow({ x: e.clientX, y: e.clientY })
-    };
-  }
-
-  function pick(what: Addable) {
-    if (!menu) return;
-    onCreate?.(what, menu.flow);
-    menu = null;
-  }
 
   /**
    * Qualcosa lasciato cadere sulla tela. `ondragover` con `preventDefault` non è cerimonia: senza,
@@ -371,13 +352,11 @@
   let wrap = $state<HTMLDivElement | null>(null);
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -- il doppio clic è una scorciatoia sulla
-     tela, non l'unico modo di creare un nodo: chi usa la tastiera passa dai bottoni di chi la
-     monta, e il menù che si apre è raggiungibile da lì. -->
+<!-- svelte-ignore a11y_no_static_element_interactions -- il trascinamento è una scorciatoia sulla
+     tela, non l'unico modo di creare un nodo: chi non trascina usa la barra o la tastiera. -->
 <div
   class="wrap"
   bind:this={wrap}
-  ondblclick={openMenu}
   ondragover={onDragOver}
   ondrop={onDrop}
 >
@@ -387,9 +366,9 @@
     (`zoomOnScroll={false}`) — che sarebbe il difetto peggiore su un trackpad, la scala che salta
     mentre si scorre.
 
-    Il quarto spegne lo zoom sul DOPPIO CLIC, che la libreria fa di default e prima che l'evento
-    arrivi a noi: il menù per aggiungere un nodo si apriva mentre la tela saltava di una tacca
-    sotto di lui. Un gesto, un significato.
+    Il quarto spegne lo zoom sul DOPPIO CLIC, che la libreria fa di default: un doppio clic sullo
+    sfondo non ha più un gesto proprio qui, e lasciare lo zoom della libreria darebbe un salto di
+    scala che nessuno ha chiesto.
 
     È il caso in cui la libreria guadagna: il comportamento si chiede, non si scrive.
 
@@ -417,7 +396,14 @@
     fitView
   >
     <CanvasPointer onready={(fn) => (toFlow = fn)} />
-    <CanvasKeys onadd={addAtCentre} onmove={onMove} ondelete={dropSelection} />
+    <CanvasKeys
+      onadd={addAtCentre}
+      onmove={onMove}
+      ondelete={dropSelection}
+      onduplicate={onDuplicate}
+      oncopy={onCopy}
+      onpaste={onPaste}
+    />
     <Background gap={24} />
   </SvelteFlow>
 
@@ -458,38 +444,11 @@
       {/if}
     </div>
   {/if}
-
-  {#if menu}
-    <!-- Chiude cliccando altrove o con Esc: un menù che resta aperto mentre si scorre la tela
-         punterebbe a un posto che non è più quello. -->
-    <div
-      class="gen-menu-veil"
-      role="presentation"
-      onclick={() => (menu = null)}
-      oncontextmenu={(e) => {
-        e.preventDefault();
-        menu = null;
-      }}
-    ></div>
-    <div
-      class="gen-menu"
-      role="menu"
-      tabindex="-1"
-      style={`left:${menu.screen.x}px; top:${menu.screen.y}px`}
-    >
-      {#each CANVAS_ADDABLE as what (what)}
-        <button type="button" role="menuitem" onclick={() => pick(what)}>
-          {ADDABLE_LABEL[what]}
-        </button>
-      {/each}
-    </div>
-  {/if}
 </div>
 
 <svelte:window
   onkeydown={(e) => {
     if (e.key !== 'Escape') return;
-    menu = null;
     picked = null;
     refusal = null;
   }}
@@ -529,39 +488,13 @@
     color: var(--ink-soft, #6e6e73);
   }
 
-  /* Il menù del doppio clic. `position: fixed` perché il punto che lo colloca è quello dello
-     SCHERMO: dentro il flusso si muoverebbe con la tela mentre lo si guarda. */
+  /* Lo sfondo cliccabile che chiude il pannello di una linea. `position: fixed` perché il punto
+     che lo colloca è quello dello SCHERMO: dentro il flusso si muoverebbe con la tela mentre lo
+     si guarda. */
   .gen-menu-veil {
     position: fixed;
     inset: 0;
     z-index: 20;
-  }
-  .gen-menu {
-    position: fixed;
-    z-index: 21;
-    display: flex;
-    flex-direction: column;
-    min-width: 132px;
-    padding: 4px;
-    border-radius: 10px;
-    background: var(--paper, #fff);
-    border: 1px solid var(--line-2, #d2d2d7);
-    box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
-  }
-  .gen-menu button {
-    padding: 6px 10px;
-    font: inherit;
-    font-size: 12.5px;
-    text-align: left;
-    color: var(--ink, #1d1d1f);
-    background: none;
-    border: none;
-    border-radius: 7px;
-    cursor: pointer;
-  }
-  .gen-menu button:hover,
-  .gen-menu button:focus-visible {
-    background: var(--paper-2, #f9f9f9);
   }
 
   /* Il motivo del rifiuto, sotto lo sguardo di chi sta tirando la linea e non in un angolo:

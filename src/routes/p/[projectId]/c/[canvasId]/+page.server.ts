@@ -24,6 +24,7 @@ import { clearDocShare, setDocShare } from '$lib/server/repos/doc-share';
 import { isCanvasEdgeKind } from '$lib/canvas-edges';
 import { canvasModelCatalogue } from '$lib/server/canvas-catalogue';
 import { runGenNode, runsOf } from '$lib/server/canvas/generate';
+import { duplicateNodes } from '$lib/server/canvas/duplicate';
 import { gateOrgAiAction } from '$lib/server/cli-auth';
 import { listNodeProducts } from '$lib/server/repos/products';
 import { listNodeSocialPosts } from '$lib/server/repos/social-posts';
@@ -647,5 +648,98 @@ export const actions: Actions = {
     }
 
     return { removed: true };
+  },
+
+  /**
+   * ⌘D SULLA SELEZIONE, O ⌘V DI QUEL CHE ⌘C HA COPIATO: stessa scrittura, forme diverse di chi la
+   * chiede — duplicare rilegge gli id dalla tela aperta, incollare porta già `type`/`data`/`x`/`y`
+   * per ogni nodo (il client li ha letti dal proprio stato, magari da un'ALTRA tela della stessa
+   * org) più le linee interne per indice. `duplicateNodes` fa la prima; questa azione fa anche la
+   * seconda quando `nodes` arriva nel form — la stessa validazione di `create`, ripetuta per riga,
+   * perché un payload che viaggia nella clipboard non è meno un input esterno di un form.
+   */
+  duplicate: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const nodeIds = String(fd.get('node_ids') ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (!nodeIds.length) {
+      return fail(400, { error: 'niente da duplicare' });
+    }
+
+    const out = await duplicateNodes(scope.db, {
+      orgId: scope.orgId,
+      projectId: scope.canvas.projectId,
+      canvasId: scope.canvasId,
+      nodeIds,
+      actor: userActor(scope)
+    });
+
+    return out;
+  },
+
+  paste: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    let pasted: { type: string; data: Record<string, unknown>; x: number; y: number }[];
+    let edges: { sourceIndex: number; targetIndex: number; sourceHandle: string | null; targetHandle: string | null }[];
+    try {
+      pasted = JSON.parse(String(fd.get('nodes') ?? '[]'));
+      edges = JSON.parse(String(fd.get('edges') ?? '[]'));
+      if (!Array.isArray(pasted) || !Array.isArray(edges)) {
+        return fail(400, { error: 'contenuto non valido' });
+      }
+    } catch {
+      return fail(400, { error: 'contenuto non leggibile' });
+    }
+    if (!pasted.length) {
+      return fail(400, { error: 'niente da incollare' });
+    }
+
+    const nodes: Awaited<ReturnType<typeof createNode>>[] = [];
+    for (const p of pasted) {
+      const verdict = validateNodeData(p.type, p.data);
+      if (!verdict.ok) {
+        return fail(400, { error: verdict.error });
+      }
+
+      const node = await createNode(scope.db, {
+        orgId: scope.orgId,
+        projectId: scope.canvas.projectId,
+        canvasId: scope.canvasId,
+        type: p.type,
+        x: p.x,
+        y: p.y,
+        data: verdict.data,
+        actor: userActor(scope)
+      });
+      nodes.push(node);
+    }
+
+    const connections: Awaited<ReturnType<typeof createConnection>>[] = [];
+    for (const e of edges) {
+      const source = nodes[e.sourceIndex];
+      const target = nodes[e.targetIndex];
+      if (!source || !target) {
+        continue;
+      }
+      connections.push(
+        await createConnection(scope.db, {
+          orgId: scope.orgId,
+          canvasId: scope.canvasId,
+          sourceNodeId: source.id,
+          targetNodeId: target.id,
+          sourceHandle: e.sourceHandle,
+          targetHandle: e.targetHandle,
+          actor: userActor(scope)
+        })
+      );
+    }
+
+    return { nodes, connections };
   }
 };

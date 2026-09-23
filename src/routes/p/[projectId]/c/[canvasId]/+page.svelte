@@ -629,6 +629,72 @@
   }
 
   /**
+   * ⌘D: duplica la selezione. Il server rilegge le righe VERE da `nodeIds` — la copia non fida
+   * dello stato del client, che potrebbe avere una posizione o un contenuto non ancora salvato —
+   * e restituisce nodi e linee già nati, pronti per lo stesso `toTile`/`toEdge` di ogni altra
+   * creazione. Niente ottimismo qui: un duplicato che compare e poi sparisce (il server rifiuta)
+   * è più confuso di un'attesa breve, e a differenza di un `move` non c'è "prima" a cui tornare.
+   */
+  async function duplicate(ids: string[]) {
+    const result = await post('duplicate', { node_ids: ids.join(',') });
+    const created = (result?.nodes ?? []) as CanvasNodeRecord[];
+    const connected = (result?.connections ?? []) as Connection[];
+    if (created.length) { nodes = [...nodes, ...created.map(toTile)]; }
+    if (connected.length) { edges = [...edges, ...connected.map(toEdge)]; }
+  }
+
+  /**
+   * ⌘C: gli APPUNTI SONO DI QUESTA TELA, in memoria — non del sistema operativo. Un `Ctrl+V` reale
+   * del browser non saprebbe cosa incollare (che forma avrebbe un nodo `image` fuori da qui?), e
+   * l'unico consumatore di questo copia è lo stesso ⌘V di `shortcuts.ts`. Portano `type`/`data`
+   * intatti — l'incolla li rivalida comunque (`validateNodeData`, lato server) — e le posizioni
+   * RELATIVE al centro della selezione: incollare altrove, o su un'altra tela della stessa org,
+   * deve posare il gruppo dov'è il puntatore, non dov'era quando è stato copiato.
+   */
+  type Clipboard = {
+    nodes: { type: string; data: Record<string, unknown>; dx: number; dy: number }[];
+    edges: { sourceIndex: number; targetIndex: number; sourceHandle: string | null; targetHandle: string | null }[];
+  };
+  let clipboard = $state<Clipboard | null>(null);
+
+  function copy(ids: string[]) {
+    const chosen = nodes.filter((n) => ids.includes(n.id));
+    if (!chosen.length) { return; }
+
+    const indexOf = new Map(chosen.map((n, i) => [n.id, i]));
+    const cx = chosen.reduce((sum, n) => sum + n.x, 0) / chosen.length;
+    const cy = chosen.reduce((sum, n) => sum + n.y, 0) / chosen.length;
+
+    clipboard = {
+      nodes: chosen.map((n) => ({ type: n.type, data: n.data, dx: n.x - cx, dy: n.y - cy })),
+      edges: edges
+        .filter((e) => indexOf.has(e.source) && indexOf.has(e.target))
+        .map((e) => ({
+          sourceIndex: indexOf.get(e.source)!,
+          targetIndex: indexOf.get(e.target)!,
+          // Il verso viaggia su `source_handle` (vedi `connect`, sopra): `kind` è la stessa cosa
+          // letta dal lato del client, che `toEdge` ha già tradotto all'ingresso.
+          sourceHandle: e.kind,
+          targetHandle: e.targetHandle ?? null
+        }))
+    };
+  }
+
+  /** ⌘V: quel che `copy` ha in mano, riposato attorno al punto dato — vuoto se non si è mai copiato. */
+  async function paste(at: { x: number; y: number }) {
+    if (!clipboard) { return; }
+
+    const result = await post('paste', {
+      nodes: JSON.stringify(clipboard.nodes.map((n) => ({ type: n.type, data: n.data, x: at.x + n.dx, y: at.y + n.dy }))),
+      edges: JSON.stringify(clipboard.edges)
+    });
+    const created = (result?.nodes ?? []) as CanvasNodeRecord[];
+    const connected = (result?.connections ?? []) as Connection[];
+    if (created.length) { nodes = [...nodes, ...created.map(toTile)]; }
+    if (connected.length) { edges = [...edges, ...connected.map(toEdge)]; }
+  }
+
+  /**
    * IL VERSO DI UNA LINEA CHE C'È GIÀ non si corregge: sta su `source_handle`, e cambiarlo vuol
    * dire riscrivere la riga — una funzione che il repository non ha. Finché non c'è, `onEdgeRetype`
    * resta staccato e la linea si toglie e si rifà: un menù che non salva è peggio del menù che
@@ -662,6 +728,9 @@
     onCreate={create}
     onCreateFilled={createFilled}
     onUpload={upload}
+    onDuplicate={duplicate}
+    onCopy={copy}
+    onPaste={paste}
   >
     {#snippet tile({ id, selected })}
       {@const row = nodes.find((n) => n.id === id)}
