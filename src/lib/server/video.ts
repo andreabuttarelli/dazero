@@ -443,7 +443,7 @@ function composeVideoPrompt(
 }
 
 export type RenderedVideo = {
-  // Public, permanent URL of the persisted mp4 in our own Storage bucket.
+  // Storage path of the persisted mp4 in `brand-knowledge`, signed on read.
   url: string;
   // La fatturazione è al secondo: è l'unità su cui si riconcilia la spesa.
   durationSeconds: number;
@@ -493,7 +493,9 @@ async function runVideoJob(
 }
 
 // Gli URL del fornitore non sono permanenti. La RLS dello Storage pretende che il primo segmento
-// del path sia `auth.uid()`, quindi ogni oggetto vive sotto `{userId}/…`.
+// del path sia `auth.uid()`, quindi ogni oggetto vive sotto `{userId}/…`. Ritorna il PERCORSO nel
+// bucket, non un URL: `brand-knowledge` è privato, e chi legge firma al momento della lettura
+// (`signKnowledgePaths`), come già ogni altro asset `generated` sulla tela.
 async function persistMp4(
   supabase: SupabaseClient,
   userId: string,
@@ -522,12 +524,12 @@ async function persistMp4(
     bytes = await markVideoSynthetic(bytes);
   }
   const path = `${userId}/generated/${crypto.randomUUID()}.mp4`;
-  const { error } = await supabase.storage.from('media').upload(path, bytes, {
+  const { error } = await supabase.storage.from('brand-knowledge').upload(path, bytes, {
     contentType: 'video/mp4',
     upsert: false
   });
   if (error) return undefined;
-  return supabase.storage.from('media').getPublicUrl(path).data.publicUrl;
+  return path;
 }
 
 /**
