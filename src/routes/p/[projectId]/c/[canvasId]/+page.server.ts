@@ -14,7 +14,8 @@ import {
   listConnections,
   listNodes,
   moveNode,
-  writeNodeData
+  writeNodeData,
+  type CanvasNodeRecord
 } from '$lib/server/repos/canvas';
 import { isNodeType, docData, productsOf, socialFeedOf, influencerOf } from '$lib/canvas-node-data';
 import { validateNodeData } from '$lib/canvas/node-data';
