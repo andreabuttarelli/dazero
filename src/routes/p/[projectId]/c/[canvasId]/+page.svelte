@@ -403,10 +403,23 @@
    * FAR GIRARE UN NODO. Il bottone è già spento mentre gira (`canStartRun`), e la versione che
    * parte è quella che si ha in mano: se un altro ha scritto per primo il server risponde 409 e
    * qui si ricarica invece di pagare un giro su un prompt che non è più quello.
+   *
+   * `enqueue` PRIMA di leggere `before`: scegliere un modello scrive (`write`, sopra) e quella
+   * scrittura aggiorna `nodes[].version` in locale solo quando il server risponde — scegliere e
+   * premere Genera di seguito, senza la pausa di una mano vera fra i due gesti, altrimenti legge
+   * la versione di prima del giro e il server risponde 409 su un prompt mai partito. Passare per
+   * la stessa coda del nodo mette Genera in fila dietro quella scrittura invece di correrci
+   * contro.
    */
   async function run(id: string, gen: GenNodeState) {
+    if (gen.running) {
+      return;
+    }
+
+    await enqueue(id, async () => {});
+
     const before = nodes.find((node) => node.id === id);
-    if (!before || gen.running) {
+    if (!before) {
       return;
     }
 

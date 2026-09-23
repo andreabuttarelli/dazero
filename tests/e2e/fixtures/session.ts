@@ -91,17 +91,47 @@ export async function teardownE2eSession(session: E2eSession): Promise<void> {
  * scopra la stessa corsa per conto suo, con un `waitForLoadState` dimenticato in una e non
  * nell'altra.
  */
+/**
+ * Un `page.goto` può cadere in un `net::ERR_ABORTED` quando il router client-side di SvelteKit sta
+ * ancora finendo la navigazione precedente (un `invalidateAll` in corso, per esempio subito dopo
+ * un upload) — non un errore del prodotto, una corsa fra due navigazioni dello stesso browser. Un
+ * secondo tentativo basta: se anche quello cade, il difetto è altrove e va lasciato emergere.
+ */
+async function gotoOnce(page: Page, path: string) {
+  try {
+    return await page.goto(path);
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('ERR_ABORTED')) {
+      return await page.goto(path);
+    }
+    throw err;
+  }
+}
+
 export async function gotoHydrated(page: Page, path: string): Promise<import('@playwright/test').Response | null> {
-  const response = await page.goto(path);
+  const response = await gotoOnce(page, path);
   await page.waitForLoadState('networkidle');
   return response;
 }
 
+/**
+ * `networkidle` basta su una macchina scarica, ma su una impegnata (molte altre app, molti
+ * worker Playwright) il thread principale può restare occupato oltre quella finestra e il
+ * `click` cade prima che `use:enhance` sia davvero agganciato — il form allora naviga per
+ * davvero, e la pagina che arriva è di nuovo `/login` (vuota, senza `?/login` in coda: un giro
+ * morto, non un errore di credenziali). `waitForResponse` aspetta il segnale vero — il POST che
+ * `use:enhance` intercetta — non un'approssimazione temporale.
+ */
 export async function signInE2e(page: Page, session: Pick<E2eSession, 'email' | 'password'>): Promise<void> {
   await gotoHydrated(page, '/login');
   await page.getByPlaceholder('you@yourbrand.com').fill(session.email);
   await page.locator('input[type="password"]').fill(session.password);
+
+  const loggedIn = page.waitForResponse(
+    (r) => r.url().includes('/login?/login') && r.request().method() === 'POST'
+  );
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await loggedIn;
   await page.waitForURL(/\/(app|p\/)/);
 }
 
