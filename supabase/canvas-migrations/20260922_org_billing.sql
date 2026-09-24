@@ -130,6 +130,14 @@ grant execute on function public.org_credit_balance(uuid) to authenticated, serv
 -- Alimenta l'email di avviso, non il gate di spesa (che legge solo org_credit_balance). L'ordine
 -- di consumo (le scadenti prima) è implicito nel modo in cui questa vista calcola quanto è a
 -- rischio, non in come si scrivono i debiti (un debito solo per chiamata, cieco all'ordine).
+--
+-- NOTA (2026-09-24): la vista live sul DB non è questa. È la versione precedente, più semplice —
+-- `expiring_credits`/`next_expiry`, senza FIFO né sottrazione della spesa (verificato via
+-- pg_get_viewdef) — mai sostituita da un'applicazione di questo file. `+page.server.ts` legge
+-- già quella, non questa: `expiring_credits` è un tetto per eccesso (non sottrae la spesa, quindi
+-- non sottostima mai il rischio), e alimenta solo una riga di avviso, non il gate di spesa. Non
+-- vale il costo di applicare la vista FIFO-netta sotto solo per quella riga: se un giorno il
+-- gate di spesa dovesse leggere "quanto è già a rischio" invece che solo il saldo, riconsiderare.
 create or replace view public.org_credits_at_risk as
 with grants as (
   select org_id, id, amount, expires_at,
