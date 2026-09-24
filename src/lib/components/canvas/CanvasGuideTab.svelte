@@ -53,14 +53,15 @@
     width: 100%;
     text-align: left;
     padding: 10px 8px;
-    border: 1px solid var(--line, #ededef);
-    background: var(--paper, #fff);
+    border: 0;
+    background: transparent;
     font: inherit;
+    font-size: 12.5px;
     cursor: pointer;
   }
 
   .guide-item:hover {
-    background: var(--surface-hover, #f5f5f7);
+    background: color-mix(in srgb, var(--ink, #1d1d1f) 5%, transparent);
   }
 
   .guide-open {
@@ -105,7 +106,7 @@
 
   .guide-doc :global(th),
   .guide-doc :global(td) {
-    border: 1px solid var(--line, #ededef);
+    border-bottom: 1px solid color-mix(in srgb, var(--ink, #1d1d1f) 10%, transparent);
     padding: 4px 6px;
     text-align: left;
   }

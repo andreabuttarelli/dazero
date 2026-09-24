@@ -79,14 +79,12 @@
     display: flex;
     align-items: flex-end;
     gap: 5px;
-    padding: 5px 5px 5px 8px;
-    border: 1px solid var(--line-2, #d2d2d7);
-    background: var(--paper, #fff);
-    transition: border-color 0.14s var(--ease, cubic-bezier(0.22, 1, 0.36, 1));
+    padding: 6px 6px 6px 9px;
+    background: color-mix(in srgb, var(--ink, #1d1d1f) 5%, transparent);
+    transition: background 0.14s var(--ease, cubic-bezier(0.22, 1, 0.36, 1));
   }
   .composer.focusable:focus-within {
-    border-color: var(--accent, #c485fe);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #c485fe) 18%, transparent);
+    background: color-mix(in srgb, var(--ink, #1d1d1f) 8%, transparent);
   }
 
   textarea {
@@ -122,11 +120,11 @@
     transition: opacity 0.14s ease, transform 0.14s var(--ease, cubic-bezier(0.22, 1, 0.36, 1));
   }
   .send {
-    background: var(--ink, #1d1d1f);
-    color: var(--paper, #fff);
+    background: transparent;
+    color: var(--ink, #1d1d1f);
   }
   .stop {
-    background: color-mix(in srgb, var(--ink, #1d1d1f) 10%, transparent);
+    background: transparent;
     color: var(--ink, #1d1d1f);
   }
   .act:disabled {
@@ -142,15 +140,14 @@
   }
 
   :global(:root[data-theme='dark']) .composer {
-    background: var(--paper-2, #181818);
-    border-color: var(--line, #222);
+    background: color-mix(in srgb, #fff 8%, transparent);
   }
-  :global(:root[data-theme='dark']) .send {
-    background: #fff;
-    color: #000;
+  :global(:root[data-theme='dark']) .composer.focusable:focus-within {
+    background: color-mix(in srgb, #fff 12%, transparent);
   }
+  :global(:root[data-theme='dark']) .send,
   :global(:root[data-theme='dark']) .stop {
-    background: rgba(255, 255, 255, 0.1);
+    background: transparent;
     color: #fff;
   }
 

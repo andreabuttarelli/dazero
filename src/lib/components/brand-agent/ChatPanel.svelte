@@ -322,8 +322,8 @@
 
   .retry {
     appearance: none;
-    border: 1px solid var(--line-2, #d2d2d7);
-    background: var(--paper, #fff);
+    border: 0;
+    background: color-mix(in srgb, var(--ink, #1d1d1f) 6%, transparent);
     color: var(--ink, #1d1d1f);
     padding: 3px 9px;
     font-size: 11px;
@@ -332,7 +332,7 @@
     transition: background 0.14s ease;
   }
   .retry:hover {
-    background: var(--paper-2, #f9f9f9);
+    background: color-mix(in srgb, var(--ink, #1d1d1f) 10%, transparent);
   }
   .retry:focus-visible {
     outline: 2px solid var(--accent, #c485fe);

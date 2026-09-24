@@ -92,11 +92,11 @@
     overflow-wrap: anywhere;
   }
   .user-bubble {
-    background: var(--accent-solid, #7c5cff);
-    color: #fff;
+    background: color-mix(in srgb, var(--ink, #1d1d1f) 6%, transparent);
+    color: var(--ink, #1d1d1f);
   }
   .assistant-bubble {
-    background: var(--paper-2, #f9f9f9);
+    padding: 6px 2px;
     color: var(--ink, #1d1d1f);
   }
 
