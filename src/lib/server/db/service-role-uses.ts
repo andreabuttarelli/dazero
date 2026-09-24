@@ -29,9 +29,9 @@ export const SERVICE_ROLE_USES: readonly ServiceRoleUse[] = [
     tables: ['api_keys']
   },
   {
-    path: 'src/routes/api/v1/canvas/runs/tick/+server.ts — expireStuckRuns + pruneOldCanvasEvents',
-    why: "Un cron non ha una sessione: nessun utente ha cliccato. Prende le righe già scadute (run rimasti in corso, eventi canvas_events più vecchi di 356 giorni) attraverso tutte le org per costruzione, e l'org_id lo LEGGE dalla riga che ha preso — non lo riceve mai da fuori. La potatura di canvas_events è l'unica eccezione dichiarata: pota per età, su ogni org insieme, non per riga scoperta da un org_id letto — vedi retention.ts.",
-    tables: ['node_runs', 'nodes', 'canvas_events']
+    path: 'src/routes/api/v1/canvas/runs/tick/+server.ts — expireStuckRuns + reconcileVideoNodeRuns + drainLoopQueue + pruneOldCanvasEvents',
+    why: "Un cron non ha una sessione: nessun utente ha cliccato. Prende le righe già scadute o in coda (run rimasti in corso, video da riconciliare, biglietti di loop da drenare, eventi canvas_events più vecchi di 356 giorni) attraverso tutte le org per costruzione, e l'org_id lo LEGGE dalla riga che ha preso — non lo riceve mai da fuori. `drainLoopQueue` gira `runGenNode` per un biglietto reclamato, con la stessa identità di servizio con cui il video già deposita il suo asset — `assets`/`ai_calls` sono scritture di quella funzione, non di questa rotta. La potatura di canvas_events è l'unica eccezione dichiarata: pota per età, su ogni org insieme, non per riga scoperta da un org_id letto — vedi retention.ts.",
+    tables: ['node_runs', 'nodes', 'canvas_events', 'assets', 'ai_calls']
   },
   {
     path: 'le callback dei provider, src/routes/api/v1/webhooks/** (non ancora scritte: fase 3 e 5)',
