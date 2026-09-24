@@ -9,7 +9,7 @@
  * nodo `social_account_feed` non accetta resta testo qui, non un chip che poi non si può
  * trascinare da nessuna parte.
  */
-import { SOCIAL_PLATFORMS } from './node-data';
+import { SOCIAL_PLATFORMS } from './social-platforms';
 import { PLATFORM_META } from '../components/platform-meta';
 
 export type ChipToken =

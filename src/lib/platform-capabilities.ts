@@ -1,4 +1,4 @@
-import { SOCIAL_PLATFORMS } from './canvas/node-data';
+import { SOCIAL_PLATFORMS } from './canvas/social-platforms';
 
 export type Platform = (typeof SOCIAL_PLATFORMS)[number];
 

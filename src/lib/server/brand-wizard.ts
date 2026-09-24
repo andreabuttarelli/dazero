@@ -14,7 +14,7 @@ import { withOrgContext } from '$lib/server/ai-log';
 import { gateOrgCredits, CreditsExhaustedError } from '$lib/server/credits';
 import { insertBrandProducts } from '$lib/server/repos/products';
 import { setProjectBrand } from '$lib/server/repos/projects';
-import { SOCIAL_PLATFORMS } from '$lib/canvas/node-data';
+import { SOCIAL_PLATFORMS } from '$lib/canvas/social-platforms';
 import type { StorePlatform } from '$lib/server/store-fetch';
 
 export type WizardHandle = { platform: string; handle: string };

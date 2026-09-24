@@ -20,6 +20,7 @@
  * primo campo aggiunto.
  */
 import { z } from 'zod';
+import { SOCIAL_PLATFORMS } from './social-platforms';
 
 /** Lo stato di una generazione lunga: gli stessi campi per i tre tipi che generano davvero. */
 const GEN_STATUS = ['idle', 'running', 'done', 'failed'] as const;
@@ -101,19 +102,6 @@ const iframeSchema = z
   .refine((v) => Boolean(v.url) || Boolean(v.content), {
     message: 'serve url o content — una pagina incorporata senza nessuno dei due non mostra niente'
   });
-
-/** Gli stessi valori di `social_accounts_platform_check` — la stessa piattaforma, la stessa riga. */
-export const SOCIAL_PLATFORMS = [
-  'instagram',
-  'facebook',
-  'x',
-  'linkedin',
-  'tiktok',
-  'threads',
-  'youtube',
-  'reddit',
-  'pinterest'
-] as const;
 
 const socialAccountFeedSchema = z.object({
   platform: z.enum(SOCIAL_PLATFORMS),

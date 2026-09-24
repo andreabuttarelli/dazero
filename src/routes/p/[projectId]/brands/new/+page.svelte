@@ -14,7 +14,7 @@
   import PageHead from '$lib/components/PageHead.svelte';
   import PlatformGlyph from '$lib/components/PlatformGlyph.svelte';
   import { renderBrandContentHtml } from '$lib/canvas/brand-content-chips';
-  import { SOCIAL_PLATFORMS } from '$lib/canvas/node-data';
+  import { SOCIAL_PLATFORMS } from '$lib/canvas/social-platforms';
   import '$lib/styles/doc-prose.css';
 
   let { data, form } = $props();

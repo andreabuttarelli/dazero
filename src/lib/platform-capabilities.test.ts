@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SOCIAL_PLATFORMS } from './canvas/node-data';
+import { SOCIAL_PLATFORMS } from './canvas/social-platforms';
 import { CAPTION_LIMIT, formatFor, PLATFORM_CAPABILITIES } from './platform-capabilities';
 
 const image = { kind: 'image' as const };

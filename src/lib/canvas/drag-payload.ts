@@ -15,7 +15,7 @@
 import { genNodeSize } from './gen-node';
 import { docNodeSize } from './doc-node';
 import { socialFeedNodeSize } from './social-feed-node';
-import { SOCIAL_PLATFORMS } from './node-data';
+import { SOCIAL_PLATFORMS } from './social-platforms';
 
 export type DragAssetKind = 'image' | 'video' | 'document';
 export type DragBrandField = 'logo' | 'text' | 'content';
