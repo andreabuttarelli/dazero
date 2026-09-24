@@ -18,9 +18,11 @@ import type { Modalities } from '$lib/canvas/connectors';
  * tela una volta, poi chiede lo stesso testo da monte a ogni giro. `generate.ts` chiama SOLO
  * questa funzione: la forma della query resta qui, non in mezzo alla logica che genera.
  *
- * IL TESTO SORGENTE È `data.refId` → `assets.content` per un nodo che genera, `data.content` per
- * un `doc`: la stessa coppia che `canvas-node-data.ts::genOf`/`docOf` legge lato client, perché
- * client e server devono vedere lo stesso nodo nello stesso modo.
+ * IL TESTO SORGENTE È `data.refId` → `assets.content` per un nodo che genera, con `data.prompt`
+ * come riserva quando non ha ancora girato — un testo mai generato dà comunque quel che c'è
+ * scritto, invece di sparire dal giro a valle. Per un `doc` è `data.content`: la stessa coppia che
+ * `canvas-node-data.ts::genOf`/`docOf` legge lato client, perché client e server devono vedere lo
+ * stesso nodo nello stesso modo.
  *
  * UN MODELLO SPARITO DA `ai_models` BLOCCA IL NODO, PRIMA di risolvere qualunque cosa — non un
  * arco alla volta, il nodo intero: `modalitiesOf` che torna `null` qui non è "non ancora
@@ -49,7 +51,11 @@ function sourceText(node: CanvasNodeRecord, asset: { content: string | null } | 
     const content = node.data.content;
     return typeof content === 'string' && content.trim() ? content : null;
   }
-  return asset?.content ?? null;
+  if (asset?.content) {
+    return asset.content;
+  }
+  const prompt = node.data.prompt;
+  return typeof prompt === 'string' && prompt.trim() ? prompt : null;
 }
 
 function sourceMediaUrl(asset: { url: string | null } | null): string | null {

@@ -58,7 +58,6 @@
     socialFeedOf
   } from '$lib/canvas-node-data';
   import {
-    EDGE_KIND_LABEL,
     isCanvasEdgeKind,
     type CanvasEdgeKind,
     type FlowEdge
@@ -145,7 +144,6 @@
       id: connection.id,
       source: connection.sourceNodeId,
       target: connection.targetNodeId,
-      label: EDGE_KIND_LABEL[kind],
       kind,
       ...(kind === 'groups_with' ? {} : { markerEnd: { type: 'arrowclosed' as const } })
     };

@@ -1,14 +1,14 @@
 /**
  * GLI ARCHI DELLA TELA, dal database a quel che SvelteFlow disegna.
  *
- * Il vocabolario è chiuso e sta in tre posti che devono dire la stessa cosa: il check in
- * migrazione, questo elenco e l'etichetta che si legge sulla linea. Il primo è l'unico che morde
- * — ed è per questo che `isCanvasEdgeKind` esiste: rifiutare qui un verso inventato dà un errore
- * che nomina le tre parole ammesse, invece di un 23514 che nomina un vincolo.
+ * Il vocabolario è chiuso e sta in due posti che devono dire la stessa cosa: il check in
+ * migrazione e questo elenco. Il primo è l'unico che morde — ed è per questo che
+ * `isCanvasEdgeKind` esiste: rifiutare qui un verso inventato dà un errore che nomina le tre
+ * parole ammesse, invece di un 23514 che nomina un vincolo.
  *
- * UNA LINEA NON RESTA MAI MUTA. Senza etichetta bisogna indovinare perché due cose sono unite, che
- * è esattamente l'informazione per cui l'arco è stato creato: in mancanza della didascalia di una
- * persona si mostra il verso.
+ * LA LINEA RESTA MUTA: nessun testo ci si disegna sopra. Il verso lo dice `kind`, letto dal menù
+ * che compare al clic (`EDGE_KIND_LABEL`) — mai scritto sulla tela, dove affollerebbe un disegno
+ * che deve restare leggibile con molti archi insieme.
  */
 
 /** Gli stessi tre valori del check in migrazione: due elenchi divergerebbero al primo verso nuovo. */
@@ -44,12 +44,10 @@ export type FlowEdge = {
   id: string;
   source: string;
   target: string;
-  label: string;
-  /**
-   * Il verso, addosso alla linea disegnata. Non si ricava dall'etichetta: quella può essere la
-   * didascalia di una persona, e allora il verso non si leggerebbe più da nessuna parte — il menù
-   * che lo cambia lo sbaglierebbe appena qualcuno scrive «insieme a» su una derivazione.
-   */
+  /** Mai disegnata sulla linea: il menù al clic (`EDGE_KIND_LABEL`) resta l'unico posto che la
+   *  mostra. Il campo è assente qui, non una stringa vuota — SvelteFlow non disegna un'etichetta
+   *  quando `label` non c'è. */
+  label?: undefined;
   kind: CanvasEdgeKind;
   /** Assente su `groups_with`: stare insieme non ha un verso, e una freccia ne inventerebbe uno. */
   markerEnd?: { type: 'arrowclosed' };
@@ -63,7 +61,6 @@ export function toFlowEdges(rows: CanvasEdgeRow[]): FlowEdge[] {
     id: row.id,
     source: row.source_item_id,
     target: row.target_item_id,
-    label: row.label ?? EDGE_KIND_LABEL[row.kind],
     kind: row.kind,
     ...(row.kind === 'groups_with' ? {} : { markerEnd: { type: 'arrowclosed' as const } })
   }));

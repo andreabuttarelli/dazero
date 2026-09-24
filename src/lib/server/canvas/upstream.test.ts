@@ -75,6 +75,37 @@ describe('upstreamInputsFor — dal database alla forma pura', () => {
     expect(out.blocked).toBeNull();
   });
 
+  it('un nodo testo mai girato alimenta col suo prompt, non con niente', async () => {
+    const { db } = fakeDb({
+      nodes: [
+        nodeRow(TEXT_NODE, 'text', { prompt: 'scrivi qualcosa' }),
+        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: MODEL })
+      ],
+      nodes_connections: [
+        {
+          id: 'e1',
+          canvas_id: CANVAS,
+          source_node_id: TEXT_NODE,
+          target_node_id: IMAGE_NODE,
+          source_handle: null,
+          target_handle: null
+        }
+      ],
+      assets: []
+    });
+
+    const out = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: IMAGE_NODE,
+      model: MODEL,
+      medium: 'image'
+    });
+
+    expect(out.text).toEqual(['scrivi qualcosa']);
+    expect(out.rejected).toEqual([]);
+  });
+
   it('legge il `content` di un `doc` senza passare da un asset', async () => {
     const { db } = fakeDb({
       nodes: [

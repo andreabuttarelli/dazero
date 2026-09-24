@@ -654,8 +654,6 @@
 
     --xy-edge-stroke: var(--ink-soft, #6e6e73);
     --xy-edge-stroke-selected: var(--accent, #7c5cff);
-    --xy-edge-label-background-color: var(--paper, #fff);
-    --xy-edge-label-color: var(--ink-soft, #6e6e73);
   }
 
   /* Il colore del link è scritto fisso nella libreria (`#999`), quindi non basta una variabile. */

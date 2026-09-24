@@ -73,8 +73,10 @@ type NodeSpec = {
 };
 
 export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
-  // Un testo si scrive, non si genera da altro: è il punto di partenza di ogni catena.
-  text: { medium: 'text', generated: false, accepts: [], requires: [] },
+  // Un testo si scrive, ma si genera anche da un altro testo — quello a monte è il prompt quando
+  // il nodo non ne ha ancora uno suo. Nessun ingresso è richiesto: il punto di partenza di ogni
+  // catena resta un testo mai collegato a niente, con il prompt scritto a mano.
+  text: { medium: 'text', generated: true, accepts: ['text'], requires: [] },
   // Un'immagine nasce da un prompt, e un'altra immagine collegata è il riferimento da riprodurre
   // fedelmente (`ImageJob.baseMediaId`) — non un prompt in più, quindi resta facoltativa.
   image: { medium: 'image', generated: true, accepts: ['text', 'image'], requires: ['text'] },

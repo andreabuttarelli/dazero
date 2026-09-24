@@ -65,6 +65,10 @@ describe('canConnect — un arco che non produrrebbe niente si rifiuta', () => {
       expect(canConnect(node('s', k), node('p', 'post')).ok, k).toBe(true);
     }
   });
+
+  it('un nodo testo alimenta un altro nodo testo: il secondo può nascere dal primo', () => {
+    expect(canConnect(node('a', 'text'), node('b', 'text')).ok).toBe(true);
+  });
 });
 
 describe('missingInputs — un nodo dice cosa gli manca invece di fallire dopo', () => {
@@ -156,7 +160,7 @@ describe('una pagina incorporata è una sorgente, come un documento', () => {
     // La ragione per cui vale la pena metterla nel registro: «riassumi questa pagina» e «fai
     // un'immagine ispirata a questa» sono le due catene che la rendono utile.
     expect(canConnect(node('f', 'iframe'), node('i', 'image')).ok).toBe(true);
-    expect(canConnect(node('f', 'iframe'), node('t', 'text')).ok).toBe(false);
+    expect(canConnect(node('f', 'iframe'), node('t', 'text')).ok).toBe(true);
     expect(canConnect(node('f', 'iframe'), node('p', 'post')).ok).toBe(true);
   });
 
