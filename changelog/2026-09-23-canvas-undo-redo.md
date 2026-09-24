@@ -46,14 +46,38 @@ need (`restoreNode`, `restoreConnection`) existed since the selection-tools work
   Executed by `CanvasKeys.svelte`, same wiring as every other canvas shortcut: never while typing
   (`isTypingTarget`), listed in `CANVAS_SHORTCUTS` so the shortcuts sheet shows it.
 
-## Explicitly out of scope
+## Move/resize: undoable, but never through the server
 
-Node move/resize are not undoable. This isn't an oversight: `canvas.ts` and `undo-plan.ts` both
-already state, in their own docstrings, that position is last-write-wins with no `canvas_events`
-row — "MAI `node.move`". Making moves undoable would mean inventing a new event kind and widening
-the `canvas_events.kind` CHECK, which is a bigger, separate decision than wiring up what already
-existed. `run`/`sync`/`restore` (gen-run history)/`share`/`unlock` are also not gestures the task
-asked for and aren't in `undo-plan.ts`'s `GestureKind` union.
+Position is last-write-wins with no `canvas_events` row — `canvas.ts` and `undo-plan.ts` both
+already said so in their own docstrings ("MAI `node.move`") before this pass, and that stays true:
+no new event kind, no migration, `checkGesture`/`undoGesture` (the server side) never see a move.
+Instead:
+
+- **`src/lib/canvas/move-gesture.ts`**, pure, mirrors `undo-plan.ts`'s shape but asks its own
+  question: not "does `nodes.version` still match" (there is no version) but "is the CURRENT
+  position still what this gesture last set". `checkMoveGesture` reads that current position from
+  whatever the caller hands it — in `+page.svelte`, that's `nodes`, which the existing realtime
+  subscription already keeps fresh. If a peer dragged the same node since, the live position isn't
+  `item.after` anymore: `stale`, reason `node_moved_by_peer` (or `node_deleted_by_peer`), and undo
+  is skipped with "Annullamento saltato: …" — the same message shape as a server-side refusal, from
+  a check that runs entirely in the browser. `buildMoveGesture` turns a drag-stop's node list into
+  one `MoveGesture`, dropping any node whose position didn't actually change (a click SvelteFlow
+  still reports as a drag).
+- **`undo-stack.ts` became generic (`UndoStack<T>`)** so `+page.svelte` keeps ONE chronological
+  stack of `StackEntry = { source: 'server'; gesture: Gesture } | { source: 'move'; gesture: MoveGesture }`
+  — moving a node, then creating another, then two undos: the create goes first, the move second,
+  in the order they happened. Two separate stacks would have gotten this order wrong.
+- **Undoing a move is `move()` — the same server action a live drag already calls** — no new
+  endpoint. A drag that moves N nodes together pushes ONE gesture (`onNodeDragStop` in
+  `CanvasFlow.svelte` now reads the FULL set SvelteFlow reports, not just the node under the
+  pointer — fixed as part of this, since only `targetNode` was ever persisted before, and an undo
+  gesture is meaningless for a node whose "after" position was never written).
+- **Resize stays unwired**, not because it's excluded on principle like before, but because no
+  resize gesture exists in the product yet: `resizeNode` (`repos/canvas.ts`) has no caller anywhere
+  in the UI. There is nothing to hook undo into until a resize handle exists.
+
+`run`/`sync`/`restore` (gen-run history)/`share`/`unlock` remain out of scope: not gestures either
+task asked for, and not in `undo-plan.ts`'s `GestureKind` union.
 
 ## Tests
 
@@ -63,5 +87,8 @@ for: a `node.create` undo (soft-delete), a `node.delete` undo (restore), a `node
 (model change that dropped wires — both undone together), two conflict cases (`node_changed_by_peer`,
 `node_deleted_by_peer`) that assert NO write happens, `edge.create`/`edge.delete` undo, and the
 `redo` gesture shape for both a `node.update` and a `node.create` undo. `src/lib/canvas/undo-stack.test.ts`
-covers the stack in isolation. `src/lib/canvas/shortcuts.test.ts` gained the ⌘Z/⇧⌘Z cases plus the
-existing "doesn't fire while typing" and "doesn't collide with the global registry" suites.
+covers the generic stack in isolation. `src/lib/canvas/move-gesture.test.ts` covers
+`checkMoveGesture` (ok, peer-moved, peer-deleted, a multi-node gesture refused whole when one node
+is stale), `inverseMoveGesture`, and `buildMoveGesture` (single node, multi-node, no-op filtering,
+missing-position filtering, empty input). `src/lib/canvas/shortcuts.test.ts` gained the ⌘Z/⇧⌘Z cases
+plus the existing "doesn't fire while typing" and "doesn't collide with the global registry" suites.
