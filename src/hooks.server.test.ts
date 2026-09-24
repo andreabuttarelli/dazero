@@ -33,9 +33,13 @@ const aiCalls: Record<string, unknown>[] = [];
 vi.mock('$lib/server/supabase-admin', () => ({
 	createAdminClient: () => ({
 		from: () => ({
-			insert: async (row: Record<string, unknown>) => {
+			insert: (row: Record<string, unknown>) => {
 				aiCalls.push(row);
-				return { error: null };
+				return {
+					select: () => ({
+						single: async () => ({ data: { id: 'ai-call-1' }, error: null })
+					})
+				};
 			}
 		})
 	})
