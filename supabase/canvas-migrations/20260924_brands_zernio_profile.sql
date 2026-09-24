@@ -23,13 +23,15 @@ alter table public.brands
 -- profilo Zernio di qualcun altro. Stesso posto unico del vincolo, non un `if` sparso in ogni
 -- rotta che tocca `brands`.
 create or replace function public.guard_brands_zernio_profile_id() returns trigger
-  language plpgsql as $$
+  language plpgsql set search_path = '' as $$
 begin
   if new.zernio_profile_id is distinct from old.zernio_profile_id and auth.role() <> 'service_role' then
     raise exception 'zernio_profile_id is server-managed' using errcode = '42501';
   end if;
   return new;
 end; $$;
+
+revoke execute on function public.guard_brands_zernio_profile_id() from public, anon, authenticated;
 
 drop trigger if exists trg_guard_brands_zernio_profile_id on public.brands;
 create trigger trg_guard_brands_zernio_profile_id
