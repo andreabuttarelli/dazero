@@ -7,16 +7,31 @@ import {
   genOf,
   influencerOf,
   isNodeType,
+  listData,
+  listOf,
   newNodeRow,
   productsData,
   productsOf,
+  selectData,
+  selectOf,
   socialFeedData,
   socialFeedOf
 } from '$lib/canvas-node-data';
 
 describe('cosa una riga di `nodes` può essere', () => {
   it('i tipi che la pagina disegna, e niente che non sappia disegnare', () => {
-    expect(NODE_TYPES).toEqual(['text', 'image', 'video', 'iframe', 'doc', 'products', 'social_account_feed', 'influencer']);
+    expect(NODE_TYPES).toEqual([
+      'text',
+      'image',
+      'video',
+      'iframe',
+      'doc',
+      'products',
+      'social_account_feed',
+      'influencer',
+      'list',
+      'select'
+    ]);
   });
 
   it('un tipo che non è dei suoi non si riconosce', () => {
@@ -148,6 +163,14 @@ describe('con che `data` nasce una riga', () => {
     });
   });
 
+  it('una lista nasce vuota, senza item_kind ancora deciso', () => {
+    expect(newNodeRow('list')).toEqual({ item_kind: 'image', items: [] });
+  });
+
+  it('un select nasce a indice 1', () => {
+    expect(newNodeRow('select')).toEqual({ index: 1 });
+  });
+
   it('un nodo social_account_feed nasce su instagram e senza handle', () => {
     expect(newNodeRow('social_account_feed')).toEqual({ platform: 'instagram', handle: '', limit: 20 });
   });
@@ -274,5 +297,63 @@ describe('un gen node porta anche il perché non è partito', () => {
   it('error arriva dal data, e mancante resta null', () => {
     expect(genOf({ id: 'n1', type: 'image', data: { error: 'render_failed' } })?.error).toBe('render_failed');
     expect(genOf({ id: 'n1', type: 'image', data: {} })?.error).toBeNull();
+  });
+});
+
+describe('un nodo list, letto dalla riga', () => {
+  it('item_kind e items arrivano da data', () => {
+    const node = listOf({
+      id: 'n1',
+      type: 'list',
+      data: { item_kind: 'text', items: [{ text: 'a' }, { text: 'b' }] }
+    });
+
+    expect(node).toEqual({ id: 'n1', itemKind: 'text', items: [{ text: 'a' }, { text: 'b' }] });
+  });
+
+  it('una riga appena nata non ha item_kind: legge image di riserva', () => {
+    expect(listOf({ id: 'n1', type: 'list', data: {} })).toEqual({ id: 'n1', itemKind: 'image', items: [] });
+  });
+
+  it('un item_kind fuori vocabolario non si legge come vero', () => {
+    expect(listOf({ id: 'n1', type: 'list', data: { item_kind: 'video', items: [] } })?.itemKind).toBe('image');
+  });
+
+  it('items non è un array: legge vuoto invece di rompersi', () => {
+    expect(listOf({ id: 'n1', type: 'list', data: { items: 'boh' } })?.items).toEqual([]);
+  });
+
+  it('un nodo che non è list non si legge come tale', () => {
+    expect(listOf({ id: 'n1', type: 'select', data: {} })).toBeNull();
+  });
+
+  it('fa il giro di andata e ritorno', () => {
+    const node = listOf({ id: 'n1', type: 'list', data: { item_kind: 'image', items: [{ asset_id: 'a1' }] } })!;
+    const written = listData(node);
+    expect(listOf({ id: 'n1', type: 'list', data: written })).toEqual(node);
+  });
+});
+
+describe('un nodo select, letto dalla riga', () => {
+  it('index arriva da data', () => {
+    expect(selectOf({ id: 'n1', type: 'select', data: { index: 3 } })).toEqual({ id: 'n1', index: 3 });
+  });
+
+  it('una riga appena nata non ha index: legge 1 di riserva', () => {
+    expect(selectOf({ id: 'n1', type: 'select', data: {} })).toEqual({ id: 'n1', index: 1 });
+  });
+
+  it('un index non numerico legge 1 invece di rompersi', () => {
+    expect(selectOf({ id: 'n1', type: 'select', data: { index: 'due' } })?.index).toBe(1);
+  });
+
+  it('un nodo che non è select non si legge come tale', () => {
+    expect(selectOf({ id: 'n1', type: 'list', data: {} })).toBeNull();
+  });
+
+  it('fa il giro di andata e ritorno', () => {
+    const node = selectOf({ id: 'n1', type: 'select', data: { index: 5 } })!;
+    const written = selectData(node);
+    expect(selectOf({ id: 'n1', type: 'select', data: written })).toEqual(node);
   });
 });

@@ -5,6 +5,8 @@ import type { Addable } from '$lib/canvas/addable';
 import { isProductPlatform, type ProductsNode } from '$lib/canvas/products-node';
 import { isSocialFeedPlatform, type SocialFeedNode } from '$lib/canvas/social-feed-node';
 import { SYNC_STATUSES, type SyncStatus } from '$lib/canvas/sync-state';
+import { isListItemKind, type ListItem, type ListNode } from '$lib/canvas/list-node';
+import type { SelectNode } from '$lib/canvas/select-node';
 export { influencerNodeOf as influencerOf, type InfluencerNode } from '$lib/canvas/influencer-node';
 
 /**
@@ -25,7 +27,18 @@ export { influencerNodeOf as influencerOf, type InfluencerNode } from '$lib/canv
  * riserva per campo invece di fidarsi — un `prompt` numerico che arriva intatto dentro un
  * `<textarea>` è una pagina che esplode al disegno, cioè il difetto più lontano dalla sua causa.
  */
-export const NODE_TYPES = ['text', 'image', 'video', 'iframe', 'doc', 'products', 'social_account_feed', 'influencer'] as const;
+export const NODE_TYPES = [
+  'text',
+  'image',
+  'video',
+  'iframe',
+  'doc',
+  'products',
+  'social_account_feed',
+  'influencer',
+  'list',
+  'select'
+] as const;
 
 function syncStatusOf(v: unknown): SyncStatus {
   return typeof v === 'string' && (SYNC_STATUSES as readonly string[]).includes(v) ? (v as SyncStatus) : 'idle';
@@ -141,6 +154,46 @@ export function socialFeedOf(row: NodeRow): SocialFeedNode | null {
   };
 }
 
+/** L'item dietro una riga di `list.data.items`, con la stessa riserva per campo di ogni lettura
+ *  da un jsonb — mai un item malformato che rompe il disegno. */
+function listItemOf(v: unknown): ListItem {
+  const item = record(v);
+  const status = item.status;
+  return {
+    label: nullableStr(item.label) ?? undefined,
+    asset_id: nullableStr(item.asset_id) ?? undefined,
+    text: nullableStr(item.text) ?? undefined,
+    url: nullableStr(item.url) ?? undefined,
+    status: typeof status === 'string' ? (status as ListItem['status']) : undefined,
+    run_id: nullableStr(item.run_id) ?? undefined
+  };
+}
+
+/** Il nodo `list` dietro una riga, o null quando quella riga è un'altra cosa. */
+export function listOf(row: NodeRow): ListNode | null {
+  if (row.type !== 'list') {
+    return null;
+  }
+
+  const kind = row.data.item_kind;
+  const items = Array.isArray(row.data.items) ? row.data.items.map(listItemOf) : [];
+
+  return {
+    id: row.id,
+    itemKind: typeof kind === 'string' && isListItemKind(kind) ? kind : 'image',
+    items
+  };
+}
+
+/** Il nodo `select` dietro una riga, o null quando quella riga è un'altra cosa. */
+export function selectOf(row: NodeRow): SelectNode | null {
+  if (row.type !== 'select') {
+    return null;
+  }
+
+  return { id: row.id, index: num(row.data.index, 1) };
+}
+
 /**
  * Con che contenuto una riga nasce. Vuoto in entrambi i casi, e per lo stesso motivo: scegliere
  * un modello o un indirizzo al posto di chi aggiunge il nodo è una decisione presa per lui — e
@@ -161,6 +214,14 @@ export function newNodeRow(what: Addable): Record<string, unknown> {
 
   if (what === 'social_account_feed') {
     return { platform: 'instagram', handle: '', limit: 20 };
+  }
+
+  if (what === 'list') {
+    return { item_kind: 'image', items: [] };
+  }
+
+  if (what === 'select') {
+    return { index: 1 };
   }
 
   return { prompt: '', model: null, params: {}, refId: null };
@@ -216,4 +277,12 @@ export function socialFeedData(node: SocialFeedNode): Record<string, unknown> {
     synced_count: node.syncedCount,
     synced_at: node.syncedAt
   };
+}
+
+export function listData(node: ListNode): Record<string, unknown> {
+  return { item_kind: node.itemKind, items: node.items };
+}
+
+export function selectData(node: SelectNode): Record<string, unknown> {
+  return { index: node.index };
 }

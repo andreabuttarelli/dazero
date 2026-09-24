@@ -29,6 +29,10 @@
   import SocialFeedNode from '$lib/components/canvas/SocialFeedNode.svelte';
   import InfluencerNode from '$lib/components/canvas/InfluencerNode.svelte';
   import UploadedNode from '$lib/components/canvas/UploadedNode.svelte';
+  import ListNode from '$lib/components/canvas/ListNode.svelte';
+  import SelectNode from '$lib/components/canvas/SelectNode.svelte';
+  import { listFeedingSelect } from '$lib/canvas/select-node';
+  import type { ListNode as ListNodeState } from '$lib/canvas/list-node';
   import { verdictForUpload, canvasUploadPrefix } from '$lib/canvas/upload-kind';
   import { isUploadedNodeRow, uploadedNodeOf } from '$lib/canvas/uploaded-node';
   import { genNodeSize, type GenNode as GenNodeState, type GenMedium, type ModelChoice } from '$lib/canvas/gen-node';
@@ -51,16 +55,21 @@
     genData,
     genOf,
     influencerOf,
+    listData,
+    listOf,
     newNodeRow,
     productsData,
     productsOf,
+    selectData,
+    selectOf,
     socialFeedData,
     socialFeedOf
   } from '$lib/canvas-node-data';
   import {
     isCanvasEdgeKind,
     type CanvasEdgeKind,
-    type FlowEdge
+    type FlowEdge,
+    type WireMode
   } from '$lib/canvas-edges';
   import type { CanvasNodeRecord, Connection } from '$lib/server/repos/canvas';
   import type { Product } from '$lib/server/repos/products';
@@ -119,6 +128,7 @@
       source: connection.sourceNodeId,
       target: connection.targetNodeId,
       kind,
+      mode: connection.mode,
       ...(kind === 'groups_with' ? {} : { markerEnd: { type: 'arrowclosed' as const } })
     };
   }
@@ -189,6 +199,32 @@
     )
   );
 
+  /** Ogni nodo, per id — la stessa lettura che `listFeedingSelect` chiede, minima apposta. */
+  const nodesById = $derived(new Map(nodes.map((n) => [n.id, { id: n.id, type: n.type }])));
+
+  /** La `list` che alimenta un `select`, o null — `listFeedingSelect` sceglie il primo arco
+   *  entrante la cui sorgente è una `list`, la stessa disciplina di `upstream.ts::listFeeding`. */
+  function upstreamListOf(selectId: string): ListNodeState | null {
+    const upstreamEdges = edges.map((e) => ({ sourceNodeId: e.source, targetNodeId: e.target }));
+    const source = listFeedingSelect(selectId, upstreamEdges, nodesById);
+    if (!source) return null;
+    const row = nodes.find((n) => n.id === source.id);
+    return row ? listOf(row) : null;
+  }
+
+  /** Da un nodo `list` al nodo che GENERA che lo tiene come proprio output di loop
+   *  (`data.outputListNodeId`, `loop.ts::createOutputList`) — assente quando la lista non è mai
+   *  stata l'output di un loop, e in quel caso non c'è "ritenta" da offrire: ritentare un item
+   *  vuol dire rilanciare la STESSA generazione che l'ha prodotto, e senza il nodo che genera non
+   *  c'è un prompt/modello da rilanciare. */
+  const loopOutputByNode = $derived(
+    Object.fromEntries(
+      nodes
+        .filter((n) => typeof n.data.outputListNodeId === 'string')
+        .map((n) => [n.data.outputListNodeId as string, n.id])
+    )
+  );
+
   const mediumCatalogue = $derived(
     (data.catalogue ?? {
       text: { choices: [], synced: true },
@@ -225,6 +261,20 @@
   }
 
   /**
+   * L'USCITA DI `list`/`select` SEGUE IL MEDIUM DEI SUOI ITEM, non un tipo fisso come
+   * `outputConnectorOf` conosce per gli altri nodi: una lista di testo esce come `text`, una di
+   * immagini come `images` — e `select`, che porta il medium della lista a monte incapsulato nel
+   * proprio `data.item_kind` (`upstream.ts::resolveUpstreamInputs`, lo stesso campo), esce a
+   * valore SINGOLO sullo stesso connettore, mai `images` list-valued.
+   */
+  function outputConnectorOfTile(n: Tile): ConnectorType | null {
+    if (n.type === 'list' || n.type === 'select') {
+      return n.data.item_kind === 'text' ? 'text' : 'images';
+    }
+    return outputConnectorOf(n.type);
+  }
+
+  /**
    * Quel che `CanvasFlow` disegna. `node` è ciò che serve a dire NO a un arco prima che nasca:
    * senza, `verdictBetween` non sa che tipo sia una tile e — per la sua regola, che è giusta —
    * lascia passare tutto.
@@ -238,7 +288,7 @@
       h: n.h,
       connectable: true,
       connectors: connectorsOfNode(n),
-      output: outputConnectorOf(n.type),
+      output: outputConnectorOfTile(n),
       kind: n.type,
       displayName: n.displayName,
       node: tileNode({
@@ -544,6 +594,23 @@
   async function cancelLoopFor(id: string) {
     await post('cancel_loop', { node_id: id });
     await refresh();
+  }
+
+  /** Ritenta UN item fallito di una lista che è output di un loop — subito, non in coda
+   *  (`loop.ts::retryLoopCombination`): il server rilegge i valori dell'iterazione dal biglietto
+   *  originale in `node_runs`, questa funzione passa solo cosa identifica quale item. */
+  async function retryLoopItem(listNodeId: string, list: ListNodeState, genNodeId: string, index: number) {
+    const item = list.items[index];
+    if (!item) return;
+
+    await post('retry_loop_combo', {
+      node_id: genNodeId,
+      output_list_node_id: listNodeId,
+      label: item.label ?? '',
+      run_id: item.run_id ?? ''
+    });
+    await refresh();
+    void invalidate('app:credits');
   }
 
   /**
@@ -889,6 +956,18 @@
     return item;
   }
 
+  /** Fisso o iterate — ottimista come ogni altro campo della linea: subito sullo schermo, e
+   *  ripristinato se il server rifiuta (l'arco è caduto nel frattempo, o non è più di quest'org). */
+  async function setEdgeMode(connectionId: string, mode: WireMode) {
+    const before = edges.find((e) => e.id === connectionId)?.mode;
+    edges = edges.map((e) => (e.id === connectionId ? { ...e, mode } : e));
+
+    const done = await post('set_edge_mode', { connection_id: connectionId, mode });
+    if (!done) {
+      edges = edges.map((e) => (e.id === connectionId ? { ...e, mode: before } : e));
+    }
+  }
+
   /**
    * LE TILE TOLTE. `planDelete` dice cosa cade con loro — le linee verso un nodo che sparisce
    * resterebbero disegnate verso il vuoto fino al ricarico.
@@ -1144,6 +1223,7 @@
     onConnect={connect}
     onDelete={remove}
     onEdgeDelete={disconnect}
+    onEdgeModeChange={setEdgeMode}
     onCreate={create}
     onCreateFilled={createFilled}
     onUpload={upload}
@@ -1168,6 +1248,8 @@
         {@const catalog = productsOf(row)}
         {@const feed = socialFeedOf(row)}
         {@const influencer = influencerOf(row)}
+        {@const list = listOf(row)}
+        {@const select = selectOf(row)}
         {@const uploaded = isUploadedNodeRow(row) ? uploadedNodeOf(row) : null}
         {#if uploaded}
           <UploadedNode node={uploaded} medium={row.type === 'video' ? 'video' : 'image'} />
@@ -1226,6 +1308,18 @@
           <InfluencerNode
             name={influencersByNode[id]?.name ?? 'Influencer'}
             views={influencersByNode[id]?.views ?? []}
+          />
+        {:else if list}
+          <ListNode
+            node={list}
+            onchange={(patch) => write(id, listData({ ...list, ...patch }))}
+            onretry={loopOutputByNode[id] ? (index) => retryLoopItem(id, list, loopOutputByNode[id]!, index) : undefined}
+          />
+        {:else if select}
+          <SelectNode
+            node={select}
+            list={upstreamListOf(id)}
+            onchange={(patch) => write(id, selectData({ ...select, ...patch }))}
           />
         {/if}
       {/if}

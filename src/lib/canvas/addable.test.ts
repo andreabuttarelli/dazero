@@ -14,8 +14,16 @@ import { GEN_MEDIUMS } from './gen-node';
  * girano attorno, e nessuna di quelle domande ha senso per chi non produce.
  */
 describe('cosa si può mettere sulla tela', () => {
-  it('contiene i tre medium che si producono, la pagina incorporata, il documento e le due sorgenti che scaricano', () => {
-    expect(CANVAS_ADDABLE).toEqual([...GEN_MEDIUMS, 'iframe', 'doc', 'products', 'social_account_feed']);
+  it('contiene i tre medium che si producono, la pagina incorporata, il documento, le due sorgenti che scaricano e i due nodi di loop', () => {
+    expect(CANVAS_ADDABLE).toEqual([
+      ...GEN_MEDIUMS,
+      'iframe',
+      'doc',
+      'products',
+      'social_account_feed',
+      'list',
+      'select'
+    ]);
   });
 
   it('non allarga i medium che un nodo produce', () => {

@@ -5,6 +5,8 @@ import { docNodeSize } from './doc-node';
 import { productsNodeSize } from './products-node';
 import { socialFeedNodeSize } from './social-feed-node';
 import { influencerNodeSize } from './influencer-node';
+import { listNodeSize } from './list-node';
+import { selectNodeSize } from './select-node';
 
 type Size = { w: number; h: number };
 
@@ -21,8 +23,8 @@ const NODE_SIZE: Record<NodeType, () => Size> = {
   products: productsNodeSize,
   ads: () => FALLBACK_SIZE,
   influencer: influencerNodeSize,
-  list: () => FALLBACK_SIZE,
-  select: () => FALLBACK_SIZE
+  list: listNodeSize,
+  select: selectNodeSize
 };
 
 export function nodeSize(type: string): Size {

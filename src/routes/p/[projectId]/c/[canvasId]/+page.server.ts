@@ -14,6 +14,7 @@ import {
   listConnections,
   listNodes,
   moveNode,
+  setConnectionMode,
   writeNodeData,
   type CanvasNodeRecord
 } from '$lib/server/repos/canvas';
@@ -22,10 +23,11 @@ import { validateNodeData } from '$lib/canvas/node-data';
 import type { Actor } from '$lib/server/repos/actor';
 import { mintShareToken } from '$lib/canvas/doc-node';
 import { clearDocShare, setDocShare } from '$lib/server/repos/doc-share';
-import { isCanvasEdgeKind } from '$lib/canvas-edges';
+import { isCanvasEdgeKind, isWireMode } from '$lib/canvas-edges';
 import { canvasModelCatalogue } from '$lib/server/canvas-catalogue';
 import { runGenNode, runsOf } from '$lib/server/canvas/generate';
-import { planLoop, enqueueLoop, cancelLoop } from '$lib/server/canvas/loop';
+import { planLoop, enqueueLoop, cancelLoop, retryLoopCombination } from '$lib/server/canvas/loop';
+import { listNodeRuns } from '$lib/server/repos/node-runs';
 import { duplicateNodes } from '$lib/server/canvas/duplicate';
 import { undoGesture } from '$lib/server/canvas/undo';
 import type { Gesture, UndoItem } from '$lib/canvas/undo-plan';
@@ -423,6 +425,52 @@ export const actions: Actions = {
   },
 
   /**
+   * RITENTA UN ITEM FALLITO DI UN OUTPUT DI LOOP — subito, non in coda: `loop.ts::retryLoopCombination`.
+   * L'item porta solo `label`/`run_id`; i valori dell'iterazione (`params.loop.values`) vivono sul
+   * biglietto originale in `node_runs`, e sono quelli che questa azione rilegge invece di
+   * indovinarli dall'item — un item che perde il proprio `run_id` (mai dovrebbe accadere dopo
+   * `createOutputList`) cade sul confronto per `label`, l'unica altra chiave che un item porta.
+   */
+  retry_loop_combo: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const nodeId = String(fd.get('node_id') ?? '');
+    const outputListNodeId = String(fd.get('output_list_node_id') ?? '');
+    const label = String(fd.get('label') ?? '');
+    const runId = fd.get('run_id');
+    if (!nodeId || !outputListNodeId) {
+      return fail(400, { error: 'richiesta non valida' });
+    }
+
+    const denied = await gateOrgAiActionForForm(scope.orgId);
+    if (denied) {
+      return fail(denied.status, denied.data);
+    }
+
+    const runs = await listNodeRuns(scope.db, { orgId: scope.orgId, nodeId });
+    const ticket = runs.find((run) => {
+      const loop = (run.params as { loop?: { outputListNodeId?: string; label?: string } }).loop;
+      if (!loop || loop.outputListNodeId !== outputListNodeId) return false;
+      if (typeof runId === 'string' && runId) return run.id === runId;
+      return loop.label === label;
+    });
+    const values = (ticket?.params as { loop?: { values?: Record<string, string> } } | undefined)?.loop?.values ?? {};
+
+    const out = await retryLoopCombination(scope.db, {
+      orgId: scope.orgId,
+      projectId: scope.canvas.projectId,
+      canvasId: scope.canvasId,
+      nodeId,
+      userId: scope.userId,
+      outputListNodeId,
+      combination: { label, values }
+    });
+
+    return out;
+  },
+
+  /**
    * SINCRONIZZARE UN NODO `products` O `social_account_feed`. Non è `run`: non c'è un provider
    * asincrono da rincorrere, il giro finisce dentro questa stessa richiesta — quindi lo stato si
    * scrive due volte, "sta scaricando" prima di chiamare il fetcher e il risultato dopo, invece
@@ -781,6 +829,28 @@ export const actions: Actions = {
     await deleteConnection(scope.db, { orgId: scope.orgId, connectionId, actor: userActor(scope) });
 
     return { disconnected: true };
+  },
+
+  /**
+   * FISSO O ITERATE — il toggle che rende un filo un asse di loop (`loop-axes.ts`), non una
+   * connessione nuova: l'arco resta lo stesso, cambia solo come un nodo a valle lo legge.
+   */
+  set_edge_mode: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const connectionId = String(fd.get('connection_id') ?? '');
+    const mode = String(fd.get('mode') ?? '');
+    if (!connectionId || !isWireMode(mode)) {
+      return fail(400, { error: 'modo non valido' });
+    }
+
+    const connection = await setConnectionMode(scope.db, { orgId: scope.orgId, connectionId, mode });
+    if (!connection) {
+      return fail(404, { error: 'linea non trovata' });
+    }
+
+    return { connection };
   },
 
   /**

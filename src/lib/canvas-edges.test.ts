@@ -3,7 +3,10 @@ import {
   CANVAS_EDGE_KINDS,
   EDGE_KIND_LABEL,
   isCanvasEdgeKind,
+  isWireMode,
   toFlowEdges,
+  WIRE_MODE_LABEL,
+  WIRE_MODES,
   type CanvasEdgeRow
 } from './canvas-edges';
 
@@ -68,5 +71,21 @@ describe('il verso viaggia con la linea, mai come testo sopra di lei', () => {
 
   it('le etichette dei tre versi si leggono da fuori: due elenchi divergerebbero', () => {
     expect(Object.keys(EDGE_KIND_LABEL).sort()).toEqual([...CANVAS_EDGE_KINDS].sort());
+  });
+});
+
+describe('fisso o iterate: il toggle che rende un filo un asse di loop', () => {
+  it('conosce i due soli valori del check', () => {
+    expect(WIRE_MODES).toEqual(['fixed', 'iterate']);
+  });
+
+  it('riconosce un valore ammesso e rifiuta un valore inventato', () => {
+    expect(isWireMode('fixed')).toBe(true);
+    expect(isWireMode('iterate')).toBe(true);
+    expect(isWireMode('always')).toBe(false);
+  });
+
+  it('ha un\'etichetta per ognuno dei due', () => {
+    expect(Object.keys(WIRE_MODE_LABEL).sort()).toEqual([...WIRE_MODES].sort());
   });
 });

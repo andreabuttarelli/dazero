@@ -39,7 +39,7 @@
   import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
   import { CANVAS_DRAG_FILLED_NODE, parseFilledNodeDrag, type FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { syncNodes } from '$lib/canvas/tile-sync';
-  import { CANVAS_EDGE_KINDS, EDGE_KIND_LABEL, type CanvasEdgeKind, type FlowEdge } from '$lib/canvas-edges';
+  import { CANVAS_EDGE_KINDS, EDGE_KIND_LABEL, WIRE_MODES, WIRE_MODE_LABEL, type CanvasEdgeKind, type FlowEdge, type WireMode } from '$lib/canvas-edges';
   import { isAddable, type Addable } from '$lib/canvas/addable';
   import { DEFAULT_EDGE_KIND, edgeKindsFor, verdictBetween } from '$lib/canvas/connect-rules';
   import { connectorAccepts } from '$lib/canvas/connector-ports';
@@ -88,6 +88,7 @@
     onDelete,
     onEdgeDelete,
     onEdgeRetype,
+    onEdgeModeChange,
     onCreate,
     onCreateFilled,
     onUpload,
@@ -133,6 +134,10 @@
     onEdgeDelete?: (edgeId: string) => void;
     /** Il verso di una linea che c'è già: si corregge, non si rifà. */
     onEdgeRetype?: (edgeId: string, kind: CanvasEdgeKind) => void;
+    /** Fisso o iterate: se assente il pannello della linea non offre il toggle — la stessa
+     *  disciplina di `onEdgeRetype`/`onEdgeDelete`, un prop opzionale per una riga opzionale del
+     *  menù. */
+    onEdgeModeChange?: (edgeId: string, mode: WireMode) => void;
     /** Una tile nuova chiesta dalla barra o dal trascinamento, col punto già in unità di tela. */
     onCreate?: (what: Addable, at: { x: number; y: number }) => void;
     /**
@@ -345,6 +350,15 @@
 
     onEdgeRetype?.(picked.edge.id, kind);
     picked = null;
+  }
+
+  /** Fisso o iterate: NON chiude il pannello — a differenza del verso, il toggle si guarda
+   *  mentre si sceglie (quante combinazioni farebbe un loop a valle), non un clic e via. */
+  function retypeMode(mode: WireMode) {
+    if (!picked) return;
+
+    onEdgeModeChange?.(picked.edge.id, mode);
+    picked = { ...picked, edge: { ...picked.edge, mode } };
   }
 
   function drop() {
@@ -612,6 +626,21 @@
         {/each}
       {/if}
 
+      {#if onEdgeModeChange}
+        <div class="edge-panel-sep" role="separator"></div>
+        {#each WIRE_MODES as mode (mode)}
+          <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={(picked.edge.mode ?? 'fixed') === mode}
+            class:is-on={(picked.edge.mode ?? 'fixed') === mode}
+            onclick={() => retypeMode(mode)}
+          >
+            {WIRE_MODE_LABEL[mode]}
+          </button>
+        {/each}
+      {/if}
+
       {#if onEdgeDelete}
         <button type="button" role="menuitem" class="edge-drop" onclick={drop}>Togli</button>
       {/if}
@@ -744,5 +773,9 @@
     border-top: 1px solid var(--line, #e5e5e5);
     border-radius: 0;
     color: #c0392b;
+  }
+  .edge-panel-sep {
+    margin: 3px 0;
+    border-top: 1px solid var(--line, #e5e5e5);
   }
 </style>

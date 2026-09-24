@@ -18,6 +18,8 @@ import Globe from '@lucide/svelte/icons/globe';
 import FileText from '@lucide/svelte/icons/file-text';
 import ShoppingBag from '@lucide/svelte/icons/shopping-bag';
 import Rss from '@lucide/svelte/icons/rss';
+import List from '@lucide/svelte/icons/list';
+import MousePointerClick from '@lucide/svelte/icons/mouse-pointer-click';
 import type { Component } from 'svelte';
 import type { Addable } from './addable';
 
@@ -28,5 +30,7 @@ export const ADDABLE_ICON: Record<Addable, Component> = {
   iframe: Globe,
   doc: FileText,
   products: ShoppingBag,
-  social_account_feed: Rss
+  social_account_feed: Rss,
+  list: List,
+  select: MousePointerClick
 };
