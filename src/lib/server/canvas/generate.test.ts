@@ -223,6 +223,22 @@ describe('una run rimasta running non ha altra via se non il timeout', () => {
 
     expect(result).toMatchObject({ expired: 0 });
   });
+
+  /**
+   * UN BIGLIETTO DI LOOP `queued` (`loop.ts::enqueueLoop`) resta `status: 'running'` finché un
+   * tick non lo reclama — anche per PIÙ di `RUN_STALE_MS`, se la coda è lunga e il suo turno non
+   * è ancora arrivato. Scambiarlo per un giro perso lo chiuderebbe `expired` mentre aspettava
+   * solo di essere drenato: il difetto che questo test tiene fermo.
+   */
+  it('non scade un biglietto di loop ancora in coda, per quanto vecchio', async () => {
+    const ticketRow = { ...runRow, params: { loop: { phase: 'queued', outputListNodeId: 'list-1', label: 'v1', values: {} } } };
+    const { db, calls } = fakeDb({ node_runs: [ticketRow], nodes: [nodeRow] });
+
+    const result = await expireStuckRuns(db);
+
+    expect(result).toMatchObject({ expired: 0 });
+    expect(calls.some((c) => c.table === 'node_runs' && c.op === 'update')).toBe(false);
+  });
 });
 
 /**

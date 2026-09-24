@@ -575,6 +575,20 @@ export type ExpireOutcome = { expired: number };
 const RUN_TIMED_OUT = 'timed out — the request that ran it never came back';
 
 /**
+ * UN BIGLIETTO DI LOOP (`loop.ts::enqueueLoop`, `node_runs.params.loop.phase === 'queued'`) NON È
+ * PERSO PER LA SOLA ETÀ — è in attesa che `drainLoopQueue` lo reclami, e una coda lunga (fino a
+ * 1000 combinazioni, drenate poche per tick) supera comodamente `RUN_STALE_MS`. Scambiarlo per un
+ * giro perso lo chiuderebbe `expired` mentre aspettava solo il suo turno: il loop perderebbe
+ * combinazioni non ancora partite, non solo quelle davvero bloccate. Un biglietto RECLAMATO
+ * (`status: 'finishing'`) non passa comunque da questa funzione — `dueRuns` guarda solo
+ * `status = 'running'` — quindi qui basta riconoscere la forma del biglietto ancora in coda.
+ */
+function isQueuedLoopTicket(run: { params: Record<string, unknown> }): boolean {
+  const loop = run.params.loop;
+  return Boolean(loop && typeof loop === 'object' && (loop as { phase?: unknown }).phase === 'queued');
+}
+
+/**
  * UN GIRO SENZA VIA D'USCITA VIENE CHIUSO A MANO, DA FUORI.
  *
  * `claimRun` prima di ogni scrittura: due tick sovrapposti — o questo tick e la richiesta
@@ -586,7 +600,7 @@ const RUN_TIMED_OUT = 'timed out — the request that ran it never came back';
  */
 export async function expireStuckRuns(db: Db): Promise<ExpireOutcome> {
   const before = new Date(Date.now() - RUN_STALE_MS).toISOString();
-  const stuck = await dueRuns(db, { before });
+  const stuck = (await dueRuns(db, { before })).filter((run) => !isQueuedLoopTicket(run));
 
   let expired = 0;
   for (const run of stuck) {
