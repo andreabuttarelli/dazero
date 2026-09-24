@@ -4,6 +4,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { ssrNoExternalForDeploy } from './scripts/ssr-no-external';
+import { vercelAnalyticsDefine } from './scripts/vercel-analytics';
 
 /** Worktree `node_modules` is often a symlink into another checkout; Vite resolves it and
  *  rejects the real path unless it is on the allow list. */
@@ -41,6 +42,7 @@ const TEST_TIMEOUT_MS = 120_000;
 
 export default defineConfig({
   server: { hmr, fs: { allow: ['..', ...(nodeModulesReal ? [nodeModulesReal] : [])] } },
+  define: vercelAnalyticsDefine(process.env),
   plugins: [sentrySvelteKit({
     org: "021-6z",
     project: "021-1m",
