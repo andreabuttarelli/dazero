@@ -176,11 +176,11 @@ describe('il registry degli endpoint di brand', () => {
     expect(statusForFailure(byTool('create_checkout_link'), 'no_subscription')).toBe(409);
   });
 
-  it('il checkout accetta un piano opzionale e rifiuta il resto', () => {
+  it('il checkout accetta un gradino della scala opzionale e rifiuta il resto', () => {
     const { input } = byTool('create_checkout_link');
     expect(input.safeParse({}).success).toBe(true);
-    expect(input.safeParse({ plan: 'pro' }).success).toBe(true);
-    expect(input.safeParse({ plan: '' }).success).toBe(false);
+    expect(input.safeParse({ usd: 30 }).success).toBe(true);
+    expect(input.safeParse({ usd: -30 }).success).toBe(false);
     expect(input.safeParse({ coupon: 'FREE' }).success).toBe(false);
   });
 
@@ -198,7 +198,7 @@ describe('il registry degli endpoint di brand', () => {
     expect(byTool('create_checkout_link').output.safeParse({
       ok: true,
       url: 'https://billing.stripe.com/p/session/live_xyz',
-      plans: [{ key: 'pro', label: 'Pro' }]
+      plans: [{ usd: 30, label: '$30/mo' }]
     }).success).toBe(true);
     expect(byTool('create_billing_portal_link').output.safeParse({ ok: true }).success).toBe(false);
   });

@@ -367,15 +367,10 @@
       },
       "billing": {
         "title": "Plan & billing",
-        "planActive": "{plan} plan · Active",
-        "noPlan": "No active plan",
         "membersNotice": "For security reasons, invited members can't manage billing — only the brand owner (admin) can.",
         "retentionApplied": "🎉 Done — 50% off your next 2 months. Your plan stays active.",
         "canceledOn": "Your plan will cancel on {date}. You keep full access until then.",
         "canceledNoDate": "Your plan will cancel. You keep full access until then.",
-        "topPlanTitle": "You're on our top plan",
-        "topPlanDesc": "Need more volume or custom terms? We'll tailor a plan for you.",
-        "talkToUs": "Talk to us",
         "upgradeTitle": "Upgrade your plan",
         "upgradeDesc": "More posts, more platforms, more reach.",
         "manage": "Manage",
@@ -405,9 +400,6 @@
         "statusCredited": "Credited",
         "statusRejected": "Rejected",
         "empty": "No referrals yet — share your link to start earning credits."
-      },
-      "upgrade": {
-        "choose": "Choose {plan}"
       },
       "cancel": {
         "back": "Back"
@@ -441,7 +433,6 @@
         "read": "Read",
         "write": "Write",
         "allBrands": "All my brands",
-        "thisBrandOnly": "This brand only",
         "brandScope": "Brand scope",
         "keyRevoked": "API key revoked.",
         "copyKey": "Copy key",
@@ -528,7 +519,6 @@
       "billing": {
         "poolTitle": "Shared credit pool",
         "poolDesc": "One subscription covers every brand in your account.",
-        "periodLabel": "Period {start} – {end}",
         "breakdownTitle": "Usage by brand",
         "brandCol": "Brand",
         "creditsCol": "Credits used",

@@ -118,6 +118,19 @@ returns finished here — it comes back `queued` with an `external_job_id`, and 
 later on a tick you do not control: poll the node with `query` rather than waiting on this call.
 Spends credits; `credits_exhausted` means the org is out.
 
+## Loop a node over many combinations
+
+`run_node_loop` queues every combination from a node's `iterate` wires (or a plain "repeat N")
+through the same engine as `run_node_generation` — one real run per combination. It returns as
+soon as the queue is written, not when the results exist: a background tick drains it over the
+following minutes, and results land in an output `list` node next to this one — poll that with
+`query`. Above 50 combinations it comes back `needs_confirmation` with the count and cost; call
+again with `confirm: true`. Above 1000 it is refused outright and the loop must be split. Credits
+for the whole loop are checked up front. `preview_node_loop` reads how many combinations would
+queue and what they would cost, without spending anything — call it first when the count is not
+already known. `cancel_node_loop` stops what is still queued; anything a tick already claimed
+finishes regardless, and what it already produced stays in the output list.
+
 ## Promote to a post
 
 A canvas node is not a post. `create_post` is what makes something publishable: give it a

@@ -135,6 +135,33 @@ run, and the render lands later, asynchronously — the node stays `running` unt
 deposits the asset. Poll the node (`query`) rather than expecting a file now. Spends credits; a
 `credits_exhausted` failure means the org is out.
 
+## Node loops
+
+| MCP | CLI |
+|-----|-----|
+| `run_node_loop` | (MCP only) |
+| `preview_node_loop` | (MCP only) |
+| `cancel_node_loop` | (MCP only) |
+
+`run_node_loop({ org, node_id, confirm? })` queues every combination from a node's `iterate`
+wires (or a plain "repeat N" when it has none) through the same engine as `run_node_generation` —
+one real run per combination, never a copy of it. It returns as soon as the queue is written, NOT
+when the results exist: combinations run a few at a time as a background tick drains the queue
+over the following minutes. Up to 50 queues directly; above 50 it comes back `needs_confirmation`
+with the count and the credit cost — call again with `confirm: true`; above 1000 it is refused
+outright and the loop must be split. Credits for the whole loop are checked up front, not
+discovered empty halfway. A failed combination never stops the others; results land in an output
+`list` node next to this one as they finish, each item labelled with which values produced it —
+poll that node (`query`) to see progress.
+
+`preview_node_loop({ org, node_id })` reads how many combinations `run_node_loop` would queue
+right now and what they would cost. Spends nothing — call it before `run_node_loop` when the
+count is not already known, rather than guessing at whether `confirm` will be needed.
+
+`cancel_node_loop({ org, node_id })` stops the combinations still queued for this node — the ones
+a tick has already claimed finish regardless, and anything already produced stays in the output
+list. Returns how many combinations it actually stopped.
+
 ## Posts
 
 | MCP | CLI |

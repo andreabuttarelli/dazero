@@ -100,14 +100,20 @@ describe('gateCreditsCore, org-scoped cache', () => {
 
   it('two brands of the same org share one pool reading', async () => {
     // The cache keys on the org: the second brand must not pay for the same sum all over again.
-    const { client, calls } = createTestSupabase({
+    const { client, rpcCalls } = createTestSupabase({
       orgs: [{ id: ORG }],
       brands: [
         { id: 'brand-a', org_id: ORG },
         { id: 'brand-b', org_id: ORG }
-      ],
-      ai_calls: []
+      ]
     });
+    // The balance the gate reads is `org_credit_balance` (credit_ledger), not a sum over ai_calls
+    // — a positive balance here is "plenty of credits left", the same thing an empty ai_calls
+    // seed used to mean under the old quota model.
+    client.rpc = (async (fn: string, args?: unknown) => {
+      rpcCalls.push({ fn, args });
+      return { data: 1000, error: null };
+    }) as typeof client.rpc;
     vi.doMock('./supabase-admin', () => ({ createAdminClient: () => client }));
     vi.doMock('./ai-log', () => ({ isCreditExempt: () => false }));
 
@@ -115,6 +121,6 @@ describe('gateCreditsCore, org-scoped cache', () => {
     await gateCreditsCore('brand-a');
     await gateCreditsCore('brand-b');
 
-    expect(calls.filter((c) => c.table === 'ai_calls')).toHaveLength(1);
+    expect(rpcCalls.filter((c) => c.fn === 'org_credit_balance')).toHaveLength(1);
   });
 });
