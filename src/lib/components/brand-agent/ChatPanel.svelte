@@ -272,6 +272,8 @@
     height: 100%;
     min-height: 0;
     gap: 8px;
+    border: 0;
+    background: transparent;
   }
 
   .scroll {

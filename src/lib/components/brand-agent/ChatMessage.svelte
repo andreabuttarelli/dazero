@@ -71,6 +71,7 @@
 
 <style>
   .msg {
+    border: 0;
     display: flex;
     flex-direction: column;
     gap: 3px;
@@ -84,6 +85,7 @@
   }
 
   .bubble {
+    border: 0;
     max-width: 92%;
     padding: 6px 9px;
     font-size: 12.5px;
