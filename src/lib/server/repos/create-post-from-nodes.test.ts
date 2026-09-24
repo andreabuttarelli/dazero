@@ -16,7 +16,7 @@ function fakeAccounts(accounts: { id: string }[] = [{ id: 'account-1' }]) {
   return { listBrandAccounts: vi.fn().mockResolvedValue(accounts) };
 }
 
-function fakePromote(post: { id: string; caption: string } = { id: 'post-1', caption: 'dalla tela' }) {
+function fakePromote(post: { id: string; caption: string } = { id: 'post-1', caption: 'la caption scelta' }) {
   return vi.fn().mockResolvedValue(post);
 }
 
@@ -28,25 +28,19 @@ function fakeScheduleDelivery(deliveries: { accountId: string; ok: boolean }[] =
   return vi.fn().mockResolvedValue({ deliveries });
 }
 
-function fakeOverrideCaption() {
-  return vi.fn().mockResolvedValue(undefined);
-}
-
 function deps(over: Partial<{
   brands: ReturnType<typeof fakeBrands>;
   accounts: ReturnType<typeof fakeAccounts>;
   promoteNodesToPost: ReturnType<typeof fakePromote>;
   setPostStatus: ReturnType<typeof fakeSetStatus>;
   scheduleDelivery: ReturnType<typeof fakeScheduleDelivery>;
-  overrideCaption: ReturnType<typeof fakeOverrideCaption>;
 }> = {}) {
   return {
     brands: over.brands ?? fakeBrands(),
     accounts: over.accounts ?? fakeAccounts(),
     promoteNodesToPost: over.promoteNodesToPost ?? fakePromote(),
     setPostStatus: over.setPostStatus ?? fakeSetStatus(),
-    scheduleDelivery: over.scheduleDelivery ?? fakeScheduleDelivery(),
-    overrideCaption: over.overrideCaption ?? fakeOverrideCaption()
+    scheduleDelivery: over.scheduleDelivery ?? fakeScheduleDelivery()
   };
 }
 
@@ -61,7 +55,7 @@ const BASE_INPUT = {
 };
 
 describe('createPostFromNodes: draft', () => {
-  it('promuove i nodi, scrive la caption scelta e non tocca lo status ne la consegna', async () => {
+  it('promuove i nodi con la caption scelta e non tocca lo status ne la consegna', async () => {
     const d = deps();
 
     const result = await createPostFromNodes(FAKE_DB, d, BASE_INPUT, FAKE_PUBLISHER);
@@ -70,9 +64,15 @@ describe('createPostFromNodes: draft', () => {
     expect(d.promoteNodesToPost).toHaveBeenCalledWith(
       FAKE_DB,
       expect.anything(),
-      expect.objectContaining({ orgId: ORG, brandId: BRAND, nodeIds: ['node-1'], actorId: USER, actorKind: 'user' })
+      expect.objectContaining({
+        orgId: ORG,
+        brandId: BRAND,
+        nodeIds: ['node-1'],
+        caption: 'la caption scelta',
+        actorId: USER,
+        actorKind: 'user'
+      })
     );
-    expect(d.overrideCaption).toHaveBeenCalledWith(FAKE_DB, { orgId: ORG, postId: 'post-1', caption: 'la caption scelta' });
     expect(d.setPostStatus).not.toHaveBeenCalled();
     expect(d.scheduleDelivery).not.toHaveBeenCalled();
   });

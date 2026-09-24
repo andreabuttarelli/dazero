@@ -31,12 +31,12 @@ export type CreatePostFromNodesRepos = {
       orgId: string;
       brandId: string;
       nodeIds: string[];
+      caption?: string;
       actorKind?: 'user' | 'agent' | 'system';
       actorId?: string | null;
     }
   ) => Promise<Post>;
   setPostStatus: (db: Db, input: { orgId: string; postId: string; status: PostStatus }) => Promise<void>;
-  overrideCaption: (db: Db, input: { orgId: string; postId: string; caption: string }) => Promise<void>;
   scheduleDelivery: (
     db: Db,
     publisher: SocialPublisher,
@@ -80,7 +80,14 @@ export async function createPostFromNodes(
     post = await repos.promoteNodesToPost(
       db,
       {},
-      { orgId: input.orgId, brandId: input.brandId, nodeIds: input.nodeIds, actorKind: 'user', actorId: input.userId }
+      {
+        orgId: input.orgId,
+        brandId: input.brandId,
+        nodeIds: input.nodeIds,
+        caption: input.caption,
+        actorKind: 'user',
+        actorId: input.userId
+      }
     );
   } catch (e) {
     if (e instanceof Error && e.message.startsWith('node_not_found')) {
@@ -88,9 +95,6 @@ export async function createPostFromNodes(
     }
     throw e;
   }
-
-  await repos.overrideCaption(db, { orgId: input.orgId, postId: post.id, caption: input.caption });
-  post = { ...post, caption: input.caption };
 
   if (input.mode.kind === 'draft') {
     return { ok: true, post };
