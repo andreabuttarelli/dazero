@@ -463,10 +463,14 @@
    */
   async function post(
     action: string,
-    fields: Record<string, string | number | File>
+    fields: Record<string, string | number | File | string[]>
   ): Promise<Record<string, unknown> | null> {
     const body = new FormData();
     for (const [key, value] of Object.entries(fields)) {
+      if (Array.isArray(value)) {
+        for (const item of value) { body.append(key, item); }
+        continue;
+      }
       body.set(key, value instanceof File ? value : String(value));
     }
 
@@ -678,6 +682,66 @@
    *  risultati già pronti restano nella lista di output. */
   async function cancelLoopFor(id: string) {
     await post('cancel_loop', { node_id: id });
+    await refresh();
+  }
+
+  /**
+   * ESEGUI FLUSSO: stesso preventivo-poi-conferma del loop, ma su più nodi collegati invece di
+   * una griglia di combinazioni. `run_workflow` mette in coda e torna: il cron
+   * (`canvas/runs/tick`) drena i biglietti rispettando `dependsOn`, e la realtime su `nodes`
+   * aggiorna da sola man mano che ognuno finisce.
+   */
+  let workflowId = $state<string | null>(null);
+  let workflowNodeIds = $state<string[]>([]);
+
+  async function runWorkflow(ids: string[]) {
+    const plan = await post('workflow_plan', { node_id: ids });
+    if (!plan) return;
+
+    const ok = confirm(
+      `${(plan.steps as unknown[]).length} passi, circa ${plan.estimatedCredits} crediti. Avviare il flusso?`
+    );
+    if (!ok) return;
+
+    const markRunning = (fn: (gen: GenNodeState) => GenNodeState) => {
+      nodes = nodes.map((node) => {
+        if (!ids.includes(node.id)) return node;
+        const gen = genOf(node);
+        return gen ? { ...node, data: { ...node.data, ...genData(fn(gen)) } } : node;
+      });
+    };
+
+    markRunning(startRun);
+
+    const result = await post('run_workflow', { node_id: ids });
+    if (!result) {
+      markRunning(unlockRun);
+      return;
+    }
+
+    workflowId = result.workflowId as string;
+    workflowNodeIds = ids;
+    await refresh();
+    void invalidate('app:credits');
+  }
+
+  const workflowRunning = $derived(
+    workflowId !== null &&
+      nodes.some((node) => workflowNodeIds.includes(node.id) && genOf(node)?.running)
+  );
+
+  $effect(() => {
+    if (workflowId !== null && !workflowRunning) {
+      workflowId = null;
+      workflowNodeIds = [];
+    }
+  });
+
+  async function stopWorkflow() {
+    if (!workflowId) return;
+    await post('cancel_workflow', { workflow_id: workflowId });
+    workflowId = null;
+    workflowNodeIds = [];
     await refresh();
   }
 
@@ -1317,6 +1381,12 @@
       {/if}
     </p>
   {/if}
+  {#if workflowRunning}
+    <div class="workflow-chip" role="status">
+      Flusso in corso
+      <button type="button" onclick={stopWorkflow}>Ferma</button>
+    </div>
+  {/if}
 
   <CanvasFlow
     {tiles}
@@ -1339,6 +1409,7 @@
     onRedo={redo}
     onConnectNew={connectNew}
     onConnectExisting={connectExisting}
+    onRunWorkflow={runWorkflow}
     {nodeSummaries}
     {modelChoicesFor}
     catalogueSyncedFor={(type) => mediumCatalogue[type].synced}
@@ -1535,5 +1606,30 @@
     background: var(--paper, #fff);
     border: 1px solid var(--line-2, #d2d2d7);
     border-radius: 0;
+  }
+
+  .workflow-chip {
+    position: absolute;
+    z-index: 10;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--ink, #1d1d1f);
+    background: var(--paper, #fff);
+    border: 1px solid var(--line-2, #d2d2d7);
+    border-radius: 0;
+  }
+  .workflow-chip button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    text-decoration: underline;
+    cursor: pointer;
   }
 </style>
