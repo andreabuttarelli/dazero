@@ -25,7 +25,7 @@
    * che si colora e il menù dei versi, e tre copie diverrebbero diverse al primo caso nuovo.
    */
   import { untrack } from 'svelte';
-  import { SvelteFlow, Background, type Node } from '@xyflow/svelte';
+  import { SvelteFlow, Background, SelectionMode, type Node } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
   import CanvasTile from './CanvasTile.svelte';
   import CanvasPointer from './CanvasPointer.svelte';
@@ -559,6 +559,9 @@
     zoomOnScroll={false}
     zoomOnDoubleClick={false}
     deleteKey={null}
+    selectionOnDrag
+    selectionMode={SelectionMode.Partial}
+    panOnDrag={[1, 2]}
     fitView
   >
     <CanvasPointer onready={(fn) => (toFlow = fn)} />
