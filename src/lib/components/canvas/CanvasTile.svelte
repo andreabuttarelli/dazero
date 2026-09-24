@@ -19,11 +19,12 @@
    * E NON SU TUTTE. Chi mette la tile dice se si collega: un post produce, un pannello che
    * riassume il brand no. Due puntini su quest'ultimo inviterebbero a un gesto che poi fallisce.
    */
-  import { Handle, Position, useConnection, type NodeProps } from '@xyflow/svelte';
+  import { Handle, NodeResizer, Position, useConnection, type NodeProps } from '@xyflow/svelte';
   import { CONNECTOR_STYLE, portActive, type ConnectorType, type DragOrigin } from '$lib/canvas/connectors';
   import { NODE_KIND_ICON, NODE_KIND_LABEL } from '$lib/canvas/node-label';
   import { isNodeType } from '$lib/canvas/node-data';
   import { getTileRender } from '$lib/canvas/tile-render-context';
+  import { getTileResize } from '$lib/canvas/tile-resize-context';
 
   type TileData = {
     id: string;
@@ -39,6 +40,10 @@
     displayName?: string | null;
     /** Questo nodo è sorgente di almeno un post (`post_sources`). */
     inPost?: boolean;
+    /** La taglia minima del TIPO di questo nodo (`nodeSize`). Assente = non ridimensionabile a
+     *  mano — il recap del brand non ha una taglia minima propria da rispettare. */
+    minW?: number;
+    minH?: number;
   };
 
   // `selected` lo tiene SvelteFlow e lo passa a ogni nodo: è l'unico che sa davvero cosa è
@@ -48,6 +53,7 @@
   let { data, selected }: NodeProps = $props();
   const tile = $derived(data as unknown as TileData);
   const render = getTileRender();
+  const resize = getTileResize();
 
   const connection = useConnection();
   const origin = $derived.by((): DragOrigin => {
@@ -106,6 +112,18 @@
 
 {#if selected}
   <div class="tile-selection" style={`outline-color:${selectionColor}`} aria-hidden="true"></div>
+{/if}
+
+{#if selected && resize() && tile.minW != null && tile.minH != null}
+  <NodeResizer
+    nodeId={tile.id}
+    minWidth={tile.minW}
+    minHeight={tile.minH}
+    color={selectionColor}
+    handleStyle="border-radius:0;width:8px;height:8px;"
+    lineStyle="border-radius:0;"
+    onResizeEnd={(_event, params) => resize()?.(tile.id, params.width, params.height)}
+  />
 {/if}
 
 {@render render()({ id: tile.id, selected })}

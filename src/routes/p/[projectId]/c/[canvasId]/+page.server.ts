@@ -14,10 +14,12 @@ import {
   listConnections,
   listNodes,
   moveNode,
+  resizeNode,
   setConnectionMode,
   writeNodeData,
   type CanvasNodeRecord
 } from '$lib/server/repos/canvas';
+import { nodeSize } from '$lib/canvas/node-size';
 import { isNodeType, docData, productsOf, socialFeedOf, influencerOf } from '$lib/canvas-node-data';
 import { validateNodeData } from '$lib/canvas/node-data';
 import type { Actor } from '$lib/server/repos/actor';
@@ -665,6 +667,40 @@ export const actions: Actions = {
     }
 
     return { moved: true };
+  },
+
+  /**
+   * RIDIMENSIONARE: STESSA DOTTRINA DI `move` — last-write-wins, nessun `canvas_events` (il
+   * commento in cima a `canvas.ts` lo dice esplicitamente), una scrittura sola a fine gesto, non
+   * per fotogramma. Il minimo non è un numero a caso qui: è quello del TIPO del nodo
+   * (`nodeSize`), lo stesso che decide la misura di un nodo appena creato — un nodo non può
+   * restringersi sotto la taglia in cui nasce.
+   */
+  resize: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const nodeId = String(fd.get('node_id') ?? '');
+    const width = coord(fd.get('width'));
+    const height = coord(fd.get('height'));
+    if (!nodeId || width === null || height === null) {
+      return fail(400, { error: 'ridimensionamento non valido' });
+    }
+
+    const existing = (await listNodes(scope.db, scope)).find((node) => node.id === nodeId);
+    if (!existing) {
+      return fail(404, { error: 'nodo non trovato' });
+    }
+
+    const min = nodeSize(existing.type);
+    await resizeNode(scope.db, {
+      orgId: scope.orgId,
+      nodeId,
+      width: Math.max(min.w, width),
+      height: Math.max(min.h, height)
+    });
+
+    return { resized: true };
   },
 
   /**

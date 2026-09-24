@@ -372,6 +372,8 @@
       displayName: n.displayName,
       inPost: data.nodeIdsInPost.includes(n.id),
       select: n.select,
+      minW: nodeSize(n.type).w,
+      minH: nodeSize(n.type).h,
       node: tileNode({
         id: n.id,
         medium: n.type === 'iframe' || n.type === 'document' || n.type === 'doc' ? null : (n.type as 'text' | 'image' | 'video'),
@@ -756,6 +758,23 @@
     const result = await post('move', { node_id: id, x, y });
     if (!result && before) {
       nodes = nodes.map((node) => node.id === id ? { ...node, x: before.x, y: before.y } : node);
+    }
+  }
+
+  /**
+   * RIDIMENSIONARE: STESSA FORMA DI `move` — ottimista, last-write-wins, nessuna voce nello stack
+   * di undo (lo spostamento non ne ha una propria sulla taglia, e `MoveGesture` porta solo
+   * `x`/`y`). Scrive `userHeight`: da qui in poi `tileHeight` prende QUESTA misura, non più
+   * quella calcolata da `grownTextNodeHeight` — un ridimensionamento a mano vince sulla crescita
+   * automatica, la stessa regola già scritta in `text-node-grow.ts`.
+   */
+  async function resize(id: string, w: number, h: number) {
+    const before = nodes.find((node) => node.id === id);
+    nodes = nodes.map((n) => (n.id === id ? { ...n, w, h, userHeight: h } : n));
+
+    const result = await post('resize', { node_id: id, width: w, height: h });
+    if (!result && before) {
+      nodes = nodes.map((node) => (node.id === id ? { ...node, w: before.w, h: before.h, userHeight: before.userHeight } : node));
     }
   }
 
@@ -1304,6 +1323,7 @@
     {edges}
     onMove={move}
     onMoveEnd={moveEnd}
+    onResize={resize}
     onConnect={connect}
     onDelete={remove}
     onEdgeDelete={disconnect}

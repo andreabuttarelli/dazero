@@ -45,6 +45,7 @@
   import { connectorAccepts } from '$lib/canvas/connector-ports';
   import { isListValued, landingPort, type ConnectorType } from '$lib/canvas/connectors';
   import { setTileRender } from '$lib/canvas/tile-render-context';
+  import { setTileResize } from '$lib/canvas/tile-resize-context';
   import type { CanvasNode } from '$lib/canvas/graph';
 
   /**
@@ -68,6 +69,10 @@
     h: number;
     connectable?: boolean;
     node?: CanvasNode;
+    /** La taglia minima di QUESTO tipo di nodo (`nodeSize`, `node-size.ts`) — `NodeResizer` non
+     *  lascia stringere sotto. Assente = non ridimensionabile a mano (il resize resta spento). */
+    minW?: number;
+    minH?: number;
     /** Le porte di questo nodo (`connectorsFor`), passate a `CanvasTile` così com'è. Assente =
      *  un solo ingresso generico. */
     connectors?: ConnectorType[];
@@ -92,6 +97,7 @@
     edges: incomingEdges = [],
     onMove,
     onMoveEnd,
+    onResize,
     onConnect,
     onDelete,
     onCreatePost,
@@ -191,6 +197,9 @@
       ids: string[],
       patch: { model?: string | null; aspectRatio?: string; duration?: number; audio?: boolean; repeat?: number }
     ) => void;
+    /** Un nodo ha finito di essere ridimensionato dai suoi angoli/lati — `w`/`h` già in unità di
+     *  tela. Assente = nessuna tile è ridimensionabile a mano (il resizer non compare). */
+    onResize?: (id: string, w: number, h: number) => void;
     /** Cosa disegnare dentro una tile. La tela non sa cosa mostra: lo decide chi la usa. */
     tile: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
   } = $props();
@@ -207,6 +216,7 @@
   // trascinamento in corso. La sincronizzazione va scritta a mano, ed è il prezzo fisso della
   // libreria — quando arriverà `brand_canvas_items`, è qui che le due posizioni si riconciliano.
   setTileRender(() => tile);
+  setTileResize(() => onResize);
 
   const toNode = (t: Tile): Node => ({
     id: t.id,
@@ -219,7 +229,9 @@
       output: t.output ?? null,
       kind: t.kind,
       displayName: t.displayName,
-      inPost: t.inPost
+      inPost: t.inPost,
+      minW: t.minW,
+      minH: t.minH
     },
     type: 'tile',
     style: `width:${t.w}px;height:${t.h}px`
