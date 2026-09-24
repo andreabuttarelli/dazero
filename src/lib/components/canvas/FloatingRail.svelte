@@ -3,6 +3,7 @@
   import * as Tooltip from '$lib/components/ui/tooltip/index.js';
   import { cn } from '$lib/utils';
   import { navEntriesByGroup, type NavEntry } from '$lib/shell-nav';
+  import { prefetchEntry } from '$lib/canvas/chrome-loaders';
   import Images from '@lucide/svelte/icons/images';
   import Building from '@lucide/svelte/icons/building';
   import UserRound from '@lucide/svelte/icons/user-round';
@@ -60,6 +61,8 @@
           aria-pressed={isActive(entry)}
           aria-label={$_(entry.labelKey)}
           onclick={() => onClick(entry)}
+          onmouseenter={() => prefetchEntry(entry.id)}
+          onfocusin={() => prefetchEntry(entry.id)}
         >
           <Icon size={17} />
         </button>

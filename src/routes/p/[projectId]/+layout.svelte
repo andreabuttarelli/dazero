@@ -14,12 +14,12 @@
   import { onDestroy } from 'svelte';
   import CanvasTopBar from '$lib/components/canvas/CanvasTopBar.svelte';
   import FloatingRail from '$lib/components/canvas/FloatingRail.svelte';
-  import CanvasLeftPanel from '$lib/components/canvas/CanvasLeftPanel.svelte';
   import CanvasChatPanel from '$lib/components/canvas/CanvasChatPanel.svelte';
   import CanvasSheet from '$lib/components/canvas/CanvasSheet.svelte';
   import CanvasMobileTabs from '$lib/components/canvas/CanvasMobileTabs.svelte';
   import CanvasMobileMore from '$lib/components/canvas/CanvasMobileMore.svelte';
   import { openSheet } from '$lib/canvas/sheet-nav';
+  import { CHROME_LOADERS } from '$lib/canvas/chrome-loaders';
   import { sheetEntryForPath, type NavEntry } from '$lib/shell-nav';
   import { readChatOpen, writeChatOpen } from '$lib/shell-prefs';
   import { browser } from '$app/environment';
@@ -97,12 +97,14 @@
           onSheet={onRailSheet}
         />
         {#if leftPanel}
-          <CanvasLeftPanel
-            {projectId}
-            kind={leftPanel}
-            labelKey={leftPanel === 'assets' ? 'app.nav2.materials' : leftPanel === 'brands' ? 'app.nav2.brands' : 'app.nav2.influencers'}
-            onclose={() => (leftPanel = null)}
-          />
+          {#await CHROME_LOADERS.leftPanel() then { default: CanvasLeftPanel }}
+            <CanvasLeftPanel
+              {projectId}
+              kind={leftPanel}
+              labelKey={leftPanel === 'assets' ? 'app.nav2.materials' : leftPanel === 'brands' ? 'app.nav2.brands' : 'app.nav2.influencers'}
+              onclose={() => (leftPanel = null)}
+            />
+          {/await}
         {/if}
         <CanvasSheet {projectId} />
       </div>

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
-  import ChatPanel from '$lib/components/brand-agent/ChatPanel.svelte';
+  import { CHROME_LOADERS } from '$lib/canvas/chrome-loaders';
   import { readChatPanelPx, writeChatPanelPx, CHAT_PANEL } from '$lib/shell-prefs';
 
   /**
@@ -54,7 +54,9 @@
       onpointerdown={onResizeStart}
     ></div>
     <div class="chat-body">
-      <ChatPanel {projectId} {brandSlug} />
+      {#await CHROME_LOADERS.chat() then { default: ChatPanel }}
+        <ChatPanel {projectId} {brandSlug} />
+      {/await}
     </div>
   </div>
 {/if}
