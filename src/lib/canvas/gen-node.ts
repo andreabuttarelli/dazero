@@ -122,6 +122,14 @@ export function runStateOf(node: GenNode, upstream: UpstreamTextAvailability = {
 }
 
 /**
+ * IL NODO COME LO SI VEDE SUBITO DOPO IL CLIC, prima ancora che il server sappia del giro:
+ * `unlockRun` è il rollback simmetrico, chiamato quando il server rifiuta.
+ */
+export function startRun(node: GenNode): GenNode {
+  return { ...node, running: true, error: null };
+}
+
+/**
  * Sblocca un nodo rimasto in corsa. Il video parte e torna dopo: se la risposta non arriva più,
  * `running` resterebbe alzato per sempre e il bottone spento — l'utente deve poter riprendere.
  * L'errore si toglie insieme: o si riparte, o si torna a prima del giro.

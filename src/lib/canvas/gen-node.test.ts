@@ -6,6 +6,7 @@ import {
   isGenMedium,
   promptTooLong,
   runStateOf,
+  startRun,
   unlockRun,
   type GenNode,
   type ModelChoice
@@ -135,5 +136,24 @@ describe('un giro fallito non chiude il nodo', () => {
     expect(free.error).toBeNull();
     expect(free.refId).toBe('media-1');
     expect(runStateOf(free)).toBe('done');
+  });
+});
+
+describe('il clic su Genera accende subito lo stato in corsa', () => {
+  it('running diventa true e un errore di prima si toglie, prima che il server risponda', () => {
+    const started = startRun(node({ error: 'store_failed' }));
+
+    expect(started.running).toBe(true);
+    expect(started.error).toBeNull();
+    expect(runStateOf(started)).toBe('running');
+  });
+
+  it('sbloccare torna esattamente allo stato di prima del clic', () => {
+    const before = node({ error: 'store_failed', refId: 'media-1' });
+    const rolledBack = unlockRun(startRun(before));
+
+    expect(rolledBack.running).toBe(false);
+    expect(rolledBack.error).toBeNull();
+    expect(rolledBack.refId).toBe('media-1');
   });
 });

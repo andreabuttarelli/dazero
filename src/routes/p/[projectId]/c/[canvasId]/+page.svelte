@@ -35,7 +35,7 @@
   import type { ListNode as ListNodeState } from '$lib/canvas/list-node';
   import { verdictForUpload, canvasUploadPrefix } from '$lib/canvas/upload-kind';
   import { isUploadedNodeRow, uploadedNodeOf } from '$lib/canvas/uploaded-node';
-  import { genNodeSize, type GenNode as GenNodeState, type GenMedium, type ModelChoice } from '$lib/canvas/gen-node';
+  import { genNodeSize, startRun, unlockRun, type GenNode as GenNodeState, type GenMedium, type ModelChoice } from '$lib/canvas/gen-node';
   import { hasUpstreamText } from '$lib/canvas/upstream-inputs';
   import { effectiveModel } from '$lib/canvas/default-models';
   import { type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
@@ -506,21 +506,23 @@
    * porta la posizione dove vive davvero.
    */
   /**
-   * FAR GIRARE UN NODO. Il bottone è già spento mentre gira (`canStartRun`), e la versione che
-   * parte è quella che si ha in mano: se un altro ha scritto per primo il server risponde 409 e
-   * qui si ricarica invece di pagare un giro su un prompt che non è più quello.
+   * FAR GIRARE UN NODO. `running` si accende SUBITO, prima di qualunque `await`: lo spinner non
+   * deve aspettare un salvataggio precedente (un carattere digitato prima del clic, ancora in
+   * coda) né la risposta del server. Il bottone si spegne di conseguenza (`canStartRun`).
    *
-   * `enqueue` PRIMA di leggere `before`: scegliere un modello scrive (`write`, sopra) e quella
-   * scrittura aggiorna `nodes[].version` in locale solo quando il server risponde — scegliere e
-   * premere Genera di seguito, senza la pausa di una mano vera fra i due gesti, altrimenti legge
-   * la versione di prima del giro e il server risponde 409 su un prompt mai partito. Passare per
-   * la stessa coda del nodo mette Genera in fila dietro quella scrittura invece di correrci
-   * contro.
+   * `enqueue` resta prima di leggere `before` e mandare la POST vera: scegliere un modello scrive
+   * (`write`, sopra) e quella scrittura aggiorna `nodes[].version` in locale solo quando il
+   * server risponde — scegliere e premere Genera di seguito, senza la pausa di una mano vera fra
+   * i due gesti, altrimenti legge la versione di prima del giro e il server risponde 409 su un
+   * prompt mai partito. Passare per la stessa coda del nodo mette la POST in fila dietro quella
+   * scrittura invece di correrci contro — ma questo riguarda solo la POST, non lo spinner.
    */
   async function run(id: string, gen: GenNodeState) {
     if (gen.running) {
       return;
     }
+
+    nodes = nodes.map((node) => (node.id === id ? { ...node, data: { ...node.data, ...genData(startRun(gen)) } } : node));
 
     await enqueue(id, async () => {});
 
@@ -529,7 +531,6 @@
       return;
     }
 
-    nodes = nodes.map((node) => (node.id === id ? { ...node, data: { ...node.data, running: true } } : node));
     pending += 1;
 
     const result = await post('run', {
@@ -546,7 +547,8 @@
       // Il motivo VERO sta già scritto su `nodes.data` — `giveUp()` lo mette lì prima di
       // tornare. Un messaggio fisso qui lo coprirebbe con un «non riuscita» che non dice niente
       // di più di uno spinner che si ferma: `refresh()` lo riporta dal server, dove `GenNode` sa
-      // già mostrarlo (`node.error`).
+      // già mostrarlo (`node.error`). Fino ad allora, lo stato ottimista si toglie da solo.
+      nodes = nodes.map((node) => (node.id === id ? { ...node, data: { ...node.data, ...genData(unlockRun(gen)) } } : node));
       await refresh();
       void invalidate('app:credits');
       return;
