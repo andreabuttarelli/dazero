@@ -43,7 +43,7 @@
   import { isAddable, type Addable } from '$lib/canvas/addable';
   import { DEFAULT_EDGE_KIND, edgeKindsFor, verdictBetween } from '$lib/canvas/connect-rules';
   import { connectorAccepts } from '$lib/canvas/connector-ports';
-  import { isListValued, type ConnectorType } from '$lib/canvas/connectors';
+  import { isListValued, landingPort, type ConnectorType } from '$lib/canvas/connectors';
   import type { CanvasNode } from '$lib/canvas/graph';
 
   /**
@@ -123,7 +123,7 @@
      * propone su quella coppia. Un `kind` fisso qui sarebbe una derivazione salvata anche fra due
      * cose che non si derivano — cioè un dato falso scritto senza che nessuno l'abbia chiesto.
      */
-    onConnect?: (sourceItemId: string, targetItemId: string, kind: CanvasEdgeKind) => void;
+    onConnect?: (sourceItemId: string, targetItemId: string, kind: CanvasEdgeKind, targetHandle: ConnectorType | null) => void;
     /**
      * Le tile da togliere. Chiesto fuori e non fatto qui: SvelteFlow le toglierebbe dal proprio
      * stato e basta, e alla prima riconciliazione `syncNodes` le rimetterebbe dentro perché
@@ -313,12 +313,14 @@
    * quando il server la restituisce con il suo id vero. Disegnarla subito con un id inventato
    * significherebbe averla due volte appena i dati tornano — la copia ottimista e quella vera.
    */
-  function onConnected(connection: { source?: string | null; target?: string | null }) {
+  function onConnected(connection: { source?: string | null; target?: string | null; targetHandle?: string | null }) {
     const { source, target } = connection;
     if (!source || !target || source === target) return;
 
     refusal = null;
-    onConnect?.(source, target, edgeKindsFor(lookup, source, target)[0] ?? DEFAULT_EDGE_KIND);
+    const output = tiles.find((t) => t.id === source)?.output ?? null;
+    const handle = landingPort((connection.targetHandle as ConnectorType | null) ?? null, output, connectorsOf.get(target) ?? []);
+    onConnect?.(source, target, edgeKindsFor(lookup, source, target)[0] ?? DEFAULT_EDGE_KIND, handle);
   }
 
   /**

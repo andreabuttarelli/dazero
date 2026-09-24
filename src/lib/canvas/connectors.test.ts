@@ -268,3 +268,20 @@ describe('la porta da cui tiri resta accesa', () => {
     expect(portActive(origin, 'target', 'last_frame', { nodeId: 'v', handleId: 'last_frame' })).toBe(false);
   });
 });
+
+describe('una linea lasciata sul nodo atterra sulla porta del suo tipo', () => {
+  it("un'immagine lasciata sulla porta text di un nodo che ha images va su images", async () => {
+    const { landingPort } = await import('./connectors');
+    expect(landingPort('text', 'images', ['text', 'images'])).toBe('images');
+  });
+
+  it('una porta giusta scelta a mano resta quella', async () => {
+    const { landingPort } = await import('./connectors');
+    expect(landingPort('first_frame', 'images', ['text', 'images', 'first_frame'])).toBe('first_frame');
+  });
+
+  it('senza una porta compatibile resta quella su cui è stata lasciata', async () => {
+    const { landingPort } = await import('./connectors');
+    expect(landingPort('text', 'videos', ['text'])).toBe('text');
+  });
+});

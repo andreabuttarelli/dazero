@@ -127,6 +127,7 @@
       id: connection.id,
       source: connection.sourceNodeId,
       target: connection.targetNodeId,
+      targetHandle: connection.targetHandle,
       kind,
       mode: connection.mode,
       ...(kind === 'groups_with' ? {} : { markerEnd: { type: 'arrowclosed' as const } })
@@ -743,11 +744,12 @@
    * per averla due volte appena la vera arriva. Il verso l'ha già scelto la tela guardando i due
    * estremi — `edgeKindsFor` — e qui si salva quello, non un `derives_from` fisso.
    */
-  async function connect(source: string, target: string, kind: CanvasEdgeKind) {
+  async function connect(source: string, target: string, kind: CanvasEdgeKind, targetHandle: ConnectorType | null) {
     const res = await post('connect', {
       source_node_id: source,
       target_node_id: target,
-      kind
+      kind,
+      ...(targetHandle ? { target_handle: targetHandle } : {})
     });
 
     const created = (res?.connection ?? null) as Connection | null;

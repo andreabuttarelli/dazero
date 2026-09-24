@@ -211,3 +211,17 @@ export function portActive(origin: DragOrigin, side: PortSide, type: ConnectorTy
   }
   return side === 'target' ? portAccepts(type, origin.type) : portAccepts(origin.type, type);
 }
+
+export function landingPort(
+  dropped: ConnectorType | null,
+  output: ConnectorType | null,
+  ports: readonly ConnectorType[]
+): ConnectorType | null {
+  if (!output) {
+    return dropped;
+  }
+  if (dropped && ports.includes(dropped) && portAccepts(dropped, output)) {
+    return dropped;
+  }
+  return ports.find((port) => portAccepts(port, output)) ?? dropped;
+}
