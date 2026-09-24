@@ -27,11 +27,13 @@ test('apri il progetto, la rail c\'è, Calendar si apre come foglio ed Esc torna
 
   await page.getByRole('button', { name: 'Calendar' }).click();
 
+  const sheet = page.locator('[role="dialog"].canvas-sheet');
+
   await expect(page).toHaveURL(`${new URL(canvasUrl).origin}/p/${session.projectId}/calendar`);
-  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(sheet).toBeVisible();
 
   await page.keyboard.press('Escape');
 
   await expect(page).toHaveURL(canvasUrl);
-  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await expect(sheet).not.toBeVisible();
 });
