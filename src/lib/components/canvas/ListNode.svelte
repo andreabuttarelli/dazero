@@ -24,6 +24,7 @@
     type ListNode
   } from '$lib/canvas/list-node';
   import { CANVAS_DRAG_FILLED_NODE, parseFilledNodeDrag } from '$lib/canvas/drag-payload';
+  import { scrollGuard } from '$lib/canvas/scroll-guard';
 
   let {
     node,
@@ -119,7 +120,7 @@
     <span class="list-count">{node.items.length}</span>
   </header>
 
-  <div class="list-body">
+  <div class="list-body" use:scrollGuard>
     {#if !node.items.length}
       <p class="list-empty">
         {dragOver ? 'Rilascia per aggiungere' : 'Trascina asset qui, o scrivi righe di testo sotto'}

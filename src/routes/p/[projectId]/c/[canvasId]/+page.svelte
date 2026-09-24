@@ -42,6 +42,7 @@
   import { shareUrlOf } from '$lib/canvas/doc-node';
   import { nodeSize } from '$lib/canvas/node-size';
   import { grownTextNodeHeight } from '$lib/canvas/text-node-grow';
+  import { scrollGuard } from '$lib/canvas/scroll-guard';
   import { producedRuns } from '$lib/canvas/gen-history';
   import { type Addable } from '$lib/canvas/addable';
   import type { FilledNodeDrag } from '$lib/canvas/drag-payload';
@@ -1298,7 +1299,7 @@
                    scadrebbe in due ore, e una tela lasciata aperta tutto il giorno mostrerebbe
                    riquadri rotti. -->
               {#if gen.medium === 'text'}
-                <pre class="gen-text">{text ?? ''}</pre>
+                <pre class="gen-text nodrag" use:scrollGuard>{text ?? ''}</pre>
               {:else if gen.medium === 'video'}
                 <!-- svelte-ignore a11y_media_has_caption -->
                 <video src={`/p/${data.projectId}/c/${data.canvas.id}/assets/${refId}`} controls playsinline></video>

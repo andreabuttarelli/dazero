@@ -15,6 +15,7 @@
   import { runStateOf, promptTooLong, type GenNode, type ModelChoice } from '$lib/canvas/gen-node';
   import { blockedReason, canStartRun, shownIndex } from '$lib/canvas/gen-history';
   import { effectiveModel } from '$lib/canvas/default-models';
+  import { scrollGuard } from '$lib/canvas/scroll-guard';
 
   let {
     node,
@@ -101,6 +102,14 @@
   const canRun = $derived(canStartRun(node, choices, upstream) && !tooLong);
   const shown = $derived(shownIndex(node));
 
+  /**
+   * SE QUESTO NODO HA UNA FASCIA `.gen-body` DA MOSTRARE — la stessa regola che decide se
+   * disegnarla (sotto), tenuta in UN POSTO SOLO perché anche il layout del prompt la legge: senza
+   * un corpo, il prompt riempie tutto il nodo invece di restare una striscia di due righe sopra
+   * uno spazio vuoto.
+   */
+  const hasBody = $derived(node.medium !== 'text' || state === 'running' || state === 'failed' || !!node.refId);
+
   const LABEL: Record<string, string> = {
     empty: 'Scrivi cosa vuoi',
     ready: 'Pronto',
@@ -158,7 +167,7 @@
        stessa cosa — running/failed restano visibili, sono uno stato del giro, non un placeholder
        del risultato. Immagine e video tengono il proprio placeholder: la fascia è la loro unica
        anteprima prima di girare, non una ripetizione di quel che il prompt già dice. -->
-  {#if node.medium !== 'text' || state === 'running' || state === 'failed' || node.refId}
+  {#if hasBody}
     <div class="gen-body">
       {#if state === 'running'}
         <div class="gen-busy">
@@ -205,13 +214,15 @@
     </div>
   {/if}
 
-  <footer class="gen-foot">
+  <footer class="gen-foot" class:is-full={!hasBody}>
     <textarea
-      class="gen-prompt"
+      class="gen-prompt nodrag"
+      class:is-full={!hasBody}
       rows="2"
       placeholder={node.medium === 'text' ? 'Di cosa deve parlare…' : 'Descrivi cosa vuoi vedere…'}
       value={node.prompt}
       oninput={(e) => onchange?.({ prompt: e.currentTarget.value })}
+      use:scrollGuard
     ></textarea>
 
     <div class="gen-actions">
@@ -384,6 +395,16 @@
     border-top: 1px solid var(--line, #e5e5e5);
     background: var(--paper, #fff);
   }
+  /* SENZA `.gen-body` — un nodo testo che non ha ancora prodotto niente — il prompt è l'unica
+     cosa sul nodo: riempie tutto lo spazio invece di restare una striscia di due righe sopra un
+     vuoto. `flex: 1` sulla fascia e sulla textarea, non un'altezza fissa: la crescita resta
+     quella di `text-node-grow.ts`, non una seconda regola scritta qui. */
+  .gen-foot.is-full {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
   .gen-prompt {
     width: 100%;
     resize: none;
@@ -394,6 +415,10 @@
     line-height: 1.45;
     color: var(--ink, #1d1d1f);
     background: var(--paper-2, #f9f9f9);
+  }
+  .gen-prompt.is-full {
+    flex: 1;
+    min-height: 0;
   }
   .gen-prompt:focus {
     outline: none;

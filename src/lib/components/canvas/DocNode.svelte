@@ -14,6 +14,7 @@
   import Link from '@lucide/svelte/icons/link';
   import LinkOff from '@lucide/svelte/icons/unlink';
   import type { DocNode, DocMode } from '$lib/canvas/doc-node';
+  import { scrollGuard } from '$lib/canvas/scroll-guard';
   import '$lib/styles/doc-prose.css';
 
   let {
@@ -125,14 +126,15 @@
 
   {#if mode === 'edit'}
     <textarea
-      class="doc-write"
+      class="doc-write nodrag"
       aria-label="Markdown del documento"
       value={node.content}
       oninput={(e) => commit(e.currentTarget.value)}
       onblur={(e) => commit(e.currentTarget.value)}
+      use:scrollGuard
     ></textarea>
   {:else if node.content.trim()}
-    <article class="doc-read doc-prose">
+    <article class="doc-read doc-prose nodrag" use:scrollGuard>
       {#await renderer then { renderDocHtml }}{@html renderDocHtml(node.content)}{/await}
     </article>
   {:else}
