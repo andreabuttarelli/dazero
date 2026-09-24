@@ -25,7 +25,7 @@ import { clearDocShare, setDocShare } from '$lib/server/repos/doc-share';
 import { isCanvasEdgeKind } from '$lib/canvas-edges';
 import { canvasModelCatalogue } from '$lib/server/canvas-catalogue';
 import { runGenNode, runsOf } from '$lib/server/canvas/generate';
-import { planLoop, runLoop } from '$lib/server/canvas/loop';
+import { planLoop, enqueueLoop, cancelLoop } from '$lib/server/canvas/loop';
 import { duplicateNodes } from '$lib/server/canvas/duplicate';
 import { undoGesture } from '$lib/server/canvas/undo';
 import type { Gesture, UndoItem } from '$lib/canvas/undo-plan';
@@ -374,9 +374,10 @@ export const actions: Actions = {
   },
 
   /**
-   * IL LOOP: stesso motore di `run`, una volta per combinazione — vedi `loop.ts` per il perché
-   * in sequenza. Sopra 50 combinazioni serve `confirm=1` esplicito nel form, sopra 1000 si
-   * rifiuta comunque.
+   * IL LOOP: METTE IN CODA, non gira — vedi `loop.ts` per il perché. Sopra 50 combinazioni serve
+   * `confirm=1` esplicito nel form, sopra 1000 si rifiuta comunque. Il cron
+   * (`canvas/runs/tick`, ogni minuto) drena la coda nei minuti successivi: questa azione torna
+   * quando i biglietti sono scritti, non quando le immagini esistono.
    */
   run_loop: async ({ request, params, locals }) => {
     const scope = await scopeFor(locals, params.canvasId);
@@ -392,7 +393,7 @@ export const actions: Actions = {
       return fail(denied.status, denied.data);
     }
 
-    const out = await runLoop(scope.db, {
+    const out = await enqueueLoop(scope.db, {
       orgId: scope.orgId,
       projectId: scope.canvas.projectId,
       canvasId: scope.canvasId,
@@ -403,6 +404,22 @@ export const actions: Actions = {
 
     if (out.kind === 'refused') { return fail(400, { error: out.error }); }
     return out;
+  },
+
+  /**
+   * CANCELLA IL LOOP: ferma solo i biglietti non ancora reclamati da un tick — quelli già in
+   * corso finiscono, e i risultati già completati restano nella lista di output.
+   */
+  cancel_loop: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const nodeId = String(fd.get('node_id') ?? '');
+    if (!nodeId) {
+      return fail(400, { error: 'richiesta non valida' });
+    }
+
+    return await cancelLoop(scope.db, { orgId: scope.orgId, nodeId });
   },
 
   /**

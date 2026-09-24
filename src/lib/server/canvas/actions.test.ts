@@ -289,4 +289,23 @@ describe('loop_plan/run_loop — la stessa porta del loop, dentro la tela', () =
     const result = await actions.run_loop(input as never);
     expect(result).toMatchObject({ status: 400 });
   });
+
+  it('run_loop enqueues (never runs synchronously): a plain repeat-1 node returns enqueued with one run id', async () => {
+    const input = loopEvent({ node_id: 'gen-node', confirm: '1' });
+    const result = await actions.run_loop(input as never);
+    expect(result).toMatchObject({ kind: 'enqueued', total: 1 });
+    expect(input.calls.filter((c) => c.table === 'node_runs' && c.op === 'insert')).toHaveLength(1);
+  });
+
+  it('cancel_loop rejects a missing node_id, before touching the database', async () => {
+    const input = loopEvent({});
+    const result = await actions.cancel_loop(input as never);
+    expect(result).toMatchObject({ status: 400 });
+  });
+
+  it('cancel_loop reports zero when there is nothing queued for that node', async () => {
+    const input = loopEvent({ node_id: 'gen-node' });
+    const result = await actions.cancel_loop(input as never);
+    expect(result).toMatchObject({ cancelled: 0 });
+  });
 });
