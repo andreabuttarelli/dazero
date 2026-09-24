@@ -116,6 +116,28 @@ describe('promoteNodesToPost: risoluzione asset per tipo di nodo', () => {
 
     expect(postsRepo.promoteToPost).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ caption: 'testo del documento' }));
   });
+
+  it('una caption esplicita sostituisce quella dei nodi, che restano sorgenti', async () => {
+    const nodes = [
+      node({ id: 'doc-1', type: 'doc', data: { content: 'testo del documento' } }),
+      node({ id: 'img-1', type: 'image', y: 10, data: { assetId: 'asset-1' } })
+    ];
+    const canvasRepo = fakeCanvasRepo(nodes);
+    const postsRepo = fakePostsRepo();
+
+    await promoteNodesToPost(
+      FAKE_DB,
+      { canvas: canvasRepo, posts: postsRepo },
+      { orgId: ORG, brandId: BRAND, nodeIds: ['doc-1', 'img-1'], caption: 'la caption scelta dall utente' }
+    );
+
+    const call = postsRepo.promoteToPost.mock.calls[0][1];
+    expect(call.caption).toBe('la caption scelta dall utente');
+    expect(call.sources).toEqual([
+      { nodeId: 'doc-1', role: 'caption' },
+      { nodeId: 'img-1', role: 'media' }
+    ]);
+  });
 });
 
 describe('promoteNodesToPost: post_sources', () => {

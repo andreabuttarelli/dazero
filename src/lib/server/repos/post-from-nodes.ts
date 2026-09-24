@@ -65,6 +65,7 @@ export async function promoteNodesToPost(
     orgId: string;
     brandId: string;
     nodeIds: string[];
+    caption?: string;
     actorKind?: ActorKind;
     actorId?: string | null;
   }
@@ -86,7 +87,12 @@ export async function promoteNodesToPost(
   for (const node of ordered) {
     const caption = captionOf(node);
     if (caption !== null) {
-      captionParts.push(caption);
+      // Un `caption` esplicito arriva già scelto da chi chiama (il composer): i nodi restano
+      // sorgenti — `post_sources` non deve dimenticare da dove il post nasce — ma non concatenano
+      // più il proprio testo, che sarebbe una seconda caption che nessuno ha scelto.
+      if (input.caption === undefined) {
+        captionParts.push(caption);
+      }
       sources.push({ nodeId: node.id, role: 'caption' });
       continue;
     }
@@ -104,7 +110,7 @@ export async function promoteNodesToPost(
   return repos.posts.promoteToPost(db, {
     orgId: input.orgId,
     brandId: input.brandId,
-    caption: captionParts.join('\n\n'),
+    caption: input.caption ?? captionParts.join('\n\n'),
     media,
     actorKind: input.actorKind,
     actorId: input.actorId,
