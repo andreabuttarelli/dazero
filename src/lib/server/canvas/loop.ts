@@ -56,7 +56,7 @@ import { planCombinations, loopSafety, type LoopCombine, type PlannedCombination
 import { axesFrom, iterateSelectionFor, type LoopEdge, type LoopSourceNode } from '$lib/canvas/loop-axes';
 import { estimateLoopCredits, type LoopCostEstimate } from './loop-cost';
 import { upstreamInputsFor } from './upstream';
-import { readOrgBillingById, orgCreditsUsage } from '$lib/server/credits';
+import { orgCreditBalance } from '$lib/server/credits';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import type { Actor } from '$lib/server/repos/actor';
 import type { GenMedium } from '$lib/canvas/gen-node';
@@ -134,16 +134,21 @@ export async function planLoop(db: Db, input: LoopPlanInput): Promise<LoopPlanRe
  * I CREDITI PER TUTTO IL LOOP, PRIMA DI METTERE IN CODA UNA SOLA COMBINAZIONE — CLAUDE.md lo
  * chiede esplicito: non scoperti vuoti a metà strada. `runGenNode` non gatekeeps da sé (lo fa
  * sempre chi chiama, `gateOrgAiAction` nella rotta/azione) — qui si fa la STESSA domanda ma sul
- * totale stimato, con la stessa lettura (`readOrgBillingById` + `orgCreditsUsage`) che
- * `gateOrgCreditsCore` usa per il cancello di un giro solo.
+ * totale stimato, leggendo `orgCreditBalance` (il saldo vero di `credit_ledger`, via la RPC
+ * `org_credit_balance`) — LA STESSA lettura che `gateOrgCreditsCore`/`ledgerCreditsUsage` usano
+ * per il cancello di un giro solo, da quando quel cancello è passato dalla vecchia quota mensile
+ * al saldo del ledger. Leggerne una diversa qui darebbe un preventivo che il gate vero smentisce.
  */
 async function wholeLoopCreditsAvailable(orgId: string, cost: LoopCostEstimate): Promise<boolean> {
   const admin = createAdminClient();
-  const org = await readOrgBillingById(admin, orgId);
-  if (!org) return true;
-
-  const usage = await orgCreditsUsage(admin, org);
-  return usage.remaining >= cost.total;
+  try {
+    const balance = await orgCreditBalance(admin, orgId);
+    return balance >= cost.total;
+  } catch {
+    // Fail-open, come `gateOrgCreditsCore`: un saldo illeggibile non deve bloccare un loop che
+    // altrimenti sarebbe legittimo — la stessa scelta, per lo stesso motivo, di `reportFailOpen`.
+    return true;
+  }
 }
 
 export type LoopEnqueueInput = {

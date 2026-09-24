@@ -8,11 +8,8 @@ const { modalitiesOf } = vi.hoisted(() => ({ modalitiesOf: vi.fn() }));
 vi.mock('$lib/server/ai-models-sync', () => ({ modalitiesOf }));
 vi.mock('$lib/server/supabase-admin', () => ({ createAdminClient: () => ({}) }));
 
-const { readOrgBillingById, orgCreditsUsage } = vi.hoisted(() => ({
-  readOrgBillingById: vi.fn(),
-  orgCreditsUsage: vi.fn()
-}));
-vi.mock('$lib/server/credits', () => ({ readOrgBillingById, orgCreditsUsage }));
+const { orgCreditBalance } = vi.hoisted(() => ({ orgCreditBalance: vi.fn() }));
+vi.mock('$lib/server/credits', () => ({ orgCreditBalance }));
 
 import { planLoop, enqueueLoop, drainLoopQueue, cancelLoop, retryLoopCombination } from './loop';
 
@@ -75,10 +72,8 @@ beforeEach(() => {
   runGenNode.mockReset();
   modalitiesOf.mockReset();
   modalitiesOf.mockResolvedValue({ input: ['text', 'image'], output: ['image'], synced_at: 'now' });
-  readOrgBillingById.mockReset();
-  orgCreditsUsage.mockReset();
-  readOrgBillingById.mockResolvedValue({ orgId: ORG, plan: null, activatedAt: null, brandIds: [] });
-  orgCreditsUsage.mockResolvedValue({ used: 0, quota: 100_000, bonus: 0, remaining: 100_000, periodStart: new Date(), periodEnd: new Date(), percent: 0 });
+  orgCreditBalance.mockReset();
+  orgCreditBalance.mockResolvedValue(100_000);
 });
 
 describe('planLoop — il preventivo, senza girare niente', () => {
@@ -151,7 +146,7 @@ describe('enqueueLoop — valida, controlla i crediti del TOTALE, mette in coda,
   });
 
   it('crediti insufficienti per l\'INTERO loop rifiutano PRIMA di mettere in coda — mai scoperti vuoti a metà', async () => {
-    orgCreditsUsage.mockResolvedValue({ used: 99_990, quota: 100_000, bonus: 0, remaining: 10, periodStart: new Date(), periodEnd: new Date(), percent: 99 });
+    orgCreditBalance.mockResolvedValue(10);
 
     const { db, calls } = fakeDb({
       nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', params: { repeat: 5 } })],
