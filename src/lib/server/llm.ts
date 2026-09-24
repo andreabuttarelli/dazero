@@ -166,7 +166,6 @@ export function llmGeminiSearchModel(): string {
 
 type ContentPart =
 	| { type: 'text'; text: string }
-	| { type: 'image'; image: Buffer | URL; mediaType?: string }
 	| { type: 'file'; data: Buffer | URL; mediaType: string };
 
 /**
@@ -186,7 +185,7 @@ export type UpstreamMediaUrls = {
 function urlContentParts(upstream?: UpstreamMediaUrls): ContentPart[] {
 	const parts: ContentPart[] = [];
 	for (const url of upstream?.imageUrls ?? []) {
-		parts.push({ type: 'image', image: new URL(url) });
+		parts.push({ type: 'file', data: new URL(url), mediaType: 'image' });
 	}
 	for (const url of upstream?.videoUrls ?? []) {
 		parts.push({ type: 'file', data: new URL(url), mediaType: 'video' });
@@ -205,7 +204,7 @@ function userContent(
 ): ContentPart[] {
 	const parts: ContentPart[] = [{ type: 'text', text: prompt }];
 	for (const img of images ?? []) {
-		parts.push({ type: 'image', image: Buffer.from(img.data, 'base64'), mediaType: img.mediaType });
+		parts.push({ type: 'file', data: Buffer.from(img.data, 'base64'), mediaType: img.mediaType ?? 'image' });
 	}
 	if (file) {
 		parts.push({ type: 'file', data: Buffer.from(file.data, 'base64'), mediaType: file.mediaType });

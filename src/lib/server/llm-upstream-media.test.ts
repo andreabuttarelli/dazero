@@ -40,8 +40,8 @@ describe('llmText manda le immagini/video/audio a monte al modello', () => {
 		await llmText({ prompt: 'descrivi questa immagine', upstream: { imageUrls: ['https://cdn/img.png'] } });
 
 		const content = messageContent();
-		const imagePart = content.find((p) => p.type === 'image');
-		expect(imagePart).toMatchObject({ type: 'image', image: new URL('https://cdn/img.png') });
+		const imagePart = content.find((p) => p.type === 'file' && p.mediaType === 'image');
+		expect(imagePart).toMatchObject({ type: 'file', data: new URL('https://cdn/img.png'), mediaType: 'image' });
 	});
 
 	it('un video a monte entra come file con mediaType video', async () => {
@@ -69,10 +69,10 @@ describe('llmText manda le immagini/video/audio a monte al modello', () => {
 			upstream: { imageUrls: ['https://cdn/a.png', 'https://cdn/b.png'] }
 		});
 
-		const images = messageContent().filter((p) => p.type === 'image');
+		const images = messageContent().filter((p) => p.type === 'file' && p.mediaType === 'image');
 		expect(images).toEqual([
-			{ type: 'image', image: new URL('https://cdn/a.png') },
-			{ type: 'image', image: new URL('https://cdn/b.png') }
+			{ type: 'file', data: new URL('https://cdn/a.png'), mediaType: 'image' },
+			{ type: 'file', data: new URL('https://cdn/b.png'), mediaType: 'image' }
 		]);
 	});
 
