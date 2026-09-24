@@ -15,6 +15,7 @@
   import { createWriteQueue } from '$lib/canvas/write-queue';
   import { createUndoStack } from '$lib/canvas/undo-stack';
   import type { Gesture, UndoItem } from '$lib/canvas/undo-plan';
+  import { buildMoveGesture, checkMoveGesture, inverseMoveGesture, type MoveGesture } from '$lib/canvas/move-gesture';
   import { connectCanvas } from '$lib/realtime/canvas-channel';
   import type { PresencePeer } from '$lib/realtime/presence-peers';
   import { createSupabaseBrowserClient } from '$lib/supabase/client';
@@ -244,6 +245,7 @@
   }
 
   let failed = $state<string | null>(null);
+  let failedIsCreditsExhausted = $state(false);
   let peers = $state<PresencePeer[]>([]);
   let pending = 0;
   let snapshotVersion = 0;
@@ -255,8 +257,21 @@
    * prima: annullare un gesto che il server ha rifiutato annullerebbe qualcosa che non è mai
    * successo), con l'inversa già in mano — `before`/`after` che il server ha appena restituito, o
    * che il client teneva già per costruire la richiesta.
+   *
+   * `StackEntry` PORTA I DUE MONDI: un `Gesture` che passa dal server (`undo`, sotto) e un
+   * `MoveGesture` che non lo tocca mai — la posizione è last-write-wins, senza `canvas_events`, e
+   * la sua domanda ("è ancora dov'era?") è `checkMoveGesture`, non `checkGesture`. Un'unica
+   * cronologia, non due stack separati: creare un nodo dopo averne spostato un altro e poi
+   * annullare due volte deve disfare la creazione e poi lo spostamento, nell'ordine vero.
    */
-  const undoStack = createUndoStack();
+  type StackEntry = { source: 'server'; gesture: Gesture } | { source: 'move'; gesture: MoveGesture };
+  const undoStack = createUndoStack<StackEntry>();
+
+  /** Ogni scrittura che passa da `undo` (server) spinge qui, mai `undoStack.push` diretto — la
+   *  busta `{ source: 'server', … }` sta in un posto solo. */
+  function pushGesture(gesture: Gesture) {
+    undoStack.push({ source: 'server', gesture });
+  }
 
   let productsOverride = $state<Record<string, Product[]> | null>(null);
   let socialPostsOverride = $state<Record<string, SocialPost[]> | null>(null);
@@ -319,11 +334,13 @@
       const result = deserialize(await res.text());
 
       if (result.type !== 'success') {
-        failed = 'non salvato';
+        const data = (result as { data?: { error?: string; message?: string } }).data;
+        failedIsCreditsExhausted = data?.error === 'credits_exhausted';
+        failed = failedIsCreditsExhausted ? (data?.message ?? 'Not enough credits') : 'non salvato';
         return null;
       }
 
-      if (mutating) { failed = null; }
+      if (mutating) { failed = null; failedIsCreditsExhausted = false; }
       return (result.data ?? null) as Record<string, unknown> | null;
     } catch {
       failed = 'non salvato';
@@ -394,7 +411,7 @@
     }
 
     nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created)];
-    undoStack.push(createGesture(created));
+    pushGesture(createGesture(created));
   }
 
   /**
@@ -417,7 +434,7 @@
     }
 
     nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created)];
-    undoStack.push(createGesture(created));
+    pushGesture(createGesture(created));
   }
 
   /**
@@ -614,7 +631,7 @@
         return;
       }
       nodes = nodes.map((node) => node.id === id ? { ...node, version: written.version } : node);
-      undoStack.push({
+      pushGesture({
         items: [
           {
             kind: 'node.update',
@@ -647,7 +664,7 @@
     }
 
     edges = [...edges.filter((edge) => edge.id !== created.id), toEdge(created)];
-    undoStack.push({
+    pushGesture({
       items: [{ kind: 'edge.create', edgeId: created.id, sourceNodeId: created.sourceNodeId, targetNodeId: created.targetNodeId }]
     });
   }
@@ -699,7 +716,7 @@
     if (plan.rejected.length) {
       failed = `Non collegato: ${plan.rejected.map((r) => r.why).join('; ')}`;
     }
-    undoStack.push({ items });
+    pushGesture({ items });
   }
 
   /**
@@ -740,7 +757,7 @@
     if (plan.rejected.length) {
       failed = `Non collegato: ${plan.rejected.map((r) => r.why).join('; ')}`;
     }
-    if (items.length) { undoStack.push({ items }); }
+    if (items.length) { pushGesture({ items }); }
   }
 
   /**
@@ -810,19 +827,19 @@
       });
 
     if (droppedEdges.length || writeItems.length) {
-      undoStack.push({ items: [...droppedEdges, ...writeItems] });
+      pushGesture({ items: [...droppedEdges, ...writeItems] });
     }
   }
 
   /**
    * Una linea tolta sparisce subito e torna se il server rifiuta: l'attesa qui si vedrebbe.
    *
-   * `pushGesture` È SPENTO quando chi chiama fa parte di un gesto più grande — il cambio di
+   * `recordUndo` È SPENTO quando chi chiama fa parte di un gesto più grande — il cambio di
    * modello di `commonChange`, sotto, che sgancia N fili come parte di UN SOLO Ctrl+Z: spingere
    * qui un gesto a testa lo spezzerebbe in N+1, e annullarne uno solo lascerebbe il modello
    * cambiato con un filo tornato e gli altri no.
    */
-  async function disconnect(connectionId: string, pushGesture = true): Promise<UndoItem | null> {
+  async function disconnect(connectionId: string, recordUndo = true): Promise<UndoItem | null> {
     const removed = edges.find((e) => e.id === connectionId);
     if (!removed) {
       return null;
@@ -837,7 +854,7 @@
     }
 
     const item: UndoItem = { kind: 'edge.delete', edgeId: removed.id, sourceNodeId: removed.source, targetNodeId: removed.target };
-    if (pushGesture) { undoStack.push({ items: [item] }); }
+    if (recordUndo) { pushGesture({ items: [item] }); }
     return item;
   }
 
@@ -870,7 +887,7 @@
       return;
     }
 
-    undoStack.push({
+    pushGesture({
       items: [
         ...goneEdges.map((e): UndoItem => ({ kind: 'edge.delete', edgeId: e.id, sourceNodeId: e.source, targetNodeId: e.target })),
         ...goneNodes.map((n): UndoItem => ({
@@ -909,7 +926,7 @@
     const connected = (result?.connections ?? []) as Connection[];
     if (created.length) { nodes = [...nodes, ...created.map(toTile)]; }
     if (connected.length) { edges = [...edges, ...connected.map(toEdge)]; }
-    if (created.length) { undoStack.push(createManyGesture(created, connected)); }
+    if (created.length) { pushGesture(createManyGesture(created, connected)); }
   }
 
   /**
@@ -961,7 +978,7 @@
     const connected = (result?.connections ?? []) as Connection[];
     if (created.length) { nodes = [...nodes, ...created.map(toTile)]; }
     if (connected.length) { edges = [...edges, ...connected.map(toEdge)]; }
-    if (created.length) { undoStack.push(createManyGesture(created, connected)); }
+    if (created.length) { pushGesture(createManyGesture(created, connected)); }
   }
 
   /**
@@ -992,16 +1009,71 @@
     if (redo) { onAccepted(redo); }
   }
 
+  /**
+   * ANNULLARE UNO SPOSTAMENTO NON PASSA DAL SERVER — `moveNode` è last-write-wins, senza
+   * `canvas_events`, quindi non c'è un `undo` a cui chiedere: la scrittura è la stessa `move()`
+   * ordinaria, verso `before`. LA REGOLA DELL'ALTRO UTENTE È QUI, NON LATO SERVER: `nodes` è già
+   * tenuto fresco dal canale realtime (`onChange` → `refresh()`), quindi la posizione ATTUALE che
+   * `checkMoveGesture` guarda è quella vera, non quella che questa scheda ricordava. Se un collega
+   * ha trascinato lo stesso nodo nel frattempo, la posizione fresca non è più `item.after`, e il
+   * gesto — INTERO, non nodo per nodo — si rifiuta con lo stesso messaggio di un rifiuto server.
+   */
+  async function applyMoveUndo(gesture: MoveGesture, onAccepted: (redo: MoveGesture) => void) {
+    const currentOf = (nodeId: string) => {
+      const node = nodes.find((n) => n.id === nodeId);
+      return node ? { x: node.x, y: node.y } : null;
+    };
+
+    const check = checkMoveGesture(gesture, currentOf);
+    if (check.outcome === 'stale') {
+      failed = `Annullamento saltato: ${check.reason}`;
+      return;
+    }
+
+    for (const item of gesture.items) {
+      await move(item.nodeId, item.before.x, item.before.y);
+    }
+    onAccepted(inverseMoveGesture(gesture));
+  }
+
   async function undo() {
-    const gesture = undoStack.popUndo();
-    if (!gesture) { return; }
-    await applyUndo(gesture, (redo) => undoStack.pushRedo(redo));
+    const entry = undoStack.popUndo();
+    if (!entry) { return; }
+    if (entry.source === 'move') {
+      await applyMoveUndo(entry.gesture, (redo) => undoStack.pushRedo({ source: 'move', gesture: redo }));
+      return;
+    }
+    await applyUndo(entry.gesture, (redo) => undoStack.pushRedo({ source: 'server', gesture: redo }));
   }
 
   async function redo() {
-    const gesture = undoStack.popRedo();
+    const entry = undoStack.popRedo();
+    if (!entry) { return; }
+    if (entry.source === 'move') {
+      await applyMoveUndo(entry.gesture, (redo) => undoStack.pushUndo({ source: 'move', gesture: redo }));
+      return;
+    }
+    await applyUndo(entry.gesture, (redo) => undoStack.pushUndo({ source: 'server', gesture: redo }));
+  }
+
+  /**
+   * LA FINE DI UN TRASCINAMENTO: `before` viene da `nodes` COSÌ COM'ERA PRIMA di questa funzione
+   * toccarlo — `move()`, chiamata dopo, scrive `after` sia sullo schermo che sul server, quindi
+   * `before` va letto PRIMA di quel giro, non dentro. Un solo gesto per l'intero trascinamento,
+   * anche quando sposta cinque tile insieme: annullarne una sola lascerebbe le altre quattro dove
+   * un peer non le ha mai spostate.
+   */
+  async function moveEnd(moves: { id: string; x: number; y: number }[]) {
+    const gesture = buildMoveGesture(
+      moves.map((m) => ({ nodeId: m.id, after: { x: m.x, y: m.y } })),
+      (nodeId) => {
+        const node = nodes.find((n) => n.id === nodeId);
+        return node ? { x: node.x, y: node.y } : null;
+      }
+    );
     if (!gesture) { return; }
-    await applyUndo(gesture, (redo) => undoStack.pushUndo(redo));
+
+    undoStack.push({ source: 'move', gesture });
   }
 
   /**
@@ -1025,13 +1097,19 @@
   {#if failed}
     <!-- Un salvataggio perso in silenzio si scopre alla prossima apertura, quando quel che si era
          scritto non c'è più e nessuno sa perché. -->
-    <p class="warning" role="alert">{failed}</p>
+    <p class="warning" role="alert">
+      {failed}
+      {#if failedIsCreditsExhausted}
+        <a href="/app/billing">Buy credits</a>
+      {/if}
+    </p>
   {/if}
 
   <CanvasFlow
     {tiles}
     {edges}
     onMove={move}
+    onMoveEnd={moveEnd}
     onConnect={connect}
     onDelete={remove}
     onEdgeDelete={disconnect}

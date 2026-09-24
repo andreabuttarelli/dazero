@@ -79,6 +79,7 @@
     tiles = [],
     edges: incomingEdges = [],
     onMove,
+    onMoveEnd,
     onConnect,
     onDelete,
     onEdgeDelete,
@@ -103,6 +104,14 @@
     edges?: FlowEdge[];
     /** Dove una tile è finita, per scriverlo dove vive davvero. */
     onMove?: (id: string, x: number, y: number) => void;
+    /**
+     * LA FINE DI UN TRASCINAMENTO, CON TUTTE LE TILE CHE SI SONO MOSSE — non una per chiamata
+     * come `onMove`. Trascinare una selezione di cinque tile è UN gesto: annullarlo deve
+     * riportarle tutte e cinque, non una alla volta con quattro Ctrl+Z. SvelteFlow lo sa già
+     * (`onnodedragstop` porta `nodes`, il set intero, non solo `targetNode`); prima di questo
+     * prop nessuno lo leggeva.
+     */
+    onMoveEnd?: (moves: { id: string; x: number; y: number }[]) => void;
     /**
      * Una linea appena tirata fra due tile, col verso già scelto: il primo che `edgeKindsFor`
      * propone su quella coppia. Un `kind` fisso qui sarebbe una derivazione salvata anche fra due
@@ -202,8 +211,20 @@
     if (next) edges = next;
   });
 
-  function onNodeDragStop({ targetNode }: { targetNode: Node | null }) {
-    if (targetNode) onMove?.(targetNode.id, targetNode.position.x, targetNode.position.y);
+  /**
+   * OGNI TILE TRASCINATA SI SALVA, non solo quella sotto il puntatore. `nodes` porta l'INTERA
+   * selezione mossa insieme (SvelteFlow lo dà già); prima solo `targetNode` veniva scritto, e un
+   * trascinamento di più tile perdeva la posizione di tutte le altre alla prossima apertura —
+   * un difetto che `onMoveEnd`, sotto, avrebbe reso visibile comunque: annullare uno spostamento
+   * che il server non ha mai salvato riporterebbe un nodo a un `before` che coincide col suo
+   * `after`, cioè a niente.
+   */
+  function onNodeDragStop({ targetNode, nodes: dragged }: { targetNode: Node | null; nodes: Node[] }) {
+    if (!targetNode) return;
+    for (const n of dragged) {
+      onMove?.(n.id, n.position.x, n.position.y);
+    }
+    onMoveEnd?.(dragged.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y })));
   }
 
   /**
