@@ -287,7 +287,16 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
       const { llmText } = await import('$lib/server/llm');
       const { withOrgContext, billedUsdInScope } = await import('$lib/server/ai-log');
       const { text, costUsd } = await withOrgContext(input.orgId, async () => {
-        const result = await llmText({ prompt, model: input.model ?? undefined, label: 'canvas.text' });
+        const result = await llmText({
+          prompt,
+          model: input.model ?? undefined,
+          label: 'canvas.text',
+          upstream: {
+            imageUrls: upstream.referenceImageUrls,
+            videoUrls: upstream.referenceVideoUrls,
+            audioUrls: upstream.referenceAudioUrls
+          }
+        });
         return { text: result.text, costUsd: billedUsdInScope() ?? null };
       });
       const asset = await depositText(db, input, text);

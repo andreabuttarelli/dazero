@@ -5,7 +5,10 @@
  *
  *   IL TESTO viene dal centralino (`openrouter-models`), l'INTERO listino chat del gateway: un
  *   nodo che scrive testo non ha bisogno di saper chiamare tool o leggere immagini, e un modello
- *   nuovo pubblicato dal gateway compare da sé senza che nessuno tocchi questo repo.
+ *   nuovo pubblicato dal gateway compare da sé senza che nessuno tocchi questo repo. Le SUE porte
+ *   (`connectors.ts`) restano guidate da `ai_models` come immagine e video: `chatInputModalities`
+ *   legge il listino `chat` sincronizzato — un modello non ancora sincronizzato lì non inventa
+ *   porte oltre a quella fissa, torna `inputModalities: []`.
  *
  *   IMMAGINE E VIDEO vengono da `offerableModels` (`$lib/server/offerable-models`): un modello è
  *   offerto solo quando ha SIA una riga sincronizzata in `ai_models` (cosa accetta, da OpenRouter)
@@ -21,6 +24,7 @@
  */
 import { gatewayModels, ensureGatewayModels } from './openrouter-models';
 import { offerableModels } from './offerable-models';
+import { chatInputModalities } from './ai-models-sync';
 import type { GenMedium, ModelChoice } from '$lib/canvas/gen-node';
 import { createAdminClient } from './supabase-admin';
 
@@ -37,13 +41,22 @@ export async function canvasModelCatalogue(): Promise<Record<GenMedium, MediumCa
   await ensureGatewayModels().catch(() => {});
   const admin = createAdminClient();
 
-  const [image, video] = await Promise.all([
+  const [image, video, textModalities] = await Promise.all([
     offerableModels(admin, 'image'),
-    offerableModels(admin, 'video')
+    offerableModels(admin, 'video'),
+    chatInputModalities(admin)
   ]);
 
   return {
-    text: { choices: gatewayModels().map((m) => ({ id: m.id, label: m.label, aspectRatios: [] })), synced: true },
+    text: {
+      choices: gatewayModels().map((m) => ({
+        id: m.id,
+        label: m.label,
+        aspectRatios: [],
+        inputModalities: textModalities.get(m.id) ?? []
+      })),
+      synced: true
+    },
     image,
     video
   };

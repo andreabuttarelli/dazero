@@ -808,7 +808,7 @@
 
     if (patch.model !== undefined) {
       const orphaned = chosen.flatMap((n) => {
-        if (n.type !== 'image' && n.type !== 'video') { return []; }
+        if (n.type !== 'text' && n.type !== 'image' && n.type !== 'video') { return []; }
         const model = catalogue[n.type]?.find((c) => c.id === patch.model);
         const nextConnectors = connectorsFor(n.type, { input: model?.inputModalities ?? [] });
         const wired: { edgeId: string; sourceNodeId: string; connector: ConnectorType }[] = edges

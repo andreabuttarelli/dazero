@@ -384,6 +384,87 @@ describe('upstreamInputsFor — un modello sparito da ai_models blocca il nodo',
   });
 });
 
+describe('upstreamInputsFor — un nodo testo apre le sue porte dal listino `chat`, ma non si blocca mai', () => {
+  const TEXT_MODEL = 'anthropic/claude-haiku-4.5';
+
+  const imageToTextDb = () =>
+    fakeDb({
+      nodes: [
+        nodeRow(IMAGE_NODE, 'image', { prompt: '', refId: ASSET }),
+        nodeRow(TEXT_NODE, 'text', { prompt: 'descrivi questa immagine', model: TEXT_MODEL })
+      ],
+      nodes_connections: [
+        {
+          id: 'e1',
+          canvas_id: CANVAS,
+          source_node_id: IMAGE_NODE,
+          target_node_id: TEXT_NODE,
+          source_handle: null,
+          target_handle: null
+        }
+      ],
+      assets: [
+        {
+          id: ASSET,
+          project_id: 'p1',
+          type: 'image',
+          url: 'https://cdn/upstream.png',
+          content: null,
+          mime_type: 'image/png',
+          bytes: null,
+          width: null,
+          height: null,
+          duration_s: null,
+          source: 'generated',
+          source_node_id: IMAGE_NODE,
+          created_at: 'now'
+        }
+      ]
+    });
+
+  it('un modello di chat che legge immagini apre il connettore immagini per il testo a monte', async () => {
+    modalitiesOf.mockResolvedValue({ input: ['text', 'image'], output: ['text'], synced_at: 'now' });
+    const { db } = imageToTextDb();
+
+    const out = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: TEXT_NODE,
+      model: TEXT_MODEL,
+      medium: 'text'
+    });
+
+    expect(out.blocked).toBeNull();
+    expect(out.referenceImageUrls).toEqual(['https://cdn/upstream.png']);
+  });
+
+  it('cerca sul listino chat, non su image/video', async () => {
+    modalitiesOf.mockResolvedValue({ input: ['text'], output: ['text'], synced_at: 'now' });
+    const { db } = imageToTextDb();
+
+    await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: TEXT_NODE, model: TEXT_MODEL, medium: 'text' });
+
+    expect(modalitiesOf).toHaveBeenCalledWith(expect.anything(), TEXT_MODEL, 'chat');
+  });
+
+  it('un modello di chat non ancora sincronizzato NON blocca il nodo: rifiuta solo l\'immagine collegata', async () => {
+    modalitiesOf.mockResolvedValue(null);
+    const { db } = imageToTextDb();
+
+    const out = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: TEXT_NODE,
+      model: TEXT_MODEL,
+      medium: 'text'
+    });
+
+    expect(out.blocked).toBeNull();
+    expect(out.referenceImageUrls).toEqual([]);
+    expect(out.rejected).toEqual([{ nodeId: IMAGE_NODE, why: expect.stringContaining('connettore') }]);
+  });
+});
+
 describe('upstreamInputsFor — list: fisso, porta ogni item risolto ad asset reale', () => {
   it('una lista immagini con asset_id alimenta referenceImageUrls con gli url veri', async () => {
     const { db } = fakeDb({

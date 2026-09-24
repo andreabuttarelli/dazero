@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { syncAiModels, modalitiesOf, wireModelId } from './ai-models-sync';
+import { syncAiModels, modalitiesOf, wireModelId, chatInputModalities } from './ai-models-sync';
 import { GPT_IMAGE_25_FLARE_MODEL } from '$lib/image-models';
 import { SEEDANCE_25_MODEL } from '$lib/video-models';
 
@@ -96,7 +96,9 @@ function fakeAdmin(existing: Record<string, unknown>[] = []) {
                 error: null
               })
             }),
-            maybeSingle: async () => ({ data: filtered[0] ?? null, error: null })
+            maybeSingle: async () => ({ data: filtered[0] ?? null, error: null }),
+            then: (resolve: (v: { data: Record<string, unknown>[]; error: null }) => unknown) =>
+              resolve({ data: filtered, error: null })
           };
         }
       })
@@ -270,6 +272,28 @@ describe('modalitiesOf — cosa sa un modello, dalla tabella, per il listino giu
     ]);
 
     expect(await modalitiesOf(admin, 'not-a-real-model', 'image')).toBeNull();
+  });
+});
+
+describe('chatInputModalities — le modalità di ogni modello di chat, in un giro solo', () => {
+  it('una riga per id sincronizzato sul listino chat', async () => {
+    const { admin } = fakeAdmin([
+      { id: 'anthropic/claude-haiku-4.5', catalogue: 'chat', input_modalities: ['text', 'image'] },
+      { id: 'deepseek/r1', catalogue: 'chat', input_modalities: ['text'] },
+      { id: 'openai/gpt-image-2.5-flare', catalogue: 'image', input_modalities: ['text', 'image'] }
+    ]);
+
+    const out = await chatInputModalities(admin);
+
+    expect(out.get('anthropic/claude-haiku-4.5')).toEqual(['text', 'image']);
+    expect(out.get('deepseek/r1')).toEqual(['text']);
+    expect(out.has('openai/gpt-image-2.5-flare')).toBe(false);
+  });
+
+  it('un listino chat vuoto torna una mappa vuota, non un errore', async () => {
+    const { admin } = fakeAdmin([]);
+
+    expect((await chatInputModalities(admin)).size).toBe(0);
   });
 });
 

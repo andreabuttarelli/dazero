@@ -253,3 +253,15 @@ export async function modalitiesOf(
 
   return null;
 }
+
+/**
+ * LE MODALITÀ IN INGRESSO DI OGNI MODELLO DI CHAT, IN UN GIRO SOLO — un nodo testo nasce con
+ * l'intero listino (`canvasModelCatalogue`), e chiedere `modalitiesOf` un modello alla volta
+ * sarebbe una query per riga invece di una per l'intero catalogo. L'id di un modello di chat è
+ * già quello sul filo (`wireModelId`, sopra): nessuna traduzione qui, la chiave è diretta.
+ */
+export async function chatInputModalities(admin: SupabaseClient): Promise<Map<string, string[]>> {
+  const { data } = await admin.from('ai_models').select('id, input_modalities').eq('catalogue', 'chat');
+  const rows = (data ?? []) as { id: string; input_modalities: string[] | null }[];
+  return new Map(rows.map((r) => [r.id, r.input_modalities ?? []]));
+}

@@ -94,14 +94,14 @@ export type GenerativeNodeKind = 'text' | 'image' | 'video';
  * conta deterministica.
  */
 export function connectorsFor(kind: GenerativeNodeKind, modalities: Modalities): ConnectorType[] {
-  if (kind === 'text') {
-    return ['text'];
-  }
-
   const has = new Set(modalities.input);
   const out: ConnectorType[] = [];
 
-  if (has.has(CONNECTOR_MODALITY.text)) out.push('text');
+  // UN NODO TESTO HA SEMPRE LA PORTA TESTO, anche quando il modello scelto non è ancora noto
+  // (`connectorsForNode` chiama con `input: []` finché il catalogo non ha risolto una scelta): il
+  // proprio prompt resta scrivibile a prescindere, e ogni LLM del listino chat legge testo per
+  // definizione — non c'è un caso reale in cui manchi.
+  if (kind === 'text' || has.has(CONNECTOR_MODALITY.text)) out.push('text');
   if (has.has(CONNECTOR_MODALITY.images)) out.push('images');
   if (kind === 'video' && has.has(CONNECTOR_MODALITY.images)) {
     out.push('first_frame', 'last_frame');

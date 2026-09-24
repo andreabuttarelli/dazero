@@ -26,6 +26,14 @@ vi.mock('./offerable-models', () => ({
         }
 }));
 
+const { chatInputModalities } = vi.hoisted(() => ({
+  chatInputModalities: vi.fn(async () => new Map([
+    ['anthropic/claude', ['text', 'image']],
+    ['deepseek/r1', ['text']]
+  ]))
+}));
+vi.mock('./ai-models-sync', () => ({ chatInputModalities }));
+
 import { canvasModelCatalogue } from './canvas-catalogue';
 
 describe('i modelli che un nodo può scegliere', () => {
@@ -36,6 +44,23 @@ describe('i modelli che un nodo può scegliere', () => {
 
     expect(out.text.choices.map((c) => c.id)).toEqual(['anthropic/claude', 'deepseek/r1', 'openai/gpt']);
     expect(out.text.synced).toBe(true);
+  });
+
+  it('ogni scelta di testo porta le sue modalità sincronizzate — le porte del nodo le leggono da lì', async () => {
+    const out = await canvasModelCatalogue();
+
+    const claude = out.text.choices.find((c) => c.id === 'anthropic/claude');
+    const r1 = out.text.choices.find((c) => c.id === 'deepseek/r1');
+
+    expect(claude?.inputModalities).toEqual(['text', 'image']);
+    expect(r1?.inputModalities).toEqual(['text']);
+  });
+
+  it('un modello di testo non ancora sincronizzato in ai_models non inventa modalità', async () => {
+    const out = await canvasModelCatalogue();
+
+    const gpt = out.text.choices.find((c) => c.id === 'openai/gpt');
+    expect(gpt?.inputModalities).toEqual([]);
   });
 
   it('per immagine e video vengono da offerableModels, che porta i loro limiti', async () => {

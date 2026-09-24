@@ -46,6 +46,21 @@ async function modalitiesFor(model: string, medium: 'image' | 'video'): Promise<
   return modalities ? { input: modalities.input } : null;
 }
 
+/**
+ * LE PORTE DI UN NODO TESTO OLTRE A QUELLA FISSA vengono dallo stesso listino `ai_models` di
+ * immagine/video (`catalogue: 'chat'`), ma un modello di testo non ancora sincronizzato NON
+ * BLOCCA il nodo come farebbe `modalitiesFor` per immagine/video — `canvas-catalogue.ts` lo
+ * dichiara già: il testo non ha un equivalente della regola "non sincronizzato, non offerto",
+ * il centralino risponde comunque. `{ input: [] }` qui significa solo "nessuna porta oltre al
+ * testo", mai "questo nodo non può girare".
+ */
+async function textModalitiesFor(model: string): Promise<Modalities> {
+  const { modalitiesOf } = await import('$lib/server/ai-models-sync');
+  const { createAdminClient } = await import('$lib/server/supabase-admin');
+  const modalities = await modalitiesOf(createAdminClient(), model, 'chat');
+  return { input: modalities?.input ?? [] };
+}
+
 function sourceText(node: CanvasNodeRecord, asset: { content: string | null } | null): string | null {
   if (node.type === 'doc') {
     const content = node.data.content;
@@ -294,6 +309,9 @@ export async function upstreamInputsFor(
     };
   }
 
+  const resolvedModalities =
+    modalities ?? (scope.medium === 'text' && scope.model ? await textModalitiesFor(scope.model) : null);
+
   const [nodeRows, connectionRows] = await Promise.all([
     listNodes(db, { orgId: scope.orgId, canvasId: scope.canvasId }),
     listConnections(db, { orgId: scope.orgId, canvasId: scope.canvasId })
@@ -306,5 +324,5 @@ export async function upstreamInputsFor(
   );
   const edges = connectionRows.map(toUpstreamEdge);
 
-  return resolveUpstreamInputs(nodes, edges, scope.nodeId, modalities ?? { input: [] });
+  return resolveUpstreamInputs(nodes, edges, scope.nodeId, resolvedModalities ?? { input: [] });
 }

@@ -164,20 +164,53 @@ export function llmGeminiSearchModel(): string {
 	throw new Error('GEO Gemini search needs a google/gemini-* id in LLM_MODELS or LLM_DEFAULT_MODEL');
 }
 
+type ContentPart =
+	| { type: 'text'; text: string }
+	| { type: 'image'; image: Buffer | URL; mediaType?: string }
+	| { type: 'file'; data: Buffer | URL; mediaType: string };
+
+/**
+ * L'IMMAGINE/VIDEO/AUDIO DI UN NODO A MONTE ENTRA COME URL, MAI COME BASE64 — a differenza di
+ * `images`/`file` qui sopra (byte inline, da Gemini). `upstream.ts` dà già un URL firmato dallo
+ * storage: scaricarlo qui per poi rimandarlo come byte sarebbe un giro a vuoto che l'SDK fa già
+ * da sé (`ImagePart.image`/`FilePart.data` accettano `URL`, li scarica il provider). Il video e
+ * l'audio non hanno un `type` proprio nel vocabolario dell'SDK: entrano come `file`, con il
+ * `mediaType` che dice al modello cosa sta leggendo.
+ */
+export type UpstreamMediaUrls = {
+	imageUrls?: string[];
+	videoUrls?: string[];
+	audioUrls?: string[];
+};
+
+function urlContentParts(upstream?: UpstreamMediaUrls): ContentPart[] {
+	const parts: ContentPart[] = [];
+	for (const url of upstream?.imageUrls ?? []) {
+		parts.push({ type: 'image', image: new URL(url) });
+	}
+	for (const url of upstream?.videoUrls ?? []) {
+		parts.push({ type: 'file', data: new URL(url), mediaType: 'video' });
+	}
+	for (const url of upstream?.audioUrls ?? []) {
+		parts.push({ type: 'file', data: new URL(url), mediaType: 'audio' });
+	}
+	return parts;
+}
+
 function userContent(
 	prompt: string,
 	images?: LlmMediaPart[],
-	file?: LlmMediaPart
-): Array<{ type: 'text'; text: string } | { type: 'image'; image: Buffer; mediaType: string } | { type: 'file'; data: Buffer; mediaType: string }> {
-	const parts: Array<
-		{ type: 'text'; text: string } | { type: 'image'; image: Buffer; mediaType: string } | { type: 'file'; data: Buffer; mediaType: string }
-	> = [{ type: 'text', text: prompt }];
+	file?: LlmMediaPart,
+	upstream?: UpstreamMediaUrls
+): ContentPart[] {
+	const parts: ContentPart[] = [{ type: 'text', text: prompt }];
 	for (const img of images ?? []) {
 		parts.push({ type: 'image', image: Buffer.from(img.data, 'base64'), mediaType: img.mediaType });
 	}
 	if (file) {
 		parts.push({ type: 'file', data: Buffer.from(file.data, 'base64'), mediaType: file.mediaType });
 	}
+	parts.push(...urlContentParts(upstream));
 	return parts;
 }
 
@@ -361,6 +394,8 @@ export async function llmText(opts: {
 	model?: string;
 	images?: LlmMediaPart[];
 	file?: LlmMediaPart;
+	/** Immagini/video/audio di un nodo a monte, come URL firmati — v. `urlContentParts`. */
+	upstream?: UpstreamMediaUrls;
 	/** Ricerca web via OpenRouter: col plugin (`native`) o lasciata al modello (`built-in`). */
 	webSearch?: WebSearchMode;
 	reasoningEffort?: ReasoningEffort;
@@ -388,7 +423,7 @@ export async function llmText(opts: {
 			model: llmLanguageModel(modelId),
 			system: opts.system,
 			abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-			messages: [{ role: 'user', content: userContent(opts.prompt, opts.images, opts.file) }],
+			messages: [{ role: 'user', content: userContent(opts.prompt, opts.images, opts.file, opts.upstream) }],
 			providerOptions: { openai: reasoningOptions(opts.reasoningEffort) }
 		});
 		logAiCall({

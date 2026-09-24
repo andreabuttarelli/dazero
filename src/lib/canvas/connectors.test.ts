@@ -14,9 +14,29 @@ import {
 
 const modalities = (input: string[]): Modalities => ({ input });
 
-describe('connectorsFor — text, sempre il minimo', () => {
-  it('un nodo testo ha solo il connettore testo, qualunque cosa dica il modello', () => {
-    expect(connectorsFor('text', modalities(['text', 'image']))).toEqual(['text']);
+describe('connectorsFor — text: la porta testo è sempre lì, il resto segue il modello', () => {
+  it('un modello di solo testo ha solo il connettore testo', () => {
+    expect(connectorsFor('text', modalities(['text']))).toEqual(['text']);
+  });
+
+  it('un modello che legge anche immagini apre il connettore immagini, MAI first_frame/last_frame: non è un nodo video', () => {
+    const out = connectorsFor('text', modalities(['text', 'image']));
+    expect(out).toEqual(['text', 'images']);
+    expect(out).not.toContain('first_frame');
+    expect(out).not.toContain('last_frame');
+  });
+
+  it('un modello che legge anche video e audio apre entrambi i connettori', () => {
+    expect(connectorsFor('text', modalities(['text', 'image', 'video', 'audio']))).toEqual([
+      'text',
+      'images',
+      'videos',
+      'audios'
+    ]);
+  });
+
+  it('senza modalità note (nessun modello ancora risolto) resta comunque il connettore testo', () => {
+    expect(connectorsFor('text', modalities([]))).toEqual(['text']);
   });
 });
 
@@ -142,8 +162,21 @@ describe('connectorsForNode: le porte seguono il modello che il nodo MOSTRA', ()
     expect(connectorsForNode('image', null, [])).toEqual([]);
   });
 
-  it('un nodo testo ha sempre il suo connettore testo', () => {
+  it('un nodo testo ha sempre il suo connettore testo, anche senza catalogo', () => {
     expect(connectorsForNode('text', null, [])).toEqual(['text']);
+  });
+
+  const textChoices = [
+    { id: 'anthropic/claude-haiku-4.5', inputModalities: ['text', 'image'] },
+    { id: 'meta/llama-text-only', inputModalities: ['text'] }
+  ];
+
+  it('un nodo testo con un modello vision apre anche il connettore immagini', () => {
+    expect(connectorsForNode('text', 'anthropic/claude-haiku-4.5', textChoices)).toEqual(['text', 'images']);
+  });
+
+  it('un nodo testo con un modello solo testo NON mostra il connettore immagini', () => {
+    expect(connectorsForNode('text', 'meta/llama-text-only', textChoices)).toEqual(['text']);
   });
 });
 

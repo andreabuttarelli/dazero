@@ -71,6 +71,9 @@ const { generateImagesWithoutBrand, generateVideoWithoutBrand } = vi.hoisted(() 
 }));
 vi.mock('$lib/server/media-generate', () => ({ generateImagesWithoutBrand, generateVideoWithoutBrand }));
 
+const { llmText } = vi.hoisted(() => ({ llmText: vi.fn() }));
+vi.mock('$lib/server/llm', () => ({ llmText }));
+
 const { finishVideoRender } = vi.hoisted(() => ({ finishVideoRender: vi.fn() }));
 vi.mock('$lib/server/video', () => ({ finishVideoRender }));
 
@@ -318,6 +321,69 @@ describe('un nodo senza prompt proprio ma con un testo a monte collegato gira lo
       expect.objectContaining({ prompt: expectedPrompt })
     );
   }
+});
+
+/**
+ * UN NODO TESTO CON UN'IMMAGINE A MONTE LA MANDA AL MODELLO — le porte di un nodo testo
+ * (`connectors.ts`) possono aprire immagini/video/audio quando il modello scelto le legge, e
+ * quel che arriva su quelle porte deve raggiungere `llmText`, non fermarsi al prompt scritto.
+ */
+describe('un nodo testo con un\'immagine/video/audio a monte li manda al modello', () => {
+  const IMAGE_NODE = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+  const textNodeRow = { ...freshNodeRow, type: 'text' };
+
+  beforeEach(() => {
+    llmText.mockReset();
+    llmText.mockResolvedValue({ text: 'la didascalia', citations: [] });
+  });
+
+  it('runGenNode su un nodo testo manda le immagini a monte a llmText, come referenceImageUrls', async () => {
+    const { db } = fakeDb(
+      {
+        nodes: [
+          textNodeRow,
+          {
+            ...freshNodeRow,
+            id: IMAGE_NODE,
+            type: 'image',
+            data: { refId: 'asset-1' }
+          }
+        ],
+        nodes_connections: [
+          {
+            id: 'e1',
+            canvas_id: CANVAS,
+            source_node_id: IMAGE_NODE,
+            target_node_id: NODE,
+            source_handle: null,
+            target_handle: null
+          }
+        ],
+        assets: [{ id: 'asset-1', org_id: ORG, project_id: PROJECT, type: 'image', url: 'u/media/upstream.png', mime_type: 'image/png' }]
+      },
+      { updateRows: { nodes: [{ ...textNodeRow, version: 2 }] } }
+    );
+
+    const result = await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'text',
+      prompt: 'descrivi questa immagine',
+      model: 'anthropic/claude-haiku-4.5',
+      params: {},
+      expectedVersion: 1
+    });
+
+    expect(result.kind).toBe('done');
+    expect(llmText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        upstream: expect.objectContaining({ imageUrls: expect.arrayContaining([expect.stringContaining('upstream.png')]) })
+      })
+    );
+  });
 });
 
 /**
