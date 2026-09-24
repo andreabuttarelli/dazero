@@ -122,23 +122,15 @@ async function depositVideo(
 async function land(db: Db, input: StartRun, version: number, run: NodeRun, asset: Asset, costUsd?: number | null): Promise<RunOutcome> {
   await completeRun(db, { orgId: input.orgId, runId: run.id, assetId: asset.id, costUsd });
 
-  const shown = await writeNodeData(db, {
-    orgId: input.orgId,
-    nodeId: input.nodeId,
-    expectedVersion: version,
-    actor: input.actor,
-    data: {
-      prompt: input.prompt,
-      model: input.model,
-      params: input.params,
-      running: false,
-      runId: run.id,
-      refId: asset.id,
-      error: null
-    }
-  });
+  const shown = await writeNodeDataRetrying(db, input, version, (prior) => ({
+    ...prior,
+    running: false,
+    runId: run.id,
+    refId: asset.id,
+    error: null
+  }));
 
-  if (shown.outcome === 'conflict') {
+  if (!shown) {
     return { kind: 'conflict' };
   }
   return { kind: 'done', run: { ...run, status: 'done', outputAssetId: asset.id }, asset };

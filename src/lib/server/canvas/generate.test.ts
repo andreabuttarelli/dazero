@@ -364,6 +364,14 @@ function statefulNodesDb(initial: { id: string; orgId: string; data: Record<stri
             eq: () => ({
               eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) })
             })
+          }),
+          insert: (row: Record<string, unknown>) => ({
+            select: () => ({
+              single: async () => ({
+                data: { id: 'asset-new', duration_s: null, bytes: null, content: null, created_at: new Date().toISOString(), ...row },
+                error: null
+              })
+            })
           })
         };
       }
@@ -443,6 +451,41 @@ describe('un giro fallito non perde la sua chiusura a un conflitto di versione',
     expect(data.running).toBe(false);
     expect(data.error).toBeTruthy();
     expect(data.note).toBe('a concurrent drag landed mid-generation');
+  });
+});
+
+describe('un giro riuscito arriva sul nodo anche se la versione è cambiata nel frattempo', () => {
+  beforeEach(() => {
+    generateImagesWithoutBrand.mockReset();
+  });
+
+  it('refId del render nuovo atterra e la scrittura concorrente resta', async () => {
+    const { db, bumpVersion, currentNode } = statefulNodesDb({ id: NODE, orgId: ORG, data: {}, version: 1 });
+
+    generateImagesWithoutBrand.mockImplementation(async () => {
+      bumpVersion({ ...currentNode().data, running: false, note: 'a concurrent save landed mid-generation' });
+      return { ok: true, media: [{ storage_path: 'u/media/generated.png', mime: 'image/png', width: 1024, height: 1024 }], costUsd: 0.04 };
+    });
+
+    const result = await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'image',
+      prompt: 'a cat',
+      model: 'openai/gpt-image',
+      params: {},
+      expectedVersion: 1
+    });
+
+    expect(result.kind).toBe('done');
+
+    const data = currentNode().data as { refId?: string; running?: boolean; note?: string };
+    expect(data.refId).toBe('asset-new');
+    expect(data.running).toBe(false);
+    expect(data.note).toBe('a concurrent save landed mid-generation');
   });
 });
 
