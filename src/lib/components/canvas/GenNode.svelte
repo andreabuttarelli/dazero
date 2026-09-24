@@ -24,6 +24,8 @@
     hasUpstreamText = false,
     selected = false,
     loopQueued = 0,
+    loopVisible = false,
+    loopCombinationCount = 0,
     onchange,
     onrun,
     onrunloop,
@@ -53,6 +55,12 @@
      *  Chi lo usa lo calcola da `node_runs` (`params.loop.phase === 'queued'`): il nodo non ha un
      *  `db`, mostra solo quel che gli si passa, come ogni altro suo stato. */
     loopQueued?: number;
+    /** Se un loop è possibile per questo nodo — un filo `iterate` la cui sorgente porta
+     *  >=2 valori (un asse). Chi lo usa lo calcola da `edges`/`nodes` (`loop-axes.ts::loopAffordance`):
+     *  senza un asse, il bottone non ha niente da combinare e resta nascosto. */
+    loopVisible?: boolean;
+    /** Quante combinazioni il loop girerebbe — mostrato sul bottone ("Loop ×N"). */
+    loopCombinationCount?: number;
     onchange?: (patch: Partial<GenNode>) => void;
     onrun?: () => void;
     /** Genera in loop — N combinazioni degli archi `iterate`, o N varianti (`repeat`) senza
@@ -238,9 +246,9 @@
         <button type="button" class="gen-loop" onclick={() => oncancelloop?.()}>
           Annulla loop ({loopQueued})
         </button>
-      {:else if onrunloop}
+      {:else if onrunloop && loopVisible}
         <button type="button" class="gen-loop" onclick={() => onrunloop?.()} disabled={!canRun}>
-          Loop
+          Loop ×{loopCombinationCount}
         </button>
       {/if}
       <button type="button" onclick={() => onrun?.()} disabled={!canRun}>

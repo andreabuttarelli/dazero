@@ -77,6 +77,7 @@
     type FlowEdge,
     type WireMode
   } from '$lib/canvas-edges';
+  import { loopAffordance, type LoopSourceNode } from '$lib/canvas/loop-axes';
   import type { CanvasNodeRecord, Connection } from '$lib/server/repos/canvas';
   import type { Product } from '$lib/server/repos/products';
   import type { SocialPost } from '$lib/server/repos/social-posts';
@@ -246,6 +247,29 @@
 
   /** Ogni nodo, per id — la stessa lettura che `listFeedingSelect` chiede, minima apposta. */
   const nodesById = $derived(new Map(nodes.map((n) => [n.id, { id: n.id, type: n.type }])));
+
+  /** Ogni nodo, per id, con quanti item porta una `list` — la lettura che `loopAffordance`
+   *  chiede per contare gli assi di un loop. */
+  const loopSourceNodesById = $derived(
+    new Map<string, LoopSourceNode>(
+      nodes.map((n) => [n.id, { id: n.id, type: n.type, itemCount: n.type === 'list' ? (listOf(n)?.items.length ?? 0) : 0 }])
+    )
+  );
+
+  /** Se il bottone Loop si vede su un nodo, e con quante combinazioni — un filo `iterate` la
+   *  cui sorgente porta >=2 valori (un asse), calcolato prima di aprire il pannello, non dopo. */
+  const loopAffordanceByNode = $derived(
+    Object.fromEntries(
+      nodes.map((n) => [
+        n.id,
+        loopAffordance(
+          n.id,
+          edges.map((e) => ({ sourceNodeId: e.source, targetNodeId: e.target, mode: e.mode ?? 'fixed' })),
+          loopSourceNodesById
+        )
+      ])
+    )
+  );
 
   /** La `list` che alimenta un `select`, o null — `listFeedingSelect` sceglie il primo arco
    *  entrante la cui sorgente è una `list`, la stessa disciplina di `upstream.ts::listFeeding`. */
@@ -1316,6 +1340,8 @@
             catalogueSynced={mediumCatalogue[gen.medium].synced}
             hasUpstreamText={hasUpstreamTextByNode[row.id] ?? false}
             loopQueued={loopQueuedByNode[row.id] ?? 0}
+            loopVisible={loopAffordanceByNode[row.id]?.visible ?? false}
+            loopCombinationCount={loopAffordanceByNode[row.id]?.combinationCount ?? 0}
             onchange={(patch) => write(id, genData({ ...gen, ...patch }))}
             onrun={() => run(id, gen)}
             onrunloop={() => runLoop(id)}
@@ -1417,8 +1443,10 @@
   .gen-text-wrap {
     display: flex;
     flex-direction: column;
+    align-self: stretch;
     width: 100%;
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
   }
 
   .gen-text-toggle {
@@ -1449,7 +1477,7 @@
   .gen-text {
     flex: 1;
     width: 100%;
-    min-height: 100%;
+    min-height: 0;
     margin: 0;
     padding: 12px;
     overflow: auto;
@@ -1459,6 +1487,12 @@
   .gen-text-md {
     white-space: normal;
     font-size: 12px;
+  }
+  .gen-text-md :global(> :first-child) {
+    margin-top: 0;
+  }
+  .gen-text-md :global(> :last-child) {
+    margin-bottom: 0;
   }
 
   .peers { position: absolute; z-index: 10; right: 16px; top: 16px; }

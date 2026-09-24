@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { axesFrom, iterateSelectionFor, type LoopEdge, type LoopSourceNode } from './loop-axes';
+import { axesFrom, iterateSelectionFor, loopAffordance, type LoopEdge, type LoopSourceNode } from './loop-axes';
 
 const nodesById = (nodes: LoopSourceNode[]) => new Map(nodes.map((n) => [n.id, n]));
 
@@ -59,5 +59,44 @@ describe('iterateSelectionFor — la combinazione pianificata diventa una mappa 
 
   it('combinazione vuota: mappa vuota', () => {
     expect(iterateSelectionFor({})).toEqual({});
+  });
+});
+
+describe('loopAffordance — il bottone Loop si vede solo se un loop è possibile', () => {
+  it('nessun asse: nascosto', () => {
+    const edges: LoopEdge[] = [{ sourceNodeId: 'l1', targetNodeId: 'gen', mode: 'fixed' }];
+    const out = loopAffordance('gen', edges, nodesById([{ id: 'l1', type: 'list', itemCount: 3 }]));
+    expect(out).toEqual({ visible: false, combinationCount: 0 });
+  });
+
+  it('un asse con un solo item: nascosto, un loop di 1 non combina niente', () => {
+    const edges: LoopEdge[] = [{ sourceNodeId: 'l1', targetNodeId: 'gen', mode: 'iterate' }];
+    const out = loopAffordance('gen', edges, nodesById([{ id: 'l1', type: 'list', itemCount: 1 }]));
+    expect(out).toEqual({ visible: false, combinationCount: 1 });
+  });
+
+  it('un asse con più item: visibile, conta le combinazioni', () => {
+    const edges: LoopEdge[] = [{ sourceNodeId: 'l1', targetNodeId: 'gen', mode: 'iterate' }];
+    const out = loopAffordance('gen', edges, nodesById([{ id: 'l1', type: 'list', itemCount: 4 }]));
+    expect(out).toEqual({ visible: true, combinationCount: 4 });
+  });
+
+  it('due assi: le combinazioni sono il prodotto cartesiano', () => {
+    const edges: LoopEdge[] = [
+      { sourceNodeId: 'models', targetNodeId: 'gen', mode: 'iterate' },
+      { sourceNodeId: 'envs', targetNodeId: 'gen', mode: 'iterate' }
+    ];
+    const out = loopAffordance(
+      'gen',
+      edges,
+      nodesById([{ id: 'models', type: 'list', itemCount: 3 }, { id: 'envs', type: 'list', itemCount: 2 }])
+    );
+    expect(out).toEqual({ visible: true, combinationCount: 6 });
+  });
+
+  it('un filo iterate la cui sorgente non è una list: nascosto', () => {
+    const edges: LoopEdge[] = [{ sourceNodeId: 't1', targetNodeId: 'gen', mode: 'iterate' }];
+    const out = loopAffordance('gen', edges, nodesById([{ id: 't1', type: 'text', itemCount: 0 }]));
+    expect(out).toEqual({ visible: false, combinationCount: 0 });
   });
 });

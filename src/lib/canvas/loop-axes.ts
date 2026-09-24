@@ -55,3 +55,19 @@ export function axesFrom(targetId: string, edges: LoopEdge[], nodesById: Map<str
 export function iterateSelectionFor(combination: Record<string, string>): Record<string, number> {
   return Object.fromEntries(Object.entries(combination).map(([nodeId, value]) => [nodeId, Number(value)]));
 }
+
+export type LoopAffordance = { visible: boolean; combinationCount: number };
+
+/**
+ * SE IL BOTTONE LOOP SI VEDE, e con quante combinazioni — la stessa domanda che `axesFrom` +
+ * `planCombinations` (cartesiano) rispondono per eseguire un loop, qui risposta prima di girare
+ * niente. Un asse con un solo valore non è un asse utile: un loop di 1 non combina niente, quindi
+ * resta nascosto come nessun asse — la soglia è ">=2 valori", non ">=1 filo iterate".
+ */
+export function loopAffordance(targetId: string, edges: LoopEdge[], nodesById: Map<string, LoopSourceNode>): LoopAffordance {
+  const { axes } = axesFrom(targetId, edges, nodesById);
+  if (!axes.length) return { visible: false, combinationCount: 0 };
+
+  const combinationCount = axes.reduce((n, axis) => n * axis.values.length, 1);
+  return { visible: combinationCount >= 2, combinationCount };
+}
