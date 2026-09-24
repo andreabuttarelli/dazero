@@ -7,9 +7,9 @@ import {
   hashShareToken,
   mintShareToken,
   newDocNodeAt,
-  renderDocHtml,
   shareUrlOf
 } from './doc-node';
+import { renderDocHtml } from './doc-render';
 
 const NOW = new Date('2026-09-21T12:00:00.000Z');
 const PAST = '2026-09-20T00:00:00.000Z';

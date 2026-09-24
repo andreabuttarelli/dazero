@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { renderDocHtml } from '$lib/canvas/doc-node';
+  import { renderDocHtml } from '$lib/canvas/doc-render';
   import '$lib/styles/doc-prose.css';
 
   let { data } = $props();

@@ -15,7 +15,8 @@
   import LinkOff from '@lucide/svelte/icons/unlink';
   import { ADDABLE_LABEL } from '$lib/canvas/addable';
   import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
-  import { renderDocHtml, type DocNode, type DocMode } from '$lib/canvas/doc-node';
+  import type { DocNode, DocMode } from '$lib/canvas/doc-node';
+  import { renderDocHtml } from '$lib/canvas/doc-render';
   import '$lib/styles/doc-prose.css';
 
   const DocIcon = ADDABLE_ICON.doc;
