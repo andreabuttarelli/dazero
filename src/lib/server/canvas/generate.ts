@@ -18,6 +18,7 @@ import {
 import { findNode, writeNodeData } from '$lib/server/repos/canvas';
 import type { Actor } from '$lib/server/repos/actor';
 import { signMediaPaths } from './sign-media';
+import { composePrompt } from '$lib/canvas/compose-prompt';
 
 /**
  * FAR GIRARE UN NODO DELLA TELA, SULLO SCHEMA NUOVO.
@@ -272,7 +273,7 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
     return { kind: 'refused', error: upstream.blocked };
   }
 
-  const prompt = [...upstream.text, input.prompt].filter((t) => t.trim()).join('\n\n');
+  const prompt = composePrompt(input.medium, upstream.text, input.prompt);
 
   // NÉ IL PROPRIO PROMPT NÉ UN TESTO A MONTE: solo ORA si sa che non c'è niente da mandare al
   // modello — prima di questa riga `upstream.text` non era ancora stato letto. Il messaggio è

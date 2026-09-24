@@ -386,6 +386,37 @@ describe('un nodo testo con un\'immagine/video/audio a monte li manda al modello
   });
 });
 
+describe('un nodo testo legge il documento collegato', () => {
+  const DOC = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
+  const textNodeRow = { ...freshNodeRow, type: 'text' };
+
+  beforeEach(() => {
+    llmText.mockReset();
+    llmText.mockResolvedValue({ text: 'ok', citations: [] });
+  });
+
+  it('il contenuto del doc arriva nel prompt del modello', async () => {
+    const { db } = fakeDb(
+      {
+        nodes: [textNodeRow, { ...freshNodeRow, id: DOC, type: 'doc', data: { content: 'Ciao dal documento', public: false } }],
+        nodes_connections: [
+          { id: 'e1', canvas_id: CANVAS, source_node_id: DOC, target_node_id: NODE, source_handle: null, target_handle: 'text', mode: 'fixed' }
+        ],
+        assets: []
+      },
+      { updateRows: { nodes: [{ ...textNodeRow, version: 2 }] } }
+    );
+
+    const result = await runGenNode(db, {
+      orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: NODE, userId: USER,
+      medium: 'text', prompt: 'cosa leggi?', model: 'anthropic/claude-haiku-4.5', params: {}, expectedVersion: 1
+    });
+
+    expect(result.kind).toBe('done');
+    expect(llmText).toHaveBeenCalledWith(expect.objectContaining({ prompt: expect.stringContaining('Ciao dal documento') }));
+  });
+});
+
 /**
  * UN MODELLO SPARITO DA `ai_models` BLOCCA IL NODO, PRIMA di spendere — mai dopo aver chiesto al
  * provider. Il caso non è "non ancora sincronizzato" (il selettore offre solo modelli con una riga
