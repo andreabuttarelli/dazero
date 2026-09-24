@@ -14,16 +14,18 @@ const { readOrgBillingById, orgCreditsUsage } = vi.hoisted(() => ({
 }));
 vi.mock('$lib/server/credits', () => ({ readOrgBillingById, orgCreditsUsage }));
 
-import { planLoop, runLoop } from './loop';
+import { planLoop, enqueueLoop, drainLoopQueue, cancelLoop, retryLoopCombination } from './loop';
 
 /**
  * QUESTI TEST NON DIPENDONO DA `nodes_connections.mode` — quella colonna non è ancora applicata
  * (`20260923_loop_nodes.sql`, pendente), e `repos/canvas.ts` (hotfix `fe41ffa1`) legge OGNI arco
- * come `fixed` finché non lo è: un test che semina `mode: 'iterate'` nella riga finta e si aspetta
- * un asse attivo starebbe testando un comportamento impossibile in produzione oggi. Il loop senza
- * assi ("repeat N", CLAUDE.md) È la strada che funziona ORA, e questi test la esercitano davvero.
- * I test per gli assi `iterate` vivono più sotto, `it.skip`, con lo stesso motivo nel nome —
- * riattivarli è il lavoro di quando la migrazione atterra, non prima.
+ * come `fixed` finché non lo è. Il loop senza assi ("repeat N", CLAUDE.md) È la strada che
+ * funziona ORA. I test per gli assi `iterate` sono `it.skip`, con lo stesso motivo nel nome.
+ *
+ * LA DURABILITÀ È IL PUNTO DI QUESTI TEST: `enqueueLoop` non gira niente — mette in coda e torna;
+ * `drainLoopQueue` (il cron) reclama e gira un lotto; un tick che sovrappone un altro non ne
+ * ruba il lavoro (claim atomico); cancellare ferma solo chi è ancora in coda; un fallimento non
+ * blocca le altre combinazioni.
  */
 
 const ORG = '11111111-1111-1111-1111-111111111111';
@@ -46,6 +48,27 @@ const nodeRow = (id: string, type: string, data: Record<string, unknown>, versio
   height: null,
   data,
   version
+});
+
+const runRow = (over: Record<string, unknown>) => ({
+  id: 'run-id',
+  org_id: ORG,
+  node_id: GEN_NODE,
+  prompt: 'un gatto',
+  model: 'qwen3-pro',
+  params: {},
+  status: 'running',
+  error: null,
+  output_asset_id: null,
+  external_job_id: null,
+  cost_usd: null,
+  attempts: 0,
+  claimed_at: null,
+  started_at: '2026-09-24T00:00:00Z',
+  finished_at: null,
+  actor_kind: 'user',
+  actor_id: null,
+  ...over
 });
 
 beforeEach(() => {
@@ -100,134 +123,187 @@ describe('planLoop — il preventivo, senza girare niente', () => {
 
     expect(out.combinations).toHaveLength(4);
   });
-
-  it.skip('sopra 1000 combinazioni: refuse, e planLoop non gira nulla [in attesa di 20260923_loop_nodes.sql]', async () => {
-    const bigItems = Array.from({ length: 32 }, (_, i) => ({ asset_id: `a${i}` }));
-    const { db } = fakeDb({
-      nodes: [
-        nodeRow(GEN_NODE, 'image', { prompt: 'x', model: 'qwen3-pro' }),
-        nodeRow('la', 'list', { item_kind: 'image', items: bigItems }),
-        nodeRow('lb', 'list', { item_kind: 'image', items: bigItems })
-      ],
-      nodes_connections: [
-        { id: 'e1', canvas_id: CANVAS, source_node_id: 'la', target_node_id: GEN_NODE, source_handle: null, target_handle: null, mode: 'iterate' },
-        { id: 'e2', canvas_id: CANVAS, source_node_id: 'lb', target_node_id: GEN_NODE, source_handle: null, target_handle: null, mode: 'iterate' }
-      ]
-    });
-
-    const out = await planLoop(db, { orgId: ORG, canvasId: CANVAS, nodeId: GEN_NODE });
-
-    expect(out.combinations.length).toBe(32 * 32);
-    expect(out.safety.verdict).toBe('refuse');
-  });
 });
 
-describe('runLoop — esegue col motore reale, mai una copia', () => {
-  it('sopra 50 varianti (repeat) senza `confirmed: true` chiede conferma, mai gira', async () => {
-    const { db } = fakeDb({
-      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'x', model: 'qwen3-pro', params: { repeat: 51 } })],
-      nodes_connections: []
-    });
-
-    const out = await runLoop(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER });
-
-    expect(out.kind).toBe('needs_confirmation');
-    expect(runGenNode).not.toHaveBeenCalled();
-  });
-
-  it('sopra 1000 varianti (repeat) rifiuta senza girare nulla, anche con confirmed:true', async () => {
-    const { db } = fakeDb({
+describe('enqueueLoop — valida, controlla i crediti del TOTALE, mette in coda, e ritorna — mai gira niente', () => {
+  it('sopra 1000 varianti (repeat) rifiuta senza mettere in coda nulla, anche con confirmed:true', async () => {
+    const { db, calls } = fakeDb({
       nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'x', model: 'qwen3-pro', params: { repeat: 1001 } })],
       nodes_connections: []
     });
 
-    const out = await runLoop(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER, confirmed: true });
+    const out = await enqueueLoop(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER, confirmed: true });
 
     expect(out.kind).toBe('refused');
-    expect(runGenNode).not.toHaveBeenCalled();
+    expect(calls.some((c) => c.table === 'node_runs' && c.op === 'insert')).toBe(false);
   });
 
-  it('chiama runGenNode UNA volta per variante, con lo stesso motore del bottone Genera', async () => {
-    const { db } = fakeDb({
-      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', params: { repeat: 2 } }, 5)],
+  it('sopra 50 varianti senza confirmed:true chiede conferma, mai mette in coda', async () => {
+    const { db, calls } = fakeDb({
+      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'x', model: 'qwen3-pro', params: { repeat: 51 } })],
       nodes_connections: []
     });
 
-    runGenNode.mockResolvedValue({ kind: 'done', run: { id: 'run-x', status: 'done', outputAssetId: 'asset-x' }, asset: { id: 'asset-x', type: 'image', url: 'https://cdn/x.png' } });
+    const out = await enqueueLoop(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER });
 
-    const out = await runLoop(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER, confirmed: true });
-
-    expect(out.kind).toBe('ran');
-    expect(runGenNode).toHaveBeenCalledTimes(2);
-    for (const call of runGenNode.mock.calls) {
-      expect(call[1]).toMatchObject({ orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER, medium: 'image' });
-    }
+    expect(out.kind).toBe('needs_confirmation');
+    expect(calls.some((c) => c.table === 'node_runs' && c.op === 'insert')).toBe(false);
   });
 
-  it('un fallimento su una variante non ferma le altre — i risultati completati sopravvivono', async () => {
-    const { db } = fakeDb({
-      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', params: { repeat: 2 } }, 5)],
-      nodes_connections: []
-    });
-
-    runGenNode
-      .mockResolvedValueOnce({ kind: 'done', run: { id: 'run-1', status: 'done', outputAssetId: 'asset-1' }, asset: { id: 'asset-1', type: 'image', url: 'https://cdn/1.png' } })
-      .mockResolvedValueOnce({ kind: 'refused', error: 'store_failed' });
-
-    const out = await runLoop(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER, confirmed: true });
-
-    expect(out.kind).toBe('ran');
-    expect(out.results).toHaveLength(2);
-    expect(out.results[0].outcome).toBe('done');
-    expect(out.results[1].outcome).toBe('failed');
-  });
-
-  it('crediti insufficienti per l\'INTERO loop rifiutano PRIMA di girare — mai scoperti vuoti a metà', async () => {
+  it('crediti insufficienti per l\'INTERO loop rifiutano PRIMA di mettere in coda — mai scoperti vuoti a metà', async () => {
     orgCreditsUsage.mockResolvedValue({ used: 99_990, quota: 100_000, bonus: 0, remaining: 10, periodStart: new Date(), periodEnd: new Date(), percent: 99 });
 
-    const { db } = fakeDb({
+    const { db, calls } = fakeDb({
       nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', params: { repeat: 5 } })],
       nodes_connections: []
     });
 
-    const out = await runLoop(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER, confirmed: true });
+    const out = await enqueueLoop(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER, confirmed: true });
 
     expect(out.kind).toBe('refused');
+    expect(calls.some((c) => c.table === 'node_runs' && c.op === 'insert')).toBe(false);
+  });
+
+  it('mette in coda un biglietto per variante, crea un output list, e NON chiama runGenNode', async () => {
+    const { db, calls } = fakeDb({
+      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', params: { repeat: 3 } })],
+      nodes_connections: [],
+      node_runs: [runRow({ id: 'r1' }), runRow({ id: 'r2' }), runRow({ id: 'r3' })]
+    });
+
+    const out = await enqueueLoop(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER, confirmed: true });
+
+    expect(out.kind).toBe('enqueued');
+    if (out.kind !== 'enqueued') throw new Error('unreachable');
+    expect(out.total).toBe(3);
+    expect(out.runIds).toHaveLength(3);
+    expect(out.outputListNodeId).toBeTruthy();
+
+    const runInserts = calls.filter((c) => c.table === 'node_runs' && c.op === 'insert');
+    expect(runInserts).toHaveLength(3);
+    for (const insert of runInserts) {
+      expect(insert.payload).toMatchObject({
+        org_id: ORG,
+        node_id: GEN_NODE,
+        params: { loop: expect.objectContaining({ phase: 'queued' }) }
+      });
+    }
+
+    const listInsert = calls.find((c) => c.table === 'nodes' && c.op === 'insert');
+    expect(listInsert?.payload).toMatchObject({ type: 'list' });
+    expect(runGenNode).not.toHaveBeenCalled();
+  });
+});
+
+describe('drainLoopQueue — il cron drena un lotto, con lo stesso motore', () => {
+  it('reclama i biglietti in coda e chiama runGenNode una volta ciascuno', async () => {
+    const ticket = { loop: { phase: 'queued', outputListNodeId: 'list-1', label: 'variante 1', values: {}, projectId: PROJECT, canvasId: CANVAS, userId: USER } };
+    const { db, calls } = fakeDb(
+      {
+        node_runs: [runRow({ id: 'r1', node_id: GEN_NODE, params: ticket })],
+        nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro' }, 5), nodeRow('list-1', 'list', { item_kind: 'image', items: [{ label: 'variante 1', status: 'queued' }] })]
+      },
+      { updateRows: { node_runs: [runRow({ id: 'r1', node_id: GEN_NODE, params: ticket, status: 'finishing' })] } }
+    );
+
+    runGenNode.mockResolvedValue({
+      kind: 'done',
+      run: { id: 'real-run', status: 'done', outputAssetId: 'asset-1', costUsd: 0.07 },
+      asset: { id: 'asset-1', type: 'image', url: 'https://cdn/1.png' }
+    });
+
+    const out = await drainLoopQueue(db, { limit: 10 });
+
+    expect(out).toMatchObject({ claimed: 1, done: 1, failed: 0 });
+    expect(runGenNode).toHaveBeenCalledTimes(1);
+    const claimUpdate = calls.find((c) => c.table === 'node_runs' && c.op === 'update' && (c.payload as { status?: string })?.status === 'finishing');
+    expect(claimUpdate).toBeTruthy();
+  });
+
+  it('un biglietto già reclamato (status finishing) non viene ripreso da un secondo drain nello stesso lotto', async () => {
+    const ticket = { loop: { phase: 'queued', outputListNodeId: 'list-1', label: 'v1', values: {}, projectId: PROJECT, canvasId: CANVAS, userId: USER } };
+    const { db } = fakeDb(
+      { node_runs: [runRow({ id: 'r1', node_id: GEN_NODE, params: ticket })], nodes: [] },
+      { updateRows: { node_runs: [] } }
+    );
+
+    const out = await drainLoopQueue(db, { limit: 10 });
+
+    expect(out).toMatchObject({ claimed: 0 });
     expect(runGenNode).not.toHaveBeenCalled();
   });
 
-  it('deposita un nodo list di output con un item per combinazione riuscita', async () => {
-    const { db, calls } = fakeDb({
-      nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro', params: { repeat: 2 } }, 5)],
-      nodes_connections: []
-    });
+  it('un fallimento su una combinazione non ferma le altre — chiude quella e continua', async () => {
+    const ticket1 = { loop: { phase: 'queued', outputListNodeId: 'list-1', label: 'v1', values: {}, projectId: PROJECT, canvasId: CANVAS, userId: USER } };
+    const { db } = fakeDb(
+      {
+        node_runs: [runRow({ id: 'r1', node_id: GEN_NODE, params: ticket1 })],
+        nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro' }, 5), nodeRow('list-1', 'list', { item_kind: 'image', items: [{ label: 'v1', status: 'queued' }] })]
+      },
+      { updateRows: { node_runs: [runRow({ id: 'r1', node_id: GEN_NODE, params: ticket1, status: 'finishing' })] } }
+    );
 
-    runGenNode.mockResolvedValue({ kind: 'done', run: { id: 'run-x', status: 'done', outputAssetId: 'asset-x' }, asset: { id: 'asset-x', type: 'image', url: 'https://cdn/x.png' } });
+    runGenNode.mockResolvedValue({ kind: 'refused', error: 'store_failed' });
 
-    const out = await runLoop(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER, confirmed: true });
+    const out = await drainLoopQueue(db, { limit: 10 });
 
-    expect(out.kind).toBe('ran');
-    expect(out.outputListNodeId).toBeTruthy();
-    const insert = calls.find((c) => c.table === 'nodes' && c.op === 'insert');
-    expect(insert?.payload).toMatchObject({ type: 'list' });
+    expect(out).toMatchObject({ claimed: 1, done: 0, failed: 1 });
   });
 
-  it.skip('un asse iterate da una list con 2 item porta iterateSelection a runOneCombination [in attesa di 20260923_loop_nodes.sql]', async () => {
-    const { db } = fakeDb({
-      nodes: [
-        nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro' }, 5),
-        nodeRow(LIST_NODE_A, 'list', { item_kind: 'image', items: [{ asset_id: 'a1' }, { asset_id: 'a2' }] })
-      ],
-      nodes_connections: [
-        { id: 'e1', canvas_id: CANVAS, source_node_id: LIST_NODE_A, target_node_id: GEN_NODE, source_handle: null, target_handle: null, mode: 'iterate' }
-      ]
+  it('ignora le run che non sono biglietti di loop (un giro ordinario in running)', async () => {
+    const { db } = fakeDb({ node_runs: [runRow({ id: 'r1', params: {} })], nodes: [] });
+
+    const out = await drainLoopQueue(db, { limit: 10 });
+
+    expect(out).toMatchObject({ claimed: 0, done: 0, failed: 0 });
+    expect(runGenNode).not.toHaveBeenCalled();
+  });
+});
+
+describe('cancelLoop — ferma solo i biglietti non ancora reclamati', () => {
+  it('chiude i biglietti in coda come falliti con error=cancelled, ne conta quanti', async () => {
+    const ticket = { loop: { phase: 'queued', outputListNodeId: 'list-1', label: 'v1', values: {}, projectId: PROJECT, canvasId: CANVAS, userId: USER } };
+    const { db, calls } = fakeDb(
+      { node_runs: [runRow({ id: 'r1', node_id: GEN_NODE, params: ticket })], nodes: [nodeRow('list-1', 'list', { item_kind: 'image', items: [{ label: 'v1', status: 'queued' }] })] },
+      { updateRows: { node_runs: [runRow({ id: 'r1', node_id: GEN_NODE, params: ticket, status: 'finishing' })] } }
+    );
+
+    const out = await cancelLoop(db, { orgId: ORG, nodeId: GEN_NODE });
+
+    expect(out).toMatchObject({ cancelled: 1 });
+    const failUpdate = calls.find((c) => c.table === 'node_runs' && c.op === 'update' && (c.payload as { error?: string })?.error === 'cancelled');
+    expect(failUpdate).toBeTruthy();
+  });
+});
+
+describe('retryLoopCombination — rilancia UNA combinazione, subito, mai in coda', () => {
+  it('chiama runGenNode e aggiorna solo l\'item corrispondente', async () => {
+    const { db, calls } = fakeDb(
+      {
+        nodes: [nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro' }, 5), nodeRow('list-1', 'list', { item_kind: 'image', items: [{ label: 'v1', status: 'failed' }, { label: 'v2', status: 'done', asset_id: 'other' }] })]
+      },
+      { updateRows: { nodes: [nodeRow('list-1', 'list', { item_kind: 'image', items: [] })] } }
+    );
+
+    runGenNode.mockResolvedValue({
+      kind: 'done',
+      run: { id: 'real-run', status: 'done', outputAssetId: 'asset-1', costUsd: 0.07 },
+      asset: { id: 'asset-1', type: 'image', url: 'https://cdn/1.png' }
     });
 
-    runGenNode.mockResolvedValue({ kind: 'done', run: { id: 'run-x', status: 'done', outputAssetId: 'asset-x' }, asset: { id: 'asset-x', type: 'image', url: 'https://cdn/x.png' } });
+    const out = await retryLoopCombination(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: GEN_NODE,
+      userId: USER,
+      outputListNodeId: 'list-1',
+      combination: { label: 'v1', values: {} }
+    });
 
-    const out = await runLoop(db, { orgId: ORG, projectId: PROJECT, canvasId: CANVAS, nodeId: GEN_NODE, userId: USER, confirmed: true });
-
-    expect(out.kind).toBe('ran');
-    expect(runGenNode).toHaveBeenCalledTimes(2);
+    expect(out.outcome).toBe('done');
+    expect(runGenNode).toHaveBeenCalledTimes(1);
+    const listUpdate = calls.find((c) => c.table === 'nodes' && c.op === 'update');
+    expect(listUpdate).toBeTruthy();
   });
 });
