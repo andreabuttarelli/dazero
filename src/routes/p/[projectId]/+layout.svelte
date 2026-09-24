@@ -78,18 +78,18 @@
 
 <div class="project-shell">
   {#if onCanvasRoute && !isMobile}
-    <CanvasTopBar
-      projectName={data.project.name}
-      projects={data.projects.map((p: { id: string; name: string; href: string }) => ({ id: p.id, name: p.name, href: p.href }))}
-      canvasName={currentCanvas?.name ?? ''}
-      canvases={data.canvases}
-      {chatOpen}
-      onToggleChat={toggleChat}
-    />
-
     <div class="canvas-row">
       <div class="canvas-stage">
         {@render children()}
+        <CanvasTopBar
+          projectName={data.project.name}
+          projects={data.projects.map((p: { id: string; name: string; href: string }) => ({ id: p.id, name: p.name, href: p.href }))}
+          canvasName={currentCanvas?.name ?? ''}
+          canvases={data.canvases}
+          creditBalance={data.creditBalance}
+          {chatOpen}
+          onToggleChat={toggleChat}
+        />
         <FloatingRail
           activePanel={leftPanel}
           activeSheet={activeSheetId}

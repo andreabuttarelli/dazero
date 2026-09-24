@@ -271,6 +271,7 @@
       "resizeChat": "Resize chat",
       "collapseChat": "Collapse chat",
       "expandChat": "Show chat",
+      "credits": "{count} credits",
       "mobile": {
         "canvas": "Canvas",
         "chat": "Chat",

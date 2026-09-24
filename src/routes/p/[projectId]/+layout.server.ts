@@ -7,6 +7,7 @@ import { findProjectForUser } from '$lib/server/projects/lookup';
 import { chooseOrg } from '$lib/server/tenancy/context';
 import { ensureProfile } from '$lib/server/repos/profiles';
 import { PROJECT_BRAND_SHELL_SELECT, projectBrandShellOf, type ProjectBrandShell } from '$lib/server/projects/brand-shell';
+import { orgCreditBalance } from '$lib/server/credits';
 import { env } from '$env/dynamic/private';
 import type { Db } from '$lib/server/db/client';
 
@@ -21,7 +22,9 @@ const FLAGS = {
  * progetto (`projects.brand_id`, nullable): si apre una tela per esplorare, e solo quando il
  * materiale diventa qualcosa da pubblicare si decide per chi.
  */
-export const load: LayoutServerLoad = async ({ params, locals }) => {
+export const load: LayoutServerLoad = async ({ params, locals, depends }) => {
+  depends('app:credits');
+
   const { session, user } = await locals.safeGetSession();
   if (!session || !user) {
     throw redirect(303, '/login');
@@ -40,10 +43,11 @@ export const load: LayoutServerLoad = async ({ params, locals }) => {
 
   const { orgId, project } = found;
   const membership = memberships.find((m) => m.org.id === orgId)!;
-  const [projects, canvases, brand] = await Promise.all([
+  const [projects, canvases, brand, creditBalance] = await Promise.all([
     listProjects(db, orgId),
     listCanvases(db, { orgId, projectId: project.id }),
-    loadBrandShell(db, orgId, project.brandId)
+    loadBrandShell(db, orgId, project.brandId),
+    orgCreditBalance(db, orgId)
   ]);
 
   return {
@@ -51,6 +55,7 @@ export const load: LayoutServerLoad = async ({ params, locals }) => {
     org: { id: orgId, name: membership.org.name, slug: membership.org.slug, role: membership.role },
     project,
     brand,
+    creditBalance,
     projects: projects.map((p) => {
       const first = p.id === project.id ? canvases[0] : undefined;
       return { id: p.id, name: p.name, slug: p.slug, href: `/p/${p.id}`, brandId: p.brandId, active: p.id === project.id, firstCanvasId: first?.id ?? null };

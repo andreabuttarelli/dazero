@@ -20,6 +20,7 @@
   import type { PresencePeer } from '$lib/realtime/presence-peers';
   import { createSupabaseBrowserClient } from '$lib/supabase/client';
   import { deserialize } from '$app/forms';
+  import { invalidate } from '$app/navigation';
   import CanvasFlow from '$lib/components/canvas/CanvasFlow.svelte';
   import GenNode from '$lib/components/canvas/GenNode.svelte';
   import IframeNode from '$lib/components/canvas/IframeNode.svelte';
@@ -501,10 +502,12 @@
       // di più di uno spinner che si ferma: `refresh()` lo riporta dal server, dove `GenNode` sa
       // già mostrarlo (`node.error`).
       await refresh();
+      void invalidate('app:credits');
       return;
     }
 
     await refresh();
+    void invalidate('app:credits');
   }
 
   /**
@@ -539,6 +542,7 @@
 
     await post('run_loop', { node_id: id, confirm: safety.verdict === 'confirm' ? '1' : '0' });
     await refresh();
+    void invalidate('app:credits');
   }
 
   /** Ferma i biglietti non ancora reclamati da un tick — quelli già in corso finiscono, i
