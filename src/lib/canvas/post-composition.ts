@@ -2,6 +2,7 @@ export type PostCompositionNode = {
   id: string;
   type: string;
   data: Record<string, unknown>;
+  text?: string | null;
 };
 
 export type PostCompositionMedia = { nodeId: string; assetId: string };
@@ -13,29 +14,20 @@ export type PostComposition = {
   enabled: boolean;
 };
 
+const MEDIA_TYPES = new Set(['image', 'video']);
+
 function mediaAssetId(node: PostCompositionNode): string | null {
-  if ((node.type === 'image' || node.type === 'video') && typeof node.data.assetId === 'string') {
-    return node.data.assetId;
-  }
-  if (node.data.status === 'done' && typeof node.data.output_asset_id === 'string') {
-    return node.data.output_asset_id;
-  }
-  return null;
+  return MEDIA_TYPES.has(node.type) && typeof node.data.refId === 'string' ? node.data.refId : null;
 }
 
+const CAPTION_OF: Record<string, (node: PostCompositionNode) => unknown> = {
+  doc: (node) => node.data.content,
+  text: (node) => (node.text?.trim() ? node.text : node.data.prompt)
+};
+
 function captionText(node: PostCompositionNode): string | null {
-  if (node.type === 'doc' && typeof node.data.content === 'string') {
-    return node.data.content;
-  }
-  if (node.type === 'text') {
-    if (node.data.status === 'done' && typeof node.data.output_text === 'string') {
-      return node.data.output_text;
-    }
-    if (typeof node.data.prompt === 'string') {
-      return node.data.prompt;
-    }
-  }
-  return null;
+  const value = CAPTION_OF[node.type]?.(node);
+  return typeof value === 'string' && value.trim() ? value : null;
 }
 
 export function postCompositionFor(nodes: PostCompositionNode[]): PostComposition {
@@ -55,5 +47,5 @@ export function postCompositionFor(nodes: PostCompositionNode[]): PostCompositio
     }
   }
 
-  return { media, captions, enabled: media.length > 0 };
+  return { media, captions, enabled: media.length > 0 || captions.length > 0 };
 }

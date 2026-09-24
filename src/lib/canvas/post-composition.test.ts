@@ -2,83 +2,67 @@ import { describe, expect, it } from 'vitest';
 import { postCompositionFor, type PostCompositionNode } from './post-composition';
 
 function node(over: Partial<PostCompositionNode>): PostCompositionNode {
-  return { id: over.id ?? 'node-1', type: over.type ?? 'image', data: over.data ?? {} };
+  return { id: over.id ?? 'node-1', type: over.type ?? 'image', data: over.data ?? {}, text: over.text };
 }
 
 describe('postCompositionFor: media', () => {
-  it('collects an uploaded image node by data.assetId, in the given order', () => {
-    const nodes = [
-      node({ id: 'a', type: 'image', data: { assetId: 'asset-a' } }),
-      node({ id: 'b', type: 'image', data: { assetId: 'asset-b' } })
-    ];
-
-    const result = postCompositionFor(nodes);
+  it('prende immagini e video dal loro refId, nell\'ordine dato', () => {
+    const result = postCompositionFor([
+      node({ id: 'a', type: 'image', data: { refId: 'asset-a' } }),
+      node({ id: 'v', type: 'video', data: { refId: 'asset-v' } })
+    ]);
 
     expect(result.media).toEqual([
       { nodeId: 'a', assetId: 'asset-a' },
-      { nodeId: 'b', assetId: 'asset-b' }
+      { nodeId: 'v', assetId: 'asset-v' }
     ]);
   });
 
-  it('collects a generated video node by data.output_asset_id, only when status is done', () => {
-    const nodes = [node({ id: 'v', type: 'video', data: { status: 'done', output_asset_id: 'gen-1' } })];
-
-    const result = postCompositionFor(nodes);
-
-    expect(result.media).toEqual([{ nodeId: 'v', assetId: 'gen-1' }]);
-  });
-
-  it('a node still generating contributes no media', () => {
-    const nodes = [node({ id: 'v', type: 'video', data: { status: 'running' } })];
-
-    const result = postCompositionFor(nodes);
-
-    expect(result.media).toEqual([]);
+  it('un nodo senza risultato non porta media', () => {
+    expect(postCompositionFor([node({ type: 'image', data: { running: true } })]).media).toEqual([]);
   });
 });
 
-describe('postCompositionFor: captions', () => {
-  it('a doc node contributes its content as a caption candidate', () => {
-    const nodes = [node({ id: 'd', type: 'doc', data: { content: 'ciao mondo' } })];
-
-    const result = postCompositionFor(nodes);
-
-    expect(result.captions).toEqual([{ nodeId: 'd', text: 'ciao mondo' }]);
+describe('postCompositionFor: didascalie', () => {
+  it('un doc porta il suo contenuto', () => {
+    expect(postCompositionFor([node({ id: 'd', type: 'doc', data: { content: 'ciao mondo' } })]).captions).toEqual([
+      { nodeId: 'd', text: 'ciao mondo' }
+    ]);
   });
 
-  it('a text node prefers its generated output over the prompt', () => {
-    const nodes = [
-      node({ id: 't', type: 'text', data: { status: 'done', output_text: 'testo generato', prompt: 'scrivi qualcosa' } })
-    ];
-
-    const result = postCompositionFor(nodes);
-
-    expect(result.captions).toEqual([{ nodeId: 't', text: 'testo generato' }]);
+  it('un testo preferisce il testo generato al prompt', () => {
+    const result = postCompositionFor([node({ id: 't', type: 'text', data: { prompt: 'scrivi' }, text: 'generato' })]);
+    expect(result.captions).toEqual([{ nodeId: 't', text: 'generato' }]);
   });
 
-  it('a text node not yet generated falls back to its prompt', () => {
-    const nodes = [node({ id: 't', type: 'text', data: { status: 'running', prompt: 'scrivi qualcosa' } })];
+  it('un testo mai generato ripiega sul prompt', () => {
+    const result = postCompositionFor([node({ id: 't', type: 'text', data: { prompt: 'scrivi' } })]);
+    expect(result.captions).toEqual([{ nodeId: 't', text: 'scrivi' }]);
+  });
 
-    const result = postCompositionFor(nodes);
-
-    expect(result.captions).toEqual([{ nodeId: 't', text: 'scrivi qualcosa' }]);
+  it('un testo vuoto non è una didascalia', () => {
+    expect(postCompositionFor([node({ type: 'text', data: { prompt: '  ' } })]).captions).toEqual([]);
   });
 });
 
-describe('postCompositionFor: enabled', () => {
-  it('is enabled when at least one node contributes media', () => {
-    const nodes = [node({ id: 'a', type: 'image', data: { assetId: 'asset-a' } })];
-
-    expect(postCompositionFor(nodes).enabled).toBe(true);
+describe('postCompositionFor: quando si può creare un post', () => {
+  it('basta un\'immagine e un testo', () => {
+    const result = postCompositionFor([
+      node({ id: 'a', type: 'image', data: { refId: 'x' } }),
+      node({ id: 't', type: 'text', data: { prompt: 'ciao' } })
+    ]);
+    expect(result.enabled).toBe(true);
   });
 
-  it('is disabled when no node contributes media, even with a caption', () => {
-    const nodes = [node({ id: 'd', type: 'doc', data: { content: 'testo soltanto' } })];
-
-    expect(postCompositionFor(nodes).enabled).toBe(false);
+  it('basta un solo media', () => {
+    expect(postCompositionFor([node({ type: 'image', data: { refId: 'x' } })]).enabled).toBe(true);
   });
 
-  it('is disabled with no nodes at all', () => {
-    expect(postCompositionFor([]).enabled).toBe(false);
+  it('basta un solo testo: alcuni social pubblicano solo testo', () => {
+    expect(postCompositionFor([node({ type: 'text', data: { prompt: 'ciao' } })]).enabled).toBe(true);
+  });
+
+  it('senza media né testo non si crea niente', () => {
+    expect(postCompositionFor([node({ type: 'iframe', data: { url: 'x' } })]).enabled).toBe(false);
   });
 });

@@ -42,7 +42,7 @@ export function enabledFor(
     const composition = postCompositionFor(nodeSummaries);
     return {
       enabled: composition.enabled,
-      reason: composition.enabled ? undefined : 'Serve almeno un\'immagine o un video nella selezione'
+      reason: composition.enabled ? undefined : 'Serve almeno un media o un testo nella selezione'
     };
   }
 

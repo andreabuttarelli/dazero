@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import { listNodesByIds } from '$lib/server/repos/canvas';
 import { listOrgBrands } from '$lib/server/repos/brands';
 import { listBrandAccounts, type SocialAccount } from '$lib/server/repos/social-accounts';
+import { findAssets } from '$lib/server/repos/assets';
 
 export const load: PageServerLoad = async ({ parent, url, locals }) => {
   const nodeIds = url.searchParams.get('nodeIds')?.split(',').filter(Boolean) ?? [];
@@ -24,16 +25,22 @@ export const load: PageServerLoad = async ({ parent, url, locals }) => {
   }
 
   const canvasId = nodeRecords[0]?.canvasId ?? null;
+  const refIdOf = (data: Record<string, unknown>) => (typeof data.refId === 'string' ? data.refId : null);
+  const assets = await findAssets(db, {
+    orgId: org.id,
+    assetIds: nodeRecords.map((node) => refIdOf(node.data)).filter((id): id is string => id !== null)
+  });
 
-  const nodes = nodeRecords.map((node) => ({
-    id: node.id,
-    type: node.type,
-    data: node.data,
-    mediaUrl:
-      typeof node.data.assetId === 'string' && canvasId
-        ? `/p/${project.id}/c/${canvasId}/assets/${node.data.assetId}`
-        : null
-  }));
+  const nodes = nodeRecords.map((node) => {
+    const refId = refIdOf(node.data);
+    return {
+      id: node.id,
+      type: node.type,
+      data: node.data,
+      text: refId ? (assets.get(refId)?.content ?? null) : null,
+      mediaUrl: refId && canvasId ? `/p/${project.id}/c/${canvasId}/assets/${refId}` : null
+    };
+  });
 
   return { nodes, brands, accountsByBrand, projectBrandId: project.brandId, canvasId };
 };
