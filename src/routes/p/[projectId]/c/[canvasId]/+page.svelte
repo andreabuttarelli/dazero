@@ -104,6 +104,10 @@
      *  vuol dire "l'utente non ha mai ridimensionato a mano", il segnale che il nodo testo può
      *  crescere da solo (`grownTextNodeHeight`, `text-node-grow.ts`). */
     userHeight: number | null;
+    /** Appena nata da un gesto di QUESTO client — `CanvasFlow`/`syncNodes` la selezionano, una
+     *  volta sola. Mai vero da `refresh()`/dal primo carico: un inserimento realtime da un
+     *  collega non deve rubare la selezione locale. */
+    select?: boolean;
   };
 
   function sizeOf(node: CanvasNodeRecord): { w: number; h: number } {
@@ -111,7 +115,7 @@
     return { w: node.size.width ?? w, h: node.size.height ?? h };
   }
 
-  function toTile(node: CanvasNodeRecord): Tile {
+  function toTile(node: CanvasNodeRecord, opts: { select?: boolean } = {}): Tile {
     return {
       id: node.id,
       type: node.type,
@@ -121,11 +125,12 @@
       x: node.position.x,
       y: node.position.y,
       userHeight: node.size.height,
+      select: opts.select,
       ...sizeOf(node)
     };
   }
 
-  let nodes = $state<Tile[]>((data.nodes as CanvasNodeRecord[]).map(toTile));
+  let nodes = $state<Tile[]>((data.nodes as CanvasNodeRecord[]).map((n) => toTile(n)));
 
   /**
    * QUANTO IL CONTENUTO DI UN NODO TESTO CHIEDE, misurato dal DOM — mai scritto in database, mai
@@ -366,6 +371,7 @@
       kind: n.type,
       displayName: n.displayName,
       inPost: data.nodeIdsInPost.includes(n.id),
+      select: n.select,
       node: tileNode({
         id: n.id,
         medium: n.type === 'iframe' || n.type === 'document' || n.type === 'doc' ? null : (n.type as 'text' | 'image' | 'video'),
@@ -423,7 +429,7 @@
     if (!snapshot || pending || version !== snapshotVersion) {
       return;
     }
-    nodes = (snapshot.nodes as CanvasNodeRecord[]).map(toTile);
+    nodes = (snapshot.nodes as CanvasNodeRecord[]).map((n) => toTile(n));
     edges = (snapshot.connections as Connection[]).map(toEdge);
     productsOverride = (snapshot.products ?? {}) as Record<string, Product[]>;
     socialPostsOverride = (snapshot.socialPosts ?? {}) as Record<string, SocialPost[]>;
@@ -431,7 +437,7 @@
 
   $effect(() => {
     snapshotVersion += 1;
-    nodes = (data.nodes as CanvasNodeRecord[]).map(toTile);
+    nodes = (data.nodes as CanvasNodeRecord[]).map((n) => toTile(n));
     edges = (data.connections as Connection[]).map(toEdge);
     const user = data.session?.user;
     if (!user) { return; }
@@ -518,7 +524,7 @@
       path, file_name: file.name, mime_type: file.type, bytes: file.size, x: 0, y: 0
     });
     const created = result?.node as CanvasNodeRecord | undefined;
-    if (created) { nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created)]; }
+    if (created) { nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created, { select: true })]; }
   }
 
   function sizeForAddable(what: Addable): { w: number; h: number } {
@@ -545,7 +551,7 @@
       return;
     }
 
-    nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created)];
+    nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created, { select: true })];
     pushGesture(createGesture(created));
   }
 
@@ -568,7 +574,7 @@
       return;
     }
 
-    nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created)];
+    nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created, { select: true })];
     pushGesture(createGesture(created));
   }
 
@@ -866,7 +872,7 @@
     const node = (created?.node ?? null) as CanvasNodeRecord | null;
     if (!node) { return; }
 
-    nodes = [...nodes.filter((n) => n.id !== node.id), toTile(node)];
+    nodes = [...nodes.filter((n) => n.id !== node.id), toTile(node, { select: true })];
     const items: UndoItem[] = [{ kind: 'node.create', nodeId: node.id, after: { type: node.type, position: node.position, data: node.data } }];
 
     const plan = planConnectSelection({ sources, target: { kind: medium, modalities } });
@@ -1112,7 +1118,7 @@
     const result = await post('duplicate', { node_ids: ids.join(',') });
     const created = (result?.nodes ?? []) as CanvasNodeRecord[];
     const connected = (result?.connections ?? []) as Connection[];
-    if (created.length) { nodes = [...nodes, ...created.map(toTile)]; }
+    if (created.length) { nodes = [...nodes, ...created.map((n) => toTile(n, { select: true }))]; }
     if (connected.length) { edges = [...edges, ...connected.map(toEdge)]; }
     if (created.length) { pushGesture(createManyGesture(created, connected)); }
   }
@@ -1164,7 +1170,7 @@
     });
     const created = (result?.nodes ?? []) as CanvasNodeRecord[];
     const connected = (result?.connections ?? []) as Connection[];
-    if (created.length) { nodes = [...nodes, ...created.map(toTile)]; }
+    if (created.length) { nodes = [...nodes, ...created.map((n) => toTile(n, { select: true }))]; }
     if (connected.length) { edges = [...edges, ...connected.map(toEdge)]; }
     if (created.length) { pushGesture(createManyGesture(created, connected)); }
   }
@@ -1335,7 +1341,6 @@
         {:else if gen}
           <GenNode
             node={{ ...gen, runs: runsByNode[row.id] ?? [] }}
-            {selected}
             choices={mediumCatalogue[gen.medium].choices}
             catalogueSynced={mediumCatalogue[gen.medium].synced}
             hasUpstreamText={hasUpstreamTextByNode[row.id] ?? false}

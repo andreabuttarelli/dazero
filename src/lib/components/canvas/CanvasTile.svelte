@@ -66,6 +66,12 @@
   const kind = $derived(tile.kind && isNodeType(tile.kind) ? tile.kind : null);
   const LabelIcon = $derived(kind ? NODE_KIND_ICON[kind] : null);
   const label = $derived(tile.displayName?.trim() || (kind ? NODE_KIND_LABEL[kind] : null));
+
+  // IL COLORE DELLA SELEZIONE — quello che il nodo produrrebbe se avesse una porta d'uscita, lo
+  // stesso `CONNECTOR_STYLE` che colora la porta stessa: un nodo testo si seleziona blu, un'
+  // immagine verde, un nodo senza uscita (iframe, prodotti, un feed social) prende l'accento, non
+  // un colore che non gli appartiene.
+  const selectionColor = $derived(tile.output ? CONNECTOR_STYLE[tile.output].color : 'var(--accent, #7c5cff)');
 </script>
 
 {#if tile.connectable}
@@ -98,6 +104,10 @@
   </div>
 {/if}
 
+{#if selected}
+  <div class="tile-selection" style={`outline-color:${selectionColor}`} aria-hidden="true"></div>
+{/if}
+
 {@render render()({ id: tile.id, selected })}
 
 {#if tile.connectable}
@@ -118,6 +128,23 @@
 {/if}
 
 <style>
+  /*
+   * IL BORDO DI SELEZIONE, UNA VOLTA SOLA QUI — non nel corpo di ogni tipo di nodo. Copre l'intera
+   * tile con un `outline` (fuori dal box, non intacca il layout interno) invece di un `border` sul
+   * corpo: un componente che ha già un proprio bordo (GenNode, i pannelli) non lo vede toccato, e
+   * la selezione resta sempre visibile allo stesso spessore sopra qualunque contenuto.
+   *
+   * ANGOLI QUADRATI: nessun `border-radius`, la regola vale anche qui.
+   */
+  .tile-selection {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    outline: 2px solid;
+    outline-offset: 1px;
+  }
+
   :global(.svelte-flow__handle) {
     width: 9px;
     height: 9px;

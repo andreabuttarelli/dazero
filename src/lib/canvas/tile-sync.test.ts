@@ -62,4 +62,31 @@ describe('tenere i nodi della tela allineati alle tile', () => {
 
     expect(out?.find((n) => n.id === 'a')?.data).toEqual({ connectors: ['text', 'images'] });
   });
+
+  it('un nodo nuovo che chiede la selezione arriva selezionato', () => {
+    const toNodeSelectable = (t: { id: string; select?: boolean }) => ({ ...node(t.id), selected: t.select === true });
+
+    const out = syncNodes([], [{ ...tile('a'), select: true }], toNodeSelectable);
+
+    expect(out?.find((n) => n.id === 'a')?.selected).toBe(true);
+  });
+
+  it('un nodo nuovo selezionato toglie la selezione da quelli già sulla tela', () => {
+    const toNodeSelectable = (t: { id: string; select?: boolean }) => ({ ...node(t.id), selected: t.select === true });
+    const alreadySelected = { ...node('old'), selected: true };
+
+    const out = syncNodes([alreadySelected], [tile('old'), { ...tile('new'), select: true }], toNodeSelectable);
+
+    expect(out?.find((n) => n.id === 'old')?.selected).toBe(false);
+    expect(out?.find((n) => n.id === 'new')?.selected).toBe(true);
+  });
+
+  it('un inserimento realtime senza selezione non tocca chi era già selezionato', () => {
+    const toNodeSelectable = (t: { id: string; select?: boolean }) => ({ ...node(t.id), selected: t.select === true });
+    const alreadySelected = { ...node('old'), selected: true };
+
+    const out = syncNodes([alreadySelected], [tile('old'), tile('fromPeer')], toNodeSelectable);
+
+    expect(out?.find((n) => n.id === 'old')?.selected).toBe(true);
+  });
 });

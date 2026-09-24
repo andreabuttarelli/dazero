@@ -22,7 +22,6 @@
     choices = [],
     catalogueSynced = true,
     hasUpstreamText = false,
-    selected = false,
     loopQueued = 0,
     loopVisible = false,
     loopCombinationCount = 0,
@@ -49,8 +48,6 @@
      *  (`hasPrompt`, `gen-node.ts`) — chi usa il nodo lo calcola da `edges`/`nodes`, che il nodo
      *  stesso non conosce. */
     hasUpstreamText?: boolean;
-    /** Solo il colore del bordo cambia con la selezione: i controlli stanno nella barra fuori. */
-    selected?: boolean;
     /** Quanti biglietti di loop sono ancora in coda per QUESTO nodo — 0 = nessun loop in corso.
      *  Chi lo usa lo calcola da `node_runs` (`params.loop.phase === 'queued'`): il nodo non ha un
      *  `db`, mostra solo quel che gli si passa, come ogni altro suo stato. */
@@ -166,7 +163,7 @@
   }
 </script>
 
-<div class="gen" class:is-running={state === 'running'} class:is-chosen={selected} use:measureHeight>
+<div class="gen" class:is-running={state === 'running'} use:measureHeight>
   <!-- Il risultato, quando c'è. Il testo lo mostra qui perché è esso stesso il prodotto; immagine
        e video li disegna chi usa il nodo, che sa da dove viene l'URL firmato.
 
@@ -290,13 +287,6 @@
       0 1px 2px rgb(0 0 0 / 0.06),
       0 12px 32px -14px rgb(0 0 0 / 0.26);
   }
-  .gen.is-chosen {
-    border-color: var(--accent, #c485fe);
-    box-shadow:
-      0 0 0 1px var(--accent, #c485fe),
-      0 16px 40px -16px rgb(0 0 0 / 0.3);
-  }
-
   .gen.is-running {
     border-color: var(--accent, #c485fe);
   }

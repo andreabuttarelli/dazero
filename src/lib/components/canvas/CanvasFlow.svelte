@@ -81,6 +81,10 @@
     /** Il nodo è già usato in almeno un post (`post_sources`) — la targhetta ne mostra un
      *  indicatore. Assente = mai usato. */
     inPost?: boolean;
+    /** Questa tile è appena nata da un gesto di QUESTO client — la barra, un trascinamento, un
+     *  duplicato/incolla, "Collega a nuovo…". `syncNodes` la consuma una volta sola e la
+     *  seleziona; un inserimento realtime da un altro utente non la porta mai. */
+    select?: boolean;
   };
 
   let {
@@ -207,6 +211,7 @@
   const toNode = (t: Tile): Node => ({
     id: t.id,
     position: { x: t.x, y: t.y },
+    selected: t.select === true,
     data: {
       id: t.id,
       connectable: t.connectable !== false,
