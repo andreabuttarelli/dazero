@@ -78,6 +78,9 @@
     /** `nodes.display_name`, quando chi ha nominato il nodo l'ha scritto — vince sul nome del
      *  tipo nella targhetta. */
     displayName?: string | null;
+    /** Il nodo è già usato in almeno un post (`post_sources`) — la targhetta ne mostra un
+     *  indicatore. Assente = mai usato. */
+    inPost?: boolean;
   };
 
   let {
@@ -210,7 +213,8 @@
       connectors: t.connectors,
       output: t.output ?? null,
       kind: t.kind,
-      displayName: t.displayName
+      displayName: t.displayName,
+      inPost: t.inPost
     },
     type: 'tile',
     style: `width:${t.w}px;height:${t.h}px`

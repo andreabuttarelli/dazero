@@ -80,8 +80,13 @@
   import type { CanvasNodeRecord, Connection } from '$lib/server/repos/canvas';
   import type { Product } from '$lib/server/repos/products';
   import type { SocialPost } from '$lib/server/repos/social-posts';
+  import { openSheet } from '$lib/canvas/sheet-nav';
 
   let { data } = $props();
+
+  function handleCreatePost(ids: string[]) {
+    void openSheet(data.projectId, `/create-post?nodeIds=${ids.join(',')}`);
+  }
 
   /** Una riga come la pagina la tiene: quel che il database ha, più dove sta sullo schermo. */
   type Tile = {
@@ -336,6 +341,7 @@
       output: outputConnectorOfTile(n),
       kind: n.type,
       displayName: n.displayName,
+      inPost: data.nodeIdsInPost.includes(n.id),
       node: tileNode({
         id: n.id,
         medium: n.type === 'iframe' || n.type === 'document' || n.type === 'doc' ? null : (n.type as 'text' | 'image' | 'video'),
@@ -1276,6 +1282,7 @@
     onCreateFilled={createFilled}
     onUpload={upload}
     onDuplicate={duplicate}
+    onCreatePost={handleCreatePost}
     onCopy={copy}
     onPaste={paste}
     onUndo={undo}
