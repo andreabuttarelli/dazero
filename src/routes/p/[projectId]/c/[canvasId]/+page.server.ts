@@ -39,6 +39,14 @@ import { syncProductsNode } from '$lib/server/canvas/products-sync';
 import { syncSocialFeedNode } from '$lib/server/canvas/social-feed-sync';
 import { isProductPlatform } from '$lib/canvas/products-node';
 import { isSocialFeedPlatform } from '$lib/canvas/social-feed-node';
+import { createPostFromNodes } from '$lib/server/repos/create-post-from-nodes';
+import { findBrand } from '$lib/server/repos/brands';
+import { listBrandAccounts } from '$lib/server/repos/social-accounts';
+import { promoteNodesToPost } from '$lib/server/repos/post-from-nodes';
+import { promoteToPost, setPostStatus } from '$lib/server/repos/posts';
+import { scheduleDelivery } from '$lib/server/repos/post-delivery';
+import { publisher } from '$lib/server/publishing';
+import { listNodesByIds } from '$lib/server/repos/canvas';
 
 // L'azione `run` aspetta la generazione DENTRO la richiesta — un'immagine ci mette fino a un
 // minuto, e il default della piattaforma è sotto quella soglia. Senza, la richiesta muore a metà
@@ -1023,5 +1031,47 @@ export const actions: Actions = {
       return fail(409, { reason: result.reason });
     }
     return { outcome: 'undone', redo: result.redo };
+  },
+
+  /**
+   * DALLA SELEZIONE DEL CANVAS A UN POST — la promozione, opzionalmente programmata. `node_ids`
+   * arriva in ordine dalla UI (l'ordine con cui il composer li ha raccolti); questa action non
+   * sceglie una caption, la riceve già scelta. `mode`: senza `scheduled_for` resta `draft`, con
+   * un `scheduled_for` (e almeno un account) prova a consegnare via Zernio.
+   */
+  create_post: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const brandId = String(fd.get('brand_id') ?? '');
+    const caption = String(fd.get('caption') ?? '');
+    const nodeIds = fd.getAll('node_id').map(String);
+    const accountIds = fd.getAll('account_id').map(String);
+    const scheduledFor = String(fd.get('scheduled_for') ?? '').trim();
+
+    if (!brandId || !nodeIds.length) {
+      return fail(400, { error: 'brand_and_nodes_required' });
+    }
+
+    const mode = scheduledFor ? ({ kind: 'schedule', at: scheduledFor } as const) : ({ kind: 'draft' } as const);
+
+    const result = await createPostFromNodes(
+      scope.db,
+      {
+        brands: { findBrand },
+        accounts: { listBrandAccounts },
+        promoteNodesToPost: (db, _repos, input) =>
+          promoteNodesToPost(db, { canvas: { listNodesByIds }, posts: { promoteToPost } }, input),
+        setPostStatus,
+        scheduleDelivery
+      },
+      { orgId: scope.orgId, userId: scope.userId, brandId, nodeIds, caption, accountIds, mode },
+      publisher
+    );
+
+    if (!result.ok) {
+      return fail(result.error === 'node_not_found' ? 400 : 422, result);
+    }
+    return { post: result.post };
   }
 };
