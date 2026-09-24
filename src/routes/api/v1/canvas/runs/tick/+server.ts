@@ -6,6 +6,7 @@ import { cronAuthorized } from '$lib/server/cron-auth';
 import { expireStuckRuns, reconcileVideoNodeRuns } from '$lib/server/canvas/generate';
 import { drainLoopQueue } from '$lib/server/canvas/loop';
 import { pruneOldCanvasEvents } from '$lib/server/canvas/retention';
+import { renewAccountSeats } from '$lib/server/account-billing';
 
 const USE = SERVICE_ROLE_USES.find((u) => u.path.startsWith('src/routes/api/v1/canvas/runs/tick'))!;
 
@@ -61,7 +62,18 @@ export const GET: RequestHandler = async ({ request }) => {
     return { pruned: 0 };
   });
 
-  return json({ ...runs, videos, loops, events });
+  // Idempotente per account+mese (l'indice unico su credit_ledger), quindi chiamarlo ogni minuto
+  // è corretto — ma scorrere ogni account attivo ogni minuto è spreco puro dopo il primo addebito
+  // del mese: gira solo al minuto 0 di ogni ora, non a ogni tick.
+  const seats =
+    new Date().getUTCMinutes() === 0
+      ? await renewAccountSeats(db).catch((e) => {
+          console.error('[account billing] seat renewal failed', e);
+          return { charged: 0, paused: 0, alreadyCharged: 0 };
+        })
+      : { charged: 0, paused: 0, alreadyCharged: 0, skipped: true };
+
+  return json({ ...runs, videos, loops, events, seats });
 };
 
 export const POST = GET;
