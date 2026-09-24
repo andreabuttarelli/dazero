@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapTalent, mapTalentView, type OldTalentRow, type OldTalentViewRow } from './import-anomalia-talents';
+import { mapTalent, mapTalentView, type OldTalentRow, type OldTalentViewRow, isScriptEntry } from './import-anomalia-talents';
 
 const talentRow = (over: Partial<OldTalentRow> = {}): OldTalentRow => ({
   id: 't1',
@@ -71,5 +71,15 @@ describe('mapTalentView — una vista anomalia diventa una vista influencer', ()
       height: 1365,
       sortOrder: 10
     });
+  });
+});
+
+describe('lo script parte quando è lanciato, non quando un test lo importa', () => {
+  it('lanciato da vite-node, che toglie il percorso dello script da argv', () => {
+    expect(isScriptEntry({})).toBe(true);
+  });
+
+  it('importato dal suo test sotto vitest', () => {
+    expect(isScriptEntry({ VITEST: 'true' })).toBe(false);
   });
 });

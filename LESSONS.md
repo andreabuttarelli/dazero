@@ -1881,3 +1881,11 @@ l'insieme è vuoto, la condizione è sempre falsa. Mossa: la guardia diventa
 sensi: il server vede il dato, un utente estraneo (`set local role authenticated` + claims) no.
 Leggere sempre la definizione IN PRODUZIONE (`pg_get_functiondef`), non il file: questa guardia
 era stata aggiunta al database e mai scritta in una migration del repo.
+
+### Uno script lanciato da `vite-node` non vede il proprio percorso in `process.argv`
+Segnale: `npm run <script>` finisce con exit 0 e non stampa niente, né in prova né sul serio (lo
+script di import dei talent "non faceva nulla" in silenzio). `vite-node` toglie il percorso dello
+script da `argv` (resta solo `node`, `vite-node` e i flag), quindi la guardia
+`import.meta.url === file://${process.argv[1]}` è sempre falsa e `run()` non parte mai. Mossa: la
+guardia è `!process.env.VITEST` (vitest la imposta sempre; così il test importa le funzioni pure
+senza far partire lo script). Diffidare di un exit 0 muto: uno script che deve fare qualcosa lo dice.

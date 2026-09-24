@@ -271,7 +271,11 @@ async function run(): Promise<void> {
   console.log(`\n${imported} influencers imported, ${skipped} skipped, ${viewsImported} views stored.`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+export function isScriptEntry(env: Record<string, string | undefined>): boolean {
+  return !env.VITEST;
+}
+
+if (isScriptEntry(process.env)) {
   run().catch((e) => {
     console.error(e);
     process.exit(1);
