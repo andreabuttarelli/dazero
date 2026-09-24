@@ -26,6 +26,7 @@ import { gatewayModels, ensureGatewayModels } from './openrouter-models';
 import { offerableModels } from './offerable-models';
 import { chatInputModalities } from './ai-models-sync';
 import type { GenMedium, ModelChoice } from '$lib/canvas/gen-node';
+import { providerOf } from '$lib/canvas/model-provider';
 import { createAdminClient } from './supabase-admin';
 
 export type MediumCatalogue = { choices: ModelChoice[]; synced: boolean };
@@ -53,6 +54,7 @@ export async function canvasModelCatalogue(): Promise<Record<GenMedium, MediumCa
         id: m.id,
         label: m.label,
         aspectRatios: [],
+        ...providerOf(m.id),
         inputModalities: textModalities.get(m.id) ?? []
       })),
       synced: true

@@ -26,9 +26,11 @@
   import { SELECTION_ACTION_ICON } from '$lib/canvas/selection-action-icons';
   import { commonPropertiesOf, type CommonValue } from '$lib/canvas/common-properties';
   import { effectiveModel } from '$lib/canvas/default-models';
+  import { filterChoices, groupByProvider } from '$lib/canvas/model-picker';
   import type { ModelChoice } from '$lib/canvas/gen-node';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
   import ModalityIcons from './ModalityIcons.svelte';
+  import ProviderIcon from './ProviderIcon.svelte';
 
   let {
     box,
@@ -72,8 +74,23 @@
   );
   const choice = $derived(modelValue ? choices.find((c) => c.id === modelValue) : null);
 
+  let modelQuery = $state('');
+  const filteredGroups = $derived(groupByProvider(filterChoices(choices, modelQuery)));
+
   function valueOr<T>(v: CommonValue<T>, fallback: T | null): T | null {
     return v.kind === 'same' ? v.value : fallback;
+  }
+
+  function onModelMenuOpenChange(open: boolean): void {
+    if (!open) modelQuery = '';
+  }
+
+  function stopTypeahead(e: KeyboardEvent): void {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Escape') e.stopPropagation();
+  }
+
+  function focusOnMount(node: HTMLInputElement): void {
+    node.focus();
   }
 </script>
 
@@ -84,7 +101,7 @@
         {#if !choices.length && !catalogueSynced}
           <span class="field warn">Catalogo non sincronizzato</span>
         {:else}
-          <DropdownMenu.Root>
+          <DropdownMenu.Root onOpenChange={onModelMenuOpenChange}>
             <DropdownMenu.Trigger class="field model-trigger" aria-label="Modello">
               {#if properties.model.kind === 'mixed'}
                 Mixed
@@ -94,16 +111,30 @@
                 Modello…
               {/if}
             </DropdownMenu.Trigger>
-            <DropdownMenu.Content align="start">
+            <DropdownMenu.Content align="start" class="model-menu">
+              <input
+                type="text"
+                class="model-search"
+                placeholder="Cerca modello o provider…"
+                bind:value={modelQuery}
+                onkeydown={stopTypeahead}
+                use:focusOnMount
+              />
               <DropdownMenu.RadioGroup
                 value={modelValue ?? ''}
                 onValueChange={(v) => onpropertychange?.({ model: v || null })}
               >
-                {#each choices as c (c.id)}
-                  <DropdownMenu.RadioItem value={c.id}>
-                    <span class="model-name">{c.label}</span>
-                    <ModalityIcons inputModalities={c.inputModalities ?? []} />
-                  </DropdownMenu.RadioItem>
+                {#each filteredGroups as group (group.provider)}
+                  <DropdownMenu.Label class="provider-label">
+                    <ProviderIcon provider={group.provider} />
+                    <span>{group.providerLabel}</span>
+                  </DropdownMenu.Label>
+                  {#each group.choices as c (c.id)}
+                    <DropdownMenu.RadioItem value={c.id}>
+                      <span class="model-name">{c.label}</span>
+                      <ModalityIcons inputModalities={c.inputModalities ?? []} />
+                    </DropdownMenu.RadioItem>
+                  {/each}
                 {/each}
               </DropdownMenu.RadioGroup>
             </DropdownMenu.Content>
@@ -238,6 +269,34 @@
 
   .model-name {
     flex: 1 1 auto;
+  }
+
+  :global(.model-menu) {
+    max-height: 340px;
+    overflow-y: auto;
+  }
+
+  .model-search {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 4px;
+    padding: 5px 7px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--ink, #1d1d1f);
+    background: var(--paper-2, #f9f9f9);
+    border: 1px solid var(--line-2, #d2d2d7);
+    border-radius: 0;
+  }
+
+  :global(.provider-label) {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  :global(.provider-label:first-child) {
+    margin-top: 0;
   }
 
   .duration,

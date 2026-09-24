@@ -28,6 +28,10 @@ export type ModelChoice = {
   id: string;
   label: string;
   aspectRatios: string[];
+  /** Chi ha fatto questo modello (`model-provider.ts::providerOf`), dall'id sul filo — mai
+   *  ricalcolato lato client dall'id interno, che per immagine e video non ha il prefisso. */
+  provider: string;
+  providerLabel: string;
   maxRefs?: number;
   minDuration?: number;
   maxDuration?: number;

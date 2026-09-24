@@ -33,6 +33,7 @@ import { videoModelSpec, type VideoModelSpec } from '$lib/video-models';
 import type { GenMedium, ModelChoice } from '$lib/canvas/gen-node';
 import type { MediaModelSlot } from '$lib/media-model-slots';
 import { wireModelId } from '$lib/server/ai-models-sync';
+import { providerOf } from '$lib/canvas/model-provider';
 
 const VIDEO_SPEC_IDS = [
   'bytedance/seedance-2-5',
@@ -63,11 +64,18 @@ async function syncedRows(
   };
 }
 
-function imageChoice(spec: ImageModelSpec, inputModalities: string[]): ModelChoice {
-  return { id: spec.id, label: spec.label, aspectRatios: spec.aspectRatios, maxRefs: spec.maxRefs, inputModalities };
+function imageChoice(spec: ImageModelSpec, wireId: string, inputModalities: string[]): ModelChoice {
+  return {
+    id: spec.id,
+    label: spec.label,
+    aspectRatios: spec.aspectRatios,
+    maxRefs: spec.maxRefs,
+    ...providerOf(wireId),
+    inputModalities
+  };
 }
 
-function videoChoice(spec: VideoModelSpec, inputModalities: string[]): ModelChoice {
+function videoChoice(spec: VideoModelSpec, wireId: string, inputModalities: string[]): ModelChoice {
   return {
     id: spec.id,
     label: spec.label,
@@ -76,6 +84,7 @@ function videoChoice(spec: VideoModelSpec, inputModalities: string[]): ModelChoi
     maxDuration: spec.maxDuration,
     maxPromptChars: spec.maxPromptChars,
     generateAudio: spec.generateAudio,
+    ...providerOf(wireId),
     inputModalities
   };
 }
@@ -91,7 +100,7 @@ async function offerableImages(admin: SupabaseClient): Promise<OfferableModels> 
   specs.forEach((spec, i) => {
     const wireId = wireIds[i];
     if (!wireId || !inputModalities.has(wireId)) return;
-    choices.push(imageChoice(spec, inputModalities.get(wireId) ?? []));
+    choices.push(imageChoice(spec, wireId, inputModalities.get(wireId) ?? []));
   });
 
   return { synced, choices };
@@ -108,7 +117,7 @@ async function offerableVideos(admin: SupabaseClient): Promise<OfferableModels> 
   specs.forEach((spec, i) => {
     const wireId = wireIds[i];
     if (!wireId || !inputModalities.has(wireId)) return;
-    choices.push(videoChoice(spec, inputModalities.get(wireId) ?? []));
+    choices.push(videoChoice(spec, wireId, inputModalities.get(wireId) ?? []));
   });
 
   return { synced, choices };
