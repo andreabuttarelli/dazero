@@ -44,6 +44,7 @@
   import { DEFAULT_EDGE_KIND, edgeKindsFor, verdictBetween } from '$lib/canvas/connect-rules';
   import { connectorAccepts } from '$lib/canvas/connector-ports';
   import { isListValued, landingPort, type ConnectorType } from '$lib/canvas/connectors';
+  import { setTileRender } from '$lib/canvas/tile-render-context';
   import type { CanvasNode } from '$lib/canvas/graph';
 
   /**
@@ -195,14 +196,13 @@
   // Un `$derived` non risolve: rigenerando i nodi a ogni cambio di `tiles` si butterebbe via il
   // trascinamento in corso. La sincronizzazione va scritta a mano, ed è il prezzo fisso della
   // libreria — quando arriverà `brand_canvas_items`, è qui che le due posizioni si riconciliano.
+  setTileRender(() => tile);
+
   const toNode = (t: Tile): Node => ({
     id: t.id,
     position: { x: t.x, y: t.y },
-    // `render` è lo snippet del chiamante: il nodo lo esegue senza sapere cosa disegni.
     data: {
-      tile: t,
       id: t.id,
-      render: tile,
       connectable: t.connectable !== false,
       connectors: t.connectors,
       output: t.output ?? null,

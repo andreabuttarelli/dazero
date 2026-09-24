@@ -23,9 +23,9 @@
   import { CONNECTOR_STYLE, portActive, type ConnectorType, type DragOrigin } from '$lib/canvas/connectors';
   import { NODE_KIND_ICON, NODE_KIND_LABEL } from '$lib/canvas/node-label';
   import { isNodeType } from '$lib/canvas/node-data';
+  import { getTileRender } from '$lib/canvas/tile-render-context';
 
   type TileData = {
-    render?: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
     id: string;
     connectable?: boolean;
     /** Le porte di QUESTO nodo, dal modello scelto (`connectorsFor`). Assente = un solo ingresso
@@ -45,6 +45,7 @@
   // recap no.
   let { data, selected }: NodeProps = $props();
   const tile = $derived(data as unknown as TileData);
+  const render = getTileRender();
 
   const connection = useConnection();
   const origin = $derived.by((): DragOrigin => {
@@ -92,9 +93,7 @@
   </div>
 {/if}
 
-{#if tile.render}
-  {@render tile.render({ id: tile.id, selected })}
-{/if}
+{@render render()({ id: tile.id, selected })}
 
 {#if tile.connectable}
   {#if tile.output}
