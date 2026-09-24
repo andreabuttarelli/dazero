@@ -582,6 +582,7 @@
     selectionMode={SelectionMode.Partial}
     panOnDrag={[1, 2]}
     fitView
+    multiSelectionKey={['Meta', 'Control', 'Shift']}
   >
     <CanvasPointer onready={(fn) => (toFlow = fn)} />
     <CanvasKeys
