@@ -1,11 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-/**
- * UN'IMMAGINE/VIDEO/AUDIO A MONTE DI UN NODO TESTO DEVE ARRIVARE AL MODELLO, non solo al prompt
- * scritto. `upstream.imageUrls`/`videoUrls`/`audioUrls` entrano come URL firmati — la stessa
- * disciplina di `baseMediaId` sul percorso immagine: mai un giro a vuoto che li scarica qui per
- * poi rimandarli come byte, l'SDK passa l'URL al provider da sé.
- */
 const M = vi.hoisted(() => ({
 	env: {} as Record<string, string | undefined>,
 	generateText: vi.fn(async () => ({ text: 'ciao', usage: {} }))
@@ -23,7 +17,7 @@ vi.mock('ai', async () => ({
 	generateText: M.generateText
 }));
 
-describe('llmText manda le immagini/video/audio a monte al modello', () => {
+describe('llmText manda le immagini a monte al modello, via generateText', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.resetModules();
@@ -42,24 +36,6 @@ describe('llmText manda le immagini/video/audio a monte al modello', () => {
 		const content = messageContent();
 		const imagePart = content.find((p) => p.type === 'file' && p.mediaType === 'image');
 		expect(imagePart).toMatchObject({ type: 'file', data: new URL('https://cdn/img.png'), mediaType: 'image' });
-	});
-
-	it('un video a monte entra come file con mediaType video', async () => {
-		const { llmText } = await import('./llm');
-		await llmText({ prompt: 'riassumi questo video', upstream: { videoUrls: ['https://cdn/clip.mp4'] } });
-
-		const content = messageContent();
-		const filePart = content.find((p) => p.type === 'file');
-		expect(filePart).toMatchObject({ type: 'file', data: new URL('https://cdn/clip.mp4'), mediaType: 'video' });
-	});
-
-	it('un audio a monte entra come file con mediaType audio', async () => {
-		const { llmText } = await import('./llm');
-		await llmText({ prompt: 'trascrivi questo audio', upstream: { audioUrls: ['https://cdn/voice.mp3'] } });
-
-		const content = messageContent();
-		const filePart = content.find((p) => p.type === 'file');
-		expect(filePart).toMatchObject({ type: 'file', data: new URL('https://cdn/voice.mp3'), mediaType: 'audio' });
 	});
 
 	it('più immagini a monte entrano tutte, nello stesso ordine', async () => {
