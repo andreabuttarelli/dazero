@@ -312,7 +312,7 @@ export function clampVideoPrompt(prompt: string, model: string): string {
 export function videoModelSpec(value: unknown): VideoModelSpec | undefined {
   const v = String(value ?? '').trim();
   if (!v) return undefined;
-  return SPECS.find((s) => s.id === v || s.match.test(v));
+  return SPECS.find((s) => s.id === v) ?? SPECS.find((s) => s.match.test(v));
 }
 
 /** I modelli che sanno fare QUESTO mestiere: quelli che il selettore di quel ruolo puo' offrire. */

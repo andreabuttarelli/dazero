@@ -28,6 +28,21 @@ describe('video model reference capabilities', () => {
   });
 });
 
+describe('videoModelSpec risolve ogni id a se stesso', () => {
+  it('bytedance/seedance-2-fast non risolve allo spec di seedance-2', () => {
+    expect(videoModelSpec('bytedance/seedance-2-fast')?.id).toBe('bytedance/seedance-2-fast');
+  });
+
+  it('bytedance/seedance-2-mini non risolve allo spec di seedance-2', () => {
+    expect(videoModelSpec('bytedance/seedance-2-mini')?.id).toBe('bytedance/seedance-2-mini');
+  });
+
+  it('ogni id esatto dei quattro Seedance risolve a se stesso', () => {
+    const ids = ['bytedance/seedance-2-5', 'bytedance/seedance-2', 'bytedance/seedance-2-fast', 'bytedance/seedance-2-mini'];
+    expect(ids.map((id) => videoModelSpec(id)?.id)).toEqual(ids);
+  });
+});
+
 describe('the role registry', () => {
   it('offers a model for each of the four video jobs', () => {
     for (const role of VIDEO_ROLES) {
