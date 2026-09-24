@@ -96,7 +96,7 @@
           onPanel={onRailPanel}
           onSheet={onRailSheet}
         />
-        {#if leftPanel}
+        {#if browser && leftPanel}
           {#await CHROME_LOADERS.leftPanel() then { default: CanvasLeftPanel }}
             <CanvasLeftPanel
               {projectId}

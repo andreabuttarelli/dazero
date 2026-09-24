@@ -12,12 +12,12 @@
   // `+layout.server.ts` radice, che `respond_with_error` esegue anche in stato d'errore. Se per
   // qualsiasi motivo non arriva, si va sulla home pubblica — mai un bottone che promette l'app
   // e sbatte sul login.
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { _ } from 'svelte-i18n';
   import { errorCopyFor } from '$lib/error-copy';
 
-  const status = $derived($page.status);
-  const loggedIn = $derived(Boolean($page.data?.session));
+  const status = $derived(page.status);
+  const loggedIn = $derived(Boolean(page.data?.session));
   const href = $derived(loggedIn ? '/app' : '/');
 
   // 404 → non c'è; 401/403 → non è tua; tutto il resto → si è rotto da noi.

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { browser } from '$app/environment';
   import { _ } from 'svelte-i18n';
   import * as Sheet from '$lib/components/ui/sheet/index.js';
   import { openSheet, closeSheet } from '$lib/canvas/sheet-nav';
@@ -36,7 +37,7 @@
   }
 </script>
 
-{#if sheet && entry}
+{#if browser && sheet && entry}
   <Sheet.Root open {onOpenChange}>
     <Sheet.Content side="right" class="canvas-sheet" showOverlay={false}>
       {#if entry.id === 'settings'}
