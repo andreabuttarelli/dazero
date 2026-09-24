@@ -15,8 +15,9 @@ import { SOCIAL_CONNECT_LINK, TARGET_PLATFORMS, statusForFailure } from '@dazero
  * token nell'indirizzo — tre buoni motivi perché non passi mai da un agente. Così invece il
  * consenso lo dà una persona già dentro, e qui non transita nessun segreto.
  *
- * I due rifiuti sono separati di proposito: un piano che non collega account e un piano pieno
- * chiedono due rimedi diversi, e un solo errore generico li avrebbe confusi.
+ * Niente più piani: il rifiuto è uno solo, `insufficient_credits` — il saldo dell'org non copre il
+ * canone di un account in più. Riautorizzare una piattaforma già collegata non lo attraversa mai:
+ * il posto è già suo, e rifiutarlo lascerebbe un account scaduto senza modo di tornare vivo.
  */
 export const POST: RequestHandler = async ({ request, params, url }) => {
   const { supabase, error, apiKey } = await authenticate(request);
@@ -48,27 +49,12 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
   }
   const manageUrl = `${origin}${managePath(projectId)}`;
   const state = await socialConnections(supabase, brand);
-
-  if (!state.canConnect) {
-    return json(
-      {
-        error: 'plan_cannot_connect',
-        plan: brand.plan,
-        brand_status: brand.status,
-        activate_url: `${origin}/app/billing`
-      },
-      { status: statusForFailure(SOCIAL_CONNECT_LINK, 'plan_cannot_connect') }
-    );
-  }
-
   const alreadyConnected = state.connected.includes(platform);
 
-  // Un posto pieno blocca una piattaforma NUOVA. Riautorizzarne una già collegata no: il posto è
-  // già suo, e rifiutarlo lascerebbe un account scaduto senza modo di tornare vivo.
-  if (!alreadyConnected && state.slots.used >= state.slots.limit) {
+  if (!alreadyConnected && !state.canConnect) {
     return json(
-      { error: 'account_limit', slots: state.slots, manage_url: manageUrl },
-      { status: statusForFailure(SOCIAL_CONNECT_LINK, 'account_limit') }
+      { error: 'insufficient_credits', slots: state.slots, manage_url: manageUrl },
+      { status: statusForFailure(SOCIAL_CONNECT_LINK, 'insufficient_credits') }
     );
   }
 

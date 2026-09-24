@@ -6,7 +6,7 @@ import {
   syncBrandAccounts,
   type LinkedInOrg
 } from '$lib/server/zernio';
-import { canConnectSocials } from '$lib/server/plans';
+import { canAffordSeat } from '$lib/server/social-connections';
 import { brandSlugOf } from '$lib/server/tenancy/brand-slug';
 
 // LinkedIn headless connect — the page Zernio redirects back to after OAuth. It carries a one-time
@@ -64,11 +64,11 @@ export const actions: Actions = {
 
     const { data: brand } = await supabase
       .from('brands')
-      .select('id, plan, status, zernio_profile_id')
+      .select('id, org_id, zernio_profile_id')
       .eq('slug', brandSlug)
       .maybeSingle();
     if (!brand?.zernio_profile_id) return fail(404, { error: 'brand' });
-    if (!canConnectSocials(brand.plan, brand.status)) {
+    if (!(await canAffordSeat(supabase, brand.org_id))) {
       throw redirect(303, '/app/billing');
     }
 

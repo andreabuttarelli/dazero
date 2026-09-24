@@ -4,13 +4,10 @@
   import { onMount } from 'svelte';
   import { _ } from 'svelte-i18n';
   import { PLATFORMS, ICONS } from '$lib/components/settings/platforms';
-  import { canConnectSocials as brandCanConnect } from '$lib/plans';
 
   let { data, form } = $props();
-  const brand = $derived(data.brand);
   const base = $derived(`/p/${data.project.id}`);
-  const canConnectSocials = $derived(brandCanConnect(brand.plan, brand.status));
-  const atLimit = $derived(canConnectSocials && data.used >= data.limit);
+  const atLimit = $derived(data.used >= data.limit);
   const q = (key: string) => $page.url.searchParams.get(key);
   const limitError = $derived(q('error') === 'limit');
   const connected = $derived(data.accounts.filter((a) => a.status === 'active'));
@@ -107,8 +104,9 @@
 
 <section class="panel">
   <div class="panel-head">
-    <div class="t">{$_('app.settings.connectPlatform')}{#if canConnectSocials} <span style="color:var(--ink-faint);font-weight:500;">· {$_('app.settings.accountsUsed', { values: { used: data.used, limit: data.limit } })}</span>{/if}</div>
+    <div class="t">{$_('app.settings.connectPlatform')} <span style="color:var(--ink-faint);font-weight:500;">· {$_('app.settings.accountsUsed', { values: { used: data.used, limit: data.limit } })}</span></div>
   </div>
+  <div class="field"><div class="fs">{$_('app.settings.seatCostMsg', { values: { cost: data.seatCostUsd } })}</div></div>
   {#if limitError}
     <div class="field"><div class="fs" style="color:#a3700a;">{$_('app.settings.limitReachedMsg', { values: { limit: data.limit } })}</div></div>
   {/if}
@@ -119,10 +117,8 @@
         {#if ICONS[p.key]}<svg viewBox="0 0 24 24" fill="#fff"><path d={ICONS[p.key].path} /></svg>{:else}{p.glyph}{/if}
       </div>
       <div class="nm"><div class="h">{p.label}</div><div class="s">{count ? $_('app.settings.connectedAddAnother', { values: { count } }) : $_('app.settings.connectViaOauth')}</div></div>
-      {#if !canConnectSocials}
+      {#if atLimit}
         <a class="mini connect" href="/app/billing">{$_('app.settings.connect')}</a>
-      {:else if atLimit}
-        <span class="soon">{$_('app.settings.limitReached')}</span>
       {:else}
         <a class="mini connect" href={`${base}/settings/connect/${p.key}`} target="_blank" rel="noopener" onclick={() => (pendingConnect = true)}>{$_('app.settings.connect')}</a>
       {/if}

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ACCOUNT_SEAT_CREDITS } from '$lib/server/credit-ladder';
 
 vi.mock('$lib/server/cli-auth', () => ({
   authenticate: vi.fn(),
@@ -11,7 +12,7 @@ import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
 
 type Row = Record<string, unknown>;
 
-function fakeSupabase(accounts: Row[]) {
+function fakeSupabase(accounts: Row[], balance: number) {
   const socialQ = {
     select: () => socialQ,
     eq: () => socialQ,
@@ -25,11 +26,12 @@ function fakeSupabase(accounts: Row[]) {
     limit: async () => ({ data: [{ id: 'project-1' }] })
   };
   return {
-    from: (table: string) => (table === 'projects' ? projectQ : socialQ)
+    from: (table: string) => (table === 'projects' ? projectQ : socialQ),
+    rpc: async () => ({ data: balance, error: null })
   };
 }
 
-const BRAND = { id: 'brand-1', slug: 'demo', plan: 'pro', status: 'active' };
+const BRAND = { id: 'brand-1', org_id: 'org-1', slug: 'demo' };
 
 const IG = {
   platform: 'Instagram',
@@ -41,9 +43,9 @@ const IG = {
 
 const url = 'https://dazero.test/api/v1/brands/demo/social/accounts';
 
-const read = (accounts: Row[] = [IG], brand: Row = BRAND) => {
+const read = (accounts: Row[] = [IG], brand: Row = BRAND, balance = ACCOUNT_SEAT_CREDITS) => {
   vi.mocked(authenticate).mockResolvedValue({
-    supabase: fakeSupabase(accounts),
+    supabase: fakeSupabase(accounts, balance),
     apiKey: undefined,
     error: null
   } as never);
@@ -93,14 +95,14 @@ describe('GET /api/v1/brands/:slug/social/accounts', () => {
     expect(body.broken_platforms).toEqual([]);
   });
 
-  it('dice che un piano free non collega niente, prima che qualcuno provi', async () => {
-    const { body } = await read([], { ...BRAND, plan: null, status: 'trial' });
+  it("dice che senza crediti per il canone l'org non collega niente", async () => {
+    const { body } = await read([], BRAND, ACCOUNT_SEAT_CREDITS - 1);
 
     expect(body.can_connect).toBe(false);
     expect(body.slots).toEqual({ used: 0, limit: 0 });
   });
 
-  it('conta solo gli account attivi contro il tetto del piano', async () => {
+  it('conta solo gli account attivi contro quanti l\'org può sostenere col saldo che ha', async () => {
     const { body } = await read([IG, { ...IG, platform: 'tiktok', status: 'disconnected' }]);
 
     expect(body.slots.used).toBe(1);

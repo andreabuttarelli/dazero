@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { accountLimit, canConnectSocials } from '$lib/server/plans';
+import { orgCreditBalance } from '$lib/server/credits';
+import { ACCOUNT_SEAT_CREDITS } from '$lib/server/credit-ladder';
 
 /**
  * Lo stato del collegamento social di un brand, letto una volta sola.
@@ -12,6 +13,11 @@ import { accountLimit, canConnectSocials } from '$lib/server/plans';
  * `active` è l'unico stato che pubblica. Gli altri valori che il sync deposita (`disconnected`, e
  * quelli che una piattaforma può restituire scaduti o revocati) non vengono enumerati qui: la
  * riga c'è ma nessuna è attiva, e questo basta a dire che la piattaforma va riautorizzata.
+ *
+ * Non ci sono più piani (`brands.plan`/`.status` non esistono sullo schema nuovo): collegare un
+ * account è gated dal saldo crediti dell'org, lo stesso conto che paga il canone mensile
+ * (`account-billing.ts`, `ACCOUNT_SEAT_CREDITS`). `slots.limit` non è più un tetto di piano — è
+ * quanti account l'org può sostenere ORA con il saldo che ha, account già pagati compresi.
  */
 
 const ACTIVE = 'active';
@@ -33,11 +39,15 @@ export type SocialConnections = {
   slots: { used: number; limit: number };
 };
 
-type BrandRef = { id: string; plan: string | null; status: string | null };
+type BrandRef = { id: string; org_id: string };
 
 const norm = (value: unknown): string => String(value ?? '').toLowerCase().trim();
 
 const unique = (platforms: string[]): string[] => [...new Set(platforms)].filter(Boolean);
+
+/** Quanti account IN PIÙ un saldo copre, un mese a testa. L'unico posto che fa questa divisione. */
+export const affordableSeats = (balance: number): number =>
+  Math.max(0, Math.floor(balance / ACCOUNT_SEAT_CREDITS));
 
 export async function socialConnections(
   supabase: SupabaseClient,
@@ -62,16 +72,31 @@ export async function socialConnections(
   const connected = unique(accounts.filter((a) => a.status === ACTIVE).map((a) => a.platform));
   const broken = unique(accounts.map((a) => a.platform)).filter((p) => !connected.includes(p));
 
+  const used = accounts.filter((a) => a.status === ACTIVE).length;
+  const balance = await orgCreditBalance(supabase, brand.org_id);
+  const seats = affordableSeats(balance);
+
   return {
     accounts,
     connected,
     broken,
-    canConnect: canConnectSocials(brand.plan, brand.status),
+    canConnect: seats > 0,
     slots: {
-      used: accounts.filter((a) => a.status === ACTIVE).length,
-      limit: accountLimit(brand.plan)
+      used,
+      limit: used + seats
     }
   };
+}
+
+/**
+ * Il cancello vero e proprio: l'org può permettersi il canone del primo mese di UN account in
+ * più? Le rotte di connessione (API + le tre pagine headless Facebook/LinkedIn/generica) lo
+ * chiamano prima di attraversare l'OAuth — un solo posto che legge il saldo, mai un secondo
+ * conto che può disallinearsi da `socialConnections`.
+ */
+export async function canAffordSeat(supabase: SupabaseClient, orgId: string): Promise<boolean> {
+  const balance = await orgCreditBalance(supabase, orgId);
+  return balance >= ACCOUNT_SEAT_CREDITS;
 }
 
 /** Dove una persona collega una piattaforma. Non è un OAuth: è una pagina dietro la sua login. */

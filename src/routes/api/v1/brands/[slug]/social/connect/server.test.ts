@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { json } from '@sveltejs/kit';
+import { ACCOUNT_SEAT_CREDITS } from '$lib/server/credit-ladder';
 
 vi.mock('$lib/server/cli-auth', () => ({
   authenticate: vi.fn(),
@@ -13,7 +14,7 @@ import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/ser
 
 type Row = Record<string, unknown>;
 
-function fakeSupabase(accounts: Row[]) {
+function fakeSupabase(accounts: Row[], balance: number) {
   const socialQ = {
     select: () => socialQ,
     eq: () => socialQ,
@@ -27,11 +28,12 @@ function fakeSupabase(accounts: Row[]) {
     limit: async () => ({ data: [{ id: 'project-1' }] })
   };
   return {
-    from: (table: string) => (table === 'projects' ? projectQ : socialQ)
+    from: (table: string) => (table === 'projects' ? projectQ : socialQ),
+    rpc: async () => ({ data: balance, error: null })
   };
 }
 
-const BRAND = { id: 'brand-1', slug: 'demo', plan: 'pro', status: 'active' };
+const BRAND = { id: 'brand-1', org_id: 'org-1', slug: 'demo' };
 
 const IG = {
   platform: 'instagram',
@@ -43,9 +45,9 @@ const IG = {
 
 const url = 'https://dazero.test/api/v1/brands/demo/social/connect';
 
-const mint = (body: unknown, accounts: Row[] = [], brand: Row = BRAND) => {
+const mint = (body: unknown, accounts: Row[] = [], brand: Row = BRAND, balance = ACCOUNT_SEAT_CREDITS) => {
   vi.mocked(authenticate).mockResolvedValue({
-    supabase: fakeSupabase(accounts),
+    supabase: fakeSupabase(accounts, balance),
     apiKey: undefined,
     error: null
   } as never);
@@ -97,27 +99,19 @@ describe('POST /api/v1/brands/:slug/social/connect', () => {
     expect(body.platform_choices).toContain('x');
   });
 
-  it('rifiuta un piano che non collega account, invece di mandare qualcuno a un muro', async () => {
-    const { res, body } = await mint({ platform: 'instagram' }, [], {
-      ...BRAND,
-      plan: null,
-      status: 'trial'
-    });
+  it("rifiuta quando l'org non ha crediti per il canone di un account in più", async () => {
+    const { res, body } = await mint({ platform: 'instagram' }, [], BRAND, ACCOUNT_SEAT_CREDITS - 1);
 
     expect(res.status).toBe(409);
-    expect(body.error).toBe('plan_cannot_connect');
-    expect(body.activate_url).toBe('https://dazero.test/app/billing');
+    expect(body.error).toBe('insufficient_credits');
+    expect(body.manage_url).toBe('https://dazero.test/p/project-1/settings/connected-accounts');
   });
 
-  it('rifiuta quando i posti del piano sono finiti, che è un altro rimedio', async () => {
-    const full = Array.from({ length: 50 }, (_, i) => ({ ...IG, handle: `a${i}` }));
+  it('riautorizzare una piattaforma già collegata non è mai bloccato dal saldo', async () => {
+    const { res, body } = await mint({ platform: 'instagram' }, [IG], BRAND, 0);
 
-    const { res, body } = await mint({ platform: 'tiktok' }, full);
-
-    expect(res.status).toBe(409);
-    expect(body.error).toBe('account_limit');
-    expect(body.slots.used).toBeGreaterThanOrEqual(body.slots.limit);
-    expect(body.manage_url).toBe('https://dazero.test/p/project-1/settings/connected-accounts');
+    expect(res.status).toBe(200);
+    expect(body.already_connected).toBe(true);
   });
 
   it('una chiave di sola lettura non conia niente', async () => {

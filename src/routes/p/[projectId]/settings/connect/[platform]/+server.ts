@@ -1,11 +1,11 @@
 import { redirect, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ensureBrandProfile, getConnectUrl } from '$lib/server/zernio';
-import { accountLimit, canConnectSocials } from '$lib/server/plans';
+import { canAffordSeat } from '$lib/server/social-connections';
 import { brandSlugOf } from '$lib/server/tenancy/brand-slug';
 
 // Ensures the brand's own Zernio profile exists, then redirects to the platform OAuth.
-// Enforces paid-plan + per-plan connected-account cap before connecting.
+// Enforces that the org's credit balance covers the first month's account fee before connecting.
 export const GET: RequestHandler = async ({ params, url, locals: { supabase, safeGetSession } }) => {
   const { session } = await safeGetSession();
   if (!session) throw redirect(303, '/login');
@@ -15,24 +15,14 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase, saf
 
   const { data: brand } = await supabase
     .from('brands')
-    .select('id, name, plan, status, zernio_profile_id')
+    .select('id, org_id, name, zernio_profile_id')
     .eq('slug', brandSlug)
     .maybeSingle();
   if (!brand) throw error(404, 'Brand not found');
 
-  // Free / trial / canceled / paused: Zernio slots are paid+active only — send them to activate.
-  if (!canConnectSocials(brand.plan, brand.status)) {
+  // No credits for the first month's fee — send them to buy some before connecting.
+  if (!(await canAffordSeat(supabase, brand.org_id))) {
     throw redirect(303, '/app/billing');
-  }
-
-  // Plan cap: block if the brand is already at its connected-account limit.
-  const { count } = await supabase
-    .from('social_accounts')
-    .select('id', { count: 'exact', head: true })
-    .eq('brand_id', brand.id)
-    .eq('status', 'active');
-  if ((count ?? 0) >= accountLimit(brand.plan)) {
-    throw redirect(303, `/p/${params.projectId}/settings/connected-accounts?error=limit`);
   }
 
   const profileId = await ensureBrandProfile(brand);

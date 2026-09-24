@@ -1,5 +1,7 @@
 import type { LayoutServerLoad } from './$types';
-import { accountLimit } from '$lib/server/plans';
+import { affordableSeats } from '$lib/server/social-connections';
+import { ACCOUNT_SEAT_USD } from '$lib/server/credit-ladder';
+import { orgCreditBalance } from '$lib/server/credits';
 import { isBrandOwner } from '$lib/server/settings-actions';
 import { orgBillingForBrand } from '$lib/server/org-billing';
 import { requireBrand } from '$lib/server/projects/brand-shell';
@@ -18,6 +20,7 @@ export const load: LayoutServerLoad = async ({ parent, url, locals: { supabase }
       accounts: [],
       limit: 0,
       used: 0,
+      seatCostUsd: ACCOUNT_SEAT_USD,
       hasBilling: false,
       apiKeys: [],
       isOwner: false,
@@ -26,7 +29,7 @@ export const load: LayoutServerLoad = async ({ parent, url, locals: { supabase }
   }
 
   const brand = requireBrand(brandOrNull);
-  const [{ data: accounts }, { data: apiKeys }, isOwner, { data: invites }, billing] =
+  const [{ data: accounts }, { data: apiKeys }, isOwner, { data: invites }, billing, balance] =
     await Promise.all([
       supabase
         .from('social_accounts')
@@ -48,16 +51,21 @@ export const load: LayoutServerLoad = async ({ parent, url, locals: { supabase }
         .select('id, email, accepted_at, created_at')
         .eq('org_id', brand.org_id)
         .order('created_at', { ascending: true }),
-      orgBillingForBrand(supabase, { id: brand.id })
+      orgBillingForBrand(supabase, { id: brand.id }),
+      orgCreditBalance(supabase, brand.org_id)
     ]);
 
   const list = accounts ?? [];
+  const used = list.filter((a) => a.status === 'active').length;
 
   return {
     brand,
     accounts: list,
-    limit: accountLimit(brand.plan),
-    used: list.filter((a) => a.status === 'active').length,
+    // Non un tetto di piano: quanti account l'org può sostenere ORA col saldo che ha
+    // (account-billing.ts, ACCOUNT_SEAT_CREDITS) — account già pagati compresi.
+    limit: used + affordableSeats(balance),
+    used,
+    seatCostUsd: ACCOUNT_SEAT_USD,
     // The org pays, so a free brand sitting next to a paying sibling still has billing to show.
     hasBilling: !!billing?.customerId,
     apiKeys: apiKeys ?? [],

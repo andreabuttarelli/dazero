@@ -91,14 +91,10 @@ describe('nessun segreto attraversa il confine', () => {
 });
 
 describe('i rifiuti che un agente deve saper leggere', () => {
-  it('dice che il piano non collega account, invece di consegnare una porta chiusa', () => {
+  it("dice che l'org non ha crediti per il canone, invece di consegnare una porta chiusa", () => {
     expect(SOCIAL_CONNECT_LINK.failures).toContainEqual({
-      error: 'plan_cannot_connect',
+      error: 'insufficient_credits',
       status: 409
     });
-  });
-
-  it('dice che i posti sono finiti, che è un altro problema e un altro rimedio', () => {
-    expect(SOCIAL_CONNECT_LINK.failures).toContainEqual({ error: 'account_limit', status: 409 });
   });
 });

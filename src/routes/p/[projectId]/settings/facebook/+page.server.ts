@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getFacebookPages, selectFacebookPage, syncBrandAccounts, type FacebookPage } from '$lib/server/zernio';
-import { canConnectSocials } from '$lib/server/plans';
+import { canAffordSeat } from '$lib/server/social-connections';
 import { brandSlugOf } from '$lib/server/tenancy/brand-slug';
 
 // Facebook headless connect — the page Zernio redirects back to after OAuth. Meta only allows
@@ -33,12 +33,12 @@ const resolveBrand = async (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
   projectId: string
-): Promise<{ id: string; plan: string | null; status: string; zernio_profile_id: string | null } | null> => {
+): Promise<{ id: string; org_id: string; zernio_profile_id: string | null } | null> => {
   const slug = await brandSlugOf(supabase, projectId);
   if (!slug) return null;
   const { data } = await supabase
     .from('brands')
-    .select('id, plan, status, zernio_profile_id')
+    .select('id, org_id, zernio_profile_id')
     .eq('slug', slug)
     .maybeSingle();
   return data ?? null;
@@ -119,7 +119,7 @@ export const actions: Actions = {
 
     const brand = await resolveBrand(supabase, params.projectId);
     if (!brand?.zernio_profile_id) return fail(404, { error: 'brand' });
-    if (!canConnectSocials(brand.plan, brand.status)) {
+    if (!(await canAffordSeat(supabase, brand.org_id))) {
       throw redirect(303, '/app/billing');
     }
 

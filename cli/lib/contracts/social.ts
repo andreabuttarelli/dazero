@@ -30,7 +30,13 @@ const AccountSchema = z.object({
 
 const SlotsSchema = z.object({
   used: z.number().int(),
-  limit: z.number().int().describe('Quanti account il piano di questo brand ammette. 0 = nessuno')
+  limit: z
+    .number()
+    .int()
+    .describe(
+      'Quanti account l\'org può sostenere ORA col suo saldo crediti — non un tetto di piano, ' +
+        'crediti in più li alza subito'
+    )
 });
 
 const ManageUrlSchema = z
@@ -56,7 +62,7 @@ export const LIST_SOCIAL_ACCOUNTS_READ = {
       .array(z.string())
       .describe('Ha un account ma nessuno attivo: scaduto, revocato o scollegato. Va riautorizzato'),
     platform_choices: z.array(z.string()),
-    can_connect: z.boolean().describe('Falso su free/trial e sui piani che non collegano account'),
+    can_connect: z.boolean().describe("Falso quando l'org non ha crediti per il canone di un account in più"),
     slots: SlotsSchema,
     manage_url: ManageUrlSchema
   }),
@@ -72,11 +78,10 @@ export const SOCIAL_CONNECT_LINK = {
     'You never run the OAuth, never see a token and never connect anything: the person clicks, ' +
     'signs in on that platform, and the account appears. The URL is a page of our own app behind ' +
     'their login, not a credential, but it is useless to anyone who cannot already reach the ' +
-    'brand. Call list_social_accounts first: this refuses when the plan connects no accounts ' +
-    '(plan_cannot_connect) or every slot is taken (account_limit), two different problems with ' +
-    'two different remedies. Minting a link for a platform already connected is allowed and ' +
-    'returns already_connected: it is how an expired account is re-authorised, or a second one ' +
-    'added. Free: it works precisely when credits are gone.',
+    "brand. Call list_social_accounts first: this refuses (insufficient_credits) when the org's " +
+    "balance does not cover next month's fee for one more connected account. Minting a link for " +
+    'a platform already connected is allowed and returns already_connected: it is how an expired ' +
+    'account is re-authorised, or a second one added.',
   method: 'POST',
   pathUnderBrand: '/social/connect',
   input: z
@@ -94,9 +99,6 @@ export const SOCIAL_CONNECT_LINK = {
     slots: SlotsSchema,
     manage_url: ManageUrlSchema
   }),
-  failures: [
-    { error: 'plan_cannot_connect', status: 409 },
-    { error: 'account_limit', status: 409 }
-  ],
+  failures: [{ error: 'insufficient_credits', status: 409 }],
   destructive: false
 } satisfies BrandEndpoint;

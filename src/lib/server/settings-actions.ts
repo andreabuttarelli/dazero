@@ -3,7 +3,7 @@ import { hasManyTenants } from '$lib/server/tenancy';
 import { fail, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { syncBrandAccounts, disconnectAccount } from '$lib/server/zernio';
-import { canConnectSocials } from '$lib/server/plans';
+import { canAffordSeat } from '$lib/server/social-connections';
 import { CREDIT_LADDER } from '$lib/server/credit-ladder';
 import { generateApiKey } from '$lib/server/cli-auth';
 import { sendEmail, brandInviteEmailSubject, brandInviteEmailHtml, brandInviteEmailText } from '$lib/server/email';
@@ -239,12 +239,12 @@ export async function setWebsite({ request, params, locals: { supabase } }: Ev) 
 export async function sync({ params, locals: { supabase } }: Ev) {
   const { data: brand } = await supabase
     .from('brands')
-    .select('id, plan, status, zernio_profile_id')
+    .select('id, org_id, zernio_profile_id')
     .eq('slug', params.brand!)
     .maybeSingle();
   if (!brand) return { error: 'Brand not found' };
-  if (!canConnectSocials(brand.plan, brand.status)) {
-    return { error: 'Paid plan required' };
+  if (!(await canAffordSeat(supabase, brand.org_id))) {
+    return { error: 'Not enough credits for this month\'s account fee' };
   }
   try {
     await syncBrandAccounts(supabase, brand);
