@@ -1889,3 +1889,11 @@ script da `argv` (resta solo `node`, `vite-node` e i flag), quindi la guardia
 `import.meta.url === file://${process.argv[1]}` è sempre falsa e `run()` non parte mai. Mossa: la
 guardia è `!process.env.VITEST` (vitest la imposta sempre; così il test importa le funzioni pure
 senza far partire lo script). Diffidare di un exit 0 muto: uno script che deve fare qualcosa lo dice.
+
+### `Cannot find module '@dazero/…'` o di un pacchetto transitivo dopo un `bun install`
+Segnale: il dev server e metà della suite muoiono su `@dazero/api-contracts`, `intl-messageformat`
+o simili, e `node_modules/.bun/` esiste. Bun 1.3 in un repo con `workspaces` installa con il
+linker "isolated": collega solo le dipendenze dichiarate, quindi spariscono i workspace (la root
+non li dichiara) e ogni transitivo importato direttamente. Mossa: `bunfig.toml` fissa
+`linker = "hoisted"`, poi `bun install`. Non aggiungere dipendenze una per una: è il layout, non
+il codice.
