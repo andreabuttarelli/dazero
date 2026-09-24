@@ -844,6 +844,18 @@
   "error": {
     "toApp": "Back to the app",
     "toHome": "Back to the homepage",
-    "retry": "Try again"
+    "retry": "Try again",
+    "notFound": {
+      "title": "This page doesn't exist",
+      "body": "The link is wrong, or the page has moved. Everything you've made is still where you left it."
+    },
+    "denied": {
+      "title": "This page isn't accessible",
+      "body": "It belongs to another account, or your session has expired."
+    },
+    "generic": {
+      "title": "Something broke on our side",
+      "body": "The page didn't load. Try again in a moment; if it keeps failing, write to us."
+    }
   }
 }
