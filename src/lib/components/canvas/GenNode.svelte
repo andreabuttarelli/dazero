@@ -32,9 +32,11 @@
     choices = [],
     catalogueSynced = true,
     selected = false,
+    loopQueued = 0,
     onchange,
     onrun,
     onrunloop,
+    oncancelloop,
     onshow,
     onunlock,
     result
@@ -51,12 +53,19 @@
     catalogueSynced?: boolean;
     /** Le proprietà si aprono solo sul nodo scelto: dieci fasce addosso al contenuto lo coprono. */
     selected?: boolean;
+    /** Quanti biglietti di loop sono ancora in coda per QUESTO nodo — 0 = nessun loop in corso.
+     *  Chi lo usa lo calcola da `node_runs` (`params.loop.phase === 'queued'`): il nodo non ha un
+     *  `db`, mostra solo quel che gli si passa, come ogni altro suo stato. */
+    loopQueued?: number;
     onchange?: (patch: Partial<GenNode>) => void;
     onrun?: () => void;
     /** Genera in loop — N combinazioni degli archi `iterate`, o N varianti (`repeat`) senza
      *  assi. Il nodo non pianifica né chiede conferma da sé: chi lo usa lo fa (`loop_plan`
-     *  prima, poi `run_loop`), la stessa separazione fra preventivo ed esecuzione di `loop.ts`. */
+     *  prima, poi `run_loop`, che METTE IN CODA — il cron gira le combinazioni nei minuti
+     *  successivi, non questa chiamata). */
     onrunloop?: () => void;
+    /** Ferma i biglietti non ancora reclamati — quelli già in corso finiscono comunque. */
+    oncancelloop?: () => void;
     /** Rimettere in vetrina un giro di prima. Il nodo non sa scrivere: chiede a chi lo usa. */
     onshow?: (runId: string) => void;
     /** Sblocca una corsa che non torna più. Senza, il bottone resta spento per sempre. */
@@ -253,7 +262,11 @@
             ({node.prompt.length}/{choice.maxPromptChars}){/if}
         </span>
       {/if}
-      {#if onrunloop}
+      {#if loopQueued > 0 && oncancelloop}
+        <button type="button" class="gen-loop" onclick={() => oncancelloop?.()}>
+          Annulla loop ({loopQueued})
+        </button>
+      {:else if onrunloop}
         <button type="button" class="gen-loop" onclick={() => onrunloop?.()} disabled={!canRun}>
           Loop
         </button>

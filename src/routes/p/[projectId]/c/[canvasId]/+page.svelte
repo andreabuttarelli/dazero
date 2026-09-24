@@ -177,6 +177,18 @@
     )
   );
 
+  /** Quanti biglietti di loop sono ancora `queued` per nodo — non ancora reclamati da un tick.
+   *  `data.runs` porta OGNI riga `node_runs`, biglietti compresi (`runsOf` non li filtra, sono
+   *  righe come le altre): la stessa lista che alimenta `runsByNode`, letta prima che
+   *  `toGenRun` scarti `status`/`params`, i due campi che dicono se una riga è un biglietto. */
+  const loopQueuedByNode = $derived(
+    Object.fromEntries(
+      Object.entries((data.runs ?? {}) as Record<string, { status?: string; params?: { loop?: { phase?: string } } }[]>).map(
+        ([id, rows]) => [id, rows.filter((r) => r.status === 'running' && r.params?.loop?.phase === 'queued').length]
+      )
+    )
+  );
+
   const mediumCatalogue = $derived(
     (data.catalogue ?? {
       text: { choices: [], synced: true },
@@ -493,11 +505,16 @@
   }
 
   /**
-   * IL LOOP: preventivo, poi conferma solo se serve, poi esecuzione — la stessa separazione di
+   * IL LOOP: preventivo, poi conferma solo se serve, poi MESSA IN CODA — la stessa separazione di
    * `loop.ts`. Il preventivo (`loop_plan`) non spende, e chi guarda deve poter vedere quante
    * generazioni e quanti crediti PRIMA che il clic diventi irreversibile (CLAUDE.md). Sopra 50
    * combinazioni la conferma è nativa (`confirm()`): un modale su misura sarebbe più lavoro per
    * un percorso che, sopra la soglia, è già raro di suo.
+   *
+   * `run_loop` NON GIRA NIENTE — mette in coda e torna. Il progresso si vede nel nodo `list` di
+   * output che compare accanto (item con `status: 'queued'` che diventano `done`/`failed` mano a
+   * mano che il cron, ogni minuto, drena la coda): `refresh()` qui riporta quella lista appena
+   * creata, e da lì in poi la realtime su `nodes`/`node_runs` (già pubblicata) aggiorna da sola.
    */
   async function runLoop(id: string) {
     const plan = await post('loop_plan', { node_id: id });
@@ -512,12 +529,19 @@
     if (safety.verdict === 'confirm') {
       const cost = plan.cost as { total: number } | undefined;
       const ok = confirm(
-        `Genera ${safety.count} combinazioni (${cost?.total ?? '?'} crediti)?`
+        `Genera ${safety.count} combinazioni (${cost?.total ?? '?'} crediti)? Verranno prodotte nei prossimi minuti, non subito.`
       );
       if (!ok) return;
     }
 
     await post('run_loop', { node_id: id, confirm: safety.verdict === 'confirm' ? '1' : '0' });
+    await refresh();
+  }
+
+  /** Ferma i biglietti non ancora reclamati da un tick — quelli già in corso finiscono, i
+   *  risultati già pronti restano nella lista di output. */
+  async function cancelLoopFor(id: string) {
+    await post('cancel_loop', { node_id: id });
     await refresh();
   }
 
@@ -1145,9 +1169,11 @@
             {selected}
             choices={mediumCatalogue[gen.medium].choices}
             catalogueSynced={mediumCatalogue[gen.medium].synced}
+            loopQueued={loopQueuedByNode[row.id] ?? 0}
             onchange={(patch) => write(id, genData({ ...gen, ...patch }))}
             onrun={() => run(id, gen)}
             onrunloop={() => runLoop(id)}
+            oncancelloop={() => cancelLoopFor(id)}
             onunlock={() => unlock(id)}
             onshow={(runId) => restore(id, gen, runId)}
           >
