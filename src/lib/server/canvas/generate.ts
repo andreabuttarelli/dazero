@@ -17,6 +17,7 @@ import {
 } from '$lib/server/repos/node-runs';
 import { findNode, writeNodeData } from '$lib/server/repos/canvas';
 import type { Actor } from '$lib/server/repos/actor';
+import { signMediaPaths } from './sign-media';
 
 /**
  * FAR GIRARE UN NODO DELLA TELA, SULLO SCHEMA NUOVO.
@@ -286,16 +287,17 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
     if (input.medium === 'text') {
       const { llmText } = await import('$lib/server/llm');
       const { withOrgContext, billedUsdInScope } = await import('$lib/server/ai-log');
+      const [imageUrls, videoUrls, audioUrls] = await Promise.all([
+        signMediaPaths(db, upstream.referenceImageUrls),
+        signMediaPaths(db, upstream.referenceVideoUrls),
+        signMediaPaths(db, upstream.referenceAudioUrls)
+      ]);
       const { text, costUsd } = await withOrgContext(input.orgId, async () => {
         const result = await llmText({
           prompt,
           model: input.model ?? undefined,
           label: 'canvas.text',
-          upstream: {
-            imageUrls: upstream.referenceImageUrls,
-            videoUrls: upstream.referenceVideoUrls,
-            audioUrls: upstream.referenceAudioUrls
-          }
+          upstream: { imageUrls, videoUrls, audioUrls }
         });
         return { text: result.text, costUsd: billedUsdInScope() ?? null };
       });
