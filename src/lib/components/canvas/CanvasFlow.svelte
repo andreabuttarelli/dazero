@@ -439,6 +439,9 @@
     'connect-existing': (ids) => {
       targeting = ids;
     },
+    'copy-id': (ids) => {
+      void navigator.clipboard?.writeText(ids.join('\n'));
+    },
     delete: (ids) => onDelete?.(ids)
   };
 

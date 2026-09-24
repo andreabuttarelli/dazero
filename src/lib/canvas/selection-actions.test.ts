@@ -19,4 +19,9 @@ describe('cosa si può fare a una selezione', () => {
     expect(ids).toContain('duplicate');
     expect(ids).toContain('delete');
   });
+
+  it("porta copia id: l'id di un nodo è ciò che un agente via MCP chiede per lavorarci", () => {
+    const ids = SELECTION_ACTIONS.map((a) => a.id);
+    expect(ids).toContain('copy-id');
+  });
 });

@@ -30,6 +30,7 @@
   import { filterChoices, groupByProvider } from '$lib/canvas/model-picker';
   import type { ModelChoice } from '$lib/canvas/gen-node';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+  import * as Tooltip from '$lib/components/ui/tooltip/index.js';
   import ModalityIcons from './ModalityIcons.svelte';
   import ProviderIcon from './ProviderIcon.svelte';
 
@@ -202,17 +203,21 @@
     {/if}
 
     <span class="count">{count}</span>
+    <Tooltip.Provider delayDuration={200}>
     {#each SELECTION_ACTIONS as action (action.id)}
       {@const Icon = SELECTION_ACTION_ICON[action.id]}
-      <button
-        type="button"
-        title={action.label}
-        aria-label={action.label}
-        onclick={() => onaction?.(action.id)}
-      >
-        <Icon size={15} strokeWidth={1.7} />
-      </button>
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          {#snippet child({ props })}
+            <button {...props} type="button" aria-label={action.label} onclick={() => onaction?.(action.id)}>
+              <Icon size={15} strokeWidth={1.7} />
+            </button>
+          {/snippet}
+        </Tooltip.Trigger>
+        <Tooltip.Content side="top">{action.label}</Tooltip.Content>
+      </Tooltip.Root>
     {/each}
+    </Tooltip.Provider>
   </div>
 {/if}
 

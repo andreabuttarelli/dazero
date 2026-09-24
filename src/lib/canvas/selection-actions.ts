@@ -14,7 +14,7 @@
  * (se ne ha una — non tutte, "Connetti a…" resta senza perché ha bisogno di un secondo clic).
  */
 
-export type SelectionActionId = 'duplicate' | 'connect-new' | 'connect-existing' | 'delete';
+export type SelectionActionId = 'duplicate' | 'connect-new' | 'connect-existing' | 'copy-id' | 'delete';
 
 export type SelectionAction = {
   id: SelectionActionId;
@@ -27,5 +27,6 @@ export const SELECTION_ACTIONS: readonly SelectionAction[] = [
   { id: 'duplicate', label: 'Duplica', keys: ['mod', 'D'] },
   { id: 'connect-new', label: 'Collega a nuovo…' },
   { id: 'connect-existing', label: 'Collega a…' },
+  { id: 'copy-id', label: 'Copia id' },
   { id: 'delete', label: 'Elimina', keys: ['⌫'] }
 ];
