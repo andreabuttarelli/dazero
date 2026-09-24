@@ -15,21 +15,35 @@
  */
 
 type WithId = { id: string };
+type WithPosition = WithId & { position: unknown };
 
 export function syncNodes<N extends WithId, T extends WithId>(
   current: N[],
   tiles: T[],
   toNode: (tile: T) => N
 ): N[] | null {
-  const wanted = new Set(tiles.map((t) => t.id));
+  const tileById = new Map(tiles.map((t) => [t.id, t]));
   const known = new Set(current.map((n) => n.id));
 
-  // I nodi che restano li si PORTA AVANTI com'erano: sono quelli che SvelteFlow sta muovendo, e
-  // ricostruirli dalla tile riporterebbe indietro la posizione che l'utente sta cambiando.
-  const kept = current.filter((n) => wanted.has(n.id));
+  // I nodi che restano tengono la POSIZIONE com'era — quella sola: è ciò che SvelteFlow sta
+  // muovendo, e riportarla indietro dalla tile butterebbe via un trascinamento in corso. Il resto
+  // (`data`, comprese le porte che il modello scelto apre) si rifà dalla tile ad ogni giro, o un
+  // cambio di modello non aggiornerebbe mai un nodo già sulla tela.
+  const kept: N[] = [];
+  let dataChanged = false;
+  for (const n of current) {
+    const t = tileById.get(n.id);
+    if (!t) continue;
+    const fresh = toNode(t);
+    const hasPosition = 'position' in (n as object);
+    kept.push(hasPosition ? { ...fresh, position: (n as unknown as WithPosition).position } : fresh);
+    if (JSON.stringify((fresh as { data?: unknown }).data) !== JSON.stringify((n as { data?: unknown }).data)) {
+      dataChanged = true;
+    }
+  }
   const added = tiles.filter((t) => !known.has(t.id)).map(toNode);
 
-  if (!added.length && kept.length === current.length) return null;
+  if (!added.length && !dataChanged && kept.length === current.length) return null;
 
   return [...kept, ...added];
 }

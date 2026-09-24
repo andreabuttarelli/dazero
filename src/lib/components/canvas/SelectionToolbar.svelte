@@ -265,6 +265,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    font-size: 11.5px !important;
   }
 
   .model-name {
@@ -282,7 +283,7 @@
     margin-bottom: 4px;
     padding: 5px 7px;
     font: inherit;
-    font-size: 12px;
+    font-size: 11.5px;
     color: var(--ink, #1d1d1f);
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
@@ -294,6 +295,7 @@
     align-items: center;
     gap: 6px;
     margin-top: 4px;
+    font-size: 11.5px !important;
   }
   :global(.provider-label:first-child) {
     margin-top: 0;

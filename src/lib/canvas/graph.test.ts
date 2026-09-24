@@ -69,6 +69,14 @@ describe('canConnect — un arco che non produrrebbe niente si rifiuta', () => {
   it('un nodo testo alimenta un altro nodo testo: il secondo può nascere dal primo', () => {
     expect(canConnect(node('a', 'text'), node('b', 'text')).ok).toBe(true);
   });
+
+  it("un'immagine alimenta un nodo testo: un modello vision la legge come riferimento", () => {
+    expect(canConnect(node('i', 'image'), node('t', 'text')).ok).toBe(true);
+  });
+
+  it('un video alimenta un nodo testo, come un riferimento multimodale', () => {
+    expect(canConnect(node('v', 'video'), node('t', 'text')).ok).toBe(true);
+  });
 });
 
 describe('missingInputs — un nodo dice cosa gli manca invece di fallire dopo', () => {

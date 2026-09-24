@@ -36,4 +36,17 @@ describe('tenere i nodi della tela allineati alle tile', () => {
 
     expect(out?.find((n) => n.id === 'a')?.position).toEqual({ x: 999, y: 999 });
   });
+
+  it('un nodo che resta prende comunque i dati NUOVI della sua tile — il modello scelto cambia le porte', () => {
+    const stale = { ...node('a'), data: { connectors: ['text'] } };
+    const freshTile = { ...tile('a'), connectors: ['text', 'images'] };
+    const toNodeWithData = (t: { id: string; connectors?: string[] }) => ({
+      ...node(t.id),
+      data: { connectors: t.connectors }
+    });
+
+    const out = syncNodes([stale], [freshTile], toNodeWithData);
+
+    expect(out?.find((n) => n.id === 'a')?.data).toEqual({ connectors: ['text', 'images'] });
+  });
 });

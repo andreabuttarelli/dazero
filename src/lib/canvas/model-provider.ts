@@ -22,7 +22,8 @@ function labelFor(key: string): string {
 }
 
 export function providerOf(wireId: string): ModelProvider {
-  const slash = wireId.indexOf('/');
-  const key = slash === -1 ? 'other' : wireId.slice(0, slash);
+  const bare = wireId.startsWith('~') ? wireId.slice(1) : wireId;
+  const slash = bare.indexOf('/');
+  const key = slash === -1 ? 'other' : bare.slice(0, slash).toLowerCase();
   return { provider: key, providerLabel: labelFor(key) };
 }
