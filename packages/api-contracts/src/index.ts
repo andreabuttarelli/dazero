@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import { ADS_ACTION, ADS_REMIX } from './ads';
-import { BILLING_PORTAL_LINK, CHECKOUT_LINK } from './billing';
+import { BILLING_PORTAL_LINK, CHECKOUT_LINK, ONE_TIME_CHECKOUT_LINK } from './billing';
 import { QUERY_DATABASE } from './query';
 import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from './write';
 import { IMPORT_MEDIA_URL } from './posts';
@@ -71,6 +71,7 @@ export const BRAND_ENDPOINTS: readonly BrandEndpoint[] = [
   ADS_REMIX,
   BILLING_PORTAL_LINK,
   CHECKOUT_LINK,
+  ONE_TIME_CHECKOUT_LINK,
   ENHANCE_PROMPT,
   GET_MEDIA_MODELS,
   IMPORT_MEDIA_URL,
@@ -148,8 +149,14 @@ export {
 } from './automations';
 export type { AutomationJob } from './automations';
 export { SOCIAL_CONNECT_LINK } from './social';
-export { BILLING_PORTAL_LINK, CHECKOUT_LINK };
-export type { BillingPortalLinkResult, CheckoutLinkInput, CheckoutLinkResult } from './billing';
+export { BILLING_PORTAL_LINK, CHECKOUT_LINK, ONE_TIME_CHECKOUT_LINK };
+export type {
+  BillingPortalLinkResult,
+  CheckoutLinkInput,
+  CheckoutLinkResult,
+  OneTimeCheckoutLinkInput,
+  OneTimeCheckoutLinkResult
+} from './billing';
 export { INSERT_ROW, UPDATE_ROW, DELETE_ROW, UPDATE_MAX_ROWS, DELETE_MAX_ROWS } from './write';
 export { TABLE_CHECKS, WRITABLE_COLUMNS } from './write-rules';
 

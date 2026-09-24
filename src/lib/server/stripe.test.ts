@@ -4,9 +4,15 @@ const billingPortalSessionsCreate = vi.fn();
 const subscriptionsRetrieve = vi.fn();
 const subscriptionsUpdate = vi.fn();
 const subscriptionsCancel = vi.fn();
+const checkoutSessionsCreate = vi.fn();
+const customersCreate = vi.fn();
 
 vi.mock('$env/dynamic/private', () => ({
-	env: { STRIPE_SECRET_KEY: 'sk_test_123' }
+	env: {
+		STRIPE_SECRET_KEY: 'sk_test_123',
+		STRIPE_PRICE_ID_SUBSCRIPTION_5: 'price_sub_5',
+		STRIPE_PRICE_ID_SUBSCRIPTION_15: 'price_sub_15'
+	}
 }));
 
 vi.mock('stripe', () => ({
@@ -17,7 +23,17 @@ vi.mock('stripe', () => ({
 			update: subscriptionsUpdate,
 			cancel: subscriptionsCancel
 		};
+		checkout = { sessions: { create: checkoutSessionsCreate } };
+		customers = { create: customersCreate };
 	}
+}));
+
+const adminUpdateEq = vi.fn();
+const adminUpdate = vi.fn(() => ({ eq: adminUpdateEq }));
+const adminFrom = vi.fn(() => ({ update: adminUpdate }));
+
+vi.mock('./supabase-admin', () => ({
+	createAdminClient: () => ({ from: adminFrom })
 }));
 
 beforeEach(() => {
@@ -26,6 +42,11 @@ beforeEach(() => {
 	subscriptionsRetrieve.mockReset();
 	subscriptionsUpdate.mockReset();
 	subscriptionsCancel.mockReset();
+	checkoutSessionsCreate.mockReset();
+	customersCreate.mockReset();
+	adminUpdateEq.mockReset().mockResolvedValue({ error: null });
+	adminUpdate.mockClear();
+	adminFrom.mockClear();
 });
 
 afterEach(() => {
@@ -174,5 +195,134 @@ describe('ensureSubscriptionCanceled', () => {
 		);
 		const { ensureSubscriptionCanceled } = await import('./stripe');
 		await expect(ensureSubscriptionCanceled('sub_1')).rejects.toThrow('connection error');
+	});
+});
+
+describe('ensureOrgCustomer', () => {
+	it('returns the existing customer id without calling Stripe', async () => {
+		const { ensureOrgCustomer } = await import('./stripe');
+		const id = await ensureOrgCustomer({ id: 'org_1', name: 'Acme', stripe_customer_id: 'cus_existing' });
+		expect(id).toBe('cus_existing');
+		expect(customersCreate).not.toHaveBeenCalled();
+	});
+
+	it('creates a customer tagged with the org id and persists it on orgs', async () => {
+		customersCreate.mockResolvedValue({ id: 'cus_new' });
+		const { ensureOrgCustomer } = await import('./stripe');
+
+		const id = await ensureOrgCustomer({ id: 'org_1', name: 'Acme', stripe_customer_id: null });
+
+		expect(id).toBe('cus_new');
+		expect(customersCreate).toHaveBeenCalledWith({ name: 'Acme', metadata: { org_id: 'org_1' } });
+		expect(adminFrom).toHaveBeenCalledWith('orgs');
+		expect(adminUpdate).toHaveBeenCalledWith({ stripe_customer_id: 'cus_new' });
+		expect(adminUpdateEq).toHaveBeenCalledWith('id', 'org_1');
+	});
+});
+
+describe('subscriptionPriceIdFor', () => {
+	it('returns the configured price id for a rung with one set', async () => {
+		const { subscriptionPriceIdFor } = await import('./stripe');
+		expect(subscriptionPriceIdFor(5)).toBe('price_sub_5');
+		expect(subscriptionPriceIdFor(15)).toBe('price_sub_15');
+	});
+
+	it('returns undefined for a rung with no price id configured', async () => {
+		const { subscriptionPriceIdFor } = await import('./stripe');
+		expect(subscriptionPriceIdFor(30)).toBeUndefined();
+	});
+});
+
+describe('createOneTimeCreditCheckout', () => {
+	it('creates a payment-mode session carrying org id and credits in metadata', async () => {
+		checkoutSessionsCreate.mockResolvedValue({ url: 'https://checkout/one-time' });
+		const { createOneTimeCreditCheckout } = await import('./stripe');
+
+		const url = await createOneTimeCreditCheckout({
+			customerId: 'cus_1',
+			orgId: 'org_1',
+			price: 100,
+			credits: 7840,
+			successUrl: 'https://app/return?ok=1',
+			cancelUrl: 'https://app/return?cancel=1'
+		});
+
+		expect(url).toBe('https://checkout/one-time');
+		expect(checkoutSessionsCreate).toHaveBeenCalledWith({
+			mode: 'payment',
+			customer: 'cus_1',
+			line_items: [
+				{
+					price_data: {
+						currency: 'usd',
+						unit_amount: 10000,
+						product_data: { name: '7840 dazero credits' }
+					},
+					quantity: 1
+				}
+			],
+			success_url: 'https://app/return?ok=1',
+			cancel_url: 'https://app/return?cancel=1',
+			metadata: { org_id: 'org_1', credits: '7840' }
+		});
+	});
+
+	it('throws when Stripe returns no checkout URL', async () => {
+		checkoutSessionsCreate.mockResolvedValue({ url: null });
+		const { createOneTimeCreditCheckout } = await import('./stripe');
+
+		await expect(
+			createOneTimeCreditCheckout({
+				customerId: 'cus_1',
+				orgId: 'org_1',
+				price: 5,
+				credits: 350,
+				successUrl: 'https://app/return',
+				cancelUrl: 'https://app/return'
+			})
+		).rejects.toThrow('Stripe: no checkout URL');
+	});
+});
+
+describe('createSubscriptionCheckout', () => {
+	it('creates a subscription-mode session on the configured price, tagged for the org', async () => {
+		checkoutSessionsCreate.mockResolvedValue({ url: 'https://checkout/sub' });
+		const { createSubscriptionCheckout } = await import('./stripe');
+
+		const url = await createSubscriptionCheckout({
+			customerId: 'cus_1',
+			orgId: 'org_1',
+			priceId: 'price_sub_5',
+			credits: 500,
+			successUrl: 'https://app/return?ok=1',
+			cancelUrl: 'https://app/return?cancel=1'
+		});
+
+		expect(url).toBe('https://checkout/sub');
+		expect(checkoutSessionsCreate).toHaveBeenCalledWith({
+			mode: 'subscription',
+			customer: 'cus_1',
+			line_items: [{ price: 'price_sub_5', quantity: 1 }],
+			success_url: 'https://app/return?ok=1',
+			cancel_url: 'https://app/return?cancel=1',
+			subscription_data: { metadata: { org_id: 'org_1', credits: '500' } },
+			metadata: { org_id: 'org_1' }
+		});
+	});
+
+	it('throws when Stripe returns no checkout URL', async () => {
+		checkoutSessionsCreate.mockResolvedValue({ url: undefined });
+		const { createSubscriptionCheckout } = await import('./stripe');
+
+		await expect(
+			createSubscriptionCheckout({
+				customerId: 'cus_1',
+				orgId: 'org_1',
+				priceId: 'price_sub_5',
+				credits: 500,
+				successUrl: 'https://app/return',
+				cancelUrl: 'https://app/return'
+			})
+		).rejects.toThrow('Stripe: no checkout URL');
 	});
 });

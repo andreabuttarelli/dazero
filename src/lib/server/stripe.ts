@@ -41,6 +41,28 @@ export function priceFor(plan: string, cycle: string, currency: Currency): strin
 }
 
 /**
+ * The subscription side of CREDIT_LADDER needs a real Stripe Price per rung — a Checkout Session
+ * cannot be handed a raw amount for `mode: 'subscription'` the way it can for `mode: 'payment'`.
+ * One env var per rung, read here and nowhere else: `credits_from_price_id` in
+ * `20260922_org_billing.sql` has to be kept in step by hand (SQL cannot read `.env`), and this is
+ * the map whoever updates it copies from.
+ */
+const SUBSCRIPTION_PRICE_ID_ENV: Record<number, string> = {
+  5: 'STRIPE_PRICE_ID_SUBSCRIPTION_5',
+  15: 'STRIPE_PRICE_ID_SUBSCRIPTION_15',
+  30: 'STRIPE_PRICE_ID_SUBSCRIPTION_30',
+  50: 'STRIPE_PRICE_ID_SUBSCRIPTION_50',
+  100: 'STRIPE_PRICE_ID_SUBSCRIPTION_100',
+  200: 'STRIPE_PRICE_ID_SUBSCRIPTION_200',
+  400: 'STRIPE_PRICE_ID_SUBSCRIPTION_400'
+};
+
+export function subscriptionPriceIdFor(rungPrice: number): string | undefined {
+  const varName = SUBSCRIPTION_PRICE_ID_ENV[rungPrice];
+  return varName ? env[varName] || undefined : undefined;
+}
+
+/**
  * Purchasing-power discounts, auto-applied at checkout from the visitor's country
  * (`x-vercel-ip-country`). Good-faith, not fraud-proof: a VPN defeats it. First match wins, and
  * the coupons live in the same Stripe account as the prices above.
@@ -90,6 +112,94 @@ export async function ensureBrandCustomer(brand: {
   await createAdminClient().from('brands').update({ stripe_customer_id: customer.id }).eq('id', brand.id);
 
   return customer.id;
+}
+
+/**
+ * Billing is org-level (CLAUDE.md: `orgs.stripe_customer_id`, not a brand column) — every brand
+ * under the org checks out against the same customer. Written with the service role for the same
+ * reason as `ensureBrandCustomer`: this id is a join key another org's session must never set.
+ */
+export async function ensureOrgCustomer(org: {
+  id: string;
+  name: string;
+  stripe_customer_id: string | null;
+}): Promise<string> {
+  if (org.stripe_customer_id) return org.stripe_customer_id;
+
+  const customer = await stripe().customers.create({
+    name: org.name,
+    metadata: { org_id: org.id }
+  });
+  await createAdminClient().from('orgs').update({ stripe_customer_id: customer.id }).eq('id', org.id);
+
+  return customer.id;
+}
+
+/**
+ * A ladder rung bought once, never a subscription. `mode: 'payment'` needs no Stripe Price object
+ * — the amount is inlined as `price_data` — so a new rung ships without touching the Stripe
+ * dashboard. `metadata.org_id` / `metadata.credits` are what
+ * `grant_credits_from_checkout_session` (20260922_org_billing.sql) reads to write the permanent
+ * grant; the credits are `CREDIT_LADDER[...].creditsOneTime`, computed by the caller — this
+ * function never recomputes a price.
+ */
+export async function createOneTimeCreditCheckout(opts: {
+  customerId: string;
+  orgId: string;
+  price: number;
+  credits: number;
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<string> {
+  const session = await stripe().checkout.sessions.create({
+    mode: 'payment',
+    customer: opts.customerId,
+    line_items: [
+      {
+        price_data: {
+          currency: 'usd',
+          unit_amount: Math.round(opts.price * 100),
+          product_data: { name: `${opts.credits} dazero credits` }
+        },
+        quantity: 1
+      }
+    ],
+    success_url: opts.successUrl,
+    cancel_url: opts.cancelUrl,
+    metadata: { org_id: opts.orgId, credits: String(opts.credits) }
+  });
+  if (!session.url) throw new Error('Stripe: no checkout URL');
+
+  return session.url;
+}
+
+/**
+ * A ladder rung as a recurring subscription. Unlike the one-time path this NEEDS a real Stripe
+ * Price (`subscriptionPriceIdFor` above) — the caller must have checked one exists before calling
+ * this, there is no inline fallback. `subscription_data.metadata` carries org id and the rung's
+ * `creditsSubscription` so `grant_credits_from_stripe_subscription` can grant even when
+ * `credits_from_price_id` has not been updated for this price yet.
+ */
+export async function createSubscriptionCheckout(opts: {
+  customerId: string;
+  orgId: string;
+  priceId: string;
+  credits: number;
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<string> {
+  const session = await stripe().checkout.sessions.create({
+    mode: 'subscription',
+    customer: opts.customerId,
+    line_items: [{ price: opts.priceId, quantity: 1 }],
+    success_url: opts.successUrl,
+    cancel_url: opts.cancelUrl,
+    subscription_data: { metadata: { org_id: opts.orgId, credits: String(opts.credits) } },
+    metadata: { org_id: opts.orgId }
+  });
+  if (!session.url) throw new Error('Stripe: no checkout URL');
+
+  return session.url;
 }
 
 /**

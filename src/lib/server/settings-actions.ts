@@ -16,6 +16,7 @@ import { readUploadImage } from '$lib/server/raster-image';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { orgBillingForBrand } from '$lib/server/org-billing';
 import { billingLink } from '$lib/server/billing-links';
+import { billingGrantsReady } from '$lib/server/billing-readiness';
 
 const stripeApi = () => import('$lib/server/stripe');
 
@@ -68,24 +69,55 @@ export async function billingPortal({ request, params, url, locals: { supabase }
   throw redirect(303, link.url);
 }
 
+const PURCHASES_NOT_READY = 'Purchases open soon.';
+
 export async function upgrade({ request, params, url, locals: { supabase } }: Ev) {
   if (!(await isBrandOwner(supabase, params.brand!))) return fail(403, { billingError: 'Owner only' });
+  if (!(await billingGrantsReady(supabase))) return fail(409, { billingError: PURCHASES_NOT_READY });
   const data = await request.formData();
   const usd = Number(data.get('usd') ?? '');
 
-  const billing = await orgBillingForBrand(supabase, { slug: params.brand! });
-  if (!billing) return fail(404, { billingError: 'Brand not found' });
   // The rungs the subscription checkout offers — the portal names no price of its own (see
   // billing-links.ts), so the choice made here has to be one of ours.
-  if (!CREDIT_LADDER.some((rung) => rung.price === usd)) {
-    return fail(400, { billingError: 'Unknown subscription tier' });
+  const rung = CREDIT_LADDER.find((r) => r.price === usd);
+  if (!rung) return fail(400, { billingError: 'Unknown subscription tier' });
+
+  const billing = await orgBillingForBrand(supabase, { slug: params.brand! });
+  if (!billing) return fail(404, { billingError: 'Brand not found' });
+
+  const returnUrl = `${url.origin}/app/billing`;
+
+  // No subscription yet: the hosted portal can only CHANGE one, never create the first — so this
+  // mints a real Checkout Session on the rung's Stripe Price instead of routing through it.
+  if (!billing.subscriptionId) {
+    const { subscriptionPriceIdFor, ensureOrgCustomer, createSubscriptionCheckout } = await stripeApi();
+    const priceId = subscriptionPriceIdFor(rung.price);
+    if (!priceId) {
+      return fail(400, { billingError: 'Subscriptions are not configured yet for this rung.' });
+    }
+
+    let checkoutUrl: string;
+    try {
+      const customerId = await ensureOrgCustomer({
+        id: billing.orgId,
+        name: billing.orgName,
+        stripe_customer_id: billing.customerId
+      });
+      checkoutUrl = await createSubscriptionCheckout({
+        customerId,
+        orgId: billing.orgId,
+        priceId,
+        credits: rung.creditsSubscription,
+        successUrl: returnUrl,
+        cancelUrl: returnUrl
+      });
+    } catch (e) {
+      return fail(500, { billingError: e instanceof Error ? e.message : 'Could not start the upgrade' });
+    }
+    throw redirect(303, checkoutUrl);
   }
 
-  const link = await billingLink(supabase, {
-    slug: params.brand!,
-    returnUrl: `${url.origin}/app/${params.brand}/settings/billing`,
-    flow: 'upgrade'
-  });
+  const link = await billingLink(supabase, { slug: params.brand!, returnUrl, flow: 'upgrade' });
   if (link.refusal === 'no_customer' || link.refusal === 'no_subscription') {
     throw redirect(303, '/app/billing');
   }

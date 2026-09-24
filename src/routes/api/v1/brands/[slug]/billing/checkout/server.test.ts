@@ -6,8 +6,12 @@ const createBillingPortalSession = vi.fn();
 const applyRetentionCoupon = vi.fn();
 const cancelSubscriptionAtPeriodEnd = vi.fn();
 const ensureSubscriptionCanceled = vi.fn();
+const ensureOrgCustomer = vi.fn();
+const createSubscriptionCheckout = vi.fn();
+const subscriptionPriceIdFor = vi.fn();
 const gateCredits = vi.fn();
 const structured = vi.fn();
+const billingGrantsReady = vi.fn();
 
 vi.mock('$lib/server/cli-auth', () => ({
 	authenticate: vi.fn(),
@@ -23,11 +27,17 @@ vi.mock('$lib/server/stripe', () => ({
 	createBillingPortalSession: (...args: unknown[]) => createBillingPortalSession(...args),
 	applyRetentionCoupon: (...args: unknown[]) => applyRetentionCoupon(...args),
 	cancelSubscriptionAtPeriodEnd: (...args: unknown[]) => cancelSubscriptionAtPeriodEnd(...args),
-	ensureSubscriptionCanceled: (...args: unknown[]) => ensureSubscriptionCanceled(...args)
+	ensureSubscriptionCanceled: (...args: unknown[]) => ensureSubscriptionCanceled(...args),
+	ensureOrgCustomer: (...args: unknown[]) => ensureOrgCustomer(...args),
+	createSubscriptionCheckout: (...args: unknown[]) => createSubscriptionCheckout(...args),
+	subscriptionPriceIdFor: (...args: unknown[]) => subscriptionPriceIdFor(...args)
 }));
 vi.mock('$lib/server/credits', () => ({
 	gateCredits: (...args: unknown[]) => gateCredits(...args),
 	CreditsExhaustedError: class extends Error {}
+}));
+vi.mock('$lib/server/billing-readiness', () => ({
+	billingGrantsReady: (...args: unknown[]) => billingGrantsReady(...args)
 }));
 vi.mock('$lib/server/research', () => ({ structured: (...args: unknown[]) => structured(...args) }));
 vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://dazero.test' }));
@@ -40,9 +50,18 @@ const CHECKOUT_URL = 'https://billing.stripe.com/p/session/live_upgrade';
 
 const ORG_BILLING = {
 	orgId: 'org-1',
+	orgName: 'Acme',
 	customerId: 'cus_org',
 	subscriptionId: 'sub_org',
 	brandCount: 2
+};
+
+const ORG_BILLING_NO_SUBSCRIPTION = {
+	orgId: 'org-1',
+	orgName: 'Acme',
+	customerId: 'cus_org',
+	subscriptionId: null,
+	brandCount: 1
 };
 
 function call(body: unknown = {}, slug = 'demo') {
@@ -70,6 +89,10 @@ beforeEach(() => {
 	isOrgOwner.mockResolvedValue(true);
 	orgBillingForBrand.mockResolvedValue(ORG_BILLING);
 	createBillingPortalSession.mockResolvedValue(CHECKOUT_URL);
+	ensureOrgCustomer.mockResolvedValue('cus_org');
+	createSubscriptionCheckout.mockResolvedValue(CHECKOUT_URL);
+	subscriptionPriceIdFor.mockReturnValue(undefined);
+	billingGrantsReady.mockResolvedValue(true);
 });
 
 describe('POST /api/v1/brands/:slug/billing/checkout', () => {
@@ -135,7 +158,7 @@ describe('POST /api/v1/brands/:slug/billing/checkout', () => {
 		expect(createBillingPortalSession).not.toHaveBeenCalled();
 	});
 
-	it('says no_subscription, and where the human subscribes, with nothing to upgrade', async () => {
+	it('says no_subscription when opening the plan picker with nothing to upgrade yet', async () => {
 		orgBillingForBrand.mockResolvedValue({ ...ORG_BILLING, subscriptionId: null });
 
 		const { res, body } = await call();
@@ -144,6 +167,57 @@ describe('POST /api/v1/brands/:slug/billing/checkout', () => {
 		expect(body.error).toBe('no_subscription');
 		expect(body.app_billing_url).toBe('https://dazero.test/app/billing');
 		expect(createBillingPortalSession).not.toHaveBeenCalled();
+	});
+
+	describe('a specific rung with no subscription yet — starts a real first subscription', () => {
+		beforeEach(() => {
+			orgBillingForBrand.mockResolvedValue(ORG_BILLING_NO_SUBSCRIPTION);
+			subscriptionPriceIdFor.mockReturnValue('price_sub_30');
+		});
+
+		it('creates a Checkout Session on the configured price, not a portal link', async () => {
+			const { res, body } = await call({ usd: 30 });
+
+			expect(res.status).toBe(200);
+			expect(body.ok).toBe(true);
+			expect(body.url).toBe(CHECKOUT_URL);
+			expect(createBillingPortalSession).not.toHaveBeenCalled();
+			expect(ensureOrgCustomer).toHaveBeenCalledWith({
+				id: 'org-1',
+				name: 'Acme',
+				stripe_customer_id: 'cus_org'
+			});
+			expect(subscriptionPriceIdFor).toHaveBeenCalledWith(30);
+			expect(createSubscriptionCheckout).toHaveBeenCalledWith({
+				customerId: 'cus_org',
+				orgId: 'org-1',
+				priceId: 'price_sub_30',
+				credits: 3000,
+				successUrl: 'https://dazero.test/app/billing',
+				cancelUrl: 'https://dazero.test/app/billing'
+			});
+		});
+
+		it('says subscriptions_not_configured when no price id exists for the rung, and never mints a broken session', async () => {
+			subscriptionPriceIdFor.mockReturnValue(undefined);
+
+			const { res, body } = await call({ usd: 30 });
+
+			expect(res.status).toBe(409);
+			expect(body.error).toBe('subscriptions_not_configured');
+			expect(body.app_billing_url).toBe('https://dazero.test/app/billing');
+			expect(createSubscriptionCheckout).not.toHaveBeenCalled();
+			expect(createBillingPortalSession).not.toHaveBeenCalled();
+		});
+
+		it('a Stripe outage while creating the subscription session is ours: 502', async () => {
+			createSubscriptionCheckout.mockRejectedValue(new Error('connection error'));
+
+			const { res, body } = await call({ usd: 30 });
+
+			expect(res.status).toBe(502);
+			expect(body.error).toBe('stripe_unavailable');
+		});
 	});
 
 	it('says no_customer when nobody ever paid', async () => {
@@ -204,5 +278,16 @@ describe('POST /api/v1/brands/:slug/billing/checkout', () => {
 		expect(res.status).toBe(400);
 		expect(body.error).toBe('invalid_input');
 		expect(createBillingPortalSession).not.toHaveBeenCalled();
+	});
+
+	it('refuses to sell when a grant could not land — the sync engine trigger is not there yet', async () => {
+		billingGrantsReady.mockResolvedValue(false);
+
+		const { res, body } = await call({ usd: 30 });
+
+		expect(res.status).toBe(409);
+		expect(body.error).toBe('purchases_not_ready');
+		expect(createBillingPortalSession).not.toHaveBeenCalled();
+		expect(createSubscriptionCheckout).not.toHaveBeenCalled();
 	});
 });

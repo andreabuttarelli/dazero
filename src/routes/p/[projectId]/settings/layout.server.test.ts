@@ -42,6 +42,7 @@ function fakeSupabase(rows: Record<string, unknown[]>) {
 			};
 			return q;
 		},
+		rpc: () => Promise.resolve({ data: 0, error: null }),
 		__ops: ops
 	};
 }

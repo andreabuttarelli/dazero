@@ -524,7 +524,14 @@
         "breakdownTitle": "Usage by brand",
         "brandCol": "Brand",
         "creditsCol": "Credits used",
-        "noBrands": "Create a brand to start."
+        "noBrands": "Create a brand to start.",
+        "ladderTitle": "Buy credits",
+        "ladderDesc": "Subscription credits renew monthly and expire at period end. One-time credits never expire.",
+        "priceCol": "Price",
+        "subscriptionCol": "Subscription",
+        "oneTimeCol": "One-time",
+        "neverExpires": "never expires",
+        "purchasesNotReady": "Purchases open soon."
       }
     },
     "ads": {

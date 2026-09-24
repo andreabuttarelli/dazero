@@ -8,6 +8,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type OrgBilling = {
 	orgId: string;
+	/** Name Stripe shows the org on its own customer record — read once, at customer creation. */
+	orgName: string;
 	customerId: string | null;
 	subscriptionId: string | null;
 	/** Brands under the org — deleting one of several must not cancel what covers the others. */
@@ -16,6 +18,7 @@ export type OrgBilling = {
 
 type OrgRow = {
 	id: string;
+	name: string;
 	stripe_customer_id: string | null;
 	stripe_subscription_id: string | null;
 };
@@ -45,7 +48,11 @@ export async function orgBillingById(
 	orgId: string
 ): Promise<OrgBilling | null> {
 	const [{ data: orgData }, { data: brandRows }] = await Promise.all([
-		supabase.from('orgs').select('id, stripe_customer_id, stripe_subscription_id').eq('id', orgId).maybeSingle(),
+		supabase
+			.from('orgs')
+			.select('id, name, stripe_customer_id, stripe_subscription_id')
+			.eq('id', orgId)
+			.maybeSingle(),
 		supabase.from('brands').select('id').eq('org_id', orgId)
 	]);
 	const org = orgData as OrgRow | null;
@@ -53,6 +60,7 @@ export async function orgBillingById(
 
 	return {
 		orgId: org.id,
+		orgName: org.name,
 		customerId: org.stripe_customer_id,
 		subscriptionId: org.stripe_subscription_id,
 		brandCount: (brandRows ?? []).length

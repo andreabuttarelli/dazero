@@ -44,12 +44,14 @@ function makeDb(org: Row | null, brands: Row[]) {
 
 const ORG = {
 	id: 'org-1',
+	name: 'Acme',
 	stripe_customer_id: 'cus_org',
 	stripe_subscription_id: 'sub_org'
 };
 
 const NO_CUSTOMER = {
 	id: 'org-1',
+	name: 'Acme',
 	stripe_customer_id: null,
 	stripe_subscription_id: null
 };
@@ -64,6 +66,7 @@ describe('orgBillingForBrand', () => {
 
 		expect(billing).toMatchObject({
 			orgId: 'org-1',
+			orgName: 'Acme',
 			customerId: 'cus_org',
 			subscriptionId: 'sub_org'
 		});

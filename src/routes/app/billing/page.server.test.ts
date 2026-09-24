@@ -11,6 +11,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const orgCreditBalance = vi.fn();
 const ensureOrgForUser = vi.fn();
 const billingPortal = vi.fn();
+const isOrgOwner = vi.fn();
+const ensureOrgCustomer = vi.fn();
+const createOneTimeCreditCheckout = vi.fn();
+const billingGrantsReady = vi.fn();
 
 vi.mock('$lib/server/credits', () => ({
 	orgCreditBalance: (...a: unknown[]) => orgCreditBalance(...a)
@@ -23,6 +27,16 @@ vi.mock('$lib/server/settings-actions', () => ({
 	upgrade: vi.fn(),
 	applyRetention: vi.fn(),
 	cancelPlan: vi.fn()
+}));
+vi.mock('$lib/server/org-billing', () => ({
+	isOrgOwner: (...a: unknown[]) => isOrgOwner(...a)
+}));
+vi.mock('$lib/server/stripe', () => ({
+	ensureOrgCustomer: (...a: unknown[]) => ensureOrgCustomer(...a),
+	createOneTimeCreditCheckout: (...a: unknown[]) => createOneTimeCreditCheckout(...a)
+}));
+vi.mock('$lib/server/billing-readiness', () => ({
+	billingGrantsReady: (...a: unknown[]) => billingGrantsReady(...a)
 }));
 
 import { load, actions } from './+page.server';
@@ -37,7 +51,7 @@ function fakeSupabase(
 	membership: Membership | null,
 	brands: BrandRow[],
 	costUsdByBrand: Record<string, number> = {},
-	atRisk: { expires_at: string; at_risk: number }[] = []
+	atRisk: { next_expiry: string; expiring_credits: number }[] = []
 ) {
 	return {
 		auth: { getUser: async () => ({ data: { user: { id: 'u1', email: 'ana@example.com' } } }) },
@@ -105,6 +119,10 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	orgCreditBalance.mockResolvedValue(3600);
 	ensureOrgForUser.mockResolvedValue('org-1');
+	isOrgOwner.mockResolvedValue(true);
+	ensureOrgCustomer.mockResolvedValue('cus_1');
+	createOneTimeCreditCheckout.mockResolvedValue('https://checkout.stripe.com/c/pay/cs_test_one_time');
+	billingGrantsReady.mockResolvedValue(true);
 });
 
 describe('/app/billing', () => {
@@ -189,17 +207,79 @@ describe('/app/billing', () => {
 		expect(data.isOwner).toBe(false);
 	});
 
-	it('shows credits about to expire, from org_credits_at_risk', async () => {
+	it('shows credits about to expire, from org_credits_at_risk (expiring_credits/next_expiry — the columns the live view actually has)', async () => {
 		const data = await run(
 			fakeSupabase(
 				{ id: 'org-1', name: 'Ana', stripe_customer_id: 'cus_1' },
 				{ role: 'owner' },
 				[{ id: 'b1', name: 'One', slug: 'one' }],
 				{},
-				[{ expires_at: '2026-10-07T00:00:00Z', at_risk: 100 }]
+				[{ next_expiry: '2026-10-07T00:00:00Z', expiring_credits: 100 }]
 			)
 		);
 
 		expect(data.credits.atRisk).toEqual([{ expiresAt: '2026-10-07T00:00:00Z', amount: 100 }]);
+	});
+
+	it('carries purchasesReady from the readiness gate, so the page can hide the buy buttons', async () => {
+		billingGrantsReady.mockResolvedValue(false);
+
+		const data = await run(
+			fakeSupabase({ id: 'org-1', name: 'Ana', stripe_customer_id: 'cus_1' }, { role: 'owner' }, [
+				{ id: 'b1', name: 'One', slug: 'one' }
+			])
+		);
+
+		expect(data.purchasesReady).toBe(false);
+	});
+
+	describe('actions.buyOneTime', () => {
+		function call(supabase: unknown, usd: string) {
+			const data = new FormData();
+			data.set('usd', usd);
+			return (actions.buyOneTime as (e: unknown) => Promise<unknown>)({
+				request: { formData: async () => data },
+				url: new URL('https://example.test/app/billing'),
+				locals: { supabase }
+			});
+		}
+
+		it('redirects to a real one-time Checkout Session for the picked rung', async () => {
+			const supabase = fakeSupabase({ id: 'org-1', name: 'Ana', stripe_customer_id: 'cus_1' }, { role: 'owner' }, []);
+
+			await expect(call(supabase, '30')).rejects.toMatchObject({
+				status: 303,
+				location: 'https://checkout.stripe.com/c/pay/cs_test_one_time'
+			});
+			expect(createOneTimeCreditCheckout).toHaveBeenCalledWith(
+				expect.objectContaining({ orgId: 'org-1', price: 30, credits: 2100 })
+			);
+		});
+
+		it('rejects a rung that is not on the ladder before touching Stripe', async () => {
+			const supabase = fakeSupabase({ id: 'org-1', name: 'Ana', stripe_customer_id: 'cus_1' }, { role: 'owner' }, []);
+
+			const result = await call(supabase, '7');
+			expect(result).toMatchObject({ status: 400, data: { billingError: 'Unknown one-time pack' } });
+			expect(createOneTimeCreditCheckout).not.toHaveBeenCalled();
+		});
+
+		it('refuses a non-owner', async () => {
+			isOrgOwner.mockResolvedValue(false);
+			const supabase = fakeSupabase({ id: 'org-1', name: 'Ana', stripe_customer_id: 'cus_1' }, { role: 'member' }, []);
+
+			const result = await call(supabase, '30');
+			expect(result).toMatchObject({ status: 403 });
+			expect(createOneTimeCreditCheckout).not.toHaveBeenCalled();
+		});
+
+		it('refuses to sell when a grant could not land — the sync engine trigger is not there yet', async () => {
+			billingGrantsReady.mockResolvedValue(false);
+			const supabase = fakeSupabase({ id: 'org-1', name: 'Ana', stripe_customer_id: 'cus_1' }, { role: 'owner' }, []);
+
+			const result = await call(supabase, '30');
+			expect(result).toMatchObject({ status: 409, data: { billingError: expect.stringMatching(/open soon/i) } });
+			expect(createOneTimeCreditCheckout).not.toHaveBeenCalled();
+		});
 	});
 });

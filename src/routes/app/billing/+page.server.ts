@@ -3,12 +3,18 @@ import type { Actions, PageServerLoad, RequestEvent } from './$types';
 import { orgCreditBalance } from '$lib/server/credits';
 import { ensureOrgForUser } from '$lib/server/org';
 import { CREDIT_LADDER } from '$lib/server/credit-ladder';
+import { isOrgOwner } from '$lib/server/org-billing';
+import { billingGrantsReady } from '$lib/server/billing-readiness';
 import {
   billingPortal,
   upgrade,
   applyRetention,
   cancelPlan
 } from '$lib/server/settings-actions';
+
+const PURCHASES_NOT_READY = 'Purchases open soon.';
+
+const stripeApi = () => import('$lib/server/stripe');
 
 const CREDITS_PER_USD_AI_SPEND = 200;
 
@@ -29,22 +35,32 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
   const orgId = await ensureOrgForUser(supabase, user);
   if (!orgId) throw redirect(303, '/app');
 
-  const [{ data: orgData }, { data: membership }, { data: brandRows }, { data: atRiskRows }] = await Promise.all([
-    supabase.from('orgs').select('id, name, stripe_customer_id').eq('id', orgId).maybeSingle(),
-    supabase.from('orgs_members').select('role').eq('org_id', orgId).eq('user_id', user.id).maybeSingle(),
-    supabase.from('brands').select('id, name, slug').eq('org_id', orgId),
-    // org_credits_at_risk (20260922_org_billing.sql): FIFO su quel che scade — copre sia il
-    // benvenuto (14 giorni) sia un rinnovo abbonamento a fine periodo, stessa vista per entrambi.
-    supabase.from('org_credits_at_risk').select('expires_at, at_risk').eq('org_id', orgId).order('expires_at')
-  ]);
+  const [{ data: orgData }, { data: membership }, { data: brandRows }, { data: atRiskRows }, purchasesReady] =
+    await Promise.all([
+      supabase.from('orgs').select('id, name, stripe_customer_id').eq('id', orgId).maybeSingle(),
+      supabase.from('orgs_members').select('role').eq('org_id', orgId).eq('user_id', user.id).maybeSingle(),
+      supabase.from('brands').select('id, name, slug').eq('org_id', orgId),
+      // org_credits_at_risk: un rigo per org, non FIFO per scadenza — la vista LIVE (verificata via
+      // pg_get_viewdef, non solo il file) somma ogni grant con expires_at non nullo e prende la
+      // scadenza più vicina, senza sottrarre quanto già speso. `20260922_org_billing.sql` descrive
+      // una vista diversa (FIFO, netta della spesa, colonne `at_risk`/`expires_at`): quella
+      // migrazione e la vista davvero applicata sono divergenti — questa query segue la vista viva,
+      // non il file, e "a rischio" qui è un tetto per eccesso, non l'importo esatto ancora spendibile.
+      supabase
+        .from('org_credits_at_risk')
+        .select('expiring_credits, next_expiry')
+        .eq('org_id', orgId)
+        .order('next_expiry'),
+      billingGrantsReady(supabase)
+    ]);
   const org = orgData as OrgRow | null;
   if (!org) throw redirect(303, '/app');
 
   const brands = (brandRows ?? []) as BrandRow[];
   const billingBrand = brands[0] ?? null;
-  const atRisk = ((atRiskRows ?? []) as { expires_at: string; at_risk: number }[]).map((row) => ({
-    expiresAt: row.expires_at,
-    amount: row.at_risk
+  const atRisk = ((atRiskRows ?? []) as { next_expiry: string; expiring_credits: number }[]).map((row) => ({
+    expiresAt: row.next_expiry,
+    amount: row.expiring_credits
   }));
 
   const balance = await orgCreditBalance(supabase, orgId);
@@ -64,7 +80,8 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
     brands: spends,
     hasBilling: !!org.stripe_customer_id,
     billingBrandSlug: billingBrand?.slug ?? null,
-    isOwner: (membership as { role?: string } | null)?.role === 'owner'
+    isOwner: (membership as { role?: string } | null)?.role === 'owner',
+    purchasesReady
   };
 };
 
@@ -109,9 +126,65 @@ function onBillingBrand(fn: (event: RequestEvent) => unknown) {
   };
 }
 
+/**
+ * The only rung of CREDIT_LADDER that needs no brand at all: a one-time purchase is never a
+ * subscription, so there is nothing to route through a brand's settings the way `upgrade` does.
+ * It runs directly against the org the signed-in user belongs to.
+ */
+async function buyOneTime({ request, url, locals: { supabase } }: RequestEvent) {
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) throw redirect(303, '/login');
+
+  const orgId = await ensureOrgForUser(supabase, user);
+  if (!orgId) return fail(404, { billingError: 'No organization' });
+
+  if (!(await isOrgOwner(supabase, orgId, user.id))) {
+    return fail(403, { billingError: 'Owner only' });
+  }
+
+  if (!(await billingGrantsReady(supabase))) {
+    return fail(409, { billingError: PURCHASES_NOT_READY });
+  }
+
+  const data = await request.formData();
+  const usd = Number(data.get('usd') ?? '');
+  const rung = CREDIT_LADDER.find((r) => r.price === usd);
+  if (!rung) return fail(400, { billingError: 'Unknown one-time pack' });
+
+  const { data: orgRow } = await supabase
+    .from('orgs')
+    .select('id, name, stripe_customer_id')
+    .eq('id', orgId)
+    .maybeSingle();
+  const org = orgRow as { id: string; name: string; stripe_customer_id: string | null } | null;
+  if (!org) return fail(404, { billingError: 'Organization not found' });
+
+  const returnUrl = `${url.origin}/app/billing`;
+
+  let checkoutUrl: string;
+  try {
+    const { ensureOrgCustomer, createOneTimeCreditCheckout } = await stripeApi();
+    const customerId = await ensureOrgCustomer(org);
+    checkoutUrl = await createOneTimeCreditCheckout({
+      customerId,
+      orgId: org.id,
+      price: rung.price,
+      credits: rung.creditsOneTime,
+      successUrl: returnUrl,
+      cancelUrl: returnUrl
+    });
+  } catch (e) {
+    return fail(500, { billingError: e instanceof Error ? e.message : 'Could not start the purchase' });
+  }
+  throw redirect(303, checkoutUrl);
+}
+
 export const actions: Actions = {
   billingPortal: onBillingBrand(billingPortal as (e: RequestEvent) => unknown),
   upgrade: onBillingBrand(upgrade as (e: RequestEvent) => unknown),
   applyRetention: onBillingBrand(applyRetention as (e: RequestEvent) => unknown),
-  cancelPlan: onBillingBrand(cancelPlan as (e: RequestEvent) => unknown)
+  cancelPlan: onBillingBrand(cancelPlan as (e: RequestEvent) => unknown),
+  buyOneTime
 };
