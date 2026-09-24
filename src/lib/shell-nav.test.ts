@@ -55,3 +55,13 @@ describe('la barra mobile', () => {
     expect(MOBILE_MORE_ENTRIES.map((e) => e.id)).toEqual(['assets', 'brands', 'influencers', 'ads', 'settings']);
   });
 });
+
+describe('un foglio si riconosce anche con parametri nell\'indirizzo', () => {
+  it('/create-post?nodeIds=… apre il foglio di creazione post', () => {
+    expect(sheetEntryForPath('/create-post?nodeIds=a,b')?.id).toBe('create-post');
+  });
+
+  it('un frammento non cambia il foglio', () => {
+    expect(sheetEntryForPath('/calendar#oggi')?.id).toBe('calendar');
+  });
+});

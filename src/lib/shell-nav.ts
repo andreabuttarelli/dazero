@@ -44,7 +44,7 @@ function sheetRootOf(entry: NavEntry): string {
 }
 
 export function sheetEntryForPath(path: string): NavEntry | null {
-  const normalized = path.replace(/\/$/, '');
+  const normalized = path.split(/[?#]/)[0].replace(/\/$/, '');
   return (
     NAV_ENTRIES.find((entry) => {
       if (entry.family !== 'sheet') return false;
