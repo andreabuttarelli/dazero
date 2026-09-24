@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fakeDb, filtersOf } from '$lib/server/db/fake-db';
-import { claimRun, completeRun, createRun, failRun, listNodeRuns } from './node-runs';
+import { claimRun, completeRun, createRun, failRun, listNodeRuns, runningRuns } from './node-runs';
 
 const ORG = '11111111-1111-1111-1111-111111111111';
 const NODE = '22222222-2222-2222-2222-222222222222';
@@ -104,5 +104,18 @@ describe('la chiusura porta l asset e il costo', () => {
       status: 'failed',
       error: 'render_failed'
     });
+  });
+});
+
+describe('runningRuns — ogni run ancora in corsa, per un tick da drenare', () => {
+  it('legge status=running con un tetto, ordinata dalla più vecchia', async () => {
+    const { db, calls } = fakeDb({ node_runs: [row] });
+
+    await runningRuns(db, { limit: 10 });
+
+    const call = calls.find((c) => c.op === 'select')!;
+    expect(filtersOf(calls, 'select')).toEqual({ status: 'running' });
+    expect(call.limit).toBe(10);
+    expect(call.order?.[0]).toBe('started_at');
   });
 });

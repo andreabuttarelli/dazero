@@ -295,6 +295,27 @@ export async function listNodeRuns(
   return (data ?? []).map(toRun);
 }
 
+/**
+ * OGNI RUN ANCORA `running`, la più vecchia prima — quello che un tick da drenare legge PRIMA di
+ * filtrare per quello che gli interessa (`loop.ts` cerca `params.loop.phase === 'queued'` fra
+ * queste; `expireStuckRuns` guarda l'età). Nessun filtro jsonb qui: nessuna query in questo repo
+ * lo fa ancora, e la tela non ha migliaia di run — filtrare in JS dopo una `select` larga resta
+ * la stessa disciplina di `dueRuns`, che fa esattamente questo per l'età.
+ */
+export async function runningRuns(db: Db, input: { limit: number }): Promise<NodeRun[]> {
+  const { data, error } = await db
+    .from('node_runs')
+    .select(RUN_COLUMNS)
+    .eq('status', 'running')
+    .order('started_at', { ascending: true })
+    .limit(input.limit);
+
+  if (error) {
+    throw error;
+  }
+  return (data ?? []).map(toRun);
+}
+
 export async function dueRuns(db: Db, input: { before: string }): Promise<NodeRun[]> {
   const { data, error } = await db
     .from('node_runs')
