@@ -29,6 +29,7 @@
     oncancelloop,
     onshow,
     onunlock,
+    onmeasure,
     result
   }: {
     node: GenNode;
@@ -64,6 +65,9 @@
     onshow?: (runId: string) => void;
     /** Sblocca una corsa che non torna più. Senza, il bottone resta spento per sempre. */
     onunlock?: () => void;
+    /** Solo per `medium === 'text'`: l'altezza reale del contenuto (prompt + risultato), a ogni
+     *  cambio — mai scritta, chi la usa la clampa (`text-node-grow.ts`) e la mostra soltanto. */
+    onmeasure?: (contentHeight: number) => void;
     /** Come si disegna quel che è uscito. Il nodo non sa da dove venga l'URL firmato. */
     result?: import('svelte').Snippet<[{ refId: string; text: string | null }]>;
   } = $props();
@@ -104,9 +108,48 @@
     done: 'Fatto',
     failed: 'Non è riuscito'
   };
+
+  /**
+   * QUANTO È ALTO IL CONTENUTO VERO, per il nodo testo — `scrollHeight`, non i caratteri del
+   * prompt: conta a capo, la lunghezza reale della riga resa e il font dell'utente, che una
+   * stima a caratteri indovinerebbe male.
+   *
+   * `.gen-body` e `.gen-prompt` sono entrambi vincolati alla propria fascia (`overflow` interno):
+   * lo `scrollHeight` che conta è quello del PRIMO FIGLIO di `.gen-body` (il risultato vero, che
+   * chi usa il nodo disegna) e della `textarea`, sommati — non quello dei loro contenitori, che
+   * resterebbe fisso all'altezza assegnata. `ResizeObserver` su entrambi, non una lettura sola:
+   * il corpo cresce mentre si digita o mentre il risultato arriva a pezzi, non solo al montaggio.
+   */
+  function measureHeight(el: HTMLElement) {
+    if (node.medium !== 'text' || !onmeasure) return {};
+
+    let bodyHeight = 0;
+    let promptHeight = 0;
+    const report = () => onmeasure?.(bodyHeight + promptHeight);
+
+    const body = el.querySelector<HTMLElement>('.gen-body > *');
+    const prompt = el.querySelector<HTMLTextAreaElement>('.gen-prompt');
+
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = entry.target.scrollHeight;
+        if (entry.target === body) bodyHeight = height;
+        if (entry.target === prompt) promptHeight = height;
+      }
+      report();
+    });
+    if (body) ro.observe(body);
+    if (prompt) ro.observe(prompt);
+
+    bodyHeight = body?.scrollHeight ?? 0;
+    promptHeight = prompt?.scrollHeight ?? 0;
+    report();
+
+    return { destroy: () => ro.disconnect() };
+  }
 </script>
 
-<div class="gen" class:is-running={state === 'running'} class:is-chosen={selected}>
+<div class="gen" class:is-running={state === 'running'} class:is-chosen={selected} use:measureHeight>
   <!-- Il risultato, quando c'è. Il testo lo mostra qui perché è esso stesso il prodotto; immagine
        e video li disegna chi usa il nodo, che sa da dove viene l'URL firmato.
 

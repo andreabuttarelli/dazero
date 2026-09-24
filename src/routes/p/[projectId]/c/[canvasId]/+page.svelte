@@ -41,6 +41,7 @@
   import { type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
   import { shareUrlOf } from '$lib/canvas/doc-node';
   import { nodeSize } from '$lib/canvas/node-size';
+  import { grownTextNodeHeight } from '$lib/canvas/text-node-grow';
   import { producedRuns } from '$lib/canvas/gen-history';
   import { type Addable } from '$lib/canvas/addable';
   import type { FilledNodeDrag } from '$lib/canvas/drag-payload';
@@ -89,6 +90,10 @@
     y: number;
     w: number;
     h: number;
+    /** `node.size.height` così come sta in database, prima di ogni scelta di ripiego: `null`
+     *  vuol dire "l'utente non ha mai ridimensionato a mano", il segnale che il nodo testo può
+     *  crescere da solo (`grownTextNodeHeight`, `text-node-grow.ts`). */
+    userHeight: number | null;
   };
 
   function sizeOf(node: CanvasNodeRecord): { w: number; h: number } {
@@ -105,11 +110,20 @@
       version: node.version,
       x: node.position.x,
       y: node.position.y,
+      userHeight: node.size.height,
       ...sizeOf(node)
     };
   }
 
   let nodes = $state<Tile[]>((data.nodes as CanvasNodeRecord[]).map(toTile));
+
+  /**
+   * QUANTO IL CONTENUTO DI UN NODO TESTO CHIEDE, misurato dal DOM — mai scritto in database, mai
+   * la ragione per cui `write()` parte: solo lo schermo. `GenNode` lo riporta a ogni cambio
+   * (`onmeasure`), `tiles` lo applica clampato (`grownTextNodeHeight`) finché l'utente non ha
+   * ridimensionato a mano quel nodo — allora `Tile.userHeight` vince e questa mappa non conta più.
+   */
+  let grownHeights = $state<Record<string, number>>({});
 
   /**
    * IL VERSO DI UNA LINEA STA SU `source_handle`. `nodes_connections` non ha una colonna per il
@@ -281,13 +295,18 @@
    * senza, `verdictBetween` non sa che tipo sia una tile e — per la sua regola, che è giusta —
    * lascia passare tutto.
    */
+  function tileHeight(n: Tile): number {
+    if (n.type !== 'text' || !(n.id in grownHeights)) return n.h;
+    return grownTextNodeHeight(grownHeights[n.id], n.userHeight);
+  }
+
   const tiles = $derived(
     nodes.map((n) => ({
       id: n.id,
       x: n.x,
       y: n.y,
       w: n.w,
-      h: n.h,
+      h: tileHeight(n),
       connectable: true,
       connectors: connectorsOfNode(n),
       output: outputConnectorOfTile(n),
@@ -1272,6 +1291,7 @@
             oncancelloop={() => cancelLoopFor(id)}
             onunlock={() => unlock(id)}
             onshow={(runId) => restore(id, gen, runId)}
+            onmeasure={(contentHeight) => (grownHeights[id] = contentHeight)}
           >
             {#snippet result({ refId, text })}
               <!-- `/c/<tela>/assets/<id>` firma lo storage al volo: un URL firmato messo qui
@@ -1341,7 +1361,7 @@
     overflow: hidden;
   }
 
-  .gen-text { width: 100%; height: 100%; margin: 0; padding: 12px; overflow: auto; white-space: pre-wrap; font: inherit; }
+  .gen-text { width: 100%; min-height: 100%; margin: 0; padding: 12px; overflow: auto; white-space: pre-wrap; font: inherit; }
 
   .peers { position: absolute; z-index: 10; right: 16px; top: 16px; }
 

@@ -37,6 +37,19 @@ describe('tenere i nodi della tela allineati alle tile', () => {
     expect(out?.find((n) => n.id === 'a')?.position).toEqual({ x: 999, y: 999 });
   });
 
+  it('un nodo che resta prende comunque lo STILE nuovo della sua tile — un testo che cresce cambia altezza, non dati', () => {
+    const stale = { ...node('a'), style: 'width:360px;height:220px' };
+    const grownTile = { ...tile('a'), w: 360, h: 320 };
+    const toNodeWithStyle = (t: { id: string; w: number; h: number }) => ({
+      ...node(t.id),
+      style: `width:${t.w}px;height:${t.h}px`
+    });
+
+    const out = syncNodes([stale], [grownTile], toNodeWithStyle);
+
+    expect(out?.find((n) => n.id === 'a')?.style).toBe('width:360px;height:320px');
+  });
+
   it('un nodo che resta prende comunque i dati NUOVI della sua tile — il modello scelto cambia le porte', () => {
     const stale = { ...node('a'), data: { connectors: ['text'] } };
     const freshTile = { ...tile('a'), connectors: ['text', 'images'] };
