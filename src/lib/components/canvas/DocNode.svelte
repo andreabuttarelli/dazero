@@ -16,7 +16,6 @@
   import { ADDABLE_LABEL } from '$lib/canvas/addable';
   import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
   import type { DocNode, DocMode } from '$lib/canvas/doc-node';
-  import { renderDocHtml } from '$lib/canvas/doc-render';
   import '$lib/styles/doc-prose.css';
 
   const DocIcon = ADDABLE_ICON.doc;
@@ -36,7 +35,7 @@
   let shareUrl = $state<string | null>(null);
   let shareNote = $state<string | null>(null);
 
-  const html = $derived(renderDocHtml(node.content));
+  const renderer = import('$lib/canvas/doc-render');
 
   function commit(text: string) {
     if (text === node.content) {
@@ -142,7 +141,9 @@
       onblur={(e) => commit(e.currentTarget.value)}
     ></textarea>
   {:else if node.content.trim()}
-    <article class="doc-read doc-prose">{@html html}</article>
+    <article class="doc-read doc-prose">
+      {#await renderer then { renderDocHtml }}{@html renderDocHtml(node.content)}{/await}
+    </article>
   {:else}
     <p class="doc-empty">Documento vuoto. Passa a «Scrivi».</p>
   {/if}

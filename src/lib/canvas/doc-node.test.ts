@@ -144,3 +144,12 @@ describe('lo stile del markdown scritto', () => {
     expect(sheet).toMatch(/doc-prose/);
   });
 });
+
+describe('il renderer del markdown sulla tela', () => {
+  const doc = readFileSync(join(__dirname, '..', 'components', 'canvas', 'DocNode.svelte'), 'utf8');
+
+  it('arriva solo quando un documento si monta: la tela senza documenti non scarica marked', () => {
+    expect(doc).not.toMatch(/^\s*import\s[^;]*['"]\$lib\/canvas\/doc-render['"]/m);
+    expect(doc).toMatch(/import\(['"]\$lib\/canvas\/doc-render['"]\)/);
+  });
+});
