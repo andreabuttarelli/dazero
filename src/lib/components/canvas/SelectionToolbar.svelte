@@ -22,7 +22,7 @@
    * LE AZIONI SONO UNA TABELLA (`selection-actions.ts`), non un bottone scritto per ognuna: un
    * bottone nuovo — "Crea post dalla selezione" — è una riga lì, non un `{#if}` qui.
    */
-  import { SELECTION_ACTIONS, type SelectionActionId } from '$lib/canvas/selection-actions';
+  import { SELECTION_ACTIONS, enabledFor, type SelectionActionId } from '$lib/canvas/selection-actions';
   import { SELECTION_ACTION_ICON } from '$lib/canvas/selection-action-icons';
   import { commonPropertiesOf, type CommonValue } from '$lib/canvas/common-properties';
   import { effectiveModel } from '$lib/canvas/default-models';
@@ -206,15 +206,16 @@
     <Tooltip.Provider delayDuration={200}>
     {#each SELECTION_ACTIONS as action (action.id)}
       {@const Icon = SELECTION_ACTION_ICON[action.id]}
+      {@const gate = enabledFor(action.id, nodeSummaries)}
       <Tooltip.Root>
         <Tooltip.Trigger>
           {#snippet child({ props })}
-            <button {...props} type="button" aria-label={action.label} onclick={() => onaction?.(action.id)}>
+            <button {...props} type="button" aria-label={action.label} disabled={!gate.enabled} onclick={() => onaction?.(action.id)}>
               <Icon size={15} strokeWidth={1.7} />
             </button>
           {/snippet}
         </Tooltip.Trigger>
-        <Tooltip.Content side="top">{action.label}</Tooltip.Content>
+        <Tooltip.Content side="top">{gate.reason ?? action.label}</Tooltip.Content>
       </Tooltip.Root>
     {/each}
     </Tooltip.Provider>

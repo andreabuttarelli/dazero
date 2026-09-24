@@ -14,7 +14,9 @@
  * (se ne ha una — non tutte, "Connetti a…" resta senza perché ha bisogno di un secondo clic).
  */
 
-export type SelectionActionId = 'duplicate' | 'connect-new' | 'connect-existing' | 'copy-id' | 'delete';
+import { postCompositionFor, type PostCompositionNode } from './post-composition';
+
+export type SelectionActionId = 'duplicate' | 'connect-new' | 'connect-existing' | 'create-post' | 'copy-id' | 'delete';
 
 export type SelectionAction = {
   id: SelectionActionId;
@@ -27,6 +29,22 @@ export const SELECTION_ACTIONS: readonly SelectionAction[] = [
   { id: 'duplicate', label: 'Duplica', keys: ['mod', 'D'] },
   { id: 'connect-new', label: 'Collega a nuovo…' },
   { id: 'connect-existing', label: 'Collega a…' },
+  { id: 'create-post', label: 'Crea post' },
   { id: 'copy-id', label: 'Copia id' },
   { id: 'delete', label: 'Elimina', keys: ['⌫'] }
 ];
+
+export function enabledFor(
+  id: SelectionActionId,
+  nodeSummaries: PostCompositionNode[]
+): { enabled: boolean; reason?: string } {
+  if (id === 'create-post') {
+    const composition = postCompositionFor(nodeSummaries);
+    return {
+      enabled: composition.enabled,
+      reason: composition.enabled ? undefined : 'Serve almeno un\'immagine o un video nella selezione'
+    };
+  }
+
+  return { enabled: true };
+}
