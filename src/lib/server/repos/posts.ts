@@ -174,6 +174,33 @@ export async function listSources(db: Db, postId: string): Promise<PostSource[]>
   }));
 }
 
+/**
+ * QUALI DI QUESTI NODI SONO GIÀ IN UN POST — il verso opposto di `listSources` (da un nodo ai post
+ * che lo usano, non da un post ai suoi nodi). `post_sources` non porta `org_id` (CLAUDE.md: il
+ * tenant lo porta il padre), quindi il confine è `node_id in (...)`: chi chiama passa solo i
+ * `nodeIds` della propria tela, già scoperti dalla stessa org.
+ */
+export async function listSourcesForNodes(db: Db, nodeIds: string[]): Promise<PostSource[]> {
+  if (!nodeIds.length) {
+    return [];
+  }
+
+  const { data, error } = await db
+    .from('post_sources')
+    .select('post_id, node_id, role')
+    .in('node_id', nodeIds);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => ({
+    postId: row.post_id,
+    nodeId: row.node_id,
+    role: row.role
+  }));
+}
+
 export async function setPostStatus(
   db: Db,
   input: { orgId: string; postId: string; status: PostStatus }
