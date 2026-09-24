@@ -15,6 +15,7 @@ const SETTINGS_PAGE_MODULES = import.meta.glob<PageModule>(
 export const SHEET_PAGE_LOADERS = {
   calendar: () => import('../../routes/p/[projectId]/calendar/+page.svelte') as Promise<PageModule>,
   ads: () => import('../../routes/p/[projectId]/ads/social/+page.svelte') as Promise<PageModule>,
+  createPost: () => import('../../routes/p/[projectId]/create-post/+page.svelte') as Promise<PageModule>,
   settingsLayout: () => import('../../routes/p/[projectId]/settings/+layout.svelte') as Promise<PageModule>
 };
 

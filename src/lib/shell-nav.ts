@@ -6,7 +6,7 @@ export type NavEntry = {
   icon: 'images' | 'building' | 'user-round' | 'calendar-days' | 'megaphone' | 'settings';
   family: NavFamily;
   path: string;
-  group: 'panel' | 'workbench';
+  group: 'panel' | 'workbench' | 'hidden';
 };
 
 /**
@@ -21,7 +21,8 @@ export const NAV_ENTRIES: NavEntry[] = [
   { id: 'influencers', labelKey: 'app.nav2.influencers', icon: 'user-round', family: 'panel', path: '/influencers', group: 'panel' },
   { id: 'calendar', labelKey: 'app.hub.publish.calendar', icon: 'calendar-days', family: 'sheet', path: '/calendar', group: 'workbench' },
   { id: 'ads', labelKey: 'app.hub.ads.social', icon: 'megaphone', family: 'sheet', path: '/ads/social', group: 'workbench' },
-  { id: 'settings', labelKey: 'app.nav.settings', icon: 'settings', family: 'sheet', path: '/settings/connected-accounts', group: 'workbench' }
+  { id: 'settings', labelKey: 'app.nav.settings', icon: 'settings', family: 'sheet', path: '/settings/connected-accounts', group: 'workbench' },
+  { id: 'create-post', labelKey: 'app.hub.publish.createPost', icon: 'megaphone', family: 'sheet', path: '/create-post', group: 'hidden' }
 ];
 
 export function navEntriesByGroup(group: NavEntry['group']): NavEntry[] {
@@ -67,4 +68,6 @@ export const MOBILE_TABS: MobileTab[] = [
   { id: 'more', labelKey: 'app.shell.mobile.more', icon: 'more-horizontal', path: null }
 ];
 
-export const MOBILE_MORE_ENTRIES: NavEntry[] = NAV_ENTRIES.filter((entry) => entry.id !== 'calendar');
+export const MOBILE_MORE_ENTRIES: NavEntry[] = NAV_ENTRIES.filter(
+  (entry) => entry.group !== 'hidden' && entry.id !== 'calendar'
+);
