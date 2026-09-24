@@ -222,7 +222,7 @@
   let nodes = $state.raw<Node[]>(tiles.map(toNode));
   // svelte-ignore state_referenced_locally -- stessa cattura iniziale dei nodi, e stesso motivo:
   // da qui in poi gli archi sono di SvelteFlow, e l'effetto sotto ci porta dentro solo i NUOVI.
-  let edges = $state.raw<FlowEdge[]>([...incomingEdges]);
+  let edges = $state.raw<FlowEdge[]>($state.snapshot(incomingEdges) as FlowEdge[]);
 
   // Le tile che arrivano dal server entrano, quelle sparite escono, e quelle che l'utente sta
   // muovendo restano dove le ha lasciate — la riconciliazione sta in `syncNodes`, col suo test.
@@ -236,7 +236,7 @@
 
   // Gli archi seguono la stessa riconciliazione dei nodi: entrano i nuovi, escono quelli tolti.
   $effect(() => {
-    const next = syncNodes(untrack(() => edges), incomingEdges, (e) => e);
+    const next = syncNodes(untrack(() => edges), $state.snapshot(incomingEdges) as FlowEdge[], (e) => e);
     if (next) edges = next;
   });
 

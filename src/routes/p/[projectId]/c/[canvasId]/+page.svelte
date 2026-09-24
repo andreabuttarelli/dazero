@@ -141,7 +141,7 @@
   const clientStorage = typeof localStorage === 'undefined' ? undefined : localStorage;
 
   function textViewModeOf(nodeId: string): TextViewMode {
-    return textViewModes[nodeId] ?? (textViewModes[nodeId] = loadTextViewMode(clientStorage, nodeId));
+    return textViewModes[nodeId] ?? loadTextViewMode(clientStorage, nodeId);
   }
 
   function setTextViewMode(nodeId: string, mode: TextViewMode) {

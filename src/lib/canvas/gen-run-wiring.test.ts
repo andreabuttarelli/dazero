@@ -48,7 +48,7 @@ describe('un giro non si paga due volte', () => {
     // Dopo la chiamata resterebbe aperta proprio la finestra in cui si clicca due volte, e due
     // render sono due addebiti veri di cui uno viene sovrascritto dall altro atterrando.
     const body = page.slice(page.indexOf('async function run('));
-    const raised = body.indexOf('running: true');
+    const raised = body.indexOf('startRun(');
     const called = body.indexOf("post('run'");
 
     expect(raised).toBeGreaterThan(-1);
