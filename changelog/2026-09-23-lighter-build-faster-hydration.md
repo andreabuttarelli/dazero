@@ -19,5 +19,12 @@ Prima del primo deploy di produzione. Misure su `vite preview`, tela con 12 nodi
 - **Controlli inerti fino all'idratazione**: `data-hydrating` su `<html>` da `app.html`, tolto
   dall'`onMount` del layout radice. Prima i click sulla rail finivano nel vuoto.
 
-Scartato: rendere pigri i nodi della tela (servono al primo disegno) e togliere `zod` dal client
-(`node-data.ts` lo usa per validare, serve riscriverlo).
+- **Secondo giro**: chat e pannello a sinistra da `CHROME_LOADERS` (prefetch al passaggio sulla
+  rail, `ENTRY_PREFETCH`), `marked` solo quando un documento si monta (`doc-render.ts`),
+  `SOCIAL_PLATFORMS` in un modulo senza import così `zod` resta sul server. JS della tela
+  335 → 296 KB gzip; idratazione a 4x CPU + Fast 4G 3521 → 3302 ms.
+- **Web Analytics solo sui build Vercel**: `/_vercel/insights/script.js` esiste solo lì; in preview
+  e nel build node era un 404 in console a ogni pagina.
+
+Scartato: rendere pigri i nodi della tela (servono al primo disegno). Quel che resta sul percorso
+critico è `@xyflow` (75 KB gzip) e il client Supabase (58 KB), entrambi necessari al primo disegno.
