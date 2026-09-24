@@ -33,7 +33,7 @@ begin
     join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'stripe'
       and c.relname = 'checkout_sessions'
-      and not t.tgisinternal
+      and t.tgname = 'trg_grant_from_checkout'
   ) into _grant_trigger_exists;
 
   return _grant_trigger_exists;
