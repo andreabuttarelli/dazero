@@ -8,7 +8,7 @@ const gestureFor = (nodeId: string): Gesture => ({
 
 describe('createUndoStack: uno stack per scheda, undo e redo', () => {
   it('non ha niente da annullare o rifare appena creato', () => {
-    const stack = createUndoStack();
+    const stack = createUndoStack<Gesture>();
     expect(stack.canUndo()).toBe(false);
     expect(stack.canRedo()).toBe(false);
     expect(stack.popUndo()).toBeNull();
@@ -16,7 +16,7 @@ describe('createUndoStack: uno stack per scheda, undo e redo', () => {
   });
 
   it('un push rende il gesto disponibile a popUndo, in ordine LIFO', () => {
-    const stack = createUndoStack();
+    const stack = createUndoStack<Gesture>();
     stack.push(gestureFor('a'));
     stack.push(gestureFor('b'));
 
@@ -26,7 +26,7 @@ describe('createUndoStack: uno stack per scheda, undo e redo', () => {
   });
 
   it('popUndo NON sposta da solo nel redo: tocca a chi chiama, dopo la conferma del server', () => {
-    const stack = createUndoStack();
+    const stack = createUndoStack<Gesture>();
     stack.push(gestureFor('a'));
 
     stack.popUndo();
@@ -34,7 +34,7 @@ describe('createUndoStack: uno stack per scheda, undo e redo', () => {
   });
 
   it('pushRedo mette a disposizione di ⇧⌘Z il gesto che il SERVER ha restituito, non quello tolto', () => {
-    const stack = createUndoStack();
+    const stack = createUndoStack<Gesture>();
     stack.push(gestureFor('a'));
 
     const popped = stack.popUndo()!;
@@ -46,7 +46,7 @@ describe('createUndoStack: uno stack per scheda, undo e redo', () => {
   });
 
   it('pushUndo, il simmetrico dopo un redo riuscito', () => {
-    const stack = createUndoStack();
+    const stack = createUndoStack<Gesture>();
     stack.push(gestureFor('a'));
     stack.popUndo();
     stack.pushRedo(gestureFor('a'));
@@ -59,7 +59,7 @@ describe('createUndoStack: uno stack per scheda, undo e redo', () => {
   });
 
   it('un gesto nuovo svuota il redo: quel che era stato annullato non torna più con ⇧⌘Z', () => {
-    const stack = createUndoStack();
+    const stack = createUndoStack<Gesture>();
     stack.push(gestureFor('a'));
     stack.popUndo();
     stack.pushRedo(gestureFor('a'));
