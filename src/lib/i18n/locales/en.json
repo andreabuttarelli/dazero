@@ -273,6 +273,9 @@
       "collapseChat": "Collapse chat",
       "expandChat": "Show chat",
       "credits": "{count} credits",
+      "chatTab": "Chat",
+      "guideTab": "Guide",
+      "guideBack": "Back to guides",
       "mobile": {
         "canvas": "Canvas",
         "chat": "Chat",

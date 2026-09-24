@@ -5,8 +5,12 @@ export const SHELL_PREF_KEYS = {
   sidebarPanePx: 'dazero.sidebarPanePx',
   sidebarPane: 'dazero.sidebarPane',
   chatPanelPx: 'dazero.chatPanelPx',
-  chatOpen: 'dazero.chatOpen'
+  chatOpen: 'dazero.chatOpen',
+  chatTab: 'dazero.chatTab'
 } as const;
+
+export const CHAT_TABS = ['chat', 'guide'] as const;
+export type ChatTab = (typeof CHAT_TABS)[number];
 
 export const SIDEBAR_PANES = ['chat', 'pages', 'assets'] as const;
 export type SidebarPane = (typeof SIDEBAR_PANES)[number];
@@ -130,4 +134,13 @@ export function readChatOpen(fallback = true): boolean {
 
 export function writeChatOpen(open: boolean) {
   writeRaw(SHELL_PREF_KEYS.chatOpen, open ? 'true' : 'false');
+}
+
+export function readChatTab(): ChatTab {
+  const raw = readRaw(SHELL_PREF_KEYS.chatTab);
+  return (CHAT_TABS as readonly string[]).includes(raw ?? '') ? (raw as ChatTab) : 'chat';
+}
+
+export function writeChatTab(tab: ChatTab) {
+  writeRaw(SHELL_PREF_KEYS.chatTab, tab);
 }
