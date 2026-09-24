@@ -36,13 +36,24 @@ function fakeSupabase(
 	org: OrgRow | null,
 	membership: Membership | null,
 	brands: BrandRow[],
-	costUsdByBrand: Record<string, number> = {}
+	costUsdByBrand: Record<string, number> = {},
+	atRisk: { expires_at: string; at_risk: number }[] = []
 ) {
 	return {
 		auth: { getUser: async () => ({ data: { user: { id: 'u1', email: 'ana@example.com' } } }) },
 		from: (table: string) => {
 			if (table === 'orgs') {
 				return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: org, error: null }) }) }) };
+			}
+			if (table === 'org_credits_at_risk') {
+				const q: Record<string, unknown> = {};
+				Object.assign(q, {
+					select: () => q,
+					eq: () => q,
+					order: () => q,
+					then: (resolve: (v: { data: unknown; error: null }) => void) => resolve({ data: atRisk, error: null })
+				});
+				return q;
 			}
 			if (table === 'orgs_members') {
 				return {
@@ -176,5 +187,19 @@ describe('/app/billing', () => {
 		);
 
 		expect(data.isOwner).toBe(false);
+	});
+
+	it('shows credits about to expire, from org_credits_at_risk', async () => {
+		const data = await run(
+			fakeSupabase(
+				{ id: 'org-1', name: 'Ana', stripe_customer_id: 'cus_1' },
+				{ role: 'owner' },
+				[{ id: 'b1', name: 'One', slug: 'one' }],
+				{},
+				[{ expires_at: '2026-10-07T00:00:00Z', at_risk: 100 }]
+			)
+		);
+
+		expect(data.credits.atRisk).toEqual([{ expiresAt: '2026-10-07T00:00:00Z', amount: 100 }]);
 	});
 });

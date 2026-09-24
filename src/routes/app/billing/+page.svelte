@@ -32,6 +32,13 @@
       <div class="ftxt">
         <div class="fh">{$_('app.settings.usage.creditsUsed')}</div>
         <div class="fs">{data.credits.balance}</div>
+        {#if data.credits.atRisk.length}
+          <div class="fs">
+            {#each data.credits.atRisk as risk (risk.expiresAt)}
+              {risk.amount} credits expire {new Date(risk.expiresAt).toLocaleDateString()}
+            {/each}
+          </div>
+        {/if}
       </div>
     </div>
 

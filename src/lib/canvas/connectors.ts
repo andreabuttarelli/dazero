@@ -144,3 +144,39 @@ export function connectorsForNode(
   }
   return connectorsFor(kind, { input: choice?.inputModalities ?? [] });
 }
+
+const PORTS_ACCEPTING: Record<ConnectorType, readonly ConnectorType[]> = {
+  text: ['text'],
+  images: ['images', 'first_frame', 'last_frame'],
+  videos: ['videos'],
+  audios: ['audios'],
+  first_frame: [],
+  last_frame: []
+};
+
+export function portAccepts(port: ConnectorType, output: ConnectorType): boolean {
+  return PORTS_ACCEPTING[output].includes(port);
+}
+
+export type PortSide = 'source' | 'target';
+
+export type PortAt = { nodeId: string; handleId: string | null };
+
+export type DragOrigin = ({ side: PortSide; type: ConnectorType | null } & Partial<PortAt>) | null;
+
+function isOriginPort(origin: NonNullable<DragOrigin>, side: PortSide, at: PortAt | undefined): boolean {
+  return !!at && origin.side === side && origin.nodeId === at.nodeId && (origin.handleId ?? null) === at.handleId;
+}
+
+export function portActive(origin: DragOrigin, side: PortSide, type: ConnectorType, at?: PortAt): boolean {
+  if (!origin || !origin.type) {
+    return true;
+  }
+  if (isOriginPort(origin, side, at)) {
+    return true;
+  }
+  if (origin.side === side) {
+    return false;
+  }
+  return side === 'target' ? portAccepts(type, origin.type) : portAccepts(origin.type, type);
+}

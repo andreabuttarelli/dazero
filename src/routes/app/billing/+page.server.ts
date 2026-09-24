@@ -29,16 +29,23 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
   const orgId = await ensureOrgForUser(supabase, user);
   if (!orgId) throw redirect(303, '/app');
 
-  const [{ data: orgData }, { data: membership }, { data: brandRows }] = await Promise.all([
+  const [{ data: orgData }, { data: membership }, { data: brandRows }, { data: atRiskRows }] = await Promise.all([
     supabase.from('orgs').select('id, name, stripe_customer_id').eq('id', orgId).maybeSingle(),
     supabase.from('orgs_members').select('role').eq('org_id', orgId).eq('user_id', user.id).maybeSingle(),
-    supabase.from('brands').select('id, name, slug').eq('org_id', orgId)
+    supabase.from('brands').select('id, name, slug').eq('org_id', orgId),
+    // org_credits_at_risk (20260922_org_billing.sql): FIFO su quel che scade — copre sia il
+    // benvenuto (14 giorni) sia un rinnovo abbonamento a fine periodo, stessa vista per entrambi.
+    supabase.from('org_credits_at_risk').select('expires_at, at_risk').eq('org_id', orgId).order('expires_at')
   ]);
   const org = orgData as OrgRow | null;
   if (!org) throw redirect(303, '/app');
 
   const brands = (brandRows ?? []) as BrandRow[];
   const billingBrand = brands[0] ?? null;
+  const atRisk = ((atRiskRows ?? []) as { expires_at: string; at_risk: number }[]).map((row) => ({
+    expiresAt: row.expires_at,
+    amount: row.at_risk
+  }));
 
   const balance = await orgCreditBalance(supabase, orgId);
 
@@ -53,7 +60,7 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
 
   return {
     org: { id: org.id, name: org.name },
-    credits: { balance, ladder: CREDIT_LADDER },
+    credits: { balance, ladder: CREDIT_LADDER, atRisk },
     brands: spends,
     hasBilling: !!org.stripe_customer_id,
     billingBrandSlug: billingBrand?.slug ?? null,

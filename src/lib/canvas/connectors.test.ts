@@ -5,6 +5,8 @@ import {
   CONNECTOR_TYPES,
   CONNECTOR_STYLE,
   connectorsForNode,
+  portAccepts,
+  portActive,
   outputConnectorOf,
   type Modalities,
   type WiredConnector
@@ -142,5 +144,59 @@ describe('connectorsForNode: le porte seguono il modello che il nodo MOSTRA', ()
 
   it('un nodo testo ha sempre il suo connettore testo', () => {
     expect(connectorsForNode('text', null, [])).toEqual(['text']);
+  });
+});
+
+describe('mentre tiri un filo, restano accese solo le porte dove può entrare', () => {
+  it("un'immagine entra in Images e nei due fotogrammi, non in Text", () => {
+    expect(portAccepts('images', 'images')).toBe(true);
+    expect(portAccepts('first_frame', 'images')).toBe(true);
+    expect(portAccepts('last_frame', 'images')).toBe(true);
+    expect(portAccepts('text', 'images')).toBe(false);
+  });
+
+  it('il testo entra solo in Text, il video solo in Video', () => {
+    expect(portAccepts('text', 'text')).toBe(true);
+    expect(portAccepts('images', 'text')).toBe(false);
+    expect(portAccepts('videos', 'videos')).toBe(true);
+    expect(portAccepts('first_frame', 'videos')).toBe(false);
+  });
+
+  it('senza un filo in corso è tutto acceso', () => {
+    expect(portActive(null, 'target', 'text')).toBe(true);
+    expect(portActive(null, 'source', 'images')).toBe(true);
+  });
+
+  it("tirando da un'uscita testo: accese le entrate Text, spente le altre entrate e le altre uscite", () => {
+    const origin = { side: 'source', type: 'text' } as const;
+    expect(portActive(origin, 'target', 'text')).toBe(true);
+    expect(portActive(origin, 'target', 'images')).toBe(false);
+    expect(portActive(origin, 'source', 'text')).toBe(false);
+  });
+
+  it("tirando all'indietro da un'entrata First frame: accese solo le uscite immagine", () => {
+    const origin = { side: 'target', type: 'first_frame' } as const;
+    expect(portActive(origin, 'source', 'images')).toBe(true);
+    expect(portActive(origin, 'source', 'text')).toBe(false);
+    expect(portActive(origin, 'target', 'first_frame')).toBe(false);
+  });
+
+  it('un filo da una porta senza tipo non spegne niente', () => {
+    const origin = { side: 'source', type: null } as const;
+    expect(portActive(origin, 'target', 'videos')).toBe(true);
+  });
+});
+
+describe('la porta da cui tiri resta accesa', () => {
+  it("l'uscita di origine non si spegne, le altre uscite sì", () => {
+    const origin = { side: 'source', type: 'text', nodeId: 'a', handleId: null } as const;
+    expect(portActive(origin, 'source', 'text', { nodeId: 'a', handleId: null })).toBe(true);
+    expect(portActive(origin, 'source', 'text', { nodeId: 'b', handleId: null })).toBe(false);
+  });
+
+  it("l'entrata di origine non si spegne, le altre entrate dello stesso nodo sì", () => {
+    const origin = { side: 'target', type: 'first_frame', nodeId: 'v', handleId: 'first_frame' } as const;
+    expect(portActive(origin, 'target', 'first_frame', { nodeId: 'v', handleId: 'first_frame' })).toBe(true);
+    expect(portActive(origin, 'target', 'last_frame', { nodeId: 'v', handleId: 'last_frame' })).toBe(false);
   });
 });

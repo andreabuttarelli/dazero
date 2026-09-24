@@ -4,6 +4,7 @@ import { createServiceRoleDb } from '$lib/server/db/client';
 import { SERVICE_ROLE_USES } from '$lib/server/db/service-role-uses';
 import { hashInviteToken, inviteStatus } from '$lib/server/repos/invites';
 import type { OrgRole } from '$lib/server/repos/orgs';
+import { assertFreeOrgLimit, grantWelcomeCredits } from '$lib/server/tenancy/free-org-limit';
 
 /**
  * I DUE MOMENTI IN CUI L'APPARTENENZA STA NASCENDO.
@@ -69,6 +70,16 @@ export async function createFirstOrgWith(db: Db, input: { userId: string; name: 
     throw orgError;
   }
 
+  // Una org appena creata non ha mai incassato niente: è per costruzione dentro il limite
+  // gratuito — il controllo qui esiste per la stessa regola, chiamata dallo stesso posto
+  // dell'accettazione di un invito, non per rifiutare la primissima org di un utente.
+  try {
+    await assertFreeOrgLimit(db, { userId: input.userId, joiningOrgId: org.id });
+  } catch (limitError) {
+    await db.from('orgs').delete().eq('id', org.id);
+    throw limitError;
+  }
+
   const { error: memberError } = await db
     .from('orgs_members')
     .insert({ org_id: org.id, user_id: input.userId, role: 'owner' })
@@ -79,6 +90,8 @@ export async function createFirstOrgWith(db: Db, input: { userId: string; name: 
     await db.from('orgs').delete().eq('id', org.id);
     throw memberError;
   }
+
+  await grantWelcomeCredits(db, org.id);
 
   return { orgId: org.id, slug: org.slug, role: 'owner' };
 }
@@ -141,6 +154,11 @@ export async function acceptInviteWith(
   if (status === 'accepted') {
     return { outcome: 'invalid' };
   }
+
+  // Stessa regola di createFirstOrgWith, stessa funzione: un'org gratuita in più oltre il limite
+  // si rifiuta anche entrando da un invito, non solo creandone una. Un'org che ha già pagato non
+  // è mai bloccata da questo controllo (assertFreeOrgLimit lo verifica per prima cosa).
+  await assertFreeOrgLimit(db, { userId: input.userId, joiningOrgId: invite.org_id });
 
   const { error: insertError } = await db
     .from('orgs_members')

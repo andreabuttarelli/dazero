@@ -3,6 +3,8 @@ import { acceptInviteWith, createFirstOrgWith, orgSlugFrom } from '$lib/server/t
 import { hashInviteToken } from '$lib/server/repos/invites';
 import { fakeDb, filtersOf, type Call } from '$lib/server/db/fake-db';
 import { SERVICE_ROLE_USES } from '$lib/server/db/service-role-uses';
+import { FreeOrgLimitReachedError } from '$lib/server/tenancy/free-org-limit';
+import { WELCOME_CREDITS } from '$lib/server/credit-ladder';
 
 const ORG = '11111111-1111-1111-1111-111111111111';
 const USER = '22222222-2222-2222-2222-222222222222';
@@ -47,12 +49,47 @@ describe('la prima org di un utente nuovo', () => {
     expect(opsOn(calls, 'orgs_members')).toContain('insert');
   });
 
+  it("riceve i crediti di benvenuto, una riga credit_ledger source 'promo'", async () => {
+    const { db, calls } = fakeDb({ orgs: [orgRow], orgs_members: [], credit_ledger: [] });
+
+    await createFirstOrgWith(db, { userId: USER, name: 'Acme' });
+
+    const grant = calls.find((c) => c.table === 'credit_ledger' && c.op === 'insert')!
+      .payload as Record<string, unknown>;
+    expect(grant).toMatchObject({ org_id: ORG, kind: 'grant', source: 'promo', amount: WELCOME_CREDITS });
+    expect(grant.stripe_event_id).toBe(`welcome:${ORG}`);
+    expect(grant.expires_at).toBeTruthy();
+  });
+
+  it("rifiuta e non crea niente quando l'utente ha già 2 org gratuite", async () => {
+    const { db, calls } = fakeDb({
+      orgs: [orgRow],
+      orgs_members: [
+        { org_id: 'free-1', user_id: USER, role: 'owner' },
+        { org_id: 'free-2', user_id: USER, role: 'member' }
+      ],
+      credit_ledger: []
+    });
+
+    await expect(createFirstOrgWith(db, { userId: USER, name: 'Acme' })).rejects.toBeInstanceOf(
+      FreeOrgLimitReachedError
+    );
+
+    // La org è nata (serve l'id per il controllo) ed è stata disfatta: nessuna riga resta.
+    expect(opsOn(calls, 'orgs')).toEqual(['insert', 'delete']);
+    expect(opsOn(calls, 'orgs_members')).not.toContain('insert');
+    expect(opsOn(calls, 'credit_ledger')).not.toContain('insert');
+  });
+
   it('il primo membro è owner: senza, nessuno può invitare', async () => {
     const { db, calls } = fakeDb({ orgs: [orgRow], orgs_members: [memberRow] });
 
     await createFirstOrgWith(db, { userId: USER, name: 'Acme' });
 
-    const member = calls.find((c) => c.table === 'orgs_members')!.payload as Record<string, string>;
+    const member = calls.find((c) => c.table === 'orgs_members' && c.op === 'insert')!.payload as Record<
+      string,
+      string
+    >;
     expect(member).toMatchObject({ org_id: ORG, user_id: USER, role: 'owner' });
   });
 
@@ -115,6 +152,79 @@ describe('accettare un invito è idempotente', () => {
     await acceptInviteWith(db, { token: 'segreto', userId: USER, now: NOW });
 
     expect(filtersOf(calls, 'select')).toMatchObject({ token: hashInviteToken('segreto') });
+  });
+
+  /**
+   * `fakeDb` non filtra per colonna (documentato in fake-db.ts): una `orgs_members` che porti sia
+   * "le altre org gratuite dell'utente" sia "è già membro di QUESTA org" collide sulla stessa
+   * tabella. Qui un fake minimo, filtrato per davvero, come org-billing.test.ts.
+   */
+  function inviteDb(opts: { existingFreeOrgIds: string[]; joiningOrgIsPaid: boolean }) {
+    const inserted: Record<string, unknown>[] = [];
+    return {
+      from: (table: string) => {
+        if (table === 'orgs_invites') {
+          return {
+            select: () => ({
+              eq: () => ({ maybeSingle: async () => ({ data: inviteRow, error: null }) })
+            }),
+            update: () => ({ eq: () => ({ eq: async () => ({ error: null }) }) })
+          };
+        }
+        if (table === 'orgs_members') {
+          return {
+            select: () => ({
+              eq: (col: string, val: string) => ({
+                eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+                then: (resolve: (v: { data: unknown; error: null }) => void) =>
+                  resolve({
+                    data:
+                      col === 'user_id'
+                        ? opts.existingFreeOrgIds.map((id) => ({ org_id: id }))
+                        : [],
+                    error: null
+                  })
+              })
+            }),
+            insert: (payload: Record<string, unknown>) => {
+              inserted.push(payload);
+              return { select: () => ({ single: async () => ({ data: { id: 'm-new' }, error: null }) }) };
+            }
+          };
+        }
+        if (table === 'credit_ledger') {
+          const rows = opts.joiningOrgIsPaid ? [{ org_id: ORG, source: 'one_time_purchase' }] : [];
+          const resolved = { data: rows, error: null };
+          return {
+            select: () => ({
+              eq: () => ({ then: (resolve: (v: typeof resolved) => void) => resolve(resolved) }),
+              in: () => ({ then: (resolve: (v: typeof resolved) => void) => resolve(resolved) })
+            })
+          };
+        }
+        throw new Error(`unexpected table ${table}`);
+      },
+      inserted
+    };
+  }
+
+  it("rifiuta un invito verso un'org gratuita quando l'utente ne ha già 2", async () => {
+    const db = inviteDb({ existingFreeOrgIds: ['free-1', 'free-2'], joiningOrgIsPaid: false });
+
+    await expect(
+      acceptInviteWith(db as never, { token: 'segreto', userId: USER, now: NOW })
+    ).rejects.toBeInstanceOf(FreeOrgLimitReachedError);
+
+    expect(db.inserted).toEqual([]);
+  });
+
+  it("un invito verso un'org che ha già pagato non è mai bloccato dal limite", async () => {
+    const db = inviteDb({ existingFreeOrgIds: ['free-1', 'free-2'], joiningOrgIsPaid: true });
+
+    const result = await acceptInviteWith(db as never, { token: 'segreto', userId: USER, now: NOW });
+
+    expect(result).toEqual({ outcome: 'accepted', orgId: ORG, role: 'member' });
+    expect(db.inserted).toHaveLength(1);
   });
 
   it('il secondo giro non crea un secondo membro', async () => {

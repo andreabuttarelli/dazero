@@ -40,13 +40,13 @@ export const SERVICE_ROLE_USES: readonly ServiceRoleUse[] = [
   },
   {
     path: 'src/lib/server/tenancy/bootstrap.ts — createFirstOrg',
-    why: "Alla creazione non esiste ancora una riga in orgs_members, quindi auth_org_ids() è vuoto e la policy rifiuterebbe l'insert della org e del suo primo membro. È l'unico punto in cui la RLS non può funzionare per costruzione: l'appartenenza sta nascendo. Non accetta un org_id da chi chiama — lo crea, e il membro è sempre l'utente della sessione.",
-    tables: ['orgs', 'orgs_members']
+    why: "Alla creazione non esiste ancora una riga in orgs_members, quindi auth_org_ids() è vuoto e la policy rifiuterebbe l'insert della org e del suo primo membro. È l'unico punto in cui la RLS non può funzionare per costruzione: l'appartenenza sta nascendo. Non accetta un org_id da chi chiama — lo crea, e il membro è sempre l'utente della sessione. Legge/scrive anche credit_ledger (assertFreeOrgLimit, grantWelcomeCredits): il limite di org gratuite e il benvenuto sono decisi qui, non altrove.",
+    tables: ['orgs', 'orgs_members', 'credit_ledger']
   },
   {
     path: 'src/lib/server/tenancy/bootstrap.ts — acceptInvite',
-    why: "Chi accetta non è ancora membro di quell'org: auth_org_ids() non la contiene, e la policy org_isolation su orgs_invites nasconderebbe l'invito proprio a chi lo sta usando. L'org_id non arriva da fuori, si LEGGE dalla riga trovata per impronta del token; il token in chiaro non è mai salvato e scaduto, inesistente o già speso rispondono tutti allo stesso modo.",
-    tables: ['orgs_invites', 'orgs_members']
+    why: "Chi accetta non è ancora membro di quell'org: auth_org_ids() non la contiene, e la policy org_isolation su orgs_invites nasconderebbe l'invito proprio a chi lo sta usando. L'org_id non arriva da fuori, si LEGGE dalla riga trovata per impronta del token; il token in chiaro non è mai salvato e scaduto, inesistente o già speso rispondono tutti allo stesso modo. Legge anche credit_ledger (assertFreeOrgLimit): lo stesso limite di org gratuite di createFirstOrg si applica anche a un invito accettato.",
+    tables: ['orgs_invites', 'orgs_members', 'credit_ledger']
   },
   {
     path: 'src/lib/server/org-data/auth.ts — resolveApiKey (MCP e CLI su /api/v1/org/**)',

@@ -71,3 +71,23 @@ export function marginForRung(price: number, credits: number): number {
   const cost = credits / CREDITS_PER_USD_SUBSCRIPTION_LIST;
   return (price - cost) / price;
 }
+
+// ── Canone mensile per account social collegato ────────────────────────────────────
+// Zernio fattura ~$7/account (unico numero nel repo: `$lib/server/plans.ts`, commento su Go —
+// mai misurato con precisione, quindi PLACEHOLDER da confermare prima di andare in produzione).
+// Il prezzo qui sotto tiene lo stesso margine minimo della scala sopra (MARGIN_FLOOR): con un
+// costo di $7, il prezzo minimo è 7 / (1 − 0.35) = $10.77 — arrotondato a $11 per un numero che
+// un cliente legge senza calcolatrice, margine effettivo 36.4%.
+export const ZERNIO_COST_PER_ACCOUNT_USD_PLACEHOLDER = 7;
+export const ACCOUNT_SEAT_USD = 11;
+export const ACCOUNT_SEAT_CREDITS = ACCOUNT_SEAT_USD * CREDITS_PER_USD_SUBSCRIPTION_LIST; // 2200
+
+// ── Crediti di benvenuto ────────────────────────────────────────────────────────────
+export const WELCOME_CREDITS = 100;
+export const WELCOME_CREDITS_EXPIRY_DAYS = 14;
+
+// ── Org gratuite per utente ──────────────────────────────────────────────────────────
+// "Gratuita" = mai un acquisto vero (nessuna riga credit_ledger source subscription_renewal o
+// one_time_purchase): il benvenuto stesso (source 'promo') non conta come acquisto, altrimenti
+// nessuna org resterebbe mai gratuita dopo il primo grant.
+export const FREE_ORGS_PER_USER = 2;
