@@ -1,3 +1,4 @@
+import { effectiveModel } from './default-models';
 /**
  * I CONNETTORI DI UN NODO: derivati dal modello scelto, non elencati a mano per tipo.
  *
@@ -138,7 +139,8 @@ export function connectorsForNode(
   model: string | null,
   choices: readonly ModelWithModalities[]
 ): ConnectorType[] {
-  const choice = model ? choices.find((c) => c.id === model) : choices[0];
+  const chosen = effectiveModel(kind, model, choices);
+  const choice = chosen ? choices.find((c) => c.id === chosen) : undefined;
   if (kind !== 'text' && !choice) {
     return [];
   }
