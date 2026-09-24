@@ -27,6 +27,8 @@
   import { commonPropertiesOf, type CommonValue } from '$lib/canvas/common-properties';
   import { effectiveModel } from '$lib/canvas/default-models';
   import type { ModelChoice } from '$lib/canvas/gen-node';
+  import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+  import ModalityIcons from './ModalityIcons.svelte';
 
   let {
     box,
@@ -82,21 +84,31 @@
         {#if !choices.length && !catalogueSynced}
           <span class="field warn">Catalogo non sincronizzato</span>
         {:else}
-          <select
-            class="field"
-            value={modelValue ?? ''}
-            onchange={(e) => onpropertychange?.({ model: e.currentTarget.value || null })}
-            aria-label="Modello"
-          >
-            {#if properties.model.kind === 'mixed'}
-              <option value="" disabled selected>Mixed</option>
-            {:else if !modelValue}
-              <option value="">Modello…</option>
-            {/if}
-            {#each choices as c (c.id)}
-              <option value={c.id}>{c.label}</option>
-            {/each}
-          </select>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger class="field model-trigger" aria-label="Modello">
+              {#if properties.model.kind === 'mixed'}
+                Mixed
+              {:else if choice}
+                <ModalityIcons inputModalities={choice.inputModalities ?? []} />
+                {choice.label}
+              {:else}
+                Modello…
+              {/if}
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content align="start">
+              <DropdownMenu.RadioGroup
+                value={modelValue ?? ''}
+                onValueChange={(v) => onpropertychange?.({ model: v || null })}
+              >
+                {#each choices as c (c.id)}
+                  <DropdownMenu.RadioItem value={c.id}>
+                    <ModalityIcons inputModalities={c.inputModalities ?? []} />
+                    {c.label}
+                  </DropdownMenu.RadioItem>
+                {/each}
+              </DropdownMenu.RadioGroup>
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
         {/if}
 
         {#if properties.aspectRatio.kind !== 'absent' && choice?.aspectRatios?.length}
@@ -209,6 +221,20 @@
   }
   .field.number {
     width: 52px;
+  }
+
+  :global(.model-trigger) {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  :global([data-slot='dropdown-menu-radio-item']) {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .duration,

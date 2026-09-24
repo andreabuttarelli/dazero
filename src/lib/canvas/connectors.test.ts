@@ -8,6 +8,7 @@ import {
   portAccepts,
   portActive,
   outputConnectorOf,
+  modalityBadges,
   type Modalities,
   type WiredConnector
 } from './connectors';
@@ -137,6 +138,40 @@ describe('porte visibili: colore ed etichetta per ogni tipo', () => {
     expect(outputConnectorOf('image')).toBe('images');
     expect(outputConnectorOf('video')).toBe('videos');
     expect(outputConnectorOf('iframe')).toBeNull();
+  });
+});
+
+describe('modalityBadges — le icone di un modello nel menù, una per modalità', () => {
+  it('una modalità di input diventa un distintivo con icona, colore ed etichetta', () => {
+    const badges = modalityBadges(['text']);
+    expect(badges).toEqual([{ modality: 'text', icon: 'type', color: CONNECTOR_STYLE.text.color, label: 'Text' }]);
+  });
+
+  it('ogni modalità nota ha il suo distintivo, nell\'ordine dichiarato — non quello del modello', () => {
+    const badges = modalityBadges(['video', 'text', 'audio', 'image']);
+    expect(badges.map((b) => b.modality)).toEqual(['text', 'image', 'video', 'audio']);
+  });
+
+  it('image/video/audio riusano il colore della porta che aprono (CONNECTOR_STYLE)', () => {
+    const badges = modalityBadges(['image', 'video', 'audio']);
+    expect(badges.find((b) => b.modality === 'image')?.color).toBe(CONNECTOR_STYLE.images.color);
+    expect(badges.find((b) => b.modality === 'video')?.color).toBe(CONNECTOR_STYLE.videos.color);
+    expect(badges.find((b) => b.modality === 'audio')?.color).toBe(CONNECTOR_STYLE.audios.color);
+  });
+
+  it('file (PDF/documenti) ha il suo distintivo anche senza una porta corrispondente', () => {
+    const badges = modalityBadges(['text', 'file']);
+    expect(badges.find((b) => b.modality === 'file')).toMatchObject({ icon: 'file-text' });
+  });
+
+  it('una modalità sconosciuta non genera un distintivo a caso', () => {
+    expect(modalityBadges(['text', 'something-new'])).toEqual([
+      { modality: 'text', icon: 'type', color: CONNECTOR_STYLE.text.color, label: 'Text' }
+    ]);
+  });
+
+  it('nessuna modalità nota, nessun distintivo', () => {
+    expect(modalityBadges([])).toEqual([]);
   });
 });
 

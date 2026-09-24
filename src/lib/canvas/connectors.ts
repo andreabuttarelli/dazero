@@ -64,6 +64,35 @@ export const CONNECTOR_LABEL: Record<ConnectorType, string> = Object.fromEntries
   CONNECTOR_TYPES.map((c) => [c, CONNECTOR_STYLE[c].label])
 ) as Record<ConnectorType, string>;
 
+/**
+ * UNA MODALITÀ DI OPENROUTER (`ai_models.input_modalities`), IN UN'ICONA DEL MENÙ MODELLO —
+ * `type`/`image`/`video`/`audio` prendono il colore della porta che aprirebbero su un nodo
+ * (`CONNECTOR_STYLE`, sopra: un'icona verde promette la stessa porta verde), `file` (PDF/
+ * documenti) non ne apre una — nessun nodo oggi si collega a un file — e tiene un colore suo,
+ * neutro, invece di prenderne uno a caso da un connettore che non aprirà mai.
+ */
+const MODALITY_BADGE: Partial<Record<string, { icon: string; color: string; label: string }>> = {
+  text: { icon: 'type', color: CONNECTOR_STYLE.text.color, label: CONNECTOR_STYLE.text.label },
+  image: { icon: 'image', color: CONNECTOR_STYLE.images.color, label: CONNECTOR_STYLE.images.label },
+  video: { icon: 'video', color: CONNECTOR_STYLE.videos.color, label: CONNECTOR_STYLE.videos.label },
+  audio: { icon: 'audio-lines', color: CONNECTOR_STYLE.audios.color, label: CONNECTOR_STYLE.audios.label },
+  file: { icon: 'file-text', color: '#6b7280', label: 'File' }
+};
+
+/** L'ordine fisso in cui i distintivi compaiono — mai quello del modello, che varia da riga a riga. */
+const MODALITY_ORDER = ['text', 'image', 'video', 'audio', 'file'] as const;
+
+export type ModalityBadge = { modality: string; icon: string; color: string; label: string };
+
+/**
+ * I DISTINTIVI DI UN MODELLO PER IL MENÙ — una modalità che OpenRouter non dichiara qui (mai
+ * dedotta, mai inventata) non compare: un modello di solo testo mostra un'icona sola.
+ */
+export function modalityBadges(inputModalities: string[]): ModalityBadge[] {
+  const has = new Set(inputModalities);
+  return MODALITY_ORDER.filter((m) => has.has(m)).map((m) => ({ modality: m, ...MODALITY_BADGE[m]! }));
+}
+
 const NODE_OUTPUT: Partial<Record<string, ConnectorType>> = {
   text: 'text',
   doc: 'text',
