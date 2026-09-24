@@ -150,3 +150,11 @@ describe('perché un nodo non parte', () => {
     expect(RUNNABLE_MEDIUMS).toEqual(['text', 'image', 'video']);
   });
 });
+
+describe('la storia di un nodo mostra solo i giri che hanno prodotto qualcosa', () => {
+  it('scarta i giri falliti o senza risultato, tiene gli altri nell\'ordine', async () => {
+    const { producedRuns } = await import('./gen-history');
+    const run = (id: string, mediaId: string | null): GenRun => ({ id, mediaId, prompt: 'p', model: null, createdAt: '' });
+    expect(producedRuns([run('a', 'x'), run('b', null), run('c', 'y')]).map((r) => r.id)).toEqual(['a', 'c']);
+  });
+});

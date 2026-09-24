@@ -41,6 +41,7 @@
   import { type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
   import { shareUrlOf } from '$lib/canvas/doc-node';
   import { nodeSize } from '$lib/canvas/node-size';
+  import { producedRuns } from '$lib/canvas/gen-history';
   import { type Addable } from '$lib/canvas/addable';
   import type { FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { tileNode } from '$lib/canvas/connect-rules';
@@ -158,7 +159,7 @@
     Object.fromEntries(
       Object.entries((data.runs ?? {}) as Record<string, unknown[]>).map(([id, rows]) => [
         id,
-        (rows as Parameters<typeof toGenRun>[0][]).map(toGenRun)
+        producedRuns((rows as Parameters<typeof toGenRun>[0][]).map(toGenRun))
       ])
     )
   );

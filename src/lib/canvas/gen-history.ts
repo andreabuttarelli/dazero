@@ -119,3 +119,7 @@ export function canStartRun(
 ): boolean {
   return !node.running && !blockedReason(node, choices, upstream);
 }
+
+export function producedRuns(runs: GenRun[]): GenRun[] {
+  return runs.filter((run) => run.mediaId !== null);
+}
