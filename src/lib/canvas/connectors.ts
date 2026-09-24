@@ -50,14 +50,30 @@ export function isListValued(connector: ConnectorType): boolean {
  * tile e il messaggio di rifiuto in `upstream-inputs.ts`. Una tabella sola: quel file importava
  * una copia propria, e due elenchi a mano sarebbero divergiti al primo nome cambiato.
  */
-export const CONNECTOR_LABEL: Record<ConnectorType, string> = {
-  text: 'testo',
-  images: 'immagine',
-  videos: 'video',
-  audios: 'audio',
-  first_frame: 'first_frame',
-  last_frame: 'last_frame'
+export const CONNECTOR_STYLE: Record<ConnectorType, { label: string; color: string }> = {
+  text: { label: 'Text', color: '#2563eb' },
+  images: { label: 'Images', color: '#16a34a' },
+  videos: { label: 'Video', color: '#db2777' },
+  audios: { label: 'Audio', color: '#d97706' },
+  first_frame: { label: 'First frame', color: '#7c3aed' },
+  last_frame: { label: 'Last frame', color: '#0891b2' }
 };
+
+export const CONNECTOR_LABEL: Record<ConnectorType, string> = Object.fromEntries(
+  CONNECTOR_TYPES.map((c) => [c, CONNECTOR_STYLE[c].label])
+) as Record<ConnectorType, string>;
+
+const NODE_OUTPUT: Partial<Record<string, ConnectorType>> = {
+  text: 'text',
+  doc: 'text',
+  image: 'images',
+  influencer: 'images',
+  video: 'videos'
+};
+
+export function outputConnectorOf(nodeType: string): ConnectorType | null {
+  return NODE_OUTPUT[nodeType] ?? null;
+}
 
 /** Il minimo che `ai-models-sync.ts::ModelModalities` porta — nessun import di codice server qui. */
 export type Modalities = { input: string[] };
@@ -113,4 +129,18 @@ export type WiredConnector = {
 export function orphanedByModelChange(wired: WiredConnector[], nextConnectors: ConnectorType[]): WiredConnector[] {
   const next = new Set(nextConnectors);
   return wired.filter((w) => !next.has(w.connector));
+}
+
+export type ModelWithModalities = { id: string; inputModalities?: string[] };
+
+export function connectorsForNode(
+  kind: GenerativeNodeKind,
+  model: string | null,
+  choices: readonly ModelWithModalities[]
+): ConnectorType[] {
+  const choice = model ? choices.find((c) => c.id === model) : choices[0];
+  if (kind !== 'text' && !choice) {
+    return [];
+  }
+  return connectorsFor(kind, { input: choice?.inputModalities ?? [] });
 }

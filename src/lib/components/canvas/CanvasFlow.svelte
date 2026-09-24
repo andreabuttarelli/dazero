@@ -72,6 +72,7 @@
     /** Le porte di questo nodo (`connectorsFor`), passate a `CanvasTile` così com'è. Assente =
      *  un solo ingresso generico. */
     connectors?: ConnectorType[];
+    output?: ConnectorType | null;
   };
 
   let {
@@ -172,7 +173,7 @@
     id: t.id,
     position: { x: t.x, y: t.y },
     // `render` è lo snippet del chiamante: il nodo lo esegue senza sapere cosa disegni.
-    data: { tile: t, id: t.id, render: tile, connectable: t.connectable !== false, connectors: t.connectors },
+    data: { tile: t, id: t.id, render: tile, connectable: t.connectable !== false, connectors: t.connectors, output: t.output ?? null },
     type: 'tile',
     style: `width:${t.w}px;height:${t.h}px`
   });

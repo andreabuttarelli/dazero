@@ -3,6 +3,9 @@ import {
   connectorsFor,
   orphanedByModelChange,
   CONNECTOR_TYPES,
+  CONNECTOR_STYLE,
+  connectorsForNode,
+  outputConnectorOf,
   type Modalities,
   type WiredConnector
 } from './connectors';
@@ -94,5 +97,50 @@ describe('orphanedByModelChange — quali fili un cambio di modello lascerebbe s
     const falls = wired('last_frame', 'e2');
 
     expect(orphanedByModelChange([survives, falls], ['text'])).toEqual([falls]);
+  });
+});
+
+describe('porte visibili: colore ed etichetta per ogni tipo', () => {
+  it('ogni tipo di connettore ha etichetta e colore, e i colori sono tutti diversi', () => {
+    const colors = CONNECTOR_TYPES.map((c) => CONNECTOR_STYLE[c].color);
+    for (const c of CONNECTOR_TYPES) {
+      expect(CONNECTOR_STYLE[c].label.length).toBeGreaterThan(0);
+      expect(CONNECTOR_STYLE[c].color).toMatch(/^#[0-9a-f]{6}$/i);
+    }
+    expect(new Set(colors).size).toBe(colors.length);
+  });
+
+  it("l'uscita di un nodo ha il tipo di ciò che produce", () => {
+    expect(outputConnectorOf('text')).toBe('text');
+    expect(outputConnectorOf('image')).toBe('images');
+    expect(outputConnectorOf('video')).toBe('videos');
+    expect(outputConnectorOf('iframe')).toBeNull();
+  });
+});
+
+describe('connectorsForNode: le porte seguono il modello che il nodo MOSTRA', () => {
+  const choices = [
+    { id: 'img/default', inputModalities: ['text', 'image'] },
+    { id: 'img/text-only', inputModalities: ['text'] }
+  ];
+
+  it('senza un modello salvato usa il primo del catalogo, come fa il nodo a schermo', () => {
+    expect(connectorsForNode('image', null, choices)).toEqual(['text', 'images']);
+  });
+
+  it('con un modello salvato usa quello', () => {
+    expect(connectorsForNode('image', 'img/text-only', choices)).toEqual(['text']);
+  });
+
+  it('un modello salvato che non è più nel catalogo non inventa porte', () => {
+    expect(connectorsForNode('image', 'img/gone', choices)).toEqual([]);
+  });
+
+  it('un catalogo vuoto non inventa porte', () => {
+    expect(connectorsForNode('image', null, [])).toEqual([]);
+  });
+
+  it('un nodo testo ha sempre il suo connettore testo', () => {
+    expect(connectorsForNode('text', null, [])).toEqual(['text']);
   });
 });

@@ -39,7 +39,7 @@
   import type { FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { tileNode } from '$lib/canvas/connect-rules';
   import { planDelete } from '$lib/canvas/delete-plan';
-  import { connectorsFor, orphanedByModelChange, type ConnectorType } from '$lib/canvas/connectors';
+  import { connectorsFor, orphanedByModelChange, type ConnectorType, connectorsForNode, outputConnectorOf } from '$lib/canvas/connectors';
   import { planConnectSelection, type ConnectSource } from '$lib/canvas/connect-selection-plan';
   import {
     docData,
@@ -208,9 +208,7 @@
   function connectorsOfNode(n: Tile): ConnectorType[] | undefined {
     if (n.type !== 'text' && n.type !== 'image' && n.type !== 'video') { return undefined; }
     const model = typeof n.data.model === 'string' ? n.data.model : null;
-    const choice = model ? catalogue[n.type]?.find((c) => c.id === model) : null;
-    if (n.type !== 'text' && !choice) { return []; }
-    return connectorsFor(n.type, { input: choice?.inputModalities ?? [] });
+    return connectorsForNode(n.type, model, catalogue[n.type] ?? []);
   }
 
   /**
@@ -227,6 +225,7 @@
       h: n.h,
       connectable: true,
       connectors: connectorsOfNode(n),
+      output: outputConnectorOf(n.type),
       node: tileNode({
         id: n.id,
         medium: n.type === 'iframe' || n.type === 'document' || n.type === 'doc' ? null : (n.type as 'text' | 'image' | 'video'),

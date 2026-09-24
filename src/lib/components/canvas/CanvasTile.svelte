@@ -20,7 +20,7 @@
    * riassume il brand no. Due puntini su quest'ultimo inviterebbero a un gesto che poi fallisce.
    */
   import { Handle, Position, type NodeProps } from '@xyflow/svelte';
-  import { CONNECTOR_LABEL, type ConnectorType } from '$lib/canvas/connectors';
+  import { CONNECTOR_STYLE, type ConnectorType } from '$lib/canvas/connectors';
 
   type TileData = {
     render?: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
@@ -29,6 +29,7 @@
     /** Le porte di QUESTO nodo, dal modello scelto (`connectorsFor`). Assente = un solo ingresso
      *  generico — il caso di chi non ha ancora scelto un modello, o non produce affatto. */
     connectors?: ConnectorType[];
+    output?: ConnectorType | null;
   };
 
   // `selected` lo tiene SvelteFlow e lo passa a ogni nodo: è l'unico che sa davvero cosa è
@@ -42,14 +43,19 @@
 {#if tile.connectable}
   {#if tile.connectors?.length}
     {#each tile.connectors as connector, i (connector)}
+      {@const top = ((i + 1) / (tile.connectors.length + 1)) * 100}
       <Handle
         type="target"
         id={connector}
         position={Position.Left}
-        style={`top:${((i + 1) / (tile.connectors.length + 1)) * 100}%`}
-        title={CONNECTOR_LABEL[connector]}
-        aria-label={CONNECTOR_LABEL[connector]}
+        class="typed-port"
+        style={`top:${top}%;--port:${CONNECTOR_STYLE[connector].color}`}
+        title={CONNECTOR_STYLE[connector].label}
+        aria-label={CONNECTOR_STYLE[connector].label}
       />
+      <span class="port-label port-label-in" style={`top:${top}%;--port:${CONNECTOR_STYLE[connector].color}`}>
+        {CONNECTOR_STYLE[connector].label}
+      </span>
     {/each}
   {:else}
     <Handle type="target" position={Position.Left} />
@@ -61,12 +67,24 @@
 {/if}
 
 {#if tile.connectable}
-  <Handle type="source" position={Position.Right} />
+  {#if tile.output}
+    <Handle
+      type="source"
+      position={Position.Right}
+      class="typed-port"
+      style={`--port:${CONNECTOR_STYLE[tile.output].color}`}
+      title={CONNECTOR_STYLE[tile.output].label}
+      aria-label={CONNECTOR_STYLE[tile.output].label}
+    />
+    <span class="port-label port-label-out" style={`--port:${CONNECTOR_STYLE[tile.output].color}`}>
+      {CONNECTOR_STYLE[tile.output].label}
+    </span>
+  {:else}
+    <Handle type="source" position={Position.Right} />
+  {/if}
 {/if}
 
 <style>
-  /* Gli attacchi si vedono quando servono: fermi sono un puntino, col puntatore sopra la tile
-     diventano un bersaglio. `:global` perché il nodo è disegnato da SvelteFlow, non da qui. */
   :global(.svelte-flow__handle) {
     width: 9px;
     height: 9px;
@@ -80,6 +98,33 @@
   :global(.svelte-flow__handle:focus-visible),
   :global(.svelte-flow__handle.connecting) {
     opacity: 1;
+  }
+  :global(.svelte-flow__handle.typed-port) {
+    width: 11px;
+    height: 11px;
+    background: var(--port);
+    opacity: 1;
+  }
+  .port-label {
+    position: absolute;
+    transform: translateY(-50%);
+    padding: 1px 5px;
+    font-size: 10px;
+    line-height: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--port);
+    background: var(--paper, #fff);
+    border: 1px solid var(--port);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .port-label-in {
+    right: calc(100% + 10px);
+  }
+  .port-label-out {
+    top: 50%;
+    left: calc(100% + 10px);
   }
   @media (prefers-reduced-motion: reduce) {
     :global(.svelte-flow__handle) {
