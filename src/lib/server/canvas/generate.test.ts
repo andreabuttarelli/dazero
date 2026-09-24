@@ -1032,6 +1032,35 @@ describe('reconcileVideoNodeRuns chiude un video in coda quando il fornitore ha 
     expect((currentNode().data as { running?: boolean }).running).toBe(true);
   });
 
+  it('un rifiuto del fornitore chiude al primo giro: richiederlo non cambia la risposta', async () => {
+    finishVideoRender.mockResolvedValue({ status: 'failed', error: 'Failed to download the provided image' });
+
+    const { db, currentNode, currentRun } = videoReconcileDb({
+      node: { id: NODE, orgId: ORG, data: { prompt: 'a dancing cat', model: 'grok-imagine-video-1-5-preview', running: true }, version: 5 },
+      run: { id: RUN, taskId: 'openrouter:job-4', attempts: 0 }
+    });
+
+    const result = await reconcileVideoNodeRuns(db);
+
+    expect(result).toMatchObject({ failed: 1, pending: 0 });
+    expect(currentRun().status).toBe('failed');
+    expect((currentNode().data as { running?: boolean }).running).toBe(false);
+  });
+
+  it('un clip pronto ma non salvato si riprova, non si butta', async () => {
+    finishVideoRender.mockResolvedValue({ status: 'failed', error: 'clip rendered but could not be stored', retryable: true });
+
+    const { db, currentRun } = videoReconcileDb({
+      node: { id: NODE, orgId: ORG, data: { prompt: 'a dancing cat', model: 'grok-imagine-video-1-5-preview', running: true }, version: 5 },
+      run: { id: RUN, taskId: 'openrouter:job-5', attempts: 0 }
+    });
+
+    const result = await reconcileVideoNodeRuns(db);
+
+    expect(result).toMatchObject({ failed: 0, pending: 1 });
+    expect(currentRun().status).toBe('running');
+  });
+
   it('failed dopo il tetto dei tentativi: chiude la run E riaccende il nodo insieme', async () => {
     finishVideoRender.mockResolvedValue({ status: 'failed', error: 'provider rejected the job' });
 

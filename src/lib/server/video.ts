@@ -827,7 +827,7 @@ export type VideoRenderOutcome =
   /** Il fornitore sta ancora lavorando. Ask again later; nothing is held open in the meantime. */
   | { status: 'pending' }
   | { status: 'done'; url: string; durationSeconds: number; resolution: string; thumbnailUrl?: string }
-  | { status: 'failed'; error: string };
+  | { status: 'failed'; error: string; retryable?: boolean };
 
 /**
  * Check a submitted render once, and finish it if the provider is done.
@@ -874,7 +874,7 @@ async function finishOpenrouterRender(
     ...submitted.persistOpts,
     headers: openrouterVideoHeaders()
   });
-  if (!url) return { status: 'failed', error: 'clip rendered but could not be stored' };
+  if (!url) return { status: 'failed', error: 'clip rendered but could not be stored', retryable: true };
 
   logAiCall({
     label: 'video.render',

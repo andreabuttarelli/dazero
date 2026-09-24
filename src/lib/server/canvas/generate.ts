@@ -511,7 +511,7 @@ export async function reconcileVideoNodeRuns(db: Db): Promise<VideoReconcileOutc
       }
 
       if (outcome.status === 'failed') {
-        const exhausted = run.attempts + 1 >= VIDEO_RUN_MAX_ATTEMPTS;
+        const exhausted = !outcome.retryable || run.attempts + 1 >= VIDEO_RUN_MAX_ATTEMPTS;
         if (!exhausted) {
           await retryClaim(db, { orgId: run.orgId, runId: run.id, attempts: run.attempts + 1, error: outcome.error });
           pending += 1;
