@@ -46,3 +46,26 @@ export function checkMoveGesture(gesture: MoveGesture, currentOf: (nodeId: strin
 export function inverseMoveGesture(gesture: MoveGesture): MoveGesture {
   return { kind: 'move', items: gesture.items.map((item) => ({ nodeId: item.nodeId, before: item.after, after: item.before })) };
 }
+
+/**
+ * DALLA FINE DI UN TRASCINAMENTO A UN GESTO — o a `null` se non c'è niente da annullare.
+ * `positionOf` legge dove ogni nodo stava PRIMA di questo trascinamento (lo stato che
+ * `+page.svelte` teneva già, non quello che SvelteFlow ha appena scritto). Un nodo la cui
+ * posizione non è cambiata (trascinato e riportato esattamente dov'era, o un click che SvelteFlow
+ * conta come drag) non entra nel gesto: un Ctrl+Z che "non fa niente" perché il prima e il dopo
+ * coincidono è un gesto fantasma nello stack, non un annullamento.
+ */
+export function buildMoveGesture(
+  moves: { nodeId: string; after: Point }[],
+  positionOf: (nodeId: string) => Point | null
+): MoveGesture | null {
+  const items: MoveItem[] = [];
+  for (const move of moves) {
+    const before = positionOf(move.nodeId);
+    if (!before || samePoint(before, move.after)) {
+      continue;
+    }
+    items.push({ nodeId: move.nodeId, before, after: move.after });
+  }
+  return items.length ? { kind: 'move', items } : null;
+}
