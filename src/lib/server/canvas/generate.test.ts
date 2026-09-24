@@ -65,8 +65,11 @@ const freshNodeRow = {
   version: 1
 };
 
-const { generateImagesWithoutBrand } = vi.hoisted(() => ({ generateImagesWithoutBrand: vi.fn() }));
-vi.mock('$lib/server/media-generate', () => ({ generateImagesWithoutBrand }));
+const { generateImagesWithoutBrand, generateVideoWithoutBrand } = vi.hoisted(() => ({
+  generateImagesWithoutBrand: vi.fn(),
+  generateVideoWithoutBrand: vi.fn()
+}));
+vi.mock('$lib/server/media-generate', () => ({ generateImagesWithoutBrand, generateVideoWithoutBrand }));
 
 const { finishVideoRender } = vi.hoisted(() => ({ finishVideoRender: vi.fn() }));
 vi.mock('$lib/server/video', () => ({ finishVideoRender }));
@@ -135,6 +138,186 @@ describe('un giro immagine che fallisce a depositare dice IL MOTIVO, non un toke
     expect((lastUpdate?.payload as { data?: { error?: string } })?.data?.error).toContain('Bucket not found');
     expect((lastUpdate?.payload as { data?: { error?: string } })?.data?.error).not.toBe('store_failed');
   });
+});
+
+/**
+ * UN NODO SENZA PROMPT PROPRIO MA WIRED A UN TESTO GIRA LO STESSO — il difetto segnalato: `refuse`
+ * guardava solo `input.prompt`, PRIMA di leggere l'upstream, e un'immagine senza prompt suo ma
+ * collegata a un nodo testo con qualcosa scritto veniva rifiutata come se non avesse niente da
+ * mandare al modello. Il testo a monte conta come prompt (CLAUDE.md), con la STESSA composizione
+ * che `upstream.ts`/`generate.ts` già fanno per il giro vero: `[...upstream.text, input.prompt]`.
+ */
+describe('un nodo senza prompt proprio ma con un testo a monte collegato gira lo stesso', () => {
+  const TEXT_NODE = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+  beforeEach(() => {
+    generateImagesWithoutBrand.mockReset();
+    generateImagesWithoutBrand.mockResolvedValue({
+      ok: true,
+      media: [{ storage_path: 'u/media/generated.png', mime: 'image/png', width: 1024, height: 1024 }],
+      costUsd: 0.02
+    });
+  });
+
+  it('chiama il render con il testo a monte come prompt, non rifiuta prompt_required', async () => {
+    const { db } = fakeDb(
+      {
+        nodes: [
+          freshNodeRow,
+          { ...freshNodeRow, id: TEXT_NODE, type: 'text', data: { prompt: 'a cat wearing a hat' } }
+        ],
+        nodes_connections: [
+          {
+            id: 'e1',
+            canvas_id: CANVAS,
+            source_node_id: TEXT_NODE,
+            target_node_id: NODE,
+            source_handle: null,
+            target_handle: null
+          }
+        ],
+        assets: []
+      },
+      { updateRows: { nodes: [{ ...freshNodeRow, version: 2 }] } }
+    );
+
+    const result = await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'image',
+      prompt: '',
+      model: 'openai/gpt-image',
+      params: {},
+      expectedVersion: 1
+    });
+
+    expect(result.kind).toBe('done');
+    expect(generateImagesWithoutBrand).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ prompt: 'a cat wearing a hat' })
+    );
+  });
+
+  it('senza prompt proprio e senza niente a monte, rifiuta prompt_required — dopo aver letto l\'upstream, non prima', async () => {
+    const { db } = fakeDb(
+      { nodes: [freshNodeRow], nodes_connections: [], assets: [] },
+      { updateRows: { nodes: [{ ...freshNodeRow, version: 2 }] } }
+    );
+
+    const result = await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'image',
+      prompt: '',
+      model: 'openai/gpt-image',
+      params: {},
+      expectedVersion: 1
+    });
+
+    expect(result).toMatchObject({ kind: 'refused', error: 'prompt_required' });
+    expect(generateImagesWithoutBrand).not.toHaveBeenCalled();
+  });
+
+  it('un video senza prompt proprio ma wired a un testo gira lo stesso', () => {
+    return runVideoWithUpstreamText('text', { prompt: 'a slow pan over the mountains' });
+  });
+
+  it('un\'immagine senza prompt proprio ma wired a un doc gira con il suo content', async () => {
+    const DOC_NODE = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+    const { db } = fakeDb(
+      {
+        nodes: [freshNodeRow, { ...freshNodeRow, id: DOC_NODE, type: 'doc', data: { content: 'note del brand' } }],
+        nodes_connections: [
+          {
+            id: 'e1',
+            canvas_id: CANVAS,
+            source_node_id: DOC_NODE,
+            target_node_id: NODE,
+            source_handle: null,
+            target_handle: null
+          }
+        ],
+        assets: []
+      },
+      { updateRows: { nodes: [{ ...freshNodeRow, version: 2 }] } }
+    );
+
+    const result = await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'image',
+      prompt: '',
+      model: 'openai/gpt-image',
+      params: {},
+      expectedVersion: 1
+    });
+
+    expect(result.kind).toBe('done');
+    expect(generateImagesWithoutBrand).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ prompt: 'note del brand' })
+    );
+  });
+
+  it('un video senza prompt proprio ma wired a un doc gira con il suo content', () => {
+    return runVideoWithUpstreamText('doc', { content: 'note del brand' }, 'note del brand');
+  });
+
+  async function runVideoWithUpstreamText(
+    sourceType: 'text' | 'doc',
+    sourceData: Record<string, unknown>,
+    expectedPrompt = 'a slow pan over the mountains'
+  ) {
+    generateVideoWithoutBrand.mockReset();
+    generateVideoWithoutBrand.mockResolvedValue({ ok: true, jobId: 'job-1' });
+
+    const SOURCE_NODE = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+    const videoNodeRow = { ...freshNodeRow, type: 'video' };
+    const { db } = fakeDb(
+      {
+        nodes: [videoNodeRow, { ...freshNodeRow, id: SOURCE_NODE, type: sourceType, data: sourceData }],
+        nodes_connections: [
+          {
+            id: 'e1',
+            canvas_id: CANVAS,
+            source_node_id: SOURCE_NODE,
+            target_node_id: NODE,
+            source_handle: null,
+            target_handle: null
+          }
+        ],
+        assets: []
+      },
+      { updateRows: { nodes: [{ ...videoNodeRow, version: 2 }] } }
+    );
+
+    const result = await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'video',
+      prompt: '',
+      model: 'some/video-model',
+      params: {},
+      expectedVersion: 1
+    });
+
+    expect(result.kind).toBe('queued');
+    expect(generateVideoWithoutBrand).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: expectedPrompt })
+    );
+  }
 });
 
 /**

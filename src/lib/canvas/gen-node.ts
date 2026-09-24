@@ -97,11 +97,24 @@ export type GenNode = {
  */
 export type RunState = 'empty' | 'ready' | 'running' | 'done' | 'failed';
 
-export function runStateOf(node: GenNode): RunState {
+export type UpstreamTextAvailability = { hasUpstreamText: boolean };
+
+/**
+ * SE QUESTO NODO HA UN PROMPT DA CUI GIRARE: il proprio, o — in sua assenza — un testo a monte
+ * collegato. UN SOLO POSTO decide questa regola: `runStateOf` (sotto) e `blockedReason`
+ * (`gen-history.ts`) la chiamano entrambi, invece di ripetere `node.prompt.trim()` ciascuno con
+ * la propria dimenticanza di guardare a monte — il difetto segnalato («B non conta il testo di
+ * A collegato») era esattamente due copie della stessa domanda, una delle due sbagliata.
+ */
+export function hasPrompt(node: GenNode, upstream: UpstreamTextAvailability = { hasUpstreamText: false }): boolean {
+  return Boolean(node.prompt.trim()) || upstream.hasUpstreamText;
+}
+
+export function runStateOf(node: GenNode, upstream: UpstreamTextAvailability = { hasUpstreamText: false }): RunState {
   if (node.running) return 'running';
   if (node.error) return 'failed';
   if (node.refId) return 'done';
-  return node.prompt.trim() ? 'ready' : 'empty';
+  return hasPrompt(node, upstream) ? 'ready' : 'empty';
 }
 
 /**

@@ -20,6 +20,7 @@
     node,
     choices = [],
     catalogueSynced = true,
+    hasUpstreamText = false,
     selected = false,
     loopQueued = 0,
     onchange,
@@ -40,6 +41,10 @@
      * regola "non sincronizzato, non offerto" (`offerable-models.ts`).
      */
     catalogueSynced?: boolean;
+    /** Un testo a monte collegato conta come prompt quando il nodo non ne ha uno suo
+     *  (`hasPrompt`, `gen-node.ts`) — chi usa il nodo lo calcola da `edges`/`nodes`, che il nodo
+     *  stesso non conosce. */
+    hasUpstreamText?: boolean;
     /** Solo il colore del bordo cambia con la selezione: i controlli stanno nella barra fuori. */
     selected?: boolean;
     /** Quanti biglietti di loop sono ancora in coda per QUESTO nodo — 0 = nessun loop in corso.
@@ -71,7 +76,8 @@
    */
   const resolvedModel = $derived(effectiveModel(node.medium, node.model, choices));
   const choice = $derived(choices.find((c) => c.id === resolvedModel) ?? choices[0]);
-  const state = $derived(runStateOf(node));
+  const upstream = $derived({ hasUpstreamText });
+  const state = $derived(runStateOf(node, upstream));
   const tooLong = $derived(!!choice && promptTooLong(node.prompt, choice));
 
   /**
@@ -86,9 +92,9 @@
    * caso solo.
    */
   const blocked = $derived(
-    tooLong && choice?.maxPromptChars ? `Prompt troppo lungo` : blockedReason(node, choices)
+    tooLong && choice?.maxPromptChars ? `Prompt troppo lungo` : blockedReason(node, choices, upstream)
   );
-  const canRun = $derived(canStartRun(node, choices) && !tooLong);
+  const canRun = $derived(canStartRun(node, choices, upstream) && !tooLong);
   const shown = $derived(shownIndex(node));
 
   const LABEL: Record<string, string> = {
@@ -102,27 +108,35 @@
 
 <div class="gen" class:is-running={state === 'running'} class:is-chosen={selected}>
   <!-- Il risultato, quando c'è. Il testo lo mostra qui perché è esso stesso il prodotto; immagine
-       e video li disegna chi usa il nodo, che sa da dove viene l'URL firmato. -->
-  <div class="gen-body">
-    {#if state === 'running'}
-      <div class="gen-busy">
-        <span class="gen-dots" aria-label={LABEL.running}><i></i><i></i><i></i></span>
-        <button type="button" class="gen-unlock" onclick={() => onunlock?.()}>Sblocca</button>
-      </div>
-    {:else if state === 'failed'}
-      <div class="gen-fail" role="alert">
-        <p class="gen-fail-title">{LABEL.failed}</p>
-        {#if node.error}
-          <p class="gen-fail-why">{node.error}</p>
-        {/if}
-        <button type="button" class="gen-unlock" onclick={() => onrun?.()} disabled={!canRun}>Riprova</button>
-      </div>
-    {:else if node.refId && result}
-      {@render result({ refId: node.refId, text: node.runs.find((r) => r.mediaId === node.refId)?.text ?? null })}
-    {:else}
-      <p class="gen-hint">{LABEL[state]}</p>
-    {/if}
-  </div>
+       e video li disegna chi usa il nodo, che sa da dove viene l'URL firmato.
+
+       UN NODO TESTO SENZA ANCORA NIENTE DA MOSTRARE non ha un corpo: la fascia con «Scrivi cosa
+       vuoi»/«Pronto» al centro era un riquadro vuoto sopra una casella di scrittura che dice la
+       stessa cosa — running/failed restano visibili, sono uno stato del giro, non un placeholder
+       del risultato. Immagine e video tengono il proprio placeholder: la fascia è la loro unica
+       anteprima prima di girare, non una ripetizione di quel che il prompt già dice. -->
+  {#if node.medium !== 'text' || state === 'running' || state === 'failed' || node.refId}
+    <div class="gen-body">
+      {#if state === 'running'}
+        <div class="gen-busy">
+          <span class="gen-dots" aria-label={LABEL.running}><i></i><i></i><i></i></span>
+          <button type="button" class="gen-unlock" onclick={() => onunlock?.()}>Sblocca</button>
+        </div>
+      {:else if state === 'failed'}
+        <div class="gen-fail" role="alert">
+          <p class="gen-fail-title">{LABEL.failed}</p>
+          {#if node.error}
+            <p class="gen-fail-why">{node.error}</p>
+          {/if}
+          <button type="button" class="gen-unlock" onclick={() => onrun?.()} disabled={!canRun}>Riprova</button>
+        </div>
+      {:else if node.refId && result}
+        {@render result({ refId: node.refId, text: node.runs.find((r) => r.mediaId === node.refId)?.text ?? null })}
+      {:else}
+        <p class="gen-hint">{LABEL[state]}</p>
+      {/if}
+    </div>
+  {/if}
 
   <!-- LA STORIA, sotto il risultato e sopra il prompt: si guarda quel che è uscito, si sceglie
        fra i giri fatti, si riscrive la frase. Una striscia e non frecce, perché con le frecce per
@@ -317,7 +331,12 @@
     cursor: default;
   }
 
+  /* `margin-top: auto` spinge il piede in fondo quando `.gen-body` manca (un nodo testo mai
+     girato, CLAUDE.md): senza, l'altezza fissa del nodo lascerebbe uno spazio vuoto sotto la
+     casella invece del bordo del nodo. Con `.gen-body` presente non cambia niente: `flex: 1` ha
+     già preso lo spazio restante. */
   .gen-foot {
+    margin-top: auto;
     padding: 8px 9px 9px;
     border-top: 1px solid var(--line, #e5e5e5);
     background: var(--paper, #fff);

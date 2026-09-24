@@ -93,6 +93,12 @@ describe('il doppio clic su Genera', () => {
     expect(canStartRun(node({ prompt: '  ' }), choices)).toBe(false);
   });
 
+  it('un nodo senza prompt proprio ma con un testo a monte collegato parte lo stesso', () => {
+    // Il difetto segnalato: un nodo immagine collegato a un testo scritto restava spento perché
+    // solo il proprio prompt contava.
+    expect(canStartRun(node({ prompt: '' }), choices, { hasUpstreamText: true })).toBe(true);
+  });
+
   it('un nodo senza modello salvato E senza catalogo non parte: non c è niente da risolvere', () => {
     expect(canStartRun(node({ model: null }), [])).toBe(false);
   });
@@ -134,6 +140,10 @@ describe('perché un nodo non parte', () => {
 
   it('un nodo che può partire non ha niente da spiegare', () => {
     expect(blockedReason(node(), choices)).toBeNull();
+  });
+
+  it('un testo a monte collegato basta: niente da spiegare anche senza prompt proprio', () => {
+    expect(blockedReason(node({ prompt: '' }), choices, { hasUpstreamText: true })).toBeNull();
   });
 
   it('girano tutti e tre i medium che producono: il testo atterra su un asset', () => {

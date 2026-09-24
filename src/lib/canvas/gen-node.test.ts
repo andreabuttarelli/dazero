@@ -50,6 +50,16 @@ describe('lo stato di un nodo', () => {
     expect(runStateOf(node())).toBe('ready');
   });
 
+  it('senza un prompt proprio ma con un testo a monte collegato, è pronto lo stesso', () => {
+    // Il difetto segnalato: un'immagine collegata a un nodo testo con un prompt scritto restava
+    // «Scrivi cosa vuoi» perché il testo a monte non contava come prompt.
+    expect(runStateOf(node({ prompt: '' }), { hasUpstreamText: true })).toBe('ready');
+  });
+
+  it('senza prompt proprio e senza niente a monte, resta vuoto', () => {
+    expect(runStateOf(node({ prompt: '' }), { hasUpstreamText: false })).toBe('empty');
+  });
+
   it('un nodo che ha già prodotto è fatto, non di nuovo pronto', () => {
     // Senza questo stato il nodo tornerebbe «pronto» dopo aver girato, e il bottone inviterebbe a
     // pagare una seconda volta la stessa cosa.

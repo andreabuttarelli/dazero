@@ -400,3 +400,20 @@ export function resolveUpstreamInputs(
     rejected
   };
 }
+
+/** Ogni connettore testo è sempre aperto (`connectorsFor`): un nodo testo di monte non passa mai
+ *  dal catalogo di un modello, quindi non c'è un caso "il modello scelto non prende testo" da
+ *  rispettare qui. */
+const ANY_TEXT: Modalities = { input: ['text'] };
+
+/**
+ * SE `targetId` HA UN TESTO A MONTE DA CONTARE COME PROMPT — la stessa domanda che
+ * `resolveUpstreamInputs` risolve dentro `text[]`, per chi (la UI) deve sapere PRIMA di girare se
+ * un prompt proprio vuoto basta comunque. Non una seconda lettura degli archi: chiama
+ * `resolveUpstreamInputs` con le modalità che aprono solo il connettore testo, perché quel
+ * connettore è sempre disponibile per ogni nodo generativo (`connectorsFor`) — il risultato
+ * `blocked` non esiste mai qui, questo file non ha un `db` per saperlo.
+ */
+export function hasUpstreamText(nodes: UpstreamNode[], edges: UpstreamEdge[], targetId: string): boolean {
+  return resolveUpstreamInputs(nodes, edges, targetId, ANY_TEXT).text.length > 0;
+}

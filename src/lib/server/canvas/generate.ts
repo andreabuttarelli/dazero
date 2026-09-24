@@ -54,10 +54,15 @@ export type RunOutcome =
   | { kind: 'refused'; error: string }
   | { kind: 'conflict' };
 
+/**
+ * IL MODELLO SI SCEGLIE PRIMA DI SPENDERE UNA LETTURA — l'unica cosa che questo giro sa senza
+ * aver ancora chiesto alla tela. IL PROMPT NO: un nodo senza prompt proprio ma wired a un testo
+ * a monte con qualcosa scritto è comunque pronto a girare (CLAUDE.md — "un testo a monte conta
+ * come prompt"), e questo si scopre solo dopo aver letto l'upstream (`upstream.ts`), non prima.
+ * Rifiutare qui su `input.prompt` da solo era il difetto: un'immagine wired a un testo restava
+ * spenta perché questa funzione non sapeva ancora che a monte c'era qualcosa da dire.
+ */
 function refuse(input: StartRun): string | null {
-  if (!input.prompt.trim()) {
-    return 'prompt_required';
-  }
   if (!input.model) {
     return 'model_required';
   }
@@ -267,6 +272,15 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
   }
 
   const prompt = [...upstream.text, input.prompt].filter((t) => t.trim()).join('\n\n');
+
+  // NÉ IL PROPRIO PROMPT NÉ UN TESTO A MONTE: solo ORA si sa che non c'è niente da mandare al
+  // modello — prima di questa riga `upstream.text` non era ancora stato letto. Il messaggio è
+  // lo stesso che il client mostra (`gen-history.ts::BLOCKED`, "Scrivi cosa vuoi"), la stessa
+  // regola in un posto solo, non due verità che possono divergere.
+  if (!prompt.trim()) {
+    await giveUp(db, input, version, run, 'prompt_required');
+    return { kind: 'refused', error: 'prompt_required' };
+  }
 
   try {
     if (input.medium === 'text') {

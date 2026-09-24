@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   hasUpstreamCycle,
+  hasUpstreamText,
   resolveUpstreamInputs,
   FIRST_FRAME_HANDLE,
   LAST_FRAME_HANDLE,
@@ -611,5 +612,57 @@ describe('resolveUpstreamInputs — select: sceglie ESATTAMENTE un item, mai la 
     const out = resolveUpstreamInputs(nodes, edges, 'v1', TEXT_IMAGE_VIDEO_AUDIO);
 
     expect(out.startFrameUrl).toBe('https://cdn/chosen.png');
+  });
+});
+
+describe('hasUpstreamText — se un nodo ha un testo a monte da usare come prompt', () => {
+  it('un testo a monte collegato con un prompt scritto (mai girato) conta', () => {
+    // Il difetto segnalato: un'immagine wired a un testo con un prompt scritto (non ancora
+    // generato) diceva "Scrivi cosa vuoi" invece di contare quel testo come input.
+    const nodes = [node({ id: 't1', type: 'text', text: 'scrivi qualcosa' }), node({ id: 'i1', type: 'image' })];
+    const edges = [edge({ id: 'e1', sourceNodeId: 't1', targetNodeId: 'i1' })];
+
+    expect(hasUpstreamText(nodes, edges, 'i1')).toBe(true);
+  });
+
+  it('un testo a monte già girato conta col suo testo generato', () => {
+    const nodes = [node({ id: 't1', type: 'text', text: 'il testo generato' }), node({ id: 'i1', type: 'image' })];
+    const edges = [edge({ id: 'e1', sourceNodeId: 't1', targetNodeId: 'i1' })];
+
+    expect(hasUpstreamText(nodes, edges, 'i1')).toBe(true);
+  });
+
+  it('senza niente a monte non conta', () => {
+    const nodes = [node({ id: 'i1', type: 'image' })];
+
+    expect(hasUpstreamText(nodes, [], 'i1')).toBe(false);
+  });
+
+  it('un testo a monte mai girato e senza prompt non conta', () => {
+    const nodes = [node({ id: 't1', type: 'text', text: null }), node({ id: 'i1', type: 'image' })];
+    const edges = [edge({ id: 'e1', sourceNodeId: 't1', targetNodeId: 'i1' })];
+
+    expect(hasUpstreamText(nodes, edges, 'i1')).toBe(false);
+  });
+
+  it('un doc a monte con contenuto conta come un testo', () => {
+    const nodes = [node({ id: 'd1', type: 'doc', text: 'appunti' }), node({ id: 'i1', type: 'image' })];
+    const edges = [edge({ id: 'e1', sourceNodeId: 'd1', targetNodeId: 'i1' })];
+
+    expect(hasUpstreamText(nodes, edges, 'i1')).toBe(true);
+  });
+
+  it('un testo a monte conta anche per un nodo video', () => {
+    const nodes = [node({ id: 't1', type: 'text', text: 'scrivi qualcosa' }), node({ id: 'v1', type: 'video' })];
+    const edges = [edge({ id: 'e1', sourceNodeId: 't1', targetNodeId: 'v1' })];
+
+    expect(hasUpstreamText(nodes, edges, 'v1')).toBe(true);
+  });
+
+  it('un doc a monte conta anche per un nodo video', () => {
+    const nodes = [node({ id: 'd1', type: 'doc', text: 'appunti' }), node({ id: 'v1', type: 'video' })];
+    const edges = [edge({ id: 'e1', sourceNodeId: 'd1', targetNodeId: 'v1' })];
+
+    expect(hasUpstreamText(nodes, edges, 'v1')).toBe(true);
   });
 });

@@ -15,7 +15,7 @@
  * — l'ultima? — significherebbe che tornare indietro su una vecchia generazione dura finché non
  * si chiude la scheda.
  */
-import type { GenMedium, GenNode, GenRun } from './gen-node';
+import { hasPrompt, type GenMedium, type GenNode, type GenRun, type UpstreamTextAvailability } from './gen-node';
 import { effectiveModel, type ModelChoiceLike } from './default-models';
 
 export type { GenRun };
@@ -47,15 +47,23 @@ function runnable(medium: GenMedium): boolean {
  * IL MODELLO CHE CONTA È QUELLO RISOLTO (`effectiveModel`), non `node.model`: un nodo nato prima
  * del default del medium non ha mai scritto un modello in `nodes.data`, e bloccarlo su quello
  * spegnerebbe "Genera" su ogni nodo vecchio finché qualcuno non apre un menù che non c'è più.
+ *
+ * «SCRIVI COSA VUOI» conta un testo a monte collegato come prompt (`hasPrompt`, `gen-node.ts`):
+ * un'immagine senza prompt proprio ma wired a un nodo testo con qualcosa scritto è già pronta a
+ * girare — il testo a monte È il prompt, quando il nodo non ne ha uno suo.
  */
-const BLOCKED: readonly { when: (node: GenNode, choices: readonly ModelChoiceLike[]) => boolean; say: string }[] = [
+const BLOCKED: readonly { when: (node: GenNode, choices: readonly ModelChoiceLike[], upstream: UpstreamTextAvailability) => boolean; say: string }[] = [
   { when: (n) => !runnable(n.medium), say: 'Questo nodo non produce nulla' },
-  { when: (n) => !n.prompt.trim(), say: 'Scrivi cosa vuoi' },
+  { when: (n, _choices, upstream) => !hasPrompt(n, upstream), say: 'Scrivi cosa vuoi' },
   { when: (n, choices) => !effectiveModel(n.medium, n.model, choices), say: 'Scegli un modello' }
 ];
 
-export function blockedReason(node: GenNode, choices: readonly ModelChoiceLike[] = []): string | null {
-  return BLOCKED.find((rule) => rule.when(node, choices))?.say ?? null;
+export function blockedReason(
+  node: GenNode,
+  choices: readonly ModelChoiceLike[] = [],
+  upstream: UpstreamTextAvailability = { hasUpstreamText: false }
+): string | null {
+  return BLOCKED.find((rule) => rule.when(node, choices, upstream))?.say ?? null;
 }
 
 /**
@@ -104,6 +112,10 @@ export function shownIndex(node: GenNode): number {
  * Un nodo che ha già prodotto PUÒ rifare: è la seconda generazione, quella che la storia esiste
  * per non perdere.
  */
-export function canStartRun(node: GenNode, choices: readonly ModelChoiceLike[] = []): boolean {
-  return !node.running && !blockedReason(node, choices);
+export function canStartRun(
+  node: GenNode,
+  choices: readonly ModelChoiceLike[] = [],
+  upstream: UpstreamTextAvailability = { hasUpstreamText: false }
+): boolean {
+  return !node.running && !blockedReason(node, choices, upstream);
 }

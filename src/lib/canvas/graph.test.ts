@@ -164,6 +164,11 @@ describe('una pagina incorporata è una sorgente, come un documento', () => {
     expect(canConnect(node('f', 'iframe'), node('p', 'post')).ok).toBe(true);
   });
 
+  it('un documento alimenta immagine e video, come qualunque testo', () => {
+    expect(canConnect(node('d', 'document'), node('i', 'image')).ok).toBe(true);
+    expect(canConnect(node('d', 'document'), node('v', 'video')).ok).toBe(true);
+  });
+
   it('è testo: quel che se ne può usare è quel che c è scritto', () => {
     expect(mediumOf(node('f', 'iframe'))).toBe('text');
   });

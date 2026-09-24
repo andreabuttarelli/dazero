@@ -32,6 +32,7 @@
   import { verdictForUpload, canvasUploadPrefix } from '$lib/canvas/upload-kind';
   import { isUploadedNodeRow, uploadedNodeOf } from '$lib/canvas/uploaded-node';
   import { genNodeSize, type GenNode as GenNodeState, type GenMedium, type ModelChoice } from '$lib/canvas/gen-node';
+  import { hasUpstreamText } from '$lib/canvas/upstream-inputs';
   import { effectiveModel } from '$lib/canvas/default-models';
   import { iframeNodeSize, type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
   import { docNodeSize, shareUrlOf } from '$lib/canvas/doc-node';
@@ -178,6 +179,31 @@
       ])
     )
   );
+
+  /**
+   * SE UN NODO CHE PRODUCE HA UN TESTO A MONTE DA CONTARE COME PROMPT (CLAUDE.md: un'immagine
+   * wired a un testo scritto è pronta anche senza un prompt suo). `sourceTextOf` legge lo stesso
+   * testo che il server leggerebbe (`upstream.ts::sourceText`): il testo generato quando il nodo
+   * l'ha già mostrato, altrimenti il suo prompt/contenuto mai girato — un nodo mai girato dà
+   * comunque quel che c'è scritto, non sparisce dal giro a valle.
+   */
+  function sourceTextOf(node: Tile): string | null {
+    if (node.type === 'doc') {
+      const content = typeof node.data.content === 'string' ? node.data.content : '';
+      return content.trim() ? content : null;
+    }
+    const refId = typeof node.data.refId === 'string' ? node.data.refId : null;
+    const shown = refId ? (runsByNode[node.id] ?? []).find((r) => r.mediaId === refId)?.text : null;
+    if (shown) return shown;
+    const prompt = typeof node.data.prompt === 'string' ? node.data.prompt : '';
+    return prompt.trim() ? prompt : null;
+  }
+
+  const hasUpstreamTextByNode = $derived.by(() => {
+    const upstreamNodes = nodes.map((n) => ({ id: n.id, type: n.type, text: sourceTextOf(n) }));
+    const upstreamEdges = edges.map((e) => ({ id: e.id, sourceNodeId: e.source, targetNodeId: e.target }));
+    return Object.fromEntries(nodes.map((n) => [n.id, hasUpstreamText(upstreamNodes, upstreamEdges, n.id)]));
+  });
 
   /** Quanti biglietti di loop sono ancora `queued` per nodo — non ancora reclamati da un tick.
    *  `data.runs` porta OGNI riga `node_runs`, biglietti compresi (`runsOf` non li filtra, sono
@@ -1183,6 +1209,7 @@
             {selected}
             choices={mediumCatalogue[gen.medium].choices}
             catalogueSynced={mediumCatalogue[gen.medium].synced}
+            hasUpstreamText={hasUpstreamTextByNode[row.id] ?? false}
             loopQueued={loopQueuedByNode[row.id] ?? 0}
             onchange={(patch) => write(id, genData({ ...gen, ...patch }))}
             onrun={() => run(id, gen)}
