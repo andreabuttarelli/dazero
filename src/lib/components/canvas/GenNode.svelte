@@ -129,10 +129,14 @@
    * stima a caratteri indovinerebbe male.
    *
    * `.gen-body` e `.gen-prompt` sono entrambi vincolati alla propria fascia (`overflow` interno):
-   * lo `scrollHeight` che conta è quello del PRIMO FIGLIO di `.gen-body` (il risultato vero, che
-   * chi usa il nodo disegna) e della `textarea`, sommati — non quello dei loro contenitori, che
-   * resterebbe fisso all'altezza assegnata. `ResizeObserver` su entrambi, non una lettura sola:
-   * il corpo cresce mentre si digita o mentre il risultato arriva a pezzi, non solo al montaggio.
+   * lo `scrollHeight` che conta è quello del testo VERO dentro — `.gen-text`, che ha `overflow:
+   * auto` e quindi uno `scrollHeight` che riflette il contenuto, non la fascia che lo contiene.
+   * Il primo figlio di `.gen-body` (`.gen-text-wrap`) è `height: 100%`: il suo `scrollHeight`
+   * torna sempre uguale allo spazio che GIÀ ha, mai a quanto il testo chiederebbe — misurarlo
+   * lì avrebbe chiuso il nodo su se stesso, crescita che non cresce mai. `.gen-prompt`, la
+   * `textarea`, sommata — non il suo contenitore, che resterebbe fisso all'altezza assegnata.
+   * `ResizeObserver` su entrambi, non una lettura sola: il corpo cresce mentre si digita o mentre
+   * il risultato arriva a pezzi, non solo al montaggio.
    */
   function measureHeight(el: HTMLElement) {
     if (node.medium !== 'text' || !onmeasure) return {};
@@ -141,7 +145,7 @@
     let promptHeight = 0;
     const report = () => onmeasure?.(bodyHeight + promptHeight);
 
-    const body = el.querySelector<HTMLElement>('.gen-body > *');
+    const body = el.querySelector<HTMLElement>('.gen-text') ?? el.querySelector<HTMLElement>('.gen-body > *');
     const prompt = el.querySelector<HTMLTextAreaElement>('.gen-prompt');
 
     const ro = new ResizeObserver((entries) => {
