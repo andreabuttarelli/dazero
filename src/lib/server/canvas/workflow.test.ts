@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { DEFAULT_MODEL } from '$lib/canvas/default-models';
 import { fakeDb } from '$lib/server/db/fake-db';
 
 const runGenNode = vi.fn();
@@ -157,6 +158,23 @@ describe('drainWorkflowQueue — il cron drena, rispettando le dipendenze', () =
     expect(runGenNode).toHaveBeenCalledTimes(1);
   });
 
+  it('un nodo senza modello scelto gira col modello predefinito del suo medium', async () => {
+    const ticketB = { workflow: { phase: 'queued', workflowId: 'wf1', dependsOn: [], projectId: PROJECT, canvasId: CANVAS, userId: USER } };
+    const { db } = fakeDb(
+      { node_runs: [runRow({ id: 'run-b', node_id: NODE_B, params: ticketB })], nodes: [nodeRow(NODE_B, 'text', { prompt: 'b' }, 5)] },
+      { updateRows: { node_runs: [runRow({ id: 'run-b', node_id: NODE_B, params: ticketB, status: 'finishing' })] } }
+    );
+    runningRunsMock.mockResolvedValueOnce([
+      { id: 'run-b', orgId: ORG, nodeId: NODE_B, prompt: 'b', model: null, params: ticketB, status: 'running', error: null, outputAssetId: null, externalJobId: null, costUsd: null, attempts: 0, actorId: USER, startedAt: '2026-09-24T00:00:00Z', finishedAt: null }
+    ]);
+    runningRunsMock.mockResolvedValueOnce([]);
+    runGenNode.mockResolvedValue({ kind: 'done', run: { id: 'r', status: 'done', outputAssetId: 'a', costUsd: 0 }, asset: { id: 'a', type: 'text', url: null } });
+
+    await drainWorkflowQueue(db, { limit: 10 });
+
+    expect(runGenNode).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ model: DEFAULT_MODEL.text }));
+  });
+
   it('A ancora running: B resta waiting, non reclamato, non girato', async () => {
     const ticketB = { workflow: { phase: 'queued', workflowId: 'wf1', dependsOn: ['run-a'], projectId: PROJECT, canvasId: CANVAS, userId: USER } };
     const { db } = fakeDb({
@@ -181,7 +199,6 @@ describe('drainWorkflowQueue — il cron drena, rispettando le dipendenze', () =
     );
 
     runningRunsMock.mockResolvedValueOnce([
-      { id: 'run-a', orgId: ORG, nodeId: NODE_A, prompt: null, model: null, params: {}, status: 'failed', error: 'x', outputAssetId: null, externalJobId: null, costUsd: null, attempts: 0, actorId: USER, startedAt: '2026-09-24T00:00:00Z', finishedAt: null },
       { id: 'run-c', orgId: ORG, nodeId: NODE_C, prompt: null, model: null, params: ticketC, status: 'running', error: null, outputAssetId: null, externalJobId: null, costUsd: null, attempts: 0, actorId: USER, startedAt: '2026-09-24T00:00:00Z', finishedAt: null }
     ]);
     runningRunsMock.mockResolvedValueOnce([]);

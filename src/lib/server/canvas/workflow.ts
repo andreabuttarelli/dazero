@@ -1,7 +1,8 @@
 import type { Db } from '$lib/server/db/client';
+import { DEFAULT_MODEL } from '$lib/canvas/default-models';
 import { runGenNode, type StartRun } from '$lib/server/canvas/generate';
 import { findNode, writeNodeData, listConnections, type CanvasNodeRecord } from '$lib/server/repos/canvas';
-import { createRun, claimRun, completeRun, failRun, runningRuns, type NodeRun } from '$lib/server/repos/node-runs';
+import { createRun, claimRun, completeRun, failRun, runningRuns, runsByIds, type NodeRun } from '$lib/server/repos/node-runs';
 import { planWorkflow, stepReadiness, type WorkflowStep, type StepStatus, type WorkflowPlanResult } from '$lib/canvas/workflow-plan';
 import type { Actor } from '$lib/server/repos/actor';
 import type { GenMedium } from '$lib/canvas/gen-node';
@@ -150,7 +151,7 @@ async function runStep(
   }
 
   const medium = (node.type === 'text' || node.type === 'video' ? node.type : 'image') as GenMedium;
-  const model = typeof node.data.model === 'string' ? node.data.model : null;
+  const model = typeof node.data.model === 'string' && node.data.model ? node.data.model : DEFAULT_MODEL[medium];
   const prompt = typeof node.data.prompt === 'string' ? node.data.prompt : '';
 
   const startRun: StartRun = {
@@ -196,8 +197,9 @@ async function statusesOf(runsById: Map<string, NodeRun>, runIds: string[]): Pro
  */
 async function drainWorkflowQueuePass(db: Db, opts: { limit: number }): Promise<WorkflowDrainOutcome> {
   const running = await runningRuns(db, { limit: opts.limit * 8 });
-  const runsById = new Map(running.map((r) => [r.id, r]));
   const tickets = running.filter((r) => ticketOf(r) !== null).slice(0, opts.limit);
+  const dependencyIds = [...new Set(tickets.flatMap((r) => ticketOf(r)?.dependsOn ?? []))];
+  const runsById = new Map((await runsByIds(db, { ids: dependencyIds })).map((r) => [r.id, r]));
 
   let claimed = 0;
   let done = 0;

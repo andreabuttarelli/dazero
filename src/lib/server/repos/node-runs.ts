@@ -328,3 +328,15 @@ export async function dueRuns(db: Db, input: { before: string }): Promise<NodeRu
   }
   return (data ?? []).map(toRun);
 }
+
+export async function runsByIds(db: Db, input: { ids: string[] }): Promise<NodeRun[]> {
+  if (!input.ids.length) {
+    return [];
+  }
+
+  const { data, error } = await db.from('node_runs').select(RUN_COLUMNS).in('id', input.ids);
+  if (error) {
+    throw error;
+  }
+  return (data ?? []).map(toRun);
+}
