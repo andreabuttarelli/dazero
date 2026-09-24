@@ -4,12 +4,12 @@ import { MCP_INSTRUCTIONS } from './server.ts';
 
 /**
  * IL LEDGER DEL RITIRO. La superficie MCP passa da decine di tool brand-scoped (piano editoriale,
- * studio, media, SEO/GEO, blog…) a quattordici org-scoped: `query` legge tutto, tre generici
+ * studio, media, SEO/GEO, blog…) a quindici org-scoped: `query` legge tutto, tre generici
  * scrivono qualunque riga (nodi della tela compresi — disegnare non è un'azione sul mondo),
  * `describe_node_types` dà la forma di `nodes.data`, `run_node_generation` è il click Generare
- * della tela, `run_node_loop`/`preview_node_loop` sono lo stesso click ripetuto su ogni
- * combinazione di un nodo, e due famiglie autonome esistono per le due cose che LO sono davvero —
- * post che si promuovono e campagne che spendono soldi.
+ * della tela, `run_node_loop`/`preview_node_loop`/`cancel_node_loop` sono lo stesso click messo
+ * in coda su ogni combinazione di un nodo, e due famiglie autonome esistono per le due cose che
+ * LO sono davvero — post che si promuovono e campagne che spendono soldi.
  *
  * Ogni nome qui sotto esisteva su questa superficie ed è sparito. La rotta REST che lo serviva, se
  * esiste ancora, resta: la CLI e l'app la chiamano ancora. Quello che sparisce è SOLO la voce in
@@ -59,11 +59,12 @@ const RESTANO = [
   'approve_ad_campaign',
   'run_node_generation',
   'run_node_loop',
-  'preview_node_loop'
+  'preview_node_loop',
+  'cancel_node_loop'
 ];
 
-describe('la superficie MCP è le quattordici dichiarate', () => {
-  test('tools/list è esattamente questi quattordici nomi', async () => {
+describe('la superficie MCP è le quindici dichiarate', () => {
+  test('tools/list è esattamente questi quindici nomi', async () => {
     const names = (await tools()).map((t) => t.name).sort();
 
     expect(names).toEqual([...RESTANO].sort());

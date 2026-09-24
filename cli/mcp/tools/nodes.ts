@@ -62,21 +62,23 @@ export function registerNodeTools(server: McpServer) {
   server.registerTool(
     'run_node_loop',
     {
-      title: 'Run a generation node in a loop',
+      title: 'Queue a generation node loop',
       description:
-        'Generate many combinations from a node\'s `iterate` wires (or plain "repeat N" variants ' +
-        'when it has none), through the SAME engine `run_node_generation` calls — one real run per ' +
-        'combination, never a copy of it. Up to 50 combinations runs on the call; above 50 it comes ' +
-        'back `needs_confirmation` with the count and the credit cost — call again with `confirm: ' +
-        'true` to actually run it; above 1000 it is refused outright and the loop must be split. ' +
-        'Credits for the WHOLE loop are checked up front, before the first combination runs, not ' +
-        'discovered empty halfway. A failed combination never stops the others; completed results ' +
-        'land in an output `list` node next to this one, one item per combination, each labelled ' +
-        'with which values produced it.',
+        'QUEUES many combinations from a node\'s `iterate` wires (or plain "repeat N" variants ' +
+        'when it has none) to run through the SAME engine `run_node_generation` calls — one real ' +
+        'run per combination, never a copy of it. This call returns as soon as the queue is ' +
+        'written, NOT when the images exist: combinations run a few at a time as a background tick ' +
+        'drains the queue over the following minutes, so 1000 combinations take longer than 50 to ' +
+        'finish. Up to 50 queues on the call; above 50 it comes back `needs_confirmation` with the ' +
+        'count and the credit cost — call again with `confirm: true`; above 1000 it is refused ' +
+        'outright and the loop must be split. Credits for the WHOLE loop are checked up front, not ' +
+        'discovered empty halfway. A failed combination never stops the others; results land in an ' +
+        'output `list` node next to this one as they finish, each item labelled with which values ' +
+        'produced it — poll that node (`query`) to see progress, do not expect it done here.',
       inputSchema: z.object({
         org,
         node_id: z.string(),
-        confirm: z.boolean().optional().describe('Required (true) to run above 50 combinations.')
+        confirm: z.boolean().optional().describe('Required (true) to queue above 50 combinations.')
       }),
       annotations: { readOnlyHint: false, destructiveHint: false }
     },
@@ -91,7 +93,7 @@ export function registerNodeTools(server: McpServer) {
     {
       title: 'Preview a node\'s loop',
       description:
-        'How many combinations `run_node_loop` would run on this node right now, and what they ' +
+        'How many combinations `run_node_loop` would queue on this node right now, and what they ' +
         'would cost — reads only, spends nothing. Call this before `run_node_loop` when the count ' +
         'is not already known, rather than guessing at whether confirm will be needed.',
       inputSchema: z.object({ org, node_id: z.string() }),
@@ -99,5 +101,20 @@ export function registerNodeTools(server: McpServer) {
     },
     async ({ org, node_id }) =>
       withAuth((token) => call(token, 'GET', `/api/v1/org/nodes/${encodeURIComponent(node_id)}/loop`, org))
+  );
+
+  server.registerTool(
+    'cancel_node_loop',
+    {
+      title: 'Cancel a queued loop',
+      description:
+        'Stops the combinations still queued for this node — the ones a tick has already claimed ' +
+        'finish regardless, and anything already produced stays in the output list. Returns how ' +
+        'many combinations it actually stopped.',
+      inputSchema: z.object({ org, node_id: z.string() }),
+      annotations: { readOnlyHint: false, destructiveHint: false }
+    },
+    async ({ org, node_id }) =>
+      withAuth((token) => call(token, 'DELETE', `/api/v1/org/nodes/${encodeURIComponent(node_id)}/loop`, org))
   );
 }
