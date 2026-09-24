@@ -9,11 +9,13 @@ import { ADDABLE_ICON } from './addable-icons';
 /**
  * UN NOME E UN'ICONA PER TIPO, IN UN POSTO SOLO.
  *
- * Le superfici che li mostrano sono tre — la barra in basso, il menù del doppio clic e la
- * targhetta sul nodo — e finché le icone stavano dentro la barra, le altre due dovevano
- * riscriverle. Due elenchi scritti a mano divergono al primo cambio, in silenzio e solo su una
- * delle superfici: si vede un globo in fondo allo schermo e un quadrato sul nodo, per la stessa
- * cosa.
+ * Le superfici che li mostrano sono due — la barra in basso e il menù del doppio clic — e
+ * finché le icone stavano dentro la barra, l'altra doveva riscriverle. Due elenchi scritti a
+ * mano divergono al primo cambio, in silenzio e solo su una delle superfici: si vede un globo in
+ * fondo allo schermo e un altro nome nel menù, per la stessa cosa.
+ *
+ * LA TARGHETTA SOPRA IL NODO non legge più da qui: legge da `node-label.ts`, che copre i dodici
+ * `nodes.type` e non solo i sette aggiungibili — la copre `node-label.test.ts`.
  */
 const dir = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) =>
@@ -39,25 +41,15 @@ describe('le superfici che li mostrano', () => {
     expect(bar).not.toMatch(/icons\/(type|image|video|globe|file-text)'/);
   });
 
-  it('il nodo che produce porta la sua targhetta dallo stesso registro', () => {
-    const gen = read('GenNode.svelte');
+  it('la targhetta di ogni nodo viene dal registro di CanvasTile, non da una copia locale', () => {
+    const tile = read('CanvasTile.svelte');
 
-    expect(gen).toMatch(/ADDABLE_ICON/);
-    expect(gen).toMatch(/ADDABLE_LABEL/);
-  });
+    expect(tile).toMatch(/NODE_KIND_ICON/);
+    expect(tile).toMatch(/NODE_KIND_LABEL/);
 
-  it('e anche la pagina incorporata, che è un tipo come gli altri', () => {
-    const frame = read('IframeNode.svelte');
-
-    expect(frame).toMatch(/ADDABLE_ICON/);
-    expect(frame).toMatch(/ADDABLE_LABEL/);
-  });
-
-  it('e il documento, che ha la sua targhetta come gli altri', () => {
-    const doc = read('DocNode.svelte');
-
-    expect(doc).toMatch(/ADDABLE_ICON/);
-    expect(doc).toMatch(/ADDABLE_LABEL/);
+    for (const name of ['GenNode.svelte', 'IframeNode.svelte', 'DocNode.svelte', 'ProductsNode.svelte', 'SocialFeedNode.svelte', 'InfluencerNode.svelte', 'UploadedNode.svelte']) {
+      expect(read(name)).not.toMatch(/-tag/);
+    }
   });
 });
 
@@ -67,7 +59,7 @@ describe('le icone che un componente importa', () => {
   it('esistono davvero in lucide, una per una', () => {
     const missing: string[] = [];
 
-    for (const name of ['CanvasAddBar.svelte', 'GenNode.svelte', 'IframeNode.svelte', 'DocNode.svelte']) {
+    for (const name of ['CanvasAddBar.svelte', 'IframeNode.svelte', 'DocNode.svelte']) {
       for (const match of read(name).matchAll(/@lucide\/svelte\/icons\/([a-z0-9-]+)/g)) {
         try {
           require.resolve(`@lucide/svelte/icons/${match[1]}`);

@@ -71,6 +71,12 @@
      *  un solo ingresso generico. */
     connectors?: ConnectorType[];
     output?: ConnectorType | null;
+    /** `nodes.type`: la targhetta fuori dal corpo (`CanvasTile`) ne legge icona e nome di
+     *  riserva. Assente su quel che non è un nodo del modello. */
+    kind?: string;
+    /** `nodes.display_name`, quando chi ha nominato il nodo l'ha scritto — vince sul nome del
+     *  tipo nella targhetta. */
+    displayName?: string | null;
   };
 
   let {
@@ -188,7 +194,16 @@
     id: t.id,
     position: { x: t.x, y: t.y },
     // `render` è lo snippet del chiamante: il nodo lo esegue senza sapere cosa disegni.
-    data: { tile: t, id: t.id, render: tile, connectable: t.connectable !== false, connectors: t.connectors, output: t.output ?? null },
+    data: {
+      tile: t,
+      id: t.id,
+      render: tile,
+      connectable: t.connectable !== false,
+      connectors: t.connectors,
+      output: t.output ?? null,
+      kind: t.kind,
+      displayName: t.displayName
+    },
     type: 'tile',
     style: `width:${t.w}px;height:${t.h}px`
   });

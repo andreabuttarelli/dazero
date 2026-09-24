@@ -21,6 +21,8 @@
    */
   import { Handle, Position, useConnection, type NodeProps } from '@xyflow/svelte';
   import { CONNECTOR_STYLE, portActive, type ConnectorType, type DragOrigin } from '$lib/canvas/connectors';
+  import { NODE_KIND_ICON, NODE_KIND_LABEL } from '$lib/canvas/node-label';
+  import { isNodeType } from '$lib/canvas/node-data';
 
   type TileData = {
     render?: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
@@ -30,6 +32,11 @@
      *  generico — il caso di chi non ha ancora scelto un modello, o non produce affatto. */
     connectors?: ConnectorType[];
     output?: ConnectorType | null;
+    /** `nodes.type`: decide icona e nome di riserva della targhetta fuori dal corpo. Assente su
+     *  quel che non è un nodo del modello (il recap del brand) — niente targhetta in quel caso. */
+    kind?: string;
+    /** `nodes.display_name`, quando chi ha nominato il nodo l'ha scritto. Vince sul nome del tipo. */
+    displayName?: string | null;
   };
 
   // `selected` lo tiene SvelteFlow e lo passa a ogni nodo: è l'unico che sa davvero cosa è
@@ -52,6 +59,10 @@
     const port = c.fromHandle.id && c.fromHandle.id in CONNECTOR_STYLE ? (c.fromHandle.id as ConnectorType) : null;
     return { side: 'target', type: port, nodeId: c.fromHandle.nodeId, handleId: c.fromHandle.id ?? null };
   });
+
+  const kind = $derived(tile.kind && isNodeType(tile.kind) ? tile.kind : null);
+  const LabelIcon = $derived(kind ? NODE_KIND_ICON[kind] : null);
+  const label = $derived(tile.displayName?.trim() || (kind ? NODE_KIND_LABEL[kind] : null));
 </script>
 
 {#if tile.connectable}
@@ -72,6 +83,13 @@
   {:else}
     <Handle type="target" position={Position.Left} />
   {/if}
+{/if}
+
+{#if label && LabelIcon}
+  <div class="node-label" class:is-chosen={selected}>
+    <LabelIcon size={12} strokeWidth={1.8} />
+    <span>{label}</span>
+  </div>
 {/if}
 
 {#if tile.render}
@@ -155,6 +173,48 @@
     color: var(--port);
     pointer-events: none;
   }
+
+  /*
+   * LA TARGHETTA, FUORI DAL CORPO DEL NODO — come il nome di un frame in Figma.
+   *
+   * `bottom: 100%` e non `top` negativo: ancora il basso della targhetta al TOP del nodo, quindi
+   * cresce verso l'alto e non si sposta se il testo va a capo diversamente. Il piccolo margine
+   * (`margin-bottom`) è lo spazio fra targhetta e corpo, non un padding del corpo — il nodo non sa
+   * di avere una targhetta sopra.
+   *
+   * NESSUN `pointer-events: none`: trascinare la targhetta deve spostare il nodo, come un titolo
+   * di frame — è la stessa superficie di trascinamento del nodo, non un bersaglio a parte. Non
+   * intercetta un arco perché non è un `Handle`: SvelteFlow apre una connessione solo da lì.
+   */
+  .node-label {
+    position: absolute;
+    z-index: 3;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 100%;
+    padding: 2px 0;
+    font-size: 11px;
+    line-height: 1.3;
+    color: var(--ink-soft, #6e6e73);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .node-label :global(svg) {
+    flex: none;
+  }
+  .node-label span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .node-label.is-chosen {
+    color: var(--ink, #1d1d1f);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     :global(.svelte-flow__handle) {
       transition: none;

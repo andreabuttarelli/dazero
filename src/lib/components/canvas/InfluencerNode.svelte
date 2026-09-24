@@ -23,11 +23,6 @@
 </script>
 
 <div class="influencer">
-  <div class="influencer-tag">
-    <UserRound size={13} strokeWidth={1.8} />
-    <span>Influencer</span>
-  </div>
-
   <div class="influencer-body">
     {#if cover?.url}
       <img class="influencer-photo" src={cover.url} alt={name} loading="lazy" />
@@ -66,23 +61,6 @@
     .influencer {
       transition: none;
     }
-  }
-
-  .influencer-tag {
-    position: absolute;
-    z-index: 2;
-    top: 8px;
-    right: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px 3px 6px;
-    font-size: 11px;
-    color: var(--ink-soft, #6e6e73);
-    background: color-mix(in srgb, var(--paper, #fff) 86%, transparent);
-    border: 1px solid var(--line-2, #d2d2d7);
-    backdrop-filter: blur(6px);
-    pointer-events: none;
   }
 
   .influencer-body {

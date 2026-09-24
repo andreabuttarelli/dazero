@@ -13,12 +13,8 @@
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import Link from '@lucide/svelte/icons/link';
   import LinkOff from '@lucide/svelte/icons/unlink';
-  import { ADDABLE_LABEL } from '$lib/canvas/addable';
-  import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
   import type { DocNode, DocMode } from '$lib/canvas/doc-node';
   import '$lib/styles/doc-prose.css';
-
-  const DocIcon = ADDABLE_ICON.doc;
 
   let {
     node,
@@ -83,11 +79,6 @@
 </script>
 
 <div class="doc">
-  <div class="doc-tag">
-    <DocIcon size={13} strokeWidth={1.8} />
-    <span>{ADDABLE_LABEL.doc}</span>
-  </div>
-
   <header class="doc-head">
     <div class="doc-modes" role="group" aria-label="Come si vede il documento">
       <button type="button" class:is-on={mode === 'view'} onclick={() => (mode = 'view')}>
@@ -175,29 +166,11 @@
     }
   }
 
-  .doc-tag {
-    position: absolute;
-    z-index: 2;
-    top: 8px;
-    right: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px 3px 6px;
-    font-size: 11px;
-    color: var(--ink-soft, #6e6e73);
-    background: color-mix(in srgb, var(--paper, #fff) 86%, transparent);
-    border: 1px solid var(--line-2, #d2d2d7);
-    backdrop-filter: blur(6px);
-    pointer-events: none;
-  }
-
   .doc-head {
     display: flex;
     align-items: center;
     gap: 6px;
     padding: 7px 9px;
-    padding-right: 72px;
     border-bottom: 1px solid var(--line, #e5e5e5);
     background: var(--paper, #fff);
   }

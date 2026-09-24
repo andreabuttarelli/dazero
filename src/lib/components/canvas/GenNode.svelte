@@ -15,8 +15,6 @@
   import { runStateOf, promptTooLong, type GenNode, type ModelChoice } from '$lib/canvas/gen-node';
   import { blockedReason, canStartRun, shownIndex } from '$lib/canvas/gen-history';
   import { effectiveModel } from '$lib/canvas/default-models';
-  import { ADDABLE_LABEL } from '$lib/canvas/addable';
-  import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
 
   let {
     node,
@@ -100,20 +98,9 @@
     done: 'Fatto',
     failed: 'Non è riuscito'
   };
-
-  const TypeIcon = $derived(ADDABLE_ICON[node.medium]);
 </script>
 
 <div class="gen" class:is-running={state === 'running'} class:is-chosen={selected}>
-  <!-- La targhetta resta SEMPRE: da lontano, con lo zoom stretto, è l'unica cosa che dice cosa
-       sia un riquadro quando il contenuto è ancora vuoto o è una miniatura illeggibile. Nome e
-       icona vengono dal registro, gli stessi della barra in basso: due elenchi darebbero un globo
-       in fondo allo schermo e un quadrato sul nodo, per la stessa cosa. -->
-  <div class="gen-tag">
-    <TypeIcon size={13} strokeWidth={1.8} />
-    <span>{ADDABLE_LABEL[node.medium]}</span>
-  </div>
-
   <!-- Il risultato, quando c'è. Il testo lo mostra qui perché è esso stesso il prodotto; immagine
        e video li disegna chi usa il nodo, che sa da dove viene l'URL firmato. -->
   <div class="gen-body">
@@ -208,7 +195,6 @@
    * — come erano — il nodo era più scuro dello sfondo, che è il contrario di quel che galleggia.
    */
   .gen {
-    /* Il riferimento per l'overlay, che gli sta sopra e fuori. */
     position: relative;
     display: flex;
     flex-direction: column;
@@ -245,24 +231,6 @@
     }
   }
 
-  /* Galleggia sull'angolo alto, fuori dal flusso: dentro toglierebbe spazio al contenuto, che è
-     la cosa che si guarda. */
-  .gen-tag {
-    position: absolute;
-    z-index: 2;
-    top: 8px;
-    left: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px 3px 6px;
-    font-size: 11px;
-    color: var(--ink-soft, #6e6e73);
-    background: color-mix(in srgb, var(--paper, #fff) 86%, transparent);
-    border: 1px solid var(--line-2, #d2d2d7);
-    backdrop-filter: blur(6px);
-    pointer-events: none;
-  }
   /*
    * IL RISULTATO ARRIVA AI BORDI. Il nodo esiste per guardare quel che è uscito: dentro un
    * `padding` diventa una miniatura con una cornice attorno, e su una clip verticale la cornice

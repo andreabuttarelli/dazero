@@ -73,6 +73,7 @@
   type Tile = {
     id: string;
     type: string;
+    displayName: string | null;
     data: Record<string, unknown>;
     version: number;
     x: number;
@@ -116,6 +117,7 @@
     return {
       id: node.id,
       type: node.type,
+      displayName: node.displayName,
       data: node.data,
       version: node.version,
       x: node.position.x,
@@ -240,6 +242,8 @@
       connectable: true,
       connectors: connectorsOfNode(n),
       output: outputConnectorOf(n.type),
+      kind: n.type,
+      displayName: n.displayName,
       node: tileNode({
         id: n.id,
         medium: n.type === 'iframe' || n.type === 'document' || n.type === 'doc' ? null : (n.type as 'text' | 'image' | 'video'),

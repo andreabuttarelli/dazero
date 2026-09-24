@@ -8,7 +8,6 @@
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
-  import { ADDABLE_LABEL } from '$lib/canvas/addable';
   import { SOCIAL_FEED_PLATFORMS, type SocialFeedNode } from '$lib/canvas/social-feed-node';
   import { canStartSync, syncBlockedReason } from '$lib/canvas/sync-state';
   import type { SocialPost } from '$lib/server/repos/social-posts';
@@ -42,11 +41,6 @@
 </script>
 
 <div class="feed">
-  <div class="feed-tag">
-    <Rss size={13} strokeWidth={1.8} />
-    <span>{ADDABLE_LABEL.social_account_feed}</span>
-  </div>
-
   <header class="feed-head">
     <select
       class="feed-field"
@@ -145,29 +139,11 @@
     }
   }
 
-  .feed-tag {
-    position: absolute;
-    z-index: 2;
-    top: 8px;
-    right: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px 3px 6px;
-    font-size: 11px;
-    color: var(--ink-soft, #6e6e73);
-    background: color-mix(in srgb, var(--paper, #fff) 86%, transparent);
-    border: 1px solid var(--line-2, #d2d2d7);
-    backdrop-filter: blur(6px);
-    pointer-events: none;
-  }
-
   .feed-head {
     display: flex;
     align-items: center;
     gap: 6px;
     padding: 7px 9px;
-    padding-right: 72px;
     border-bottom: 1px solid var(--line, #e5e5e5);
     background: var(--paper, #fff);
   }

@@ -9,21 +9,12 @@
    * caricato), quindi porta comunque gli attacchi — quello lo decide `+page.svelte` passando
    * `connectable: true`, non questo componente.
    */
-  import { ADDABLE_LABEL } from '$lib/canvas/addable';
-  import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
   import type { UploadedNode } from '$lib/canvas/uploaded-node';
 
   let { node, medium }: { node: UploadedNode; medium: 'image' | 'video' } = $props();
-
-  const TypeIcon = $derived(ADDABLE_ICON[medium]);
 </script>
 
 <div class="uploaded">
-  <div class="uploaded-tag">
-    <TypeIcon size={13} strokeWidth={1.8} />
-    <span>{ADDABLE_LABEL[medium]}</span>
-  </div>
-
   <div class="uploaded-body">
     {#if medium === 'image'}
       <img src={node.url} alt={node.name} loading="lazy" />
@@ -47,23 +38,6 @@
       0 1px 2px rgb(0 0 0 / 0.05),
       0 8px 24px -12px rgb(0 0 0 / 0.2);
     overflow: hidden;
-  }
-
-  .uploaded-tag {
-    position: absolute;
-    z-index: 2;
-    top: 8px;
-    left: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px 3px 6px;
-    font-size: 11px;
-    color: var(--ink-soft, #6e6e73);
-    background: color-mix(in srgb, var(--paper, #fff) 86%, transparent);
-    border: 1px solid var(--line-2, #d2d2d7);
-    backdrop-filter: blur(6px);
-    pointer-events: none;
   }
 
   .uploaded-body {

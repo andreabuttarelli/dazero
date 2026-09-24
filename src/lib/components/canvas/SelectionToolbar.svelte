@@ -168,6 +168,8 @@
     display: flex;
     align-items: center;
     gap: 2px;
+    /* `box.y` arriva già sopra la targhetta del nodo (`CanvasSelectionBridge.svelte`,
+       `LABEL_CLEARANCE_FLOW`): il gap qui è solo fra la barra e quel punto. */
     transform: translate(-50%, calc(-100% - 10px));
     padding: 4px;
     border-radius: 0;
