@@ -414,11 +414,11 @@ type VideoRenderLookup = {
  * `finishVideoRender` interroga già passando un `SupabaseClient` non ristretto. Stesso confine
  * qui: il cast dichiara che questa singola query esce dal narrowing, non lo aggira altrove.
  */
-async function findVideoRenderRow(db: Db, taskId: string): Promise<VideoRenderLookup | null> {
+async function findVideoRenderRow(db: Db, renderId: string): Promise<VideoRenderLookup | null> {
   const { data, error } = await (db as unknown as { from(table: string): any })
     .from('video_renders')
     .select('id, task_id, model, prompt, duration_seconds, resolution, cover_url, persist_opts, submitted_at')
-    .eq('task_id', taskId)
+    .eq('id', renderId)
     .maybeSingle();
 
   if (error) {

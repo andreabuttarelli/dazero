@@ -1911,3 +1911,10 @@ un elenco di righe distinte. Mossa: mai un `.find` che alterna corrispondenza es
 nello stesso passaggio — prima tutti gli id esatti, POI il fallback a prefisso
 (`SPECS.find(id-esatto) ?? SPECS.find(prefisso)`), e un test che chiede a ogni id esatto del
 registro di risolvere a se stesso, non solo al capostipite della famiglia.
+
+### Un video (o un loop) resta "in caricamento" per sempre in locale
+Segnale: `node_runs` in `running` con `external_job_id` valorizzato, `attempts = 0`,
+`claimed_at` null. In produzione `vercel.json` chiama `/api/v1/canvas/runs/tick` ogni minuto;
+sotto `npm run dev` nessuno la chiamava. Mossa: il plugin `devCrons` (`scripts/dev-crons.ts`)
+chiama le cron al minuto di `vercel.json` in sviluppo (`cronAuthorized` le lascia passare in
+dev). Per forzarne una subito: `curl localhost:5173/api/v1/canvas/runs/tick`.

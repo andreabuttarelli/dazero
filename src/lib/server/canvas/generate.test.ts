@@ -910,11 +910,11 @@ function videoReconcileDb(initial: {
       if (table === 'video_renders') {
         return {
           select: () => ({
-            eq: () => ({
+            eq: (column: string, value: string) => ({
               maybeSingle: async () => ({
-                data: {
-                  id: 'render-1',
-                  task_id: runState.external_job_id,
+                data: column !== 'id' || value !== runState.external_job_id ? null : {
+                  id: runState.external_job_id,
+                  task_id: 'openrouter:gen-vid-1',
                   model: runState.model,
                   prompt: runState.prompt,
                   duration_seconds: 1,
