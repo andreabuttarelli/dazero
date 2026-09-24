@@ -34,6 +34,7 @@ const LIST_NODE_A = '66666666-6666-6666-6666-666666666666';
 
 const nodeRow = (id: string, type: string, data: Record<string, unknown>, version = 1) => ({
   id,
+  org_id: ORG,
   canvas_id: CANVAS,
   project_id: PROJECT,
   type,
@@ -110,9 +111,9 @@ describe('planLoop — il preventivo, senza girare niente', () => {
         nodeRow(LIST_NODE_A, 'list', { item_kind: 'image', items: [{ asset_id: 'a1' }, { asset_id: 'a2' }, { asset_id: 'a3' }, { asset_id: 'a4' }] })
       ],
       nodes_connections: [
-        { id: 'e1', canvas_id: CANVAS, source_node_id: LIST_NODE_A, target_node_id: GEN_NODE, source_handle: null, target_handle: null, mode: 'iterate' }
+        { id: 'e1', org_id: ORG, canvas_id: CANVAS, source_node_id: LIST_NODE_A, target_node_id: GEN_NODE, source_handle: null, target_handle: null, mode: 'iterate', deleted_at: null }
       ]
-    });
+    }, { filter: true });
 
     const out = await planLoop(db, { orgId: ORG, canvasId: CANVAS, nodeId: GEN_NODE });
 

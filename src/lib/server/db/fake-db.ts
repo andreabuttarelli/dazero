@@ -21,14 +21,25 @@ export type Call = {
 
 export type FakeDb = { db: Db; calls: Call[] };
 
-export type FakeOptions = { updateRows?: Record<string, unknown[]> };
+export type FakeOptions = { updateRows?: Record<string, unknown[]>; filter?: boolean };
 
 export function fakeDb(rows: Record<string, unknown[]>, options: FakeOptions = {}): FakeDb {
   const calls: Call[] = [];
   const updateRows = options.updateRows ?? {};
 
-  const rowsFor = (op: string, table: string): unknown[] =>
+  const allRowsFor = (op: string, table: string): unknown[] =>
     (op === 'update' ? (updateRows[table] ?? rows[table]) : rows[table]) ?? [];
+
+  const matches = (row: Record<string, unknown>, [column, value]: [string, unknown]): boolean =>
+    Array.isArray(value) ? value.includes(row[column]) : value === null ? row[column] == null : row[column] === value;
+
+  const rowsFor = (op: string, table: string, filters: [string, unknown][] = []): unknown[] => {
+    const all = allRowsFor(op, table);
+    if (!options.filter) {
+      return all;
+    }
+    return all.filter((row) => filters.every((f) => matches(row as Record<string, unknown>, f)));
+  };
 
   const builder = (table: string, op: string, payload?: unknown) => {
     const call: Call = { table, op, payload, filters: [] };
@@ -67,7 +78,7 @@ export function fakeDb(rows: Record<string, unknown[]>, options: FakeOptions = {
         return chain;
       },
       single: async () => {
-        const first = rowsFor(op, table)[0];
+        const first = rowsFor(op, table, call.filters)[0];
         if (first !== undefined) {
           return { data: first, error: null };
         }
@@ -76,9 +87,9 @@ export function fakeDb(rows: Record<string, unknown[]>, options: FakeOptions = {
         }
         return { data: null, error: null };
       },
-      maybeSingle: async () => ({ data: rowsFor(op, table)[0] ?? null, error: null }),
+      maybeSingle: async () => ({ data: rowsFor(op, table, call.filters)[0] ?? null, error: null }),
       then: (resolve: (v: { data: unknown[]; error: null }) => unknown) =>
-        resolve({ data: rowsFor(op, table), error: null })
+        resolve({ data: rowsFor(op, table, call.filters), error: null })
     };
     return chain;
   };
