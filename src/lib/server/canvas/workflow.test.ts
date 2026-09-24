@@ -4,6 +4,17 @@ import { fakeDb } from '$lib/server/db/fake-db';
 const runGenNode = vi.fn();
 vi.mock('$lib/server/canvas/generate', () => ({ runGenNode: (...args: unknown[]) => runGenNode(...args) }));
 
+type RunningRuns = typeof import('$lib/server/repos/node-runs').runningRuns;
+const { actualHolder, runningRunsMock } = vi.hoisted(() => {
+  const holder: { fn: RunningRuns | null } = { fn: null };
+  return { actualHolder: holder, runningRunsMock: vi.fn((...args: Parameters<RunningRuns>) => holder.fn!(...args)) };
+});
+vi.mock('$lib/server/repos/node-runs', async () => {
+  const actual = await vi.importActual<typeof import('$lib/server/repos/node-runs')>('$lib/server/repos/node-runs');
+  actualHolder.fn = actual.runningRuns;
+  return { ...actual, runningRuns: (...args: Parameters<RunningRuns>) => runningRunsMock(...args) };
+});
+
 import { enqueueWorkflow, drainWorkflowQueue, cancelWorkflow } from './workflow';
 
 /**
@@ -71,6 +82,8 @@ const connRow = (source: string, target: string) => ({
 
 beforeEach(() => {
   runGenNode.mockReset();
+  runningRunsMock.mockReset();
+  runningRunsMock.mockImplementation((...args: Parameters<RunningRuns>) => actualHolder.fn!(...args));
 });
 
 describe('enqueueWorkflow — valida, mette in coda un biglietto per passo, mai gira', () => {
@@ -125,6 +138,12 @@ describe('drainWorkflowQueue — il cron drena, rispettando le dipendenze', () =
       { updateRows: { node_runs: [runRow({ id: 'run-b', node_id: NODE_B, params: ticketB, status: 'finishing' })] } }
     );
 
+    runningRunsMock.mockResolvedValueOnce([
+      { id: 'run-a', orgId: ORG, nodeId: NODE_A, prompt: null, model: null, params: {}, status: 'done', error: null, outputAssetId: null, externalJobId: null, costUsd: null, attempts: 0, actorId: USER, startedAt: '2026-09-24T00:00:00Z', finishedAt: null },
+      { id: 'run-b', orgId: ORG, nodeId: NODE_B, prompt: 'b', model: null, params: ticketB, status: 'running', error: null, outputAssetId: null, externalJobId: null, costUsd: null, attempts: 0, actorId: USER, startedAt: '2026-09-24T00:00:00Z', finishedAt: null }
+    ]);
+    runningRunsMock.mockResolvedValueOnce([]);
+
     runGenNode.mockResolvedValue({
       kind: 'done',
       run: { id: 'real-run', status: 'done', outputAssetId: 'asset-1', costUsd: 0.05 },
@@ -161,6 +180,12 @@ describe('drainWorkflowQueue — il cron drena, rispettando le dipendenze', () =
       { updateRows: { node_runs: [runRow({ id: 'run-c', node_id: NODE_C, params: ticketC, status: 'finishing' })] } }
     );
 
+    runningRunsMock.mockResolvedValueOnce([
+      { id: 'run-a', orgId: ORG, nodeId: NODE_A, prompt: null, model: null, params: {}, status: 'failed', error: 'x', outputAssetId: null, externalJobId: null, costUsd: null, attempts: 0, actorId: USER, startedAt: '2026-09-24T00:00:00Z', finishedAt: null },
+      { id: 'run-c', orgId: ORG, nodeId: NODE_C, prompt: null, model: null, params: ticketC, status: 'running', error: null, outputAssetId: null, externalJobId: null, costUsd: null, attempts: 0, actorId: USER, startedAt: '2026-09-24T00:00:00Z', finishedAt: null }
+    ]);
+    runningRunsMock.mockResolvedValueOnce([]);
+
     const out = await drainWorkflowQueue(db, { limit: 10 });
 
     expect(out.claimed).toBe(1);
@@ -182,6 +207,51 @@ describe('drainWorkflowQueue — il cron drena, rispettando le dipendenze', () =
 
     expect(out.claimed).toBe(0);
     expect(runGenNode).not.toHaveBeenCalled();
+  });
+});
+
+describe('drainWorkflowQueue — continua nello stesso tick finché un passaggio sblocca il successivo', () => {
+  it('un passaggio che reclama qualcosa fa ripartire un altro passaggio nello stesso tick', async () => {
+    const ticketA = { workflow: { phase: 'queued', workflowId: 'wf1', dependsOn: [], projectId: PROJECT, canvasId: CANVAS, userId: USER } };
+    const runA = { id: 'run-a', orgId: ORG, nodeId: NODE_A, prompt: 'a', model: null, params: ticketA, status: 'running' as const, error: null, outputAssetId: null, externalJobId: null, costUsd: null, attempts: 0, actorId: USER, startedAt: '2026-09-24T00:00:00Z', finishedAt: null };
+
+    runningRunsMock.mockResolvedValueOnce([runA]);
+    runningRunsMock.mockResolvedValueOnce([]);
+
+    const { db } = fakeDb(
+      { node_runs: [runRow({ id: 'run-a', node_id: NODE_A, params: ticketA })], nodes: [nodeRow(NODE_A, 'text', { prompt: 'a' }, 5)] },
+      { updateRows: { node_runs: [runRow({ id: 'run-a', node_id: NODE_A, params: ticketA, status: 'finishing' })] } }
+    );
+
+    runGenNode.mockResolvedValue({
+      kind: 'done',
+      run: { id: 'real-run', status: 'done', outputAssetId: 'asset-1', costUsd: 0.05 },
+      asset: { id: 'asset-1', type: 'image', url: 'https://cdn/1.png' }
+    });
+
+    const out = await drainWorkflowQueue(db, { limit: 10 });
+
+    expect(runningRunsMock).toHaveBeenCalledTimes(2);
+    expect(out.claimed).toBe(1);
+    expect(out.done).toBe(1);
+  });
+
+  it('un passaggio che non reclama nulla ferma il ciclo: una sola chiamata', async () => {
+    const ticketB = { workflow: { phase: 'queued', workflowId: 'wf1', dependsOn: ['run-a'], projectId: PROJECT, canvasId: CANVAS, userId: USER } };
+    const runA = { id: 'run-a', orgId: ORG, nodeId: NODE_A, prompt: 'a', model: null, params: {}, status: 'running' as const, error: null, outputAssetId: null, externalJobId: null, costUsd: null, attempts: 0, actorId: USER, startedAt: '2026-09-24T00:00:00Z', finishedAt: null };
+    const runB = { id: 'run-b', orgId: ORG, nodeId: NODE_B, prompt: 'b', model: null, params: ticketB, status: 'running' as const, error: null, outputAssetId: null, externalJobId: null, costUsd: null, attempts: 0, actorId: USER, startedAt: '2026-09-24T00:00:00Z', finishedAt: null };
+
+    runningRunsMock.mockResolvedValueOnce([runA, runB]);
+
+    const { db } = fakeDb({
+      node_runs: [runRow({ id: 'run-a', node_id: NODE_A, status: 'running' }), runRow({ id: 'run-b', node_id: NODE_B, params: ticketB })],
+      nodes: []
+    });
+
+    const out = await drainWorkflowQueue(db, { limit: 10 });
+
+    expect(runningRunsMock).toHaveBeenCalledTimes(1);
+    expect(out.claimed).toBe(0);
   });
 });
 

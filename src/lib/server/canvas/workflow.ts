@@ -194,7 +194,7 @@ async function statusesOf(runsById: Map<string, NodeRun>, runIds: string[]): Pro
  * riprova. Un passo video resta `running` sul suo run reale finché `reconcileVideoNodeRuns` non
  * lo chiude: i suoi dipendenti restano `waiting` fino ad allora, nessuna logica speciale qui.
  */
-export async function drainWorkflowQueue(db: Db, opts: { limit: number }): Promise<WorkflowDrainOutcome> {
+async function drainWorkflowQueuePass(db: Db, opts: { limit: number }): Promise<WorkflowDrainOutcome> {
   const running = await runningRuns(db, { limit: opts.limit * 8 });
   const runsById = new Map(running.map((r) => [r.id, r]));
   const tickets = running.filter((r) => ticketOf(r) !== null).slice(0, opts.limit);
@@ -245,6 +245,42 @@ export async function drainWorkflowQueue(db: Db, opts: { limit: number }): Promi
   }
 
   return { claimed, done, failed, blocked };
+}
+
+const WORKFLOW_DRAIN_BUDGET_MS = 240_000;
+const WORKFLOW_DRAIN_MAX_PASSES = 50;
+
+function addOutcome(total: WorkflowDrainOutcome, pass: WorkflowDrainOutcome): WorkflowDrainOutcome {
+  return {
+    claimed: total.claimed + pass.claimed,
+    done: total.done + pass.done,
+    failed: total.failed + pass.failed,
+    blocked: total.blocked + pass.blocked
+  };
+}
+
+function madeProgress(pass: WorkflowDrainOutcome): boolean {
+  return pass.claimed > 0;
+}
+
+/**
+ * RIPETE I PASSAGGI FINCHÉ UNO SBLOCCA IL SUCCESSIVO — un passo appena finito (`done`) sblocca
+ * subito il suo dipendente, invece di aspettare il prossimo tick del cron (un minuto): il secondo
+ * `drainWorkflowQueuePass` lo vede già `waiting` diventato `ready`. Si ferma quando un passaggio
+ * non reclama più nulla, o quando il budget di tempo del tick finisce — mai a metà di un passo in
+ * corso, solo tra un passaggio e il successivo.
+ */
+export async function drainWorkflowQueue(db: Db, opts: { limit: number }): Promise<WorkflowDrainOutcome> {
+  const deadline = Date.now() + WORKFLOW_DRAIN_BUDGET_MS;
+  let total: WorkflowDrainOutcome = { claimed: 0, done: 0, failed: 0, blocked: 0 };
+
+  for (let pass = 0; pass < WORKFLOW_DRAIN_MAX_PASSES && Date.now() < deadline; pass += 1) {
+    const outcome = await drainWorkflowQueuePass(db, opts);
+    total = addOutcome(total, outcome);
+    if (!madeProgress(outcome)) break;
+  }
+
+  return total;
 }
 
 export type WorkflowCancelInput = { orgId: string; workflowId: string };
