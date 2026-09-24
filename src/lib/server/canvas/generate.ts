@@ -338,6 +338,12 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
     }
 
     const { generateVideoWithoutBrand } = await import('$lib/server/media-generate');
+    const [referenceImageUrls, referenceVideoUrls, referenceAudioUrls, lastFrame] = await Promise.all([
+      signMediaPaths(db, upstream.referenceImageUrls),
+      signMediaPaths(db, upstream.referenceVideoUrls),
+      signMediaPaths(db, upstream.referenceAudioUrls),
+      signMediaPaths(db, upstream.endFrameUrl ? [upstream.endFrameUrl] : [])
+    ]);
     const out = await generateVideoWithoutBrand({
       orgId: input.orgId,
       userId: input.userId,
@@ -346,10 +352,10 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
       aspectRatio: input.params.aspectRatio as never,
       durationSeconds: input.params.duration,
       baseMediaId: upstream.startFrameUrl ?? undefined,
-      lastFrameUrl: upstream.endFrameUrl ?? undefined,
-      referenceImageUrls: upstream.referenceImageUrls,
-      referenceVideoUrls: upstream.referenceVideoUrls,
-      referenceAudioUrls: upstream.referenceAudioUrls
+      lastFrameUrl: lastFrame[0],
+      referenceImageUrls,
+      referenceVideoUrls,
+      referenceAudioUrls
     });
     if (!out.ok) {
       await giveUp(db, input, version, run, out.error);
