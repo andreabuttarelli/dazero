@@ -23,6 +23,7 @@
    * bottone nuovo — "Crea post dalla selezione" — è una riga lì, non un `{#if}` qui.
    */
   import { SELECTION_ACTIONS, enabledFor, type SelectionActionId } from '$lib/canvas/selection-actions';
+  import type { WorkflowEdge } from '$lib/canvas/workflow-plan';
   import { SELECTION_ACTION_ICON } from '$lib/canvas/selection-action-icons';
   import { commonPropertiesOf, type CommonValue } from '$lib/canvas/common-properties';
   import { effectiveModel } from '$lib/canvas/default-models';
@@ -39,6 +40,7 @@
     zoom = 1,
     count,
     nodeSummaries = [],
+    edges = [],
     choicesFor,
     catalogueSynced = true,
     onaction,
@@ -53,6 +55,8 @@
     count: number;
     /** `type`/`data` dei nodi selezionati, la forma che `commonPropertiesOf` legge. */
     nodeSummaries?: { id: string; type: string; data: Record<string, unknown> }[];
+    /** I collegamenti della tela, per `enabledFor('run-workflow', …)`. */
+    edges?: WorkflowEdge[];
     /** I modelli offribili per il tipo della selezione, dal catalogo del brand. */
     choicesFor?: (type: 'text' | 'image' | 'video') => ModelChoice[];
     /** Il catalogo del medium della selezione è già sincronizzato? Come su `GenNode`, un menù
@@ -206,7 +210,7 @@
     <Tooltip.Provider delayDuration={200}>
     {#each SELECTION_ACTIONS as action (action.id)}
       {@const Icon = SELECTION_ACTION_ICON[action.id]}
-      {@const gate = enabledFor(action.id, nodeSummaries)}
+      {@const gate = enabledFor(action.id, nodeSummaries, edges)}
       <Tooltip.Root>
         <Tooltip.Trigger>
           {#snippet child({ props })}

@@ -18,4 +18,25 @@ describe('enabledFor', () => {
     expect(enabledFor('duplicate', []).enabled).toBe(true);
     expect(enabledFor('duplicate', [{ id: '1', type: 'text', data: {} }]).enabled).toBe(true);
   });
+
+  it('run-workflow è abilitata su due nodi testo collegati', () => {
+    const nodes = [
+      { id: '1', type: 'text', data: {} },
+      { id: '2', type: 'text', data: {} }
+    ];
+    const edges = [{ sourceNodeId: '1', targetNodeId: '2' }];
+    const result = enabledFor('run-workflow', nodes, edges);
+    expect(result.enabled).toBe(true);
+    expect(result.reason).toBeUndefined();
+  });
+
+  it('run-workflow è disabilitata su due nodi non collegati, e dà la ragione di planWorkflow', () => {
+    const nodes = [
+      { id: '1', type: 'text', data: {} },
+      { id: '2', type: 'text', data: {} }
+    ];
+    const result = enabledFor('run-workflow', nodes, []);
+    expect(result.enabled).toBe(false);
+    expect(result.reason).toBe('i nodi selezionati non sono tutti collegati fra loro');
+  });
 });

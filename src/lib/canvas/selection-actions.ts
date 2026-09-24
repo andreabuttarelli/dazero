@@ -15,8 +15,16 @@
  */
 
 import { postCompositionFor, type PostCompositionNode } from './post-composition';
+import { planWorkflow, type WorkflowEdge } from './workflow-plan';
 
-export type SelectionActionId = 'duplicate' | 'connect-new' | 'connect-existing' | 'create-post' | 'copy-id' | 'delete';
+export type SelectionActionId =
+  | 'duplicate'
+  | 'connect-new'
+  | 'connect-existing'
+  | 'create-post'
+  | 'run-workflow'
+  | 'copy-id'
+  | 'delete';
 
 export type SelectionAction = {
   id: SelectionActionId;
@@ -30,13 +38,15 @@ export const SELECTION_ACTIONS: readonly SelectionAction[] = [
   { id: 'connect-new', label: 'Collega a nuovo…' },
   { id: 'connect-existing', label: 'Collega a…' },
   { id: 'create-post', label: 'Crea post' },
+  { id: 'run-workflow', label: 'Esegui flusso' },
   { id: 'copy-id', label: 'Copia id' },
   { id: 'delete', label: 'Elimina', keys: ['⌫'] }
 ];
 
 export function enabledFor(
   id: SelectionActionId,
-  nodeSummaries: PostCompositionNode[]
+  nodeSummaries: PostCompositionNode[],
+  edges: WorkflowEdge[] = []
 ): { enabled: boolean; reason?: string } {
   if (id === 'create-post') {
     const composition = postCompositionFor(nodeSummaries);
@@ -44,6 +54,16 @@ export function enabledFor(
       enabled: composition.enabled,
       reason: composition.enabled ? undefined : 'Serve almeno un media o un testo nella selezione'
     };
+  }
+
+  if (id === 'run-workflow') {
+    const nodeTypesById = new Map(nodeSummaries.map((n) => [n.id, n.type]));
+    const plan = planWorkflow(
+      nodeSummaries.map((n) => n.id),
+      edges,
+      nodeTypesById
+    );
+    return { enabled: plan.ok, reason: plan.ok ? undefined : plan.reason };
   }
 
   return { enabled: true };

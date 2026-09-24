@@ -114,6 +114,7 @@
     onRedo,
     onConnectNew,
     onConnectExisting,
+    onRunWorkflow,
     nodeSummaries = [],
     modelChoicesFor,
     catalogueSyncedFor,
@@ -184,6 +185,8 @@
     onConnectNew?: (ids: string[], medium: GenMedium, at: { x: number; y: number }) => void;
     /** "Collega a…": gli id scelti e il nodo su cui si è cliccato per chiudere la modalità bersaglio. */
     onConnectExisting?: (ids: string[], targetId: string) => void;
+    /** "Esegui flusso": gli id scelti, così com'è per `onDelete`/`onCreatePost`. */
+    onRunWorkflow?: (ids: string[]) => void;
     /** `type`/`data` di ogni tile — la forma grezza che `commonPropertiesOf` legge, non `Tile`. */
     nodeSummaries?: { id: string; type: string; data: Record<string, unknown> }[];
     /** I modelli offribili per un medium che genera, dal catalogo di chi monta la tela. */
@@ -464,6 +467,7 @@
       targeting = ids;
     },
     'create-post': (ids) => onCreatePost?.(ids),
+    'run-workflow': (ids) => onRunWorkflow?.(ids),
     'copy-id': (ids) => {
       void navigator.clipboard?.writeText(ids.join('\n'));
     },
@@ -481,6 +485,7 @@
    * filtrare `nodeSummaries` sugli id scelti.
    */
   const selectedSummaries = $derived(nodeSummaries.filter((n) => selection.ids.includes(n.id)));
+  const selectionEdges = $derived(edges.map((e) => ({ sourceNodeId: e.source, targetNodeId: e.target })));
   const selectionMedium = $derived(
     selectedSummaries.length && selectedSummaries.every((n) => n.type === selectedSummaries[0].type)
       ? (selectedSummaries[0].type as 'text' | 'image' | 'video')
@@ -630,6 +635,7 @@
     zoom={selection.zoom}
     count={selection.ids.length}
     nodeSummaries={selectedSummaries}
+    edges={selectionEdges}
     choicesFor={modelChoicesFor}
     catalogueSynced={selectionMedium && catalogueSyncedFor ? catalogueSyncedFor(selectionMedium) : true}
     onaction={runSelectionAction}
