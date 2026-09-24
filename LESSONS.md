@@ -1897,3 +1897,17 @@ linker "isolated": collega solo le dipendenze dichiarate, quindi spariscono i wo
 non li dichiara) e ogni transitivo importato direttamente. Mossa: `bunfig.toml` fissa
 `linker = "hoisted"`, poi `bun install`. Non aggiungere dipendenze una per una: è il layout, non
 il codice.
+
+### `\b` in una regex di prefisso non ferma al trattino, e un `.find` misto sceglie il primo ramo sbagliato
+`videoModelSpec` cercava lo spec giusto con un solo `.find((s) => s.id === v || s.match.test(v))`,
+in ordine di riga. `\b` è un confine fra carattere di parola e non-parola: dopo una cifra, un
+trattino È quel confine, quindi `/^bytedance\/seedance-2\b/` (lo spec di `seedance-2`) intercetta
+anche `seedance-2-fast` e `seedance-2-mini` prima che il `.find` arrivi alle loro righe con l'id
+esatto. Tre id diversi finivano sullo stesso `ModelChoice`, e il dropdown della barra selezione
+— keyed su `c.id` — lanciava `each_key_duplicate`: uno stato Svelte a metà crash lascia il
+floating layer a intercettare i click, e ogni menu della tela sembra rotto, non solo quello.
+Segnale: un `{#each ... (id)}` che crasha con id duplicati mentre la fonte a monte sembra
+un elenco di righe distinte. Mossa: mai un `.find` che alterna corrispondenza esatta e prefissa
+nello stesso passaggio — prima tutti gli id esatti, POI il fallback a prefisso
+(`SPECS.find(id-esatto) ?? SPECS.find(prefisso)`), e un test che chiede a ogni id esatto del
+registro di risolvere a se stesso, non solo al capostipite della famiglia.
