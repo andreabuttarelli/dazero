@@ -11,7 +11,8 @@ export const ENTRY_PREFETCH: Record<string, () => Promise<{ default: unknown }>>
   influencers: CHROME_LOADERS.leftPanel,
   calendar: SHEET_PAGE_LOADERS.calendar,
   ads: SHEET_PAGE_LOADERS.ads,
-  settings: SHEET_PAGE_LOADERS.settingsLayout
+  settings: SHEET_PAGE_LOADERS.settingsLayout,
+  'create-post': SHEET_PAGE_LOADERS.createPost
 };
 
 export function prefetchEntry(entryId: string): void {

@@ -254,7 +254,8 @@
     },
     "hub": {
       "publish": {
-        "calendar": "Calendar"
+        "calendar": "Calendar",
+        "createPost": "Create post"
       },
       "overview": {
         "brand": {
