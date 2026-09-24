@@ -14,6 +14,7 @@
   import X from '@lucide/svelte/icons/x';
   import Clock from '@lucide/svelte/icons/clock';
   import RotateCw from '@lucide/svelte/icons/rotate-cw';
+  import HelpCircle from '@lucide/svelte/icons/help-circle';
   import {
     addImageItem,
     addTextLines,
@@ -25,6 +26,7 @@
   } from '$lib/canvas/list-node';
   import { CANVAS_DRAG_FILLED_NODE, parseFilledNodeDrag } from '$lib/canvas/drag-payload';
   import { scrollGuard } from '$lib/canvas/scroll-guard';
+  import { requestGuide } from '$lib/canvas/guide-open';
 
   let {
     node,
@@ -117,13 +119,20 @@
 >
   <header class="list-head">
     <span class="list-kind">{node.itemKind === 'text' ? 'Testo' : 'Immagini'}</span>
-    <span class="list-count">{node.items.length}</span>
+    <span class="list-head-right">
+      <span class="list-count">{node.items.length}</span>
+      <button type="button" class="list-help" onclick={() => requestGuide('loop')} aria-label="Guida">
+        <HelpCircle size={13} strokeWidth={2} />
+      </button>
+    </span>
   </header>
 
   <div class="list-body" use:scrollGuard>
     {#if !node.items.length}
       <p class="list-empty">
-        {dragOver ? 'Rilascia per aggiungere' : 'Trascina asset qui, o scrivi righe di testo sotto'}
+        {dragOver
+          ? 'Rilascia per aggiungere'
+          : 'Trascina qui immagini o scrivi una riga per elemento: ogni elemento è un giro del Loop'}
       </p>
     {:else}
       <ol class="list-items">
@@ -221,6 +230,28 @@
   }
   .list-kind {
     font-weight: 600;
+    color: var(--ink, #1d1d1f);
+  }
+
+  .list-head-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .list-help {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: var(--ink-soft, #6e6e73);
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  .list-help:hover {
     color: var(--ink, #1d1d1f);
   }
 

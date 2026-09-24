@@ -1,9 +1,23 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
-  import { guideEntries, type GuideEntry } from '$lib/content/guides';
+  import { guideEntries, guideBySlug, type GuideEntry, type GuideSlug } from '$lib/content/guides';
   import { renderDocHtml } from '$lib/canvas/doc-render';
 
+  let {
+    initialSlug = null,
+    onopened
+  }: {
+    initialSlug?: GuideSlug | null;
+    onopened?: () => void;
+  } = $props();
+
   let open = $state<GuideEntry | null>(null);
+
+  $effect(() => {
+    if (!initialSlug) return;
+    open = guideBySlug(initialSlug);
+    onopened?.();
+  });
 </script>
 
 {#if open}

@@ -9,8 +9,10 @@
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import ImageIcon from '@lucide/svelte/icons/image';
+  import HelpCircle from '@lucide/svelte/icons/help-circle';
   import { clampIndex, type SelectNode } from '$lib/canvas/select-node';
   import { listLabel, type ListNode } from '$lib/canvas/list-node';
+  import { requestGuide } from '$lib/canvas/guide-open';
 
   let {
     node,
@@ -58,11 +60,17 @@
     <button type="button" class="select-nav" onclick={next} disabled={!length || node.index >= length} aria-label="Successivo">
       <ChevronRight size={14} strokeWidth={2} />
     </button>
+
+    <button type="button" class="select-help" onclick={() => requestGuide('loop')} aria-label="Guida">
+      <HelpCircle size={13} strokeWidth={2} />
+    </button>
   </header>
 
   <div class="select-body">
     {#if !list}
-      <p class="select-empty">Collega una lista</p>
+      <p class="select-empty">
+        Sceglie un elemento da una lista collegata, per numero.<br />Collega una lista
+      </p>
     {:else if !length}
       <p class="select-empty">Lista vuota</p>
     {:else if current}
@@ -131,6 +139,23 @@
   .select-nav:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+  }
+
+  .select-help {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-left: auto;
+    color: var(--ink-soft, #6e6e73);
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  .select-help:hover {
+    color: var(--ink, #1d1d1f);
   }
 
   .select-index {

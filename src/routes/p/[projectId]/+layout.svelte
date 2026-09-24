@@ -22,6 +22,7 @@
   import { CHROME_LOADERS } from '$lib/canvas/chrome-loaders';
   import { sheetEntryForPath, type NavEntry } from '$lib/shell-nav';
   import { readChatOpen, writeChatOpen } from '$lib/shell-prefs';
+  import { guideOpenRequest } from '$lib/canvas/guide-open';
   import { browser } from '$app/environment';
 
   let { data, children } = $props();
@@ -52,6 +53,13 @@
     chatOpen = !chatOpen;
     writeChatOpen(chatOpen);
   }
+
+  $effect(() => {
+    if ($guideOpenRequest) {
+      chatOpen = true;
+      writeChatOpen(true);
+    }
+  });
 
   function onRailPanel(entry: NavEntry) {
     leftPanel = leftPanel === entry.id ? null : (entry.id as 'assets' | 'brands' | 'influencers');

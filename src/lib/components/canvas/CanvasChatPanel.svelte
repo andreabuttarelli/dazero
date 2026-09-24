@@ -3,6 +3,7 @@
   import { CHROME_LOADERS } from '$lib/canvas/chrome-loaders';
   import { browser } from '$app/environment';
   import { readChatPanelPx, writeChatPanelPx, readChatTab, writeChatTab, CHAT_PANEL, type ChatTab } from '$lib/shell-prefs';
+  import { guideOpenRequest } from '$lib/canvas/guide-open';
   import CanvasGuideTab from './CanvasGuideTab.svelte';
 
   /**
@@ -26,6 +27,10 @@
     tab = next;
     writeChatTab(next);
   }
+
+  $effect(() => {
+    if ($guideOpenRequest) selectTab('guide');
+  });
 
   function onResizeStart(e: PointerEvent) {
     e.preventDefault();
@@ -72,7 +77,7 @@
       </nav>
       <div class="chat-body">
         {#if tab === 'guide'}
-          <CanvasGuideTab />
+          <CanvasGuideTab initialSlug={$guideOpenRequest} onopened={() => guideOpenRequest.set(null)} />
         {:else if browser}
           {#await CHROME_LOADERS.chat() then { default: ChatPanel }}
             <ChatPanel {projectId} {brandSlug} />
