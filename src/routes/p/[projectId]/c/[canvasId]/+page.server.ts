@@ -29,6 +29,7 @@ import { isCanvasEdgeKind, isWireMode } from '$lib/canvas-edges';
 import { canvasModelCatalogue } from '$lib/server/canvas-catalogue';
 import { runGenNode, runsOf } from '$lib/server/canvas/generate';
 import { planLoop, enqueueLoop, cancelLoop, retryLoopCombination } from '$lib/server/canvas/loop';
+import { planWorkflowDryRun, enqueueWorkflow, cancelWorkflow, estimateWorkflowCredits } from '$lib/server/canvas/workflow';
 import { listNodeRuns } from '$lib/server/repos/node-runs';
 import { duplicateNodes } from '$lib/server/canvas/duplicate';
 import { undoGesture } from '$lib/server/canvas/undo';
@@ -493,6 +494,93 @@ export const actions: Actions = {
     });
 
     return out;
+  },
+
+  /**
+   * IL PREVENTIVO DEL WORKFLOW: pianifica senza scrivere niente, per la conferma prima del clic —
+   * la stessa forma di `loop_plan`.
+   */
+  workflow_plan: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const nodeIds = fd.getAll('node_id').map(String).filter(Boolean);
+    if (nodeIds.length < 2) {
+      return fail(400, { error: 'richiesta non valida' });
+    }
+
+    const plan = await planWorkflowDryRun(scope.db, { orgId: scope.orgId, canvasId: scope.canvasId, nodeIds });
+    if (!plan.ok) {
+      return fail(400, { error: plan.reason });
+    }
+
+    const nodes = await Promise.all(nodeIds.map((id) => findNode(scope.db, { orgId: scope.orgId, nodeId: id })));
+    const stepsCost = nodes
+      .filter((n): n is CanvasNodeRecord => n !== null)
+      .map((n) => ({
+        medium: (n.type === 'text' || n.type === 'video' ? n.type : 'image') as 'text' | 'image' | 'video',
+        model: typeof n.data.model === 'string' ? n.data.model : null
+      }));
+
+    return { steps: plan.steps, estimatedCredits: estimateWorkflowCredits(stepsCost) };
+  },
+
+  /**
+   * IL WORKFLOW: METTE IN CODA, non gira — vedi `workflow.ts` per il perché, la stessa dottrina
+   * del loop. Torna quando i biglietti sono scritti, il cron (`canvas/runs/tick`) li drena nei
+   * minuti successivi rispettando le dipendenze fra passi.
+   */
+  run_workflow: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const nodeIds = fd.getAll('node_id').map(String).filter(Boolean);
+    if (nodeIds.length < 2) {
+      return fail(400, { error: 'richiesta non valida' });
+    }
+
+    const denied = await gateOrgAiActionForForm(scope.orgId);
+    if (denied) {
+      return fail(denied.status, denied.data);
+    }
+
+    const out = await enqueueWorkflow(scope.db, {
+      orgId: scope.orgId,
+      projectId: scope.canvas.projectId,
+      canvasId: scope.canvasId,
+      nodeIds,
+      userId: scope.userId
+    });
+
+    if (out.kind === 'refused') {
+      return fail(400, { error: out.error });
+    }
+
+    const nodes = await Promise.all(nodeIds.map((id) => findNode(scope.db, { orgId: scope.orgId, nodeId: id })));
+    const stepsCost = nodes
+      .filter((n): n is CanvasNodeRecord => n !== null)
+      .map((n) => ({
+        medium: (n.type === 'text' || n.type === 'video' ? n.type : 'image') as 'text' | 'image' | 'video',
+        model: typeof n.data.model === 'string' ? n.data.model : null
+      }));
+
+    return { workflowId: out.workflowId, steps: out.steps, estimatedCredits: estimateWorkflowCredits(stepsCost) };
+  },
+
+  /**
+   * CANCELLA IL WORKFLOW: ferma solo i biglietti non ancora reclamati — la stessa dottrina di
+   * `cancel_loop`.
+   */
+  cancel_workflow: async ({ request, locals, params }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const workflowId = String(fd.get('workflow_id') ?? '');
+    if (!workflowId) {
+      return fail(400, { error: 'richiesta non valida' });
+    }
+
+    return await cancelWorkflow(scope.db, { orgId: scope.orgId, workflowId });
   },
 
   /**

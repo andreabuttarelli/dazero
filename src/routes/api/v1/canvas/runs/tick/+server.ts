@@ -5,6 +5,7 @@ import { SERVICE_ROLE_USES } from '$lib/server/db/service-role-uses';
 import { cronAuthorized } from '$lib/server/cron-auth';
 import { expireStuckRuns, reconcileVideoNodeRuns } from '$lib/server/canvas/generate';
 import { drainLoopQueue } from '$lib/server/canvas/loop';
+import { drainWorkflowQueue } from '$lib/server/canvas/workflow';
 import { pruneOldCanvasEvents } from '$lib/server/canvas/retention';
 import { renewAccountSeats } from '$lib/server/account-billing';
 
@@ -52,6 +53,11 @@ export const GET: RequestHandler = async ({ request }) => {
     return { claimed: 0, done: 0, failed: 0 };
   });
 
+  const workflows = await drainWorkflowQueue(db, { limit: LOOP_DRAIN_BATCH }).catch((e) => {
+    console.error('[canvas runs] workflow drain failed', e);
+    return { claimed: 0, done: 0, failed: 0, blocked: 0 };
+  });
+
   const runs = await expireStuckRuns(db).catch((e) => {
     console.error('[canvas runs] tick failed', e);
     return { expired: 0 };
@@ -73,7 +79,7 @@ export const GET: RequestHandler = async ({ request }) => {
         })
       : { charged: 0, paused: 0, alreadyCharged: 0, skipped: true };
 
-  return json({ ...runs, videos, loops, events, seats });
+  return json({ ...runs, videos, loops, workflows, events, seats });
 };
 
 export const POST = GET;
