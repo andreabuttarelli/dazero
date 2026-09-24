@@ -26,7 +26,6 @@ export const ICONS: Record<string, { path: string; hex: string }> = {
 export const SETTINGS_SECTIONS = [
   'brand',
   'products',
-  'people',
   'connected-accounts',
   'ads',
   'ads-accounts',
@@ -43,8 +42,7 @@ export const SETTINGS_SECTIONS = [
 /** Former Studio / Identity sections now under Settings → Brand. */
 export const SETTINGS_BRAND_SECTIONS = [
   'brand',
-  'products',
-  'people'
+  'products'
 ] as const;
 
 /** Ads settings under Settings → Ads. */
@@ -69,8 +67,7 @@ export const SETTINGS_GROUPS: readonly {
     labelKey: 'app.nav.sectionBrand',
     items: [
       { section: 'brand', labelKey: 'app.studio.tabs.brand' },
-      { section: 'products', labelKey: 'app.hub.overview.brand.products' },
-      { section: 'people', labelKey: 'app.studio.tabs.people' }
+      { section: 'products', labelKey: 'app.hub.overview.brand.products' }
     ]
   },
   {
