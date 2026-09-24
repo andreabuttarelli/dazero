@@ -87,6 +87,7 @@
     onMoveEnd,
     onConnect,
     onDelete,
+    onCreatePost,
     onEdgeDelete,
     onEdgeRetype,
     onEdgeModeChange,
@@ -131,6 +132,8 @@
      * `tiles` le contiene ancora — il difetto era esattamente il nodo che torna in scena.
      */
     onDelete?: (ids: string[]) => void;
+    /** "Crea post" dalla barra della selezione: gli id scelti, così com'è per `onDelete`. */
+    onCreatePost?: (ids: string[]) => void;
     /** Una linea da togliere. Senza, il primo errore resta sulla tela per sempre. */
     onEdgeDelete?: (edgeId: string) => void;
     /** Il verso di una linea che c'è già: si corregge, non si rifà. */
@@ -439,6 +442,7 @@
     'connect-existing': (ids) => {
       targeting = ids;
     },
+    'create-post': (ids) => onCreatePost?.(ids),
     'copy-id': (ids) => {
       void navigator.clipboard?.writeText(ids.join('\n'));
     },
