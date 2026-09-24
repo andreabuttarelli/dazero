@@ -34,12 +34,10 @@
   import { genNodeSize, type GenNode as GenNodeState, type GenMedium, type ModelChoice } from '$lib/canvas/gen-node';
   import { hasUpstreamText } from '$lib/canvas/upstream-inputs';
   import { effectiveModel } from '$lib/canvas/default-models';
-  import { iframeNodeSize, type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
-  import { docNodeSize, shareUrlOf } from '$lib/canvas/doc-node';
-  import { productsNodeSize } from '$lib/canvas/products-node';
-  import { socialFeedNodeSize } from '$lib/canvas/social-feed-node';
-  import { influencerNodeSize } from '$lib/canvas/influencer-node';
-  import { isGenAddable, type Addable } from '$lib/canvas/addable';
+  import { type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
+  import { shareUrlOf } from '$lib/canvas/doc-node';
+  import { nodeSize } from '$lib/canvas/node-size';
+  import { type Addable } from '$lib/canvas/addable';
   import type { FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { tileNode } from '$lib/canvas/connect-rules';
   import { planDelete } from '$lib/canvas/delete-plan';
@@ -84,33 +82,7 @@
   };
 
   function sizeOf(node: CanvasNodeRecord): { w: number; h: number } {
-    if (node.type === 'iframe') {
-      const { w, h } = iframeNodeSize();
-      return { w: node.size.width ?? w, h: node.size.height ?? h };
-    }
-
-    if (node.type === 'doc') {
-      const { w, h } = docNodeSize();
-      return { w: node.size.width ?? w, h: node.size.height ?? h };
-    }
-
-    if (node.type === 'products') {
-      const { w, h } = productsNodeSize();
-      return { w: node.size.width ?? w, h: node.size.height ?? h };
-    }
-
-    if (node.type === 'social_account_feed') {
-      const { w, h } = socialFeedNodeSize();
-      return { w: node.size.width ?? w, h: node.size.height ?? h };
-    }
-
-    if (node.type === 'influencer') {
-      const { w, h } = influencerNodeSize();
-      return { w: node.size.width ?? w, h: node.size.height ?? h };
-    }
-
-    if (node.type === 'document') { return { w: node.size.width ?? 320, h: node.size.height ?? 120 }; }
-    const { w, h } = genNodeSize(node.type as 'text' | 'image' | 'video');
+    const { w, h } = nodeSize(node.type);
     return { w: node.size.width ?? w, h: node.size.height ?? h };
   }
 
@@ -425,11 +397,7 @@
   }
 
   function sizeForAddable(what: Addable): { w: number; h: number } {
-    if (isGenAddable(what)) { return genNodeSize(what); }
-    if (what === 'doc') { return docNodeSize(); }
-    if (what === 'products') { return productsNodeSize(); }
-    if (what === 'social_account_feed') { return socialFeedNodeSize(); }
-    return iframeNodeSize();
+    return nodeSize(what);
   }
 
   /** Un `node.create` di un nodo appena nato: l'inversa è un soft-delete, `checkGesture` la sa già. */
