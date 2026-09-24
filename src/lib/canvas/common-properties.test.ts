@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commonPropertiesOf } from './common-properties';
+import { commonPropertiesOf, GEN_FIELDS } from './common-properties';
 
 const node = (type: string, data: Record<string, unknown>) => ({ type, data });
 
@@ -55,5 +55,67 @@ describe('cosa hanno in comune più nodi selezionati', () => {
     const out = commonPropertiesOf([node('video', { model: 'z' })]);
 
     expect(out.model).toEqual({ kind: 'same', value: 'z' });
+  });
+
+  it('durata comune su più video', () => {
+    const out = commonPropertiesOf([
+      node('video', { model: 'x', params: { duration: 5 } }),
+      node('video', { model: 'x', params: { duration: 5 } })
+    ]);
+
+    expect(out.duration).toEqual({ kind: 'same', value: 5 });
+  });
+
+  it('audio diverso: "mixed"', () => {
+    const out = commonPropertiesOf([
+      node('video', { model: 'x', params: { audio: true } }),
+      node('video', { model: 'x', params: { audio: false } })
+    ]);
+
+    expect(out.audio).toEqual({ kind: 'mixed' });
+  });
+
+  it('il testo non ha durata né audio: restano "absent"', () => {
+    const out = commonPropertiesOf([
+      node('text', { model: 'x', params: {} }),
+      node('text', { model: 'x', params: {} })
+    ]);
+
+    expect(out.duration).toEqual({ kind: 'absent' });
+    expect(out.audio).toEqual({ kind: 'absent' });
+  });
+
+  it('un solo nodo video: la sua durata È il comune, dalla STESSA tabella', () => {
+    const out = commonPropertiesOf([node('video', { model: 'z', params: { duration: 8 } })]);
+
+    expect(out.duration).toEqual({ kind: 'same', value: 8 });
+  });
+});
+
+describe('GEN_FIELDS — una tabella sola, letta sia da un nodo solo che da una selezione', () => {
+  it('elenca model, aspectRatio, duration, audio, repeat — i campi che GenNode mostra', () => {
+    const ids = GEN_FIELDS.map((f) => f.id);
+    expect(ids).toEqual(['model', 'aspectRatio', 'duration', 'audio', 'repeat']);
+  });
+
+  it('repeat si applica anche al testo: non dipende dal modello', () => {
+    const byId = Object.fromEntries(GEN_FIELDS.map((f) => [f.id, f]));
+    expect(byId.repeat.appliesTo('text')).toBe(true);
+  });
+
+  it('aspectRatio, duration e audio non si applicano al testo', () => {
+    const byId = Object.fromEntries(GEN_FIELDS.map((f) => [f.id, f]));
+    expect(byId.aspectRatio.appliesTo('text')).toBe(false);
+    expect(byId.duration.appliesTo('text')).toBe(false);
+    expect(byId.audio.appliesTo('text')).toBe(false);
+    expect(byId.model.appliesTo('text')).toBe(true);
+  });
+
+  it('duration e audio si applicano a image e video', () => {
+    const byId = Object.fromEntries(GEN_FIELDS.map((f) => [f.id, f]));
+    expect(byId.duration.appliesTo('image')).toBe(true);
+    expect(byId.duration.appliesTo('video')).toBe(true);
+    expect(byId.audio.appliesTo('image')).toBe(true);
+    expect(byId.audio.appliesTo('video')).toBe(true);
   });
 });

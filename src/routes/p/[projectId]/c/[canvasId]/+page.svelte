@@ -31,6 +31,7 @@
   import { verdictForUpload, canvasUploadPrefix } from '$lib/canvas/upload-kind';
   import { isUploadedNodeRow, uploadedNodeOf } from '$lib/canvas/uploaded-node';
   import { genNodeSize, type GenNode as GenNodeState, type GenMedium, type ModelChoice } from '$lib/canvas/gen-node';
+  import { effectiveModel } from '$lib/canvas/default-models';
   import { iframeNodeSize, type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
   import { docNodeSize, shareUrlOf } from '$lib/canvas/doc-node';
   import { productsNodeSize } from '$lib/canvas/products-node';
@@ -247,9 +248,9 @@
     }))
   );
 
-  /** `type`/`data` grezzi di ogni tile — la forma che `commonPropertiesOf` legge, per il pannello
-   *  delle proprietà comuni: `tiles` porta già `node: CanvasNode`, un'astrazione diversa che non
-   *  ha `model`/`params` come campi diretti. */
+  /** `type`/`data` grezzi di ogni tile — la forma che `commonPropertiesOf` legge, per la barra
+   *  della selezione: `tiles` porta già `node: CanvasNode`, un'astrazione diversa che non ha
+   *  `model`/`params` come campi diretti. */
   const nodeSummaries = $derived(nodes.map((n) => ({ id: n.id, type: n.type, data: n.data })));
 
   function modelChoicesFor(type: 'text' | 'image' | 'video'): ModelChoice[] {
@@ -486,7 +487,7 @@
       node_id: id,
       medium: gen.medium,
       prompt: gen.prompt,
-      model: gen.model ?? '',
+      model: effectiveModel(gen.medium, gen.model, catalogue[gen.medium] ?? []) ?? '',
       params: JSON.stringify(gen.params),
       version: before.version
     });
@@ -785,19 +786,21 @@
   }
 
   /**
-   * IL PANNELLO DELLE PROPRIETÀ COMUNI HA SCRITTO — un campo, applicato a ogni nodo selezionato
-   * con la stessa concorrenza ottimistica di `write`, ma N scritture indipendenti: la conferma sul
-   * modello che sgancerebbe degli archi (`orphanedByModelChange`) va chiesta PRIMA, guardando OGNI
-   * nodo selezionato — cambiare modello su cinque nodi e scoprire dopo che uno dei cinque aveva
-   * un arco che è appena sparito sarebbe la sorpresa che quella funzione esiste per evitare.
+   * LA BARRA DELLA SELEZIONE HA SCRITTO — un campo, applicato a ogni nodo selezionato, UNO o
+   * MOLTI: con un nodo solo è la stessa funzione, non un percorso a parte, perché la domanda «un
+   * arco cade con questo modello?» (`orphanedByModelChange`) vale uguale se il nodo scelto è uno
+   * o cinque. La conferma va chiesta PRIMA, guardando OGNI nodo selezionato — cambiare modello e
+   * scoprire dopo che un arco è appena sparito sarebbe la sorpresa che quella funzione esiste per
+   * evitare.
+   *
+   * UN GESTO SOLO — quanti nodi cambiano e quanti fili cadono, la stessa regola con un nodo o con
+   * cinque: annullarlo a metà (un nodo tornato al vecchio modello, un altro no, o un filo che non
+   * è tornato) è peggio di non annullare niente.
    */
-  /**
-   * IL PANNELLO DELLE PROPRIETÀ COMUNI SCRIVE UN GESTO SOLO — quanti nodi cambiano e quanti fili
-   * cadono, la stessa regola del cambio di modello su un nodo singolo: annullarlo a metà (un
-   * nodo tornato al vecchio modello, un altro no, o un filo che non è tornato) è peggio di non
-   * annullare niente.
-   */
-  async function commonChange(ids: string[], patch: { model?: string | null; aspectRatio?: string }) {
+  async function commonChange(
+    ids: string[],
+    patch: { model?: string | null; aspectRatio?: string; duration?: number; audio?: boolean; repeat?: number }
+  ) {
     const chosen = nodes.filter((n) => ids.includes(n.id));
     if (!chosen.length) { return; }
 
@@ -823,10 +826,14 @@
       }
     }
 
+    const { model, ...params } = patch;
+    const hasParams = Object.values(params).some((v) => v !== undefined);
     const items = chosen.map((n) => ({
       node_id: n.id,
       version: n.version,
-      patch: patch.aspectRatio !== undefined ? { ...patch, params: { ...(n.data.params as object), aspectRatio: patch.aspectRatio } } : patch
+      patch: hasParams
+        ? { ...(model !== undefined ? { model } : {}), params: { ...(n.data.params as object), ...params } }
+        : patch
     }));
 
     const result = await post('batchWrite', { items: JSON.stringify(items) });
@@ -1149,7 +1156,8 @@
     onConnectExisting={connectExisting}
     {nodeSummaries}
     {modelChoicesFor}
-    onCommonChange={commonChange}
+    catalogueSyncedFor={(type) => mediumCatalogue[type].synced}
+    onPropertyChange={commonChange}
   >
     {#snippet tile({ id, selected })}
       {@const row = nodes.find((n) => n.id === id)}

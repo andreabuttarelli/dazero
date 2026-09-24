@@ -2,28 +2,19 @@
   /**
    * IL NODO CHE PRODUCE, disegnato.
    *
-   * Tre fasce, e l'ordine non è estetico: sopra COME si fa (modello e parametri), in mezzo quel
-   * che è VENUTO FUORI, sotto COSA si chiede. Il prompt sta in fondo perché è la riga che si
-   * riscrive dieci volte guardando il risultato che le sta sopra — al contrario, ogni modifica
-   * spingerebbe il risultato fuori dallo sguardo.
+   * Due fasce, e l'ordine non è estetico: sopra quel che è VENUTO FUORI, sotto COSA si chiede. Il
+   * prompt sta in fondo perché è la riga che si riscrive dieci volte guardando il risultato che le
+   * sta sopra — al contrario, ogni modifica spingerebbe il risultato fuori dallo sguardo.
    *
-   * LE PROPRIETÀ COMPAIONO SUL NODO SELEZIONATO, e stanno FUORI dal suo corpo.
-   *
-   * Erano una fascia fissa dentro ogni nodo, e la ragione scritta qui era che nascondere modello e
-   * formato costringe ad aprirli per sapere con cosa una cosa è stata fatta. Vero per un nodo; su
-   * una tela con dieci sono dieci file di menù addosso a quel che si sta guardando, e il contenuto
-   * — l'immagine, la clip — resta schiacciato sotto. Vince il contenuto: i controlli servono a chi
-   * sta lavorando su QUEL nodo, e chi ci sta lavorando l'ha selezionato.
-   *
-   * Fuori dal corpo e non dentro: dentro, aprirli cambierebbe la misura del nodo, e tutto quel che
-   * c'è sotto salterebbe a ogni selezione.
-   *
-   * I LIMITI SONO QUELLI DEL MODELLO, letti dal catalogo: i formati sono quelli che serve, la
-   * durata sta fra il suo minimo e il suo massimo, e il prompt troppo lungo si dice PRIMA invece
-   * di tornare come un rifiuto pagato.
+   * MODELLO, FORMATO, DURATA E RIPETIZIONE NON STANNO PIÙ QUI: stanno nella barra della selezione
+   * (`SelectionToolbar.svelte`), che compare quando il nodo è scelto — la stessa barra che porta
+   * duplica/collega/elimina, non una seconda accanto. Questo file resta il PRODOTTO — prompt,
+   * risultato, storia — e legge ancora il catalogo (`choices`) perché `tooLong` e il motivo per
+   * cui "Genera" è spento dipendono dal modello scelto, che il nodo continua a sapere.
    */
   import { runStateOf, promptTooLong, type GenNode, type ModelChoice } from '$lib/canvas/gen-node';
   import { blockedReason, canStartRun, shownIndex } from '$lib/canvas/gen-history';
+  import { effectiveModel } from '$lib/canvas/default-models';
   import { ADDABLE_LABEL } from '$lib/canvas/addable';
   import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
 
@@ -51,7 +42,7 @@
      * regola "non sincronizzato, non offerto" (`offerable-models.ts`).
      */
     catalogueSynced?: boolean;
-    /** Le proprietà si aprono solo sul nodo scelto: dieci fasce addosso al contenuto lo coprono. */
+    /** Solo il colore del bordo cambia con la selezione: i controlli stanno nella barra fuori. */
     selected?: boolean;
     /** Quanti biglietti di loop sono ancora in coda per QUESTO nodo — 0 = nessun loop in corso.
      *  Chi lo usa lo calcola da `node_runs` (`params.loop.phase === 'queued'`): il nodo non ha un
@@ -74,7 +65,14 @@
     result?: import('svelte').Snippet<[{ refId: string; text: string | null }]>;
   } = $props();
 
-  const choice = $derived(choices.find((c) => c.id === node.model) ?? choices[0]);
+  /**
+   * IL MODELLO CHE CONTA È QUELLO RISOLTO, non `node.model`: un nodo nato prima del default per
+   * il suo medium (`default-models.ts`) non ha mai scritto un `model` in `nodes.data`, e senza
+   * questo il bottone resterebbe spento su ogni nodo vecchio finché qualcuno non riapre un menù
+   * che non c'è più.
+   */
+  const resolvedModel = $derived(effectiveModel(node.medium, node.model, choices));
+  const choice = $derived(choices.find((c) => c.id === resolvedModel) ?? choices[0]);
   const state = $derived(runStateOf(node));
   const tooLong = $derived(!!choice && promptTooLong(node.prompt, choice));
 
@@ -90,9 +88,9 @@
    * caso solo.
    */
   const blocked = $derived(
-    tooLong && choice?.maxPromptChars ? `Prompt troppo lungo` : blockedReason(node)
+    tooLong && choice?.maxPromptChars ? `Prompt troppo lungo` : blockedReason(node, choices)
   );
-  const canRun = $derived(canStartRun(node) && !tooLong);
+  const canRun = $derived(canStartRun(node, choices) && !tooLong);
   const shown = $derived(shownIndex(node));
 
   const LABEL: Record<string, string> = {
@@ -104,10 +102,6 @@
   };
 
   const TypeIcon = $derived(ADDABLE_ICON[node.medium]);
-
-  function patchParams(patch: Record<string, unknown>) {
-    onchange?.({ params: { ...node.params, ...patch } });
-  }
 </script>
 
 <div class="gen" class:is-running={state === 'running'} class:is-chosen={selected}>
@@ -119,83 +113,6 @@
     <TypeIcon size={13} strokeWidth={1.8} />
     <span>{ADDABLE_LABEL[node.medium]}</span>
   </div>
-
-  {#if selected}
-  <header class="gen-head">
-    {#if !choices.length && !catalogueSynced}
-      <span class="gen-field gen-catalogue-warn">Catalogo modelli non ancora sincronizzato</span>
-    {:else}
-      <select
-        class="gen-field"
-        value={node.model ?? ''}
-        onchange={(e) => onchange?.({ model: e.currentTarget.value || null })}
-        aria-label="Modello"
-      >
-        {#if !node.model}
-          <option value="">Modello…</option>
-        {/if}
-        {#each choices as c (c.id)}
-          <option value={c.id}>{c.label}</option>
-        {/each}
-      </select>
-    {/if}
-
-    {#if choice?.aspectRatios?.length}
-      <select
-        class="gen-field"
-        value={node.params.aspectRatio ?? ''}
-        onchange={(e) => patchParams({ aspectRatio: e.currentTarget.value })}
-        aria-label="Formato"
-      >
-        {#each choice.aspectRatios as ratio (ratio)}
-          <option value={ratio}>{ratio}</option>
-        {/each}
-      </select>
-    {/if}
-
-    {#if typeof choice?.maxDuration === 'number' && choice.maxDuration > 0}
-      <label class="gen-duration">
-        <input
-          type="number"
-          class="gen-field gen-number"
-          min={choice.minDuration ?? 1}
-          max={choice.maxDuration}
-          value={node.params.duration ?? choice.minDuration ?? 1}
-          oninput={(e) => patchParams({ duration: Number(e.currentTarget.value) })}
-          aria-label="Durata in secondi"
-        />
-        <span class="gen-unit">s</span>
-      </label>
-    {/if}
-
-    {#if choice?.generateAudio !== undefined}
-      <label class="gen-toggle">
-        <input
-          type="checkbox"
-          checked={node.params.audio ?? choice.generateAudio}
-          onchange={(e) => patchParams({ audio: e.currentTarget.checked })}
-        />
-        audio
-      </label>
-    {/if}
-
-    <!-- REPEAT N: varianti semplici quando il nodo non ha archi `iterate` (`loop-plan.ts`,
-         CLAUDE.md — "repeat N" per N varianti dello stesso prompt). Con degli assi collegati
-         questo campo non conta — le combinazioni le dettano i valori, non un numero qui. -->
-    <label class="gen-duration" title="Quante varianti generare in loop, quando il nodo non ha assi collegati">
-      <input
-        type="number"
-        class="gen-field gen-number"
-        min="1"
-        max="1000"
-        value={typeof node.params.repeat === 'number' ? node.params.repeat : 1}
-        oninput={(e) => patchParams({ repeat: Math.max(1, Math.round(Number(e.currentTarget.value) || 1)) })}
-        aria-label="Ripeti N volte (loop)"
-      />
-      <span class="gen-unit">×</span>
-    </label>
-  </header>
-  {/if}
 
   <!-- Il risultato, quando c'è. Il testo lo mostra qui perché è esso stesso il prodotto; immagine
        e video li disegna chi usa il nodo, che sa da dove viene l'URL firmato. -->
@@ -328,26 +245,6 @@
     }
   }
 
-  /* Galleggia SOPRA il nodo, ancorata al suo bordo alto: dentro il corpo cambierebbe la misura
-     del nodo a ogni selezione, e quel che sta sotto salterebbe. `max-content` perché i controlli
-     sono pochi e diversi per medium — una barra larga quanto il nodo sarebbe mezza vuota su un
-     nodo di testo. */
-  .gen-head {
-    position: absolute;
-    z-index: 3;
-    bottom: calc(100% + 8px);
-    left: 0;
-    width: max-content;
-    max-width: 148%;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-    padding: 6px 8px;
-    border: 1px solid var(--line-2, #d2d2d7);
-    background: var(--paper, #fff);
-    box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
-  }
   /* Galleggia sull'angolo alto, fuori dal flusso: dentro toglierebbe spazio al contenuto, che è
      la cosa che si guarda. */
   .gen-tag {
@@ -366,32 +263,6 @@
     backdrop-filter: blur(6px);
     pointer-events: none;
   }
-  .gen-field {
-    max-width: 130px;
-    padding: 3px 6px;
-    font: inherit;
-    font-size: 11.5px;
-    color: var(--ink, #1d1d1f);
-    background: var(--paper-2, #f9f9f9);
-    border: 1px solid var(--line-2, #d2d2d7);
-  }
-  .gen-number {
-    width: 52px;
-  }
-  .gen-catalogue-warn {
-    color: #c0392b;
-    background: transparent;
-    border-style: dashed;
-  }
-  .gen-duration,
-  .gen-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11.5px;
-    color: var(--ink-soft, #6e6e73);
-  }
-
   /*
    * IL RISULTATO ARRIVA AI BORDI. Il nodo esiste per guardare quel che è uscito: dentro un
    * `padding` diventa una miniatura con una cornice attorno, e su una clip verticale la cornice

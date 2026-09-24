@@ -1,5 +1,7 @@
 export type GenerativeMedium = 'text' | 'image' | 'video';
 
+export type ModelChoiceLike = { id: string };
+
 export const DEFAULT_MODEL: Record<GenerativeMedium, string> = {
   text: 'anthropic/claude-haiku-4.5',
   image: 'nano-banana-2',
@@ -9,7 +11,7 @@ export const DEFAULT_MODEL: Record<GenerativeMedium, string> = {
 export function effectiveModel(
   medium: GenerativeMedium,
   saved: string | null | undefined,
-  choices: readonly { id: string }[]
+  choices: readonly ModelChoiceLike[]
 ): string | null {
   if (saved) {
     return saved;

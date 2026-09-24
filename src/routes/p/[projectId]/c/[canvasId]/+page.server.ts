@@ -640,11 +640,12 @@ export const actions: Actions = {
   },
 
   /**
-   * SCRIVERE LO STESSO CAMPO SU PIÙ NODI — il pannello delle proprietà comuni, quando cambia
-   * modello o formato su una selezione intera. UN CONFLITTO SU UN NODO NON FERMA GLI ALTRI: sono
-   * N scritture indipendenti (ognuna con la propria `version` attesa, come `write`), e riportare
-   * "conflict" per il nodo 3 mentre 1 e 2 sono andati a buon fine è più onesto di un rifiuto in
-   * blocco che butterebbe via due scritture riuscite per colpa di una terza.
+   * SCRIVERE LO STESSO CAMPO SU PIÙ NODI — la barra della selezione, quando cambia modello,
+   * formato, durata, audio o ripetizione su uno o più nodi scelti. UN CONFLITTO SU UN NODO NON
+   * FERMA GLI ALTRI: sono N scritture indipendenti (ognuna con la propria `version` attesa, come
+   * `write`), e riportare "conflict" per il nodo 3 mentre 1 e 2 sono andati a buon fine è più
+   * onesto di un rifiuto in blocco che butterebbe via due scritture riuscite per colpa di una
+   * terza.
    */
   batchWrite: async ({ request, params, locals }) => {
     const scope = await scopeFor(locals, params.canvasId);

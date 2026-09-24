@@ -1,25 +1,78 @@
 /**
- * COSA HANNO IN COMUNE PIÙ NODI SELEZIONATI — model e aspect ratio, gli unici due campi che TUTTI
- * i tipi che generano condividono (`gen-node.ts::GenParams`). Un tipo misto (un testo e
- * un'immagine insieme) non condivide niente di questo: il pannello resta vuoto, non a metà.
- *
- * PURO: nessun database, nessun `$state`. Il pannello (`CommonPropertiesPanel.svelte`) legge
- * questo file per sapere COSA disegnare; la scrittura resta di chi ha i nodi in mano (la pagina),
- * con la concorrenza ottimistica di sempre — questo file non sa cosa sia una `version`.
+ * QUALI CAMPI UN NODO CHE GENERA MOSTRA, E COME LEGGERLI DA `nodes.data` — una tabella sola,
+ * `GEN_FIELDS`, letta sia con UN nodo selezionato (la barra prende il suo valore com'è) sia con
+ * PIÙ nodi (`commonPropertiesOf` confronta gli stessi valori fra loro). Prima del bar unico
+ * c'erano due letture dello stesso dato — l'overlay di `GenNode.svelte` e questo pannello — che
+ * potevano solo divergere alla prima riga aggiunta; un solo elenco è la riga sola.
  *
  * "MIXED" È UN VALORE, NON UN'ASSENZA. Due nodi con `model` diverso non hanno "nessun modello": ne
  * hanno due, e mostrarlo come vuoto inviterebbe a scriverne uno che poi si applica sopra entrambi
  * senza che l'utente sappia di aver cambiato qualcosa che prima non era uguale. `Mixed` distingue
- * "non lo so" (il campo non esiste su un tipo misto) da "so che sono diversi".
+ * "non lo so" (il campo non esiste su un tipo misto, o su un tipo che non lo prevede) da "so che
+ * sono diversi". Con un nodo solo, `Mixed` non compare mai: `commonOf` su un array di un elemento
+ * è sempre `same`.
+ *
+ * PURO: nessun database, nessun `$state`. Chi disegna la barra legge questo file per sapere COSA
+ * mostrare; la scrittura resta di chi ha i nodi in mano (la pagina), con la concorrenza ottimistica
+ * di sempre — questo file non sa cosa sia una `version`.
  */
 
+export type GenFieldId = 'model' | 'aspectRatio' | 'duration' | 'audio' | 'repeat';
+
 export type CommonValue<T> = { kind: 'same'; value: T } | { kind: 'mixed' } | { kind: 'absent' };
+
+type NodeSummary = { type: string; data: Record<string, unknown> };
+
+export type GenField = {
+  id: GenFieldId;
+  /** Il tipo di nodo mostra questo campo? Il testo non ha formato, durata o audio. */
+  appliesTo: (type: string) => boolean;
+  /** Il valore di questo campo su un nodo, o `undefined` se il tipo non lo applica o il dato manca. */
+  read: (node: NodeSummary) => unknown;
+};
+
+function paramOf(node: NodeSummary, key: string): unknown {
+  return (node.data.params as Record<string, unknown> | undefined)?.[key];
+}
+
+const NOT_TEXT = (type: string) => type === 'image' || type === 'video';
+
+export const GEN_FIELDS: readonly GenField[] = [
+  {
+    id: 'model',
+    appliesTo: () => true,
+    read: (n) => (typeof n.data.model === 'string' ? n.data.model : null)
+  },
+  {
+    id: 'aspectRatio',
+    appliesTo: NOT_TEXT,
+    read: (n) => paramOf(n, 'aspectRatio')
+  },
+  {
+    id: 'duration',
+    appliesTo: NOT_TEXT,
+    read: (n) => paramOf(n, 'duration')
+  },
+  {
+    id: 'audio',
+    appliesTo: NOT_TEXT,
+    read: (n) => paramOf(n, 'audio')
+  },
+  {
+    id: 'repeat',
+    appliesTo: () => true,
+    read: (n) => paramOf(n, 'repeat')
+  }
+];
 
 export type CommonProperties = {
   /** Solo quando OGNI nodo selezionato è dello stesso `type` gen (text/image/video). */
   type: 'text' | 'image' | 'video' | null;
   model: CommonValue<string | null>;
   aspectRatio: CommonValue<string>;
+  duration: CommonValue<number>;
+  audio: CommonValue<boolean>;
+  repeat: CommonValue<number>;
 };
 
 const GEN_TYPES = new Set(['text', 'image', 'video']);
@@ -30,24 +83,36 @@ function commonOf<T>(values: T[]): CommonValue<T> {
   return rest.every((v) => v === first) ? { kind: 'same', value: first } : { kind: 'mixed' };
 }
 
-export function commonPropertiesOf(
-  nodes: { type: string; data: Record<string, unknown> }[]
-): CommonProperties {
-  if (!nodes.length || !nodes.every((n) => GEN_TYPES.has(n.type))) {
-    return { type: null, model: { kind: 'absent' }, aspectRatio: { kind: 'absent' } };
-  }
+function commonFieldOf<T>(field: GenField, type: string, nodes: NodeSummary[]): CommonValue<T> {
+  if (!field.appliesTo(type)) return { kind: 'absent' };
+  const values = nodes.map((n) => field.read(n)).filter((v): v is T => v !== undefined);
+  return commonOf(values);
+}
+
+export function commonPropertiesOf(nodes: NodeSummary[]): CommonProperties {
+  const empty: CommonProperties = {
+    type: null,
+    model: { kind: 'absent' },
+    aspectRatio: { kind: 'absent' },
+    duration: { kind: 'absent' },
+    audio: { kind: 'absent' },
+    repeat: { kind: 'absent' }
+  };
+
+  if (!nodes.length || !nodes.every((n) => GEN_TYPES.has(n.type))) return empty;
 
   const sameType = commonOf(nodes.map((n) => n.type));
-  const type = sameType.kind === 'same' ? (sameType.value as 'text' | 'image' | 'video') : null;
+  if (sameType.kind !== 'same') return empty;
+  const type = sameType.value as 'text' | 'image' | 'video';
 
-  const models = nodes.map((n) => (typeof n.data.model === 'string' ? n.data.model : null));
-  const aspectRatios = nodes
-    .map((n) => (n.data.params as Record<string, unknown> | undefined)?.aspectRatio)
-    .filter((v): v is string => typeof v === 'string');
+  const byId = Object.fromEntries(GEN_FIELDS.map((f) => [f.id, f])) as Record<GenFieldId, GenField>;
 
   return {
     type,
-    model: type ? commonOf(models) : { kind: 'absent' },
-    aspectRatio: type && type !== 'text' ? commonOf(aspectRatios) : { kind: 'absent' }
+    model: commonFieldOf(byId.model, type, nodes),
+    aspectRatio: commonFieldOf(byId.aspectRatio, type, nodes),
+    duration: commonFieldOf(byId.duration, type, nodes),
+    audio: commonFieldOf(byId.audio, type, nodes),
+    repeat: commonFieldOf(byId.repeat, type, nodes)
   };
 }

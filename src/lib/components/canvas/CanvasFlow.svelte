@@ -34,10 +34,8 @@
   import CanvasSelectionBridge from './CanvasSelectionBridge.svelte';
   import SelectionToolbar from './SelectionToolbar.svelte';
   import ConnectPicker from './ConnectPicker.svelte';
-  import CommonPropertiesPanel from './CommonPropertiesPanel.svelte';
   import type { SelectionActionId } from '$lib/canvas/selection-actions';
   import type { GenMedium, ModelChoice } from '$lib/canvas/gen-node';
-  import { commonPropertiesOf } from '$lib/canvas/common-properties';
   import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
   import { CANVAS_DRAG_FILLED_NODE, parseFilledNodeDrag, type FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { syncNodes } from '$lib/canvas/tile-sync';
@@ -96,7 +94,8 @@
     onConnectExisting,
     nodeSummaries = [],
     modelChoicesFor,
-    onCommonChange,
+    catalogueSyncedFor,
+    onPropertyChange,
     tile
   }: {
     tiles?: Tile[];
@@ -161,8 +160,15 @@
     nodeSummaries?: { id: string; type: string; data: Record<string, unknown> }[];
     /** I modelli offribili per un medium che genera, dal catalogo di chi monta la tela. */
     modelChoicesFor?: (type: 'text' | 'image' | 'video') => ModelChoice[];
-    /** Il pannello delle proprietà comuni ha scritto: un campo, applicato a ogni nodo selezionato. */
-    onCommonChange?: (ids: string[], patch: { model?: string | null; aspectRatio?: string }) => void;
+    /** Il catalogo di un medium è già sincronizzato? Come `GenNode`, per il campo modello della
+     *  barra quando la selezione è di un solo tipo. */
+    catalogueSyncedFor?: (type: 'text' | 'image' | 'video') => boolean;
+    /** La barra ha scritto: un campo, applicato a ogni nodo selezionato — uno o molti, stessa
+     *  concorrenza ottimistica di `write`, N scritture indipendenti per una barra sola. */
+    onPropertyChange?: (
+      ids: string[],
+      patch: { model?: string | null; aspectRatio?: string; duration?: number; audio?: boolean; repeat?: number }
+    ) => void;
     /** Cosa disegnare dentro una tile. La tela non sa cosa mostra: lo decide chi la usa. */
     tile: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
   } = $props();
@@ -410,16 +416,15 @@
   }
 
   /**
-   * IL PANNELLO COMPARE DA DUE NODI IN SU: su uno solo `GenNode.svelte` mostra già le sue
-   * proprietà addosso al nodo (vedi il commento lì), e un secondo pannello qui direbbe la stessa
-   * cosa due volte in due posti diversi.
+   * COSA È SELEZIONATO, NELLA FORMA CHE LA BARRA LEGGE — uno o molti nodi, stessa forma:
+   * `SelectionToolbar` decide da sé cosa hanno in comune (`commonPropertiesOf`), qui basta
+   * filtrare `nodeSummaries` sugli id scelti.
    */
-  const commonSelection = $derived(nodeSummaries.filter((n) => selection.ids.includes(n.id)));
-  const commonProperties = $derived(
-    selection.ids.length > 1 ? commonPropertiesOf(commonSelection) : commonPropertiesOf([])
-  );
-  const commonChoices = $derived(
-    commonProperties.type && modelChoicesFor ? modelChoicesFor(commonProperties.type) : []
+  const selectedSummaries = $derived(nodeSummaries.filter((n) => selection.ids.includes(n.id)));
+  const selectionMedium = $derived(
+    selectedSummaries.length && selectedSummaries.every((n) => n.type === selectedSummaries[0].type)
+      ? (selectedSummaries[0].type as 'text' | 'image' | 'video')
+      : null
   );
 
   function pickConnectMedium(medium: GenMedium) {
@@ -556,13 +561,14 @@
     <CanvasAddBar onpick={addAtCentre} onupload={onUpload} />
   {/if}
 
-  <SelectionToolbar box={selection.box} count={selection.ids.length} onaction={runSelectionAction} />
-
-  <CommonPropertiesPanel
+  <SelectionToolbar
     box={selection.box}
-    properties={commonProperties}
-    choices={commonChoices}
-    onchange={(patch) => onCommonChange?.(selection.ids, patch)}
+    count={selection.ids.length}
+    nodeSummaries={selectedSummaries}
+    choicesFor={modelChoicesFor}
+    catalogueSynced={selectionMedium && catalogueSyncedFor ? catalogueSyncedFor(selectionMedium) : true}
+    onaction={runSelectionAction}
+    onpropertychange={(patch) => onPropertyChange?.(selection.ids, patch)}
   />
 
   {#if connectPickerAt}

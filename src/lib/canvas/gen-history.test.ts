@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { withRun, showRun, shownIndex, canStartRun, blockedReason, RUNNABLE_MEDIUMS } from './gen-history';
 import type { GenNode, GenRun } from './gen-node';
 
+const choices = [{ id: 'm1' }];
+
 const node = (over: Partial<GenNode> = {}): GenNode => ({
   id: 'n1',
   medium: 'image',
@@ -84,27 +86,33 @@ describe('il doppio clic su Genera', () => {
   it('non lancia due volte: la seconda pressione trova il nodo già in corso', () => {
     // Un giro costa crediti veri. Senza questa guardia due clic vicini pagano due render, e il
     // secondo sovrascrive il primo appena atterra.
-    expect(canStartRun(node({ running: true }))).toBe(false);
+    expect(canStartRun(node({ running: true }), choices)).toBe(false);
   });
 
   it('un nodo senza prompt non parte', () => {
-    expect(canStartRun(node({ prompt: '  ' }))).toBe(false);
+    expect(canStartRun(node({ prompt: '  ' }), choices)).toBe(false);
   });
 
-  it('un nodo senza modello non parte: sceglierlo noi spenderebbe su una decisione non presa', () => {
-    expect(canStartRun(node({ model: null }))).toBe(false);
+  it('un nodo senza modello salvato E senza catalogo non parte: non c è niente da risolvere', () => {
+    expect(canStartRun(node({ model: null }), [])).toBe(false);
+  });
+
+  it('un nodo senza modello salvato MA con un catalogo parte: usa il default del medium', () => {
+    // `default-models.ts::effectiveModel` risolve un nodo vecchio, mai scritto in `nodes.data` —
+    // il nodo resta senza `model` salvato, solo la GATE smette di bloccarlo.
+    expect(canStartRun(node({ model: null }), choices)).toBe(true);
   });
 
   it('un nodo che ha già prodotto può rifare: è la seconda generazione, non un errore', () => {
-    expect(canStartRun(node({ refId: 'media-1' }))).toBe(true);
+    expect(canStartRun(node({ refId: 'media-1' }), choices)).toBe(true);
   });
 
   it('pronto e con modello, parte', () => {
-    expect(canStartRun(node())).toBe(true);
+    expect(canStartRun(node(), choices)).toBe(true);
   });
 
   it('un nodo di testo parte come gli altri: il testo atterra su un asset', () => {
-    expect(canStartRun(node({ medium: 'text' }))).toBe(true);
+    expect(canStartRun(node({ medium: 'text' }), choices)).toBe(true);
   });
 });
 
@@ -112,16 +120,20 @@ describe('perché un nodo non parte', () => {
   it('lo dice invece di lasciare un bottone spento senza spiegazione', () => {
     // Un bottone disabilitato e muto è il difetto che l utente ha segnalato come «non funziona»:
     // non poteva distinguere «rotto» da «manca qualcosa».
-    expect(blockedReason(node({ prompt: '' }))).toMatch(/cosa/i);
-    expect(blockedReason(node({ model: null }))).toMatch(/modello/i);
+    expect(blockedReason(node({ prompt: '' }), choices)).toMatch(/cosa/i);
+    expect(blockedReason(node({ model: null }), [])).toMatch(/modello/i);
   });
 
-  it('per il testo senza modello dice di sceglierlo, come per gli altri', () => {
-    expect(blockedReason(node({ medium: 'text', model: null, prompt: 'x' }))).toMatch(/modello/i);
+  it('senza modello salvato ma con un catalogo, non ha niente da spiegare: il default lo risolve', () => {
+    expect(blockedReason(node({ model: null }), choices)).toBeNull();
+  });
+
+  it('per il testo senza modello e senza catalogo dice di sceglierlo, come per gli altri', () => {
+    expect(blockedReason(node({ medium: 'text', model: null, prompt: 'x' }), [])).toMatch(/modello/i);
   });
 
   it('un nodo che può partire non ha niente da spiegare', () => {
-    expect(blockedReason(node())).toBeNull();
+    expect(blockedReason(node(), choices)).toBeNull();
   });
 
   it('girano tutti e tre i medium che producono: il testo atterra su un asset', () => {

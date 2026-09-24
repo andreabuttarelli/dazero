@@ -1871,3 +1871,13 @@ migration nel titolo del test è quello che dice a chi la riattiva cosa sbloccar
 schema-drift-check.mjs` confronta col database VERO prima di ogni commit che tocca lo schema —
 va eseguito prima di fidarsi che una colonna nuova sia già leggibile, non dopo che va in
 produzione.
+
+### Una guardia `auth_org_ids()` in una funzione SECURITY DEFINER azzera le chiamate del server
+Segnale: una RPC restituisce 0 o vuoto con la chiave di servizio, e il dato vero nella tabella c'è
+(il saldo crediti era 0 con 1.000.000 di crediti a ledger, e ogni generazione veniva rifiutata per
+"crediti esauriti"). `auth_org_ids()` legge l'utente dal JWT: con la service-role non c'è utente,
+l'insieme è vuoto, la condizione è sempre falsa. Mossa: la guardia diventa
+`(auth.role() = 'service_role' or _org_id in (select auth_org_ids()))`, e si verifica nei due
+sensi: il server vede il dato, un utente estraneo (`set local role authenticated` + claims) no.
+Leggere sempre la definizione IN PRODUZIONE (`pg_get_functiondef`), non il file: questa guardia
+era stata aggiunta al database e mai scritta in una migration del repo.
