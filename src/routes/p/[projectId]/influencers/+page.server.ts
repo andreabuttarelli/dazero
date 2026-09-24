@@ -4,7 +4,7 @@ import { listMemberships } from '$lib/server/repos/orgs';
 import { findProjectForUser } from '$lib/server/projects/lookup';
 import { listInfluencers, listInfluencerViewsByIds, signInfluencerViewFiles, getInfluencer } from '$lib/server/repos/influencers';
 import { generateInfluencer, uploadInfluencer } from '$lib/server/influencer-create';
-import { gateOrgAiAction } from '$lib/server/cli-auth';
+import { gateOrgAiActionForForm } from '$lib/server/cli-auth';
 import type { RequestEvent } from '@sveltejs/kit';
 
 /**
@@ -78,9 +78,9 @@ export const actions: Actions = {
     const { db, orgId, userId } = await scopeFor(event);
     const fd = await event.request.formData();
 
-    const denied = await gateOrgAiAction(orgId, undefined);
+    const denied = await gateOrgAiActionForForm(orgId);
     if (denied) {
-      return fail(denied.status, { error: 'credits_exhausted' });
+      return fail(denied.status, denied.data);
     }
 
     const name = String(fd.get('name') ?? '').trim();

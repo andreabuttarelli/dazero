@@ -25,6 +25,9 @@ export type E2eSession = {
 
 const UPLOAD_BUCKET = 'canvas-assets';
 
+/** Abbondante per qualunque scenario reale della suite: una generazione di testo costa ~14 crediti. */
+export const E2E_ORG_CREDITS = 5000;
+
 function adminClient(): SupabaseClient {
   const url = process.env.PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -42,7 +45,11 @@ async function checked<T>(result: PromiseLike<{ data: T; error: { message: strin
   return response.data;
 }
 
-export async function createE2eSession(): Promise<E2eSession> {
+/**
+ * `withCredits: false` è per l'unica spec che prova il rifiuto del cancello — il saldo zero è il
+ * caso da provare in QUELLO scenario, non un default che ogni altra spec deve aggirare.
+ */
+export async function createE2eSession(opts: { withCredits?: boolean } = {}): Promise<E2eSession> {
   const db = adminClient();
   const email = `e2e-shell-${randomUUID()}@dazero.co`;
   const password = randomUUID();
@@ -63,6 +70,20 @@ export async function createE2eSession(): Promise<E2eSession> {
   await checked(db.from('orgs_members').insert({ org_id: orgId, user_id: userId, role: 'owner' }));
   await checked(db.from('projects').insert({ id: projectId, org_id: orgId, name: 'E2E project', slug: `e2e-project-${projectId}` }));
   await checked(db.from('canvases').insert({ id: canvasId, org_id: orgId, project_id: projectId, name: canvasName }));
+
+  if (opts.withCredits ?? true) {
+    // Senza un grant la generazione reale si ferma al cancello crediti (org_credit_balance = 0):
+    // la spec di fumo prova la generazione, non il portafoglio vuoto.
+    await checked(
+      db.from('credit_ledger').insert({
+        org_id: orgId,
+        kind: 'grant',
+        source: 'manual',
+        amount: E2E_ORG_CREDITS,
+        note: 'e2e fixture grant'
+      })
+    );
+  }
 
   return { userId, email, password, orgId, projectId, canvasId, canvasName };
 }

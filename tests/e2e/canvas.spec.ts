@@ -1,4 +1,4 @@
-import { test, expect, REAL_STACK, gotoHydrated } from './fixtures/session';
+import { test, expect, REAL_STACK, gotoHydrated, createE2eSession, teardownE2eSession, signInE2e } from './fixtures/session';
 
 /**
  * LA TELA, DAL VERO BROWSER — due percorsi critici, non una copertura esaustiva. @real: richiede
@@ -39,5 +39,25 @@ test.describe('canvas @real', () => {
     await node.getByRole('button', { name: 'Genera' }).click();
 
     await expect(node.locator('.gen-text')).not.toBeEmpty({ timeout: 60_000 });
+  });
+
+  test('a zero-credit org sees a readable message, not a generic save failure', async ({ page }) => {
+    const session = await createE2eSession({ withCredits: false });
+    try {
+      await signInE2e(page, session);
+      await gotoHydrated(page, `/p/${session.projectId}/c/${session.canvasId}`);
+      await page.getByRole('button', { name: 'Testo' }).click();
+
+      const node = page.locator('.svelte-flow__node').last();
+      await node.click();
+      await node.getByLabel('Modello').selectOption({ index: 1 });
+      await node.getByPlaceholder('Di cosa deve parlare…').fill('Scrivi una sola parola: pronto.');
+      await node.getByRole('button', { name: 'Genera' }).click();
+
+      await expect(page.getByRole('alert')).toContainText(/credit/i, { timeout: 15_000 });
+      await expect(page.getByRole('link', { name: 'Buy credits' })).toBeVisible();
+    } finally {
+      await teardownE2eSession(session);
+    }
   });
 });

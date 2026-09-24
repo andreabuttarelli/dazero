@@ -218,6 +218,30 @@ export function checkApiKeyWriteAccess(
 }
 
 /**
+ * L'esito di un cancello crediti, indipendente da come chi ha chiamato deve restituirlo: una
+ * rotta API vuole una `Response`, una form action di SvelteKit vuole un oggetto che `fail()`
+ * costruisce — restituire una `Response` da un'azione fallisce a runtime con "Data returned from
+ * action … is not serializable", e chi guarda vede un errore generico al posto di "crediti
+ * finiti". Un solo controllo del saldo (qui sotto), due modi di raccontarne il rifiuto.
+ */
+export type CreditGateDenial = { status: number; data: { error: string; message: string } };
+
+const CREDITS_EXHAUSTED_MESSAGE = 'AI credits are exhausted for this billing period. Buy more to continue.';
+
+async function creditGateOutcome(spend: () => Promise<void>): Promise<CreditGateDenial | undefined> {
+  const { CreditsExhaustedError } = await import('./credits');
+  try {
+    await spend();
+  } catch (e) {
+    if (e instanceof CreditsExhaustedError) {
+      return { status: 402, data: { error: 'credits_exhausted', message: CREDITS_EXHAUSTED_MESSAGE } };
+    }
+    throw e;
+  }
+  return undefined;
+}
+
+/**
  * Gate an AI-spending CLI action: credits left (free matches Go for feature access).
  * Returns undefined if allowed, or the Response to return.
  */
@@ -228,14 +252,15 @@ export async function gateAiAction(
   const write = checkApiKeyWriteAccess(apiKey);
   if (write) return write;
 
-  const { gateCredits, CreditsExhaustedError } = await import('./credits');
-  try {
-    await gateCredits(brand.id);
-  } catch (e) {
-    if (e instanceof CreditsExhaustedError) return json({ error: 'credits_exhausted' }, { status: 402 });
-    throw e;
-  }
-  return undefined;
+  const { gateCredits } = await import('./credits');
+  const denial = await creditGateOutcome(() => gateCredits(brand.id));
+  return denial ? json(denial.data, { status: denial.status }) : undefined;
+}
+
+/** Lo stesso cancello di gateAiAction, per una form action: nessuna Response, un esito per fail(). */
+export async function gateAiActionForForm(brandId: string): Promise<CreditGateDenial | undefined> {
+  const { gateCredits } = await import('./credits');
+  return creditGateOutcome(() => gateCredits(brandId));
 }
 
 /**
@@ -249,14 +274,15 @@ export async function gateOrgAiAction(
   const write = checkApiKeyWriteAccess(apiKey);
   if (write) return write;
 
-  const { gateOrgCredits, CreditsExhaustedError } = await import('./credits');
-  try {
-    await gateOrgCredits(orgId);
-  } catch (e) {
-    if (e instanceof CreditsExhaustedError) return json({ error: 'credits_exhausted' }, { status: 402 });
-    throw e;
-  }
-  return undefined;
+  const { gateOrgCredits } = await import('./credits');
+  const denial = await creditGateOutcome(() => gateOrgCredits(orgId));
+  return denial ? json(denial.data, { status: denial.status }) : undefined;
+}
+
+/** Lo stesso cancello di gateOrgAiAction, per una form action: nessuna Response, un esito per fail(). */
+export async function gateOrgAiActionForForm(orgId: string): Promise<CreditGateDenial | undefined> {
+  const { gateOrgCredits } = await import('./credits');
+  return creditGateOutcome(() => gateOrgCredits(orgId));
 }
 
 /**

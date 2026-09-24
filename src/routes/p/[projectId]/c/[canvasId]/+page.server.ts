@@ -29,7 +29,7 @@ import { planLoop, runLoop } from '$lib/server/canvas/loop';
 import { duplicateNodes } from '$lib/server/canvas/duplicate';
 import { undoGesture } from '$lib/server/canvas/undo';
 import type { Gesture, UndoItem } from '$lib/canvas/undo-plan';
-import { gateOrgAiAction } from '$lib/server/cli-auth';
+import { gateOrgAiActionForForm } from '$lib/server/cli-auth';
 import { listNodeProducts } from '$lib/server/repos/products';
 import { listNodeSocialPosts } from '$lib/server/repos/social-posts';
 import { getInfluencer, listInfluencerViewsByIds, signInfluencerViewFiles } from '$lib/server/repos/influencers';
@@ -329,9 +329,9 @@ export const actions: Actions = {
       return fail(400, { error: 'parametri non leggibili' });
     }
 
-    const denied = await gateOrgAiAction(scope.orgId, undefined);
+    const denied = await gateOrgAiActionForForm(scope.orgId);
     if (denied) {
-      return denied;
+      return fail(denied.status, denied.data);
     }
 
     const out = await runGenNode(scope.db, {
@@ -387,9 +387,9 @@ export const actions: Actions = {
       return fail(400, { error: 'richiesta non valida' });
     }
 
-    const denied = await gateOrgAiAction(scope.orgId, undefined);
+    const denied = await gateOrgAiActionForForm(scope.orgId);
     if (denied) {
-      return denied;
+      return fail(denied.status, denied.data);
     }
 
     const out = await runLoop(scope.db, {
