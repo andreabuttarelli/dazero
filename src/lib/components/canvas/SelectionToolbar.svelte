@@ -89,7 +89,6 @@
               {#if properties.model.kind === 'mixed'}
                 Mixed
               {:else if choice}
-                <ModalityIcons inputModalities={choice.inputModalities ?? []} />
                 {choice.label}
               {:else}
                 Modello…
@@ -102,8 +101,8 @@
               >
                 {#each choices as c (c.id)}
                   <DropdownMenu.RadioItem value={c.id}>
+                    <span class="model-name">{c.label}</span>
                     <ModalityIcons inputModalities={c.inputModalities ?? []} />
-                    {c.label}
                   </DropdownMenu.RadioItem>
                 {/each}
               </DropdownMenu.RadioGroup>
@@ -234,7 +233,11 @@
   :global([data-slot='dropdown-menu-radio-item']) {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 12px;
+  }
+
+  .model-name {
+    flex: 1 1 auto;
   }
 
   .duration,
