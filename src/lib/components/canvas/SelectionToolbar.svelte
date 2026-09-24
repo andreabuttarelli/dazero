@@ -26,6 +26,7 @@
   import { SELECTION_ACTION_ICON } from '$lib/canvas/selection-action-icons';
   import { commonPropertiesOf, type CommonValue } from '$lib/canvas/common-properties';
   import { effectiveModel } from '$lib/canvas/default-models';
+  import { TOOLBAR_HIDE_BELOW_ZOOM, toolbarScale } from '$lib/canvas/toolbar-scale';
   import { filterChoices, groupByProvider } from '$lib/canvas/model-picker';
   import type { ModelChoice } from '$lib/canvas/gen-node';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
@@ -34,6 +35,7 @@
 
   let {
     box,
+    zoom = 1,
     count,
     nodeSummaries = [],
     choicesFor,
@@ -43,6 +45,9 @@
   }: {
     /** Il riquadro che contiene la selezione, in coordinate di schermo. Null = niente da mostrare. */
     box: { x: number; y: number; width: number } | null;
+    /** Lo zoom della tela — la barra vive fuori da `SvelteFlow`, quindi non lo eredita dalla
+     *  `transform` del viewport come la targhetta del nodo: deve applicarsela da sé. */
+    zoom?: number;
     /** Quante tile sono scelte — solo per l'etichetta, la barra non ne ha bisogno per altro. */
     count: number;
     /** `type`/`data` dei nodi selezionati, la forma che `commonPropertiesOf` legge. */
@@ -57,6 +62,9 @@
     /** Un campo cambiato dalla barra, applicato a ogni nodo selezionato — uno o molti. */
     onpropertychange?: (patch: { model?: string | null; aspectRatio?: string; duration?: number; audio?: boolean; repeat?: number }) => void;
   } = $props();
+
+  const visible = $derived(box !== null && zoom >= TOOLBAR_HIDE_BELOW_ZOOM);
+  const scale = $derived(toolbarScale(zoom));
 
   const properties = $derived(commonPropertiesOf(nodeSummaries));
   const choices = $derived(properties.type && choicesFor ? choicesFor(properties.type) : []);
@@ -94,8 +102,13 @@
   }
 </script>
 
-{#if box}
-  <div class="toolbar" style={`left:${box.x + box.width / 2}px; top:${box.y}px`} role="toolbar" aria-label="Azioni sulla selezione">
+{#if visible && box}
+  <div
+    class="toolbar"
+    style={`left:${box.x + box.width / 2}px; top:${box.y}px; --toolbar-scale:${scale}`}
+    role="toolbar"
+    aria-label="Azioni sulla selezione"
+  >
     {#if properties.type}
       <div class="props" role="group" aria-label="Proprietà del nodo">
         {#if !choices.length && !catalogueSynced}
@@ -211,8 +224,13 @@
     align-items: center;
     gap: 2px;
     /* `box.y` arriva già sopra la targhetta del nodo (`CanvasSelectionBridge.svelte`,
-       `LABEL_CLEARANCE_FLOW`): il gap qui è solo fra la barra e quel punto. */
-    transform: translate(-50%, calc(-100% - 10px));
+       `LABEL_CLEARANCE_FLOW`): il gap qui è solo fra la barra e quel punto.
+       `scale` va DOPO `translate` e con lo stesso `transform-origin` (il default, il centro
+       dell'elemento, coincide col punto d'ancoraggio che `translate` già usa) perché la barra si
+       rimpicciolisca SU QUEL punto — non sull'angolo in alto a sinistra, che la farebbe scivolare
+       via dal nodo mentre si zooma fuori. */
+    transform-origin: center bottom;
+    transform: translate(-50%, calc(-100% - 10px)) scale(var(--toolbar-scale, 1));
     padding: 4px;
     border-radius: 0;
     background: var(--paper, #fff);

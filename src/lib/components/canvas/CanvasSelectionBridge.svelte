@@ -18,20 +18,25 @@
    * applicava da sé) resterebbe costante e a zoom alto la barra ci finirebbe sopra. Un margine in
    * unità di tela, proiettato con lo stesso `flowToScreenPosition`, cresce insieme alla targhetta.
    */
-  import { useNodes, useSvelteFlow } from '@xyflow/svelte';
+  import { useNodes, useSvelteFlow, useViewport } from '@xyflow/svelte';
 
   const LABEL_CLEARANCE_FLOW = 24;
 
-  let { onchange }: { onchange: (state: { ids: string[]; box: { x: number; y: number; width: number } | null }) => void } =
-    $props();
+  let {
+    onchange
+  }: {
+    onchange: (state: { ids: string[]; box: { x: number; y: number; width: number } | null; zoom: number }) => void;
+  } = $props();
 
   const nodesStore = useNodes();
   const { getNodesBounds, flowToScreenPosition } = useSvelteFlow();
+  const viewport = useViewport();
 
   $effect(() => {
+    const zoom = viewport.current.zoom;
     const selected = nodesStore.current.filter((n) => n.selected);
     if (!selected.length) {
-      onchange({ ids: [], box: null });
+      onchange({ ids: [], box: null, zoom });
       return;
     }
 
@@ -41,7 +46,8 @@
 
     onchange({
       ids: selected.map((n) => n.id),
-      box: { x: topLeft.x, y: topLeft.y, width: topRight.x - topLeft.x }
+      box: { x: topLeft.x, y: topLeft.y, width: topRight.x - topLeft.x },
+      zoom
     });
   });
 </script>

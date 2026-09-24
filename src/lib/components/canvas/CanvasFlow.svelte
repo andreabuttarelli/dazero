@@ -394,9 +394,10 @@
    * riquadro a ogni cambio — la barra stessa vive fuori, sotto, perché non ha bisogno del contesto
    * della libreria, solo di coordinate già pronte.
    */
-  let selection = $state<{ ids: string[]; box: { x: number; y: number; width: number } | null }>({
+  let selection = $state<{ ids: string[]; box: { x: number; y: number; width: number } | null; zoom: number }>({
     ids: [],
-    box: null
+    box: null,
+    zoom: 1
   });
 
   /**
@@ -597,6 +598,7 @@
 
   <SelectionToolbar
     box={selection.box}
+    zoom={selection.zoom}
     count={selection.ids.length}
     nodeSummaries={selectedSummaries}
     choicesFor={modelChoicesFor}
