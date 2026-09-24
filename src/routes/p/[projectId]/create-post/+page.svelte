@@ -1,9 +1,19 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/state';
+  import ArrowUp from '@lucide/svelte/icons/arrow-up';
+  import ArrowDown from '@lucide/svelte/icons/arrow-down';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
   import PlatformGlyph from '$lib/components/PlatformGlyph.svelte';
   import { postCompositionFor } from '$lib/canvas/post-composition';
-  import { moveMediaUp, moveMediaDown, removeMedia, defaultScheduleTime } from '$lib/canvas/create-post-composer';
+  import {
+    moveMediaUp,
+    moveMediaDown,
+    removeMedia,
+    defaultScheduleTime,
+    saveReasonFor,
+    scheduleReasonFor
+  } from '$lib/canvas/create-post-composer';
   import { errorCopyFor } from '$lib/canvas/create-post-errors';
   import { closeSheet } from '$lib/canvas/sheet-nav';
 
@@ -44,11 +54,19 @@
   let scheduledForLocal = $state(defaultScheduleTime(new Date()));
   let scheduledForIso = $derived(scheduledForLocal ? new Date(scheduledForLocal).toISOString() : '');
 
-  const canSchedule = $derived(selectedAccountIds.length > 0);
+  const readiness = $derived({
+    hasBrand: !!selectedBrandId,
+    hasContent: composition.enabled,
+    hasConnectedAccounts: selectedAccountIds.length > 0
+  });
+
+  const saveDisabledReason = $derived(saveReasonFor(readiness));
+  const scheduleDisabledReason = $derived(scheduleReasonFor(readiness));
+
   const formAction = $derived(data.canvasId ? `/p/${projectId}/c/${data.canvasId}?/create_post` : '');
 
   const errors = $derived(
-    form && 'error' in form && form.error ? [form.error as string] : []
+    form && typeof form === 'object' && 'error' in form && form.error ? [form.error as string] : []
   );
 
   function onSubmitComplete({ result }: { result: { type: string; data?: Record<string, unknown> } }) {
@@ -71,7 +89,7 @@
     </div>
   {/if}
 
-  {#if form && 'post' in form && form.post}
+  {#if form && typeof form === 'object' && 'post' in form && form.post}
     <div class="banner ok">
       Post saved. <a href={`/p/${projectId}/calendar`}>Open calendar</a>
     </div>
@@ -115,17 +133,35 @@
               {/if}
             {/if}
             <div class="media-controls">
-              <button type="button" disabled={i === 0} onclick={() => (mediaOrder = moveMediaUp(mediaOrder, node.id))}>
-                Up
+              <button
+                type="button"
+                class="icon-btn"
+                disabled={i === 0}
+                title="Move up"
+                aria-label="Move up"
+                onclick={() => (mediaOrder = moveMediaUp(mediaOrder, node.id))}
+              >
+                <ArrowUp size={14} strokeWidth={2} />
               </button>
               <button
                 type="button"
+                class="icon-btn"
                 disabled={i === mediaNodes.length - 1}
+                title="Move down"
+                aria-label="Move down"
                 onclick={() => (mediaOrder = moveMediaDown(mediaOrder, node.id))}
               >
-                Down
+                <ArrowDown size={14} strokeWidth={2} />
               </button>
-              <button type="button" onclick={() => (mediaOrder = removeMedia(mediaOrder, node.id))}>Remove</button>
+              <button
+                type="button"
+                class="icon-btn"
+                title="Remove"
+                aria-label="Remove"
+                onclick={() => (mediaOrder = removeMedia(mediaOrder, node.id))}
+              >
+                <Trash2 size={14} strokeWidth={2} />
+              </button>
             </div>
           </li>
         {/each}
@@ -163,7 +199,10 @@
       {:else if data.brands.length === 1}
         <p>{data.brands[0].name}</p>
       {:else}
-        <p class="empty">No brand available.</p>
+        <p class="empty">
+          No brand yet.
+          <a class="btn ghost" href={`/p/${projectId}/brands/new`}>Create a brand</a>
+        </p>
       {/if}
     </section>
 
@@ -203,14 +242,27 @@
     {/if}
 
     <footer class="composer-footer">
-      <button type="submit" disabled={!composition.enabled}>Save as draft</button>
-      {#if !scheduling}
-        <button type="button" disabled={!composition.enabled} onclick={() => (scheduling = true)}>
-          Approve and schedule
-        </button>
-      {:else}
-        <button type="submit" disabled={!composition.enabled || !canSchedule}>Approve and schedule</button>
-      {/if}
+      <div class="footer-action">
+        <button class="btn ghost" type="submit" disabled={!!saveDisabledReason}>Save as draft</button>
+        {#if saveDisabledReason}<p class="reason">{saveDisabledReason}</p>{/if}
+      </div>
+      <div class="footer-action">
+        {#if !scheduling}
+          <button
+            class="btn primary"
+            type="button"
+            disabled={!!scheduleDisabledReason}
+            onclick={() => (scheduling = true)}
+          >
+            Approve and schedule
+          </button>
+        {:else}
+          <button class="btn primary" type="submit" disabled={!!scheduleDisabledReason}>
+            Approve and schedule
+          </button>
+        {/if}
+        {#if scheduleDisabledReason}<p class="reason">{scheduleDisabledReason}</p>{/if}
+      </div>
     </footer>
   </form>
 </div>
@@ -242,6 +294,9 @@
   .empty {
     color: var(--ink-faint, #9a9a9e);
     font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 
   .media-list {
@@ -271,6 +326,28 @@
   .media-controls {
     display: flex;
     gap: 6px;
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--line, #e5e5e5);
+    background: transparent;
+    color: var(--ink-soft, #6e6e73);
+    cursor: pointer;
+  }
+
+  .icon-btn:hover:not(:disabled) {
+    color: var(--ink, #1d1d1f);
+    background: var(--paper-2, #f9f9f9);
+  }
+
+  .icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .caption-picks {
@@ -331,7 +408,46 @@
 
   .composer-footer {
     display: flex;
-    gap: 8px;
+    gap: 16px;
+  }
+
+  .footer-action {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .reason {
+    margin: 0;
+    font-size: 12px;
+    color: var(--ink-faint, #9a9a9e);
+  }
+
+  .btn {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 16px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    line-height: 1;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  .btn.primary {
+    background: var(--accent, #7c5cff);
+    color: #fff;
+  }
+
+  .btn.ghost {
+    background: transparent;
+    color: var(--ink-soft, #6e6e73);
+    border-color: var(--line, #e5e5e5);
   }
 
   .banner {

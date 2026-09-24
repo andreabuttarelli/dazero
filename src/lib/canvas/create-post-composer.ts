@@ -33,3 +33,31 @@ export function defaultScheduleTime(now: Date): string {
   const minutes = pad(later.getMinutes());
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
+
+export type ComposerReadiness = {
+  hasBrand: boolean;
+  hasContent: boolean;
+  hasConnectedAccounts: boolean;
+};
+
+const SAVE_BLOCKERS: Array<{ blocked: (r: ComposerReadiness) => boolean; reason: string }> = [
+  { blocked: (r) => !r.hasBrand, reason: 'Create or pick a brand first.' },
+  { blocked: (r) => !r.hasContent, reason: 'Add media or a caption first.' }
+];
+
+const SCHEDULE_BLOCKERS: Array<{ blocked: (r: ComposerReadiness) => boolean; reason: string }> = [
+  ...SAVE_BLOCKERS,
+  { blocked: (r) => !r.hasConnectedAccounts, reason: 'Connect an account for this brand first.' }
+];
+
+function reasonFrom(blockers: typeof SAVE_BLOCKERS, readiness: ComposerReadiness): string | null {
+  return blockers.find((b) => b.blocked(readiness))?.reason ?? null;
+}
+
+export function saveReasonFor(readiness: ComposerReadiness): string | null {
+  return reasonFrom(SAVE_BLOCKERS, readiness);
+}
+
+export function scheduleReasonFor(readiness: ComposerReadiness): string | null {
+  return reasonFrom(SCHEDULE_BLOCKERS, readiness);
+}
