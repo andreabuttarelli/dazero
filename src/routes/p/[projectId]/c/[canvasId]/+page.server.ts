@@ -43,7 +43,7 @@ import { createPostFromNodes } from '$lib/server/repos/create-post-from-nodes';
 import { findBrand } from '$lib/server/repos/brands';
 import { listBrandAccounts } from '$lib/server/repos/social-accounts';
 import { promoteNodesToPost } from '$lib/server/repos/post-from-nodes';
-import { promoteToPost, setPostStatus } from '$lib/server/repos/posts';
+import { promoteToPost, setPostStatus, listSourcesForNodes } from '$lib/server/repos/posts';
 import { scheduleDelivery } from '$lib/server/repos/post-delivery';
 import { publisher } from '$lib/server/publishing';
 import { listNodesByIds } from '$lib/server/repos/canvas';
@@ -185,12 +185,27 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     canvasModelCatalogue()
   ]);
 
-  const [runs, { products, socialPosts, influencers }] = await Promise.all([
+  const [runs, { products, socialPosts, influencers }, sources] = await Promise.all([
     loadGenRuns(db, { orgId, nodes }),
-    loadDownloaded(db, { orgId, canvasId, nodes })
+    loadDownloaded(db, { orgId, canvasId, nodes }),
+    listSourcesForNodes(db, nodes.map((node) => node.id))
   ]);
 
-  return { canvas, nodes, connections, catalogue, runs, products, socialPosts, influencers, projectId: params.projectId, orgId };
+  const nodeIdsInPost = [...new Set(sources.map((source) => source.nodeId))];
+
+  return {
+    canvas,
+    nodes,
+    connections,
+    catalogue,
+    runs,
+    products,
+    socialPosts,
+    influencers,
+    projectId: params.projectId,
+    orgId,
+    nodeIdsInPost
+  };
 };
 
 /** Un numero che arriva da un form: finito, o la riga nasce con `NaN` dentro una colonna numerica. */

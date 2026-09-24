@@ -37,6 +37,8 @@
     kind?: string;
     /** `nodes.display_name`, quando chi ha nominato il nodo l'ha scritto. Vince sul nome del tipo. */
     displayName?: string | null;
+    /** Questo nodo è sorgente di almeno un post (`post_sources`). */
+    inPost?: boolean;
   };
 
   // `selected` lo tiene SvelteFlow e lo passa a ogni nodo: è l'unico che sa davvero cosa è
@@ -90,6 +92,9 @@
   <div class="node-label" class:is-chosen={selected}>
     <LabelIcon size={12} strokeWidth={1.8} />
     <span>{label}</span>
+    {#if tile.inPost}
+      <span class="in-post-marker" title="Usato in un post">●</span>
+    {/if}
   </div>
 {/if}
 
@@ -209,6 +214,12 @@
   .node-label span {
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .in-post-marker {
+    flex: none;
+    font-size: 8px;
+    line-height: 1;
+    color: var(--accent, #2563eb);
   }
   .node-label.is-chosen {
     color: var(--ink, #1d1d1f);
