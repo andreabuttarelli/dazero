@@ -55,7 +55,7 @@ describe('getCreditsUsage, org-scoped', () => {
     });
 
     expect(calls.some((c) => c.table === 'ai_calls' && c.filters.some((f) => f.col === 'org_id'))).toBe(true);
-    expect(usage.used).toBe(300); // 3 USD × 100 credits, the other org's spend never counted
+    expect(usage.used).toBe(600); // 3 USD billed at 200 credits/USD, the other org's spend never counted
   });
 
   it('falls back to the brand alone when the brand cannot be resolved to an org', async () => {
@@ -73,7 +73,7 @@ describe('getCreditsUsage, org-scoped', () => {
       status: 'active'
     });
 
-    expect(usage.used).toBe(100); // 1 USD × 100 credits, read by brand_id since no org resolved
+    expect(usage.used).toBe(200); // 1 USD billed at 200 credits/USD, read by brand_id since no org resolved
   });
 
   it('the billing period is always the calendar month — no subscription anchor exists anymore', async () => {

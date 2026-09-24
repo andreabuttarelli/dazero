@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CREDITS_PER_USD } from '$lib/ads-fee';
+import { billedCreditsFor } from './credit-ladder';
 import { sandboxCredits, sandboxUsdPerSecond, withSandboxBilling } from './sandbox-credits';
 
 describe('sandboxCredits', () => {
@@ -23,9 +23,9 @@ describe('sandboxCredits', () => {
 		expect(sandboxCredits(60)).toBeGreaterThanOrEqual(sandboxCredits(6));
 	});
 
-	it('resta proporzionale al prezzo al secondo dichiarato', () => {
+	it('billa allo stesso cambio di ogni altra chiamata AI (billedCreditsFor)', () => {
 		const seconds = 3600;
-		const atteso = Math.ceil(seconds * sandboxUsdPerSecond() * CREDITS_PER_USD);
+		const atteso = billedCreditsFor(seconds * sandboxUsdPerSecond());
 		expect(sandboxCredits(seconds)).toBe(atteso);
 	});
 

@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
 import { orgCreditBalance } from '$lib/server/credits';
 import { ensureOrgForUser } from '$lib/server/org';
-import { CREDIT_LADDER } from '$lib/server/credit-ladder';
+import { billedCreditsFor, CREDIT_LADDER } from '$lib/server/credit-ladder';
 import { isOrgOwner } from '$lib/server/org-billing';
 import { billingGrantsReady } from '$lib/server/billing-readiness';
 import {
@@ -15,8 +15,6 @@ import {
 const PURCHASES_NOT_READY = 'Purchases open soon.';
 
 const stripeApi = () => import('$lib/server/stripe');
-
-const CREDITS_PER_USD_AI_SPEND = 200;
 
 type OrgRow = { id: string; name: string; stripe_customer_id: string | null };
 type BrandRow = { id: string; name: string; slug: string };
@@ -70,7 +68,7 @@ export const load: PageServerLoad = async ({ locals: { supabase } }) => {
       id: b.id,
       name: b.name,
       slug: b.slug,
-      credits: Math.round((await sumBrandCostUsd(supabase, b.id)) * CREDITS_PER_USD_AI_SPEND)
+      credits: billedCreditsFor(await sumBrandCostUsd(supabase, b.id))
     }))
   );
 

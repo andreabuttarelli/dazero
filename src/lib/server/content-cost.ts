@@ -1,5 +1,6 @@
 /**
- * Quanto costa PRODURRE un post, in crediti (100 crediti = $1, la stessa unità di credits.ts).
+ * Quanto costa PRODURRE un post, in crediti — al cambio di `billedCreditsFor`
+ * (credit-ladder.ts), lo stesso con cui `ai-log.ts` addebita ogni chiamata reale.
  *
  * PERCHÉ ESISTE: il mix di formati di una settimana era deciso da numeri scritti a mano nei punti
  * di chiamata — `maxVideos: 1` in cinque file, `maxCarousels` da una variabile d'ambiente — e
@@ -26,9 +27,9 @@
  */
 import type { ContentFormat } from '$lib/content-formats';
 import { videoModel } from '$lib/server/model-routing';
+import { billedCreditsFor } from '$lib/server/credit-ladder';
 
-const CREDITS_PER_USD = 100;
-const credits = (usd: number): number => Math.round(usd * CREDITS_PER_USD);
+const credits = billedCreditsFor;
 
 /**
  * Un'immagine pubblicabile: UN render, e basta.

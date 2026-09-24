@@ -32,6 +32,15 @@ export const CREDITS_PER_USD_SUBSCRIPTION_LIST = 100 * (1 + AI_MARKUP); // 200
 // sempre un margine più alto di quella abbonamento sullo stesso gradino, per costruzione.
 export const CREDITS_PER_USD_ONE_TIME_LIST = 70;
 
+// Quanti crediti concede UN dollaro di prezzo abbonamento (`PLANS[].mUsd` → `PLANS[].credits`,
+// plans.ts) — un QUARTO concetto ancora, diverso dagli altri tre sopra: quello è il cambio a cui
+// SI SPENDE un credito (SEMPRE 200/$1, a prescindere da come è stato comprato), questo è il
+// cambio a cui un piano NE CONCEDE (100/$1 di prezzo). I due non sono la stessa cosa per
+// costruzione: un piano da $89 concede 8900 crediti di GRANT, che valgono la metà in costo
+// provider reale (8900 / 200 = $44,50) — il margine che finanzia tutto il resto (blog, SEO,
+// strategia, chat) oltre alla produzione dei post.
+export const CREDITS_PER_USD_GRANT = 100;
+
 export type CreditRung = {
   price: number;
   creditsSubscription: number;

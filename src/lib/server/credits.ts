@@ -1,13 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { FREE_CREDITS, PLANS } from '$lib/plans';
 import { swallow } from '$lib/server/swallow';
+import { billedCreditsFor } from '$lib/server/credit-ladder';
 
 // ── AI Credits: consumption tracking per billing period ─────────────────────────
 // Every AI call logs cost_usd in ai_calls (tagged by brand_id via the AsyncLocalStorage
-// context). This module sums those costs into "credits" (100 credits = $1 USD) and enforces
-// the per-plan monthly quota. Every model is stored at 100% of list — Gemini Flash and Nano
-// Banana Pro carried a per-plan discount until 2026-08 and no longer do, so the same quota now
-// buys fewer looks and fewer stills. Quotas were NOT adjusted for this; that is a separate call.
+// context). This module sums those costs into "credits" with `billedCreditsFor`
+// (credit-ladder.ts) — the same rate `ai-log.ts` bills each row at — and enforces the per-plan
+// monthly quota. Every model is stored at 100% of list — Gemini Flash and Nano Banana Pro
+// carried a per-plan discount until 2026-08 and no longer do, so the same quota now buys fewer
+// looks and fewer stills. Quotas were NOT adjusted for this; that is a separate call.
 
 export type Brand = {
   id: string;
@@ -186,8 +188,6 @@ export async function orgCreditBalance(supabase: SupabaseClient, orgId: string):
 
 // ── Usage query ──────────────────────────────────────────────────────────────────
 
-const CREDITS_PER_USD = 100;
-
 /**
  * Sum `cost_usd` from `ai_calls` in the current billing period for one scope (an org, or a
  * single brand when no org is in reach). PostgREST aggregates are off, so the sum runs in JS —
@@ -246,7 +246,7 @@ export async function orgCreditsUsage(
   const quota = creditQuota(null);
 
   const spentUsd = await sumAiCostUsd(supabase, { orgId: org.orgId }, start, end);
-  const used = Math.round(spentUsd * CREDITS_PER_USD);
+  const used = billedCreditsFor(spentUsd);
 
   return {
     used,
@@ -268,7 +268,7 @@ async function brandCreditsUsage(
   const quota = creditQuota(brand.plan);
 
   const spentUsd = await sumAiCostUsd(supabase, { brandId: brand.id }, start, end);
-  const used = Math.round(spentUsd * CREDITS_PER_USD);
+  const used = billedCreditsFor(spentUsd);
 
   return {
     used,

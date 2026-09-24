@@ -33,7 +33,8 @@ import {
   chargeAdsCredits,
   creditedSpend,
   creditsDue,
-  creditsForSpend
+  creditsForSpend,
+  feeUsdDue
 } from '$lib/server/ads-credits';
 
 export { AD_MANAGEMENT_FEE_RATE, feeBreakdown, creditsForSpend } from '$lib/ads-fee';
@@ -746,7 +747,7 @@ export async function approveCampaign(
     // reconciliation only charges spend beyond it.
     chargeAdsCredits({
       brandId: brand.id,
-      credits: launchCredits,
+      feeUsd: fee.fee,
       label: 'ads.launch',
       campaignId: campaign.id,
       platform: campaign.platform
@@ -1240,7 +1241,7 @@ export async function syncAdMetrics(
         if (!markErr) {
           chargeAdsCredits({
             brandId,
-            credits: due,
+            feeUsd: feeUsdDue(analytics.spend, creditedSpend(c.external_ids)),
             label: 'ads.spend',
             campaignId: c.id,
             platform: c.platform

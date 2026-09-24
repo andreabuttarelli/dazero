@@ -1,3 +1,5 @@
+import { billedCreditsFor } from '$lib/server/credit-ladder';
+
 /** dazero management fee on top of platform ad spend (model A: pass-through + markup). */
 export const AD_MANAGEMENT_FEE_RATE = 0.12;
 
@@ -17,18 +19,17 @@ export function adsSelfServeEnabled(preview = false): boolean {
   return ADS_SELF_SERVE || preview;
 }
 
-/** Credits per USD, same rate as the AI meter (src/lib/server/credits.ts). */
-export const CREDITS_PER_USD = 100;
-
 /**
  * The management fee, billed in AI credits instead of an invoice: launching a campaign and every
- * day it keeps spending draws down the same balance content generation uses.
+ * day it keeps spending draws down the same balance content generation uses. Same rate
+ * `ai-log.ts` bills every other AI call at (`billedCreditsFor`, credit-ladder.ts) — the fee is a
+ * provider cost to us like any other, not a separately-priced credit.
  *
  * ponytail: no FX — one unit of the ad account's currency counts as one dollar. EUR/USD drift is
  * ±10% on a 12% fee; add a rate lookup here if a brand ever runs a far-off currency.
  */
 export function creditsForSpend(spend: number): number {
-  return Math.round(feeBreakdown(spend).fee * CREDITS_PER_USD);
+  return billedCreditsFor(feeBreakdown(spend).fee);
 }
 
 /**
