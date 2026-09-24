@@ -60,26 +60,26 @@ create policy "media insert own brand" on storage.objects for insert to authenti
   with check (
     bucket_id = 'media'
     and (storage.foldername(name))[1] <> 'colours'
-    and (storage.foldername(name))[1]::uuid in (select id from public.brands where org_id in (select public.auth_org_ids()))
+    and (case when (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then (storage.foldername(name))[1]::uuid end) in (select id from public.brands where org_id in (select public.auth_org_ids()))
   );
 create policy "media delete own brand" on storage.objects for delete to authenticated
   using (
     bucket_id = 'media'
     and (storage.foldername(name))[1] <> 'colours'
-    and (storage.foldername(name))[1]::uuid in (select id from public.brands where org_id in (select public.auth_org_ids()))
+    and (case when (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then (storage.foldername(name))[1]::uuid end) in (select id from public.brands where org_id in (select public.auth_org_ids()))
   );
 
 create policy "media insert own colour" on storage.objects for insert to authenticated
   with check (
     bucket_id = 'media'
     and (storage.foldername(name))[1] = 'colours'
-    and (storage.foldername(name))[2]::uuid in (select public.auth_org_ids())
+    and (case when (storage.foldername(name))[2] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then (storage.foldername(name))[2]::uuid end) in (select public.auth_org_ids())
   );
 create policy "media delete own colour" on storage.objects for delete to authenticated
   using (
     bucket_id = 'media'
     and (storage.foldername(name))[1] = 'colours'
-    and (storage.foldername(name))[2]::uuid in (select public.auth_org_ids())
+    and (case when (storage.foldername(name))[2] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then (storage.foldername(name))[2]::uuid end) in (select public.auth_org_ids())
   );
 
 commit;

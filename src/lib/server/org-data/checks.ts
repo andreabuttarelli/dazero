@@ -47,8 +47,6 @@ export const ORG_TABLE_CHECKS: Record<string, string> = {
   posts_actor_kind_check: "actor_kind in ('user', 'agent', 'system')",
   posts_status_check: "status in ('draft', 'ready', 'archived')",
   products_platform_check: "platform in ('shopify', 'woocommerce')",
-  scheduled_posts_actor_kind_check: "actor_kind in ('user', 'agent', 'system')",
-  scheduled_posts_status_check: "status in ('draft', 'scheduled', 'publishing', 'published', 'failed', 'canceled')",
   social_accounts_platform_check:
     "platform in ('instagram', 'facebook', 'x', 'linkedin', 'tiktok', 'threads', 'youtube', 'reddit', 'pinterest')",
   social_accounts_status_check: "status in ('connected', 'expired', 'revoked')"

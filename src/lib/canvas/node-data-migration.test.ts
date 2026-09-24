@@ -1,31 +1,42 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { NODE_TYPES, looseNodeJsonSchema } from './node-data';
+import { NODE_TYPES, NODE_DATA_SCHEMAS } from './node-data';
+import { SOCIAL_PLATFORMS } from './social-platforms';
 
-/**
- * IL GUARDIANO CHE `checks.ts` NON HA: quel file dichiara di dover essere aggiornato a mano quando
- * un CHECK cambia sul database vero, e lo fa perché non generarlo costerebbe una connessione a ogni
- * `vitest run`. Qui il rischio è diverso e si chiude gratis: l'ULTIMA migrazione che tocca
- * `nodes_data_shape_check` (oggi `20260923_loop_nodes.sql`, che riscrive l'intero `case` — non solo
- * i due tipi nuovi, perché un `drop constraint` + `add constraint` sostituisce la definizione
- * intera, mai la estende) incolla l'output LETTERALE di `looseNodeJsonSchema` per ognuno dei tipi —
- * non serve il database per accorgersi che uno dei due è cambiato senza l'altro, basta confrontare
- * le stringhe. Se questo test è rosso, la migrazione è vecchia: la si rigenera con lo stesso
- * comando che il commento in cima al file SQL riporta, o — se un CHECK nuovo nasce nella sua
- * propria migrazione invece di riscrivere l'ultima — `MIGRATION_PATH` sotto punta alla vecchia.
- */
 const MIGRATION_PATH = fileURLToPath(
   new URL('../../../supabase/canvas-migrations/20260923_loop_nodes.sql', import.meta.url)
 );
 
-describe('la migrazione dei CHECK jsonb non è divergente dal generatore', () => {
-  const migration = readFileSync(MIGRATION_PATH, 'utf8');
+const migration = readFileSync(MIGRATION_PATH, 'utf8');
 
-  for (const type of NODE_TYPES) {
-    it(`${type}: lo schema incollato nel CHECK è l'output di looseNodeJsonSchema('${type}')`, () => {
-      const expected = JSON.stringify(looseNodeJsonSchema(type));
-      expect(migration).toContain(expected);
-    });
-  }
+function checkBody(name: string): string {
+  const start = migration.indexOf(`add constraint ${name} check`);
+  expect(start, `${name} missing from the latest migration`).toBeGreaterThan(-1);
+  return migration.slice(start, migration.indexOf(');', start));
+}
+
+describe('i CHECK sui nodi seguono il modello e lasciano nascere un nodo vuoto', () => {
+  it('il CHECK sui tipi elenca ogni tipo del modello', () => {
+    const typeCheck = checkBody('nodes_type_check');
+    for (const type of NODE_TYPES) {
+      expect(typeCheck).toContain(`'${type}'`);
+    }
+  });
+
+  it('il CHECK sui dati non rende obbligatorio nessun campo: un nodo nasce vuoto e si riempie dopo', () => {
+    const shapeCheck = checkBody('nodes_data_shape_check');
+    expect(shapeCheck).not.toMatch(/required/);
+    expect(shapeCheck).toContain("jsonb_typeof(data) = 'object'");
+  });
+
+  it('gli enum del CHECK coincidono con quelli del modello', () => {
+    const shapeCheck = checkBody('nodes_data_shape_check');
+    for (const platform of SOCIAL_PLATFORMS) {
+      expect(shapeCheck).toContain(`'${platform}'`);
+    }
+    for (const kind of NODE_DATA_SCHEMAS.list.shape.item_kind.options) {
+      expect(shapeCheck).toContain(`'${kind}'`);
+    }
+  });
 });

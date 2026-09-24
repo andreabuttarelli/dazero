@@ -24,7 +24,7 @@ alter table public.credit_ledger
   add column if not exists social_account_id uuid references public.social_accounts(id) on delete set null;
 
 create unique index if not exists credit_ledger_social_seat_month_idx
-  on public.credit_ledger (social_account_id, (date_trunc('month', created_at)))
+  on public.credit_ledger (social_account_id, (date_trunc('month', created_at at time zone 'UTC')))
   where source = 'social_seat' and social_account_id is not null;
 
 -- ── Il limite delle org gratuite, applicato anche a chi scrive orgs_members da fuori ────

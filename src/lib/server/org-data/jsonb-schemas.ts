@@ -27,7 +27,7 @@
 import { z } from 'zod';
 
 /**
- * `posts.media` e `scheduled_posts.media`: la stessa `PostMedia` che `repos/posts.ts` e il tool
+ * `posts.media`: la stessa `PostMedia` che `repos/posts.ts` e il tool
  * MCP `create_post` già usano — non una forma nuova, la STESSA riletta qui perché quel modulo
  * dipende da `$lib/server/db/client` e non conviene farlo dipendere anche da questo file, o
  * viceversa: due letture della stessa riga, mai due righe.
@@ -91,7 +91,6 @@ export const JSONB_COLUMN_SCHEMAS: Record<string, JsonbEntry> = {
   ),
 
   'posts.media': validated(postMediaSchema),
-  'scheduled_posts.media': validated(postMediaSchema),
 
   'posts.per_platform': freeForm(
     'nessun codice del nuovo schema legge o scrive un campo nominato al suo interno oggi — ' +

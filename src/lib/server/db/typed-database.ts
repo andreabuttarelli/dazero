@@ -60,13 +60,6 @@ type NarrowedPosts = {
   Relationships: Tables['posts']['Relationships'];
 };
 
-type NarrowedScheduledPosts = {
-  Row: Overwrite<Tables['scheduled_posts']['Row'], { media: PostMedia | null }>;
-  Insert: Overwrite<Tables['scheduled_posts']['Insert'], { media?: PostMedia | null }>;
-  Update: Overwrite<Tables['scheduled_posts']['Update'], { media?: PostMedia | null }>;
-  Relationships: Tables['scheduled_posts']['Relationships'];
-};
-
 type NarrowedAdCampaigns = {
   Row: Overwrite<Tables['ad_campaigns']['Row'], { targeting: AdTargeting | null; placements: AdPlacements | null }>;
   Insert: Overwrite<
@@ -89,7 +82,7 @@ type NarrowedCanvases = {
 
 /**
  * IL DATABASE NARROWED — le stesse 26+ tabelle di `Database`, con le sei colonne validate
- * (`nodes.type`+`data`, `posts.media`, `scheduled_posts.media`, `ad_campaigns.targeting`,
+ * (`nodes.type`+`data`, `posts.media`, `ad_campaigns.targeting`,
  * `ad_campaigns.placements`, `canvases.viewport`) sostituite dalla loro forma vera. Ogni altra
  * tabella, e ogni altra colonna jsonb — quelle che `jsonb-schemas.ts` registra `free_form`, col
  * motivo scritto lì — resta `Json` esattamente come il generatore l'ha scritta: non c'è ancora un
@@ -97,10 +90,9 @@ type NarrowedCanvases = {
  */
 export type NarrowedDatabase = Omit<Database, 'public'> & {
   public: Omit<Database['public'], 'Tables'> & {
-    Tables: Omit<Tables, 'nodes' | 'posts' | 'scheduled_posts' | 'ad_campaigns' | 'canvases'> & {
+    Tables: Omit<Tables, 'nodes' | 'posts' | 'ad_campaigns' | 'canvases'> & {
       nodes: NarrowedNodes;
       posts: NarrowedPosts;
-      scheduled_posts: NarrowedScheduledPosts;
       ad_campaigns: NarrowedAdCampaigns;
       canvases: NarrowedCanvases;
     };

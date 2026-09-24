@@ -288,7 +288,7 @@ describe('la creazione porta sempre l org', () => {
     expect(calls.find((c) => c.op === 'insert')!.payload).toMatchObject({ org_id: ORG, canvas_id: CANVAS });
   });
 
-  it.skip('un arco nasce fisso di default, senza che chi lo crea debba dirlo [in attesa di 20260923_loop_nodes.sql]', async () => {
+  it('un arco nasce fisso di default, senza che chi lo crea debba dirlo', async () => {
     const { db, calls } = fakeDb({ nodes_connections: [{ id: 'c1', org_id: ORG, canvas_id: CANVAS, source_node_id: NODE, target_node_id: NODE, source_handle: null, target_handle: null, mode: 'fixed', created_at: '2026-09-21T00:00:00Z' }] });
 
     await createConnection(db, { orgId: ORG, canvasId: CANVAS, sourceNodeId: NODE, targetNodeId: NODE });
@@ -296,7 +296,7 @@ describe('la creazione porta sempre l org', () => {
     expect(calls.find((c) => c.op === 'insert')!.payload).toMatchObject({ mode: 'fixed' });
   });
 
-  it.skip('un arco può nascere iterate: quel filo è un asse del loop [in attesa di 20260923_loop_nodes.sql]', async () => {
+  it('un arco può nascere iterate: quel filo è un asse del loop', async () => {
     const { db, calls } = fakeDb({ nodes_connections: [{ id: 'c1', org_id: ORG, canvas_id: CANVAS, source_node_id: NODE, target_node_id: NODE, source_handle: null, target_handle: null, mode: 'iterate', created_at: '2026-09-21T00:00:00Z' }] });
 
     await createConnection(db, { orgId: ORG, canvasId: CANVAS, sourceNodeId: NODE, targetNodeId: NODE, mode: 'iterate' });

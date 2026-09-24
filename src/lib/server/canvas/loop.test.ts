@@ -103,7 +103,7 @@ describe('planLoop — il preventivo, senza girare niente', () => {
     expect(out.safety.verdict).toBe('run');
   });
 
-  it.skip('un asse iterate da una list con 4 item: 4 combinazioni [in attesa di 20260923_loop_nodes.sql]', async () => {
+  it('un asse iterate da una list con 4 item: 4 combinazioni', async () => {
     const { db } = fakeDb({
       nodes: [
         nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro' }),

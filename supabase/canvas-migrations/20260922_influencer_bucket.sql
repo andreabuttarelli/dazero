@@ -29,21 +29,21 @@ create policy "influencers read own org" on storage.objects for select to authen
   using (
     bucket_id = 'influencers'
     and (storage.foldername(name))[1] <> 'catalogue'
-    and (storage.foldername(name))[1]::uuid in (select public.auth_org_ids())
+    and (case when (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then (storage.foldername(name))[1]::uuid end) in (select public.auth_org_ids())
   );
 
 create policy "influencers write own org" on storage.objects for insert to authenticated
   with check (
     bucket_id = 'influencers'
     and (storage.foldername(name))[1] <> 'catalogue'
-    and (storage.foldername(name))[1]::uuid in (select public.auth_org_ids())
+    and (case when (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then (storage.foldername(name))[1]::uuid end) in (select public.auth_org_ids())
   );
 
 create policy "influencers delete own org" on storage.objects for delete to authenticated
   using (
     bucket_id = 'influencers'
     and (storage.foldername(name))[1] <> 'catalogue'
-    and (storage.foldername(name))[1]::uuid in (select public.auth_org_ids())
+    and (case when (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then (storage.foldername(name))[1]::uuid end) in (select public.auth_org_ids())
   );
 
 commit;

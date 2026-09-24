@@ -219,7 +219,6 @@ export type Database = {
           post_id: string | null
           primary_text: string | null
           rejection_reason: string | null
-          scheduled_post_id: string | null
           status: string
           updated_at: string
           variant_of: string | null
@@ -238,7 +237,6 @@ export type Database = {
           post_id?: string | null
           primary_text?: string | null
           rejection_reason?: string | null
-          scheduled_post_id?: string | null
           status?: string
           updated_at?: string
           variant_of?: string | null
@@ -257,7 +255,6 @@ export type Database = {
           post_id?: string | null
           primary_text?: string | null
           rejection_reason?: string | null
-          scheduled_post_id?: string | null
           status?: string
           updated_at?: string
           variant_of?: string | null
@@ -282,13 +279,6 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ad_creatives_scheduled_post_id_fkey"
-            columns: ["scheduled_post_id"]
-            isOneToOne: false
-            referencedRelation: "scheduled_posts"
             referencedColumns: ["id"]
           },
           {
@@ -447,6 +437,45 @@ export type Database = {
           },
         ]
       }
+      ai_models: {
+        Row: {
+          catalogue: string
+          created_at: string
+          id: string
+          input_modalities: string[]
+          label: string | null
+          output_modalities: string[]
+          pricing: Json
+          provider: string
+          supported_parameters: string[]
+          synced_at: string
+        }
+        Insert: {
+          catalogue?: string
+          created_at?: string
+          id: string
+          input_modalities?: string[]
+          label?: string | null
+          output_modalities?: string[]
+          pricing?: Json
+          provider?: string
+          supported_parameters?: string[]
+          synced_at?: string
+        }
+        Update: {
+          catalogue?: string
+          created_at?: string
+          id?: string
+          input_modalities?: string[]
+          label?: string | null
+          output_modalities?: string[]
+          pricing?: Json
+          provider?: string
+          supported_parameters?: string[]
+          synced_at?: string
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           created_at: string
@@ -591,10 +620,8 @@ export type Database = {
           logo_url: string | null
           name: string
           org_id: string
-          palette: Json | null
           short_description: string | null
           slug: string
-          target: Json | null
           updated_at: string
           website: string | null
         }
@@ -605,10 +632,8 @@ export type Database = {
           logo_url?: string | null
           name: string
           org_id: string
-          palette?: Json | null
           short_description?: string | null
           slug: string
-          target?: Json | null
           updated_at?: string
           website?: string | null
         }
@@ -619,10 +644,8 @@ export type Database = {
           logo_url?: string | null
           name?: string
           org_id?: string
-          palette?: Json | null
           short_description?: string | null
           slug?: string
-          target?: Json | null
           updated_at?: string
           website?: string | null
         }
@@ -999,6 +1022,86 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_ledger: {
+        Row: {
+          ai_call_id: string | null
+          amount: number
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          kind: string
+          note: string | null
+          org_id: string
+          social_account_id: string | null
+          source: string
+          stripe_checkout_id: string | null
+          stripe_event_id: string | null
+          stripe_invoice_id: string | null
+        }
+        Insert: {
+          ai_call_id?: string | null
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          kind: string
+          note?: string | null
+          org_id: string
+          social_account_id?: string | null
+          source: string
+          stripe_checkout_id?: string | null
+          stripe_event_id?: string | null
+          stripe_invoice_id?: string | null
+        }
+        Update: {
+          ai_call_id?: string | null
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          org_id?: string
+          social_account_id?: string | null
+          source?: string
+          stripe_checkout_id?: string | null
+          stripe_event_id?: string | null
+          stripe_invoice_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_ledger_ai_call_id_fkey"
+            columns: ["ai_call_id"]
+            isOneToOne: false
+            referencedRelation: "ai_calls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_ledger_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_ledger_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_ledger_social_account_id_fkey"
+            columns: ["social_account_id"]
+            isOneToOne: false
+            referencedRelation: "social_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -1450,6 +1553,8 @@ export type Database = {
           id: string
           name: string
           slug: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1457,6 +1562,8 @@ export type Database = {
           id?: string
           name: string
           slug: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1464,6 +1571,8 @@ export type Database = {
           id?: string
           name?: string
           slug?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1610,6 +1719,7 @@ export type Database = {
           status: string
           title: string | null
           updated_at: string
+          zernio_post_ids: Json
         }
         Insert: {
           actor_id?: string | null
@@ -1626,6 +1736,7 @@ export type Database = {
           status?: string
           title?: string | null
           updated_at?: string
+          zernio_post_ids?: Json
         }
         Update: {
           actor_id?: string | null
@@ -1642,6 +1753,7 @@ export type Database = {
           status?: string
           title?: string | null
           updated_at?: string
+          zernio_post_ids?: Json
         }
         Relationships: [
           {
@@ -1837,104 +1949,6 @@ export type Database = {
           },
         ]
       }
-      scheduled_posts: {
-        Row: {
-          account_id: string
-          actor_id: string | null
-          actor_kind: string
-          attempts: number
-          caption: string | null
-          created_at: string
-          error: string | null
-          external_post_id: string | null
-          external_url: string | null
-          id: string
-          media: Json | null
-          org_id: string
-          platform: string
-          post_id: string
-          published_at: string | null
-          scheduled_at: string | null
-          status: string
-          timezone: string
-          updated_at: string
-          zernio_post_id: string | null
-        }
-        Insert: {
-          account_id: string
-          actor_id?: string | null
-          actor_kind?: string
-          attempts?: number
-          caption?: string | null
-          created_at?: string
-          error?: string | null
-          external_post_id?: string | null
-          external_url?: string | null
-          id?: string
-          media?: Json | null
-          org_id: string
-          platform: string
-          post_id: string
-          published_at?: string | null
-          scheduled_at?: string | null
-          status?: string
-          timezone?: string
-          updated_at?: string
-          zernio_post_id?: string | null
-        }
-        Update: {
-          account_id?: string
-          actor_id?: string | null
-          actor_kind?: string
-          attempts?: number
-          caption?: string | null
-          created_at?: string
-          error?: string | null
-          external_post_id?: string | null
-          external_url?: string | null
-          id?: string
-          media?: Json | null
-          org_id?: string
-          platform?: string
-          post_id?: string
-          published_at?: string | null
-          scheduled_at?: string | null
-          status?: string
-          timezone?: string
-          updated_at?: string
-          zernio_post_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "scheduled_posts_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "social_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scheduled_posts_actor_id_fkey"
-            columns: ["actor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scheduled_posts_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "orgs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scheduled_posts_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "posts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       social_accounts: {
         Row: {
           avatar_url: string | null
@@ -2074,12 +2088,126 @@ export type Database = {
           },
         ]
       }
+      video_renders: {
+        Row: {
+          attempts: number
+          brand_id: string | null
+          claimed_at: string | null
+          cover_url: string | null
+          created_at: string
+          duration_seconds: number | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          model: string | null
+          org_id: string
+          persist_opts: Json | null
+          post_id: string | null
+          prompt: string | null
+          resolution: string | null
+          status: string
+          submitted_at: string
+          task_id: string
+          thread_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          brand_id?: string | null
+          claimed_at?: string | null
+          cover_url?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          model?: string | null
+          org_id: string
+          persist_opts?: Json | null
+          post_id?: string | null
+          prompt?: string | null
+          resolution?: string | null
+          status?: string
+          submitted_at?: string
+          task_id: string
+          thread_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          brand_id?: string | null
+          claimed_at?: string | null
+          cover_url?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          model?: string | null
+          org_id?: string
+          persist_opts?: Json | null
+          post_id?: string | null
+          prompt?: string | null
+          resolution?: string | null
+          status?: string
+          submitted_at?: string
+          task_id?: string
+          thread_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_renders_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_renders_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_renders_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_renders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      org_credits_at_risk: {
+        Row: {
+          expiring_credits: number | null
+          next_expiry: string | null
+          org_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_ledger_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       auth_org_ids: { Args: never; Returns: string[] }
+      org_credit_balance: { Args: { _org_id: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never

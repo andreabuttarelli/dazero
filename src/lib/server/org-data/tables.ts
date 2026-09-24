@@ -40,7 +40,6 @@ export const ORG_TABLES = [
   'products',
   'profiles',
   'projects',
-  'scheduled_posts',
   'social_accounts',
   'social_posts'
 ] as const;

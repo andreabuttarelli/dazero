@@ -23,7 +23,6 @@ describe('JSONB_COLUMN_SCHEMAS — un posto solo per le 20 colonne jsonb raggiun
         'posts.media',
         'posts.per_platform',
         'products.images',
-        'scheduled_posts.media',
         'social_posts.media',
         'social_posts.metrics'
       ].sort()
@@ -71,13 +70,6 @@ describe('validateJsonbColumn — posts.media: PostMedia[], la stessa forma di c
     const out = validateJsonbColumn('posts', 'media', [{ order: 0 }]);
     expect(out.ok).toBe(false);
     if (!out.ok) expect(out.error).toMatch(/assetId/);
-  });
-});
-
-describe('validateJsonbColumn — scheduled_posts.media: la stessa forma di posts.media', () => {
-  it('accetta lo stesso array', () => {
-    const out = validateJsonbColumn('scheduled_posts', 'media', [{ assetId: 'a1', order: 1, role: 'primary' }]);
-    expect(out.ok).toBe(true);
   });
 });
 

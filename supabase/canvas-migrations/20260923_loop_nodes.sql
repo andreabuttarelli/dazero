@@ -36,48 +36,12 @@ alter table public.nodes add constraint nodes_type_check check (
 alter table public.nodes drop constraint if exists nodes_data_shape_check;
 
 alter table public.nodes add constraint nodes_data_shape_check check (
-  case type
-    when 'text' then extensions.json_matches_schema(
-      '{"type":"object","required":["prompt"],"properties":{"prompt":{"type":"string"}}}', data
-    )
-    when 'image' then extensions.json_matches_schema(
-      '{"type":"object","required":["prompt"],"properties":{"prompt":{"type":"string"}}}', data
-    )
-    when 'video' then extensions.json_matches_schema(
-      '{"type":"object","required":["prompt"],"properties":{"prompt":{"type":"string"}}}', data
-    )
-    when 'doc' then extensions.json_matches_schema(
-      '{"type":"object","required":["content","public"],"properties":{"content":{"type":"string"},"public":{"type":"boolean"}}}',
-      data
-    )
-    when 'iframe' then extensions.json_matches_schema('{"type":"object","required":[],"properties":{}}', data)
-    when 'social_account_feed' then extensions.json_matches_schema(
-      '{"type":"object","required":["platform","handle"],"properties":{"platform":{"type":"string","enum":["instagram","facebook","x","linkedin","tiktok","threads","youtube","reddit","pinterest"]},"handle":{"type":"string"}}}',
-      data
-    )
-    when 'social_post_mockup' then extensions.json_matches_schema('{"type":"object","required":[],"properties":{}}', data)
-    when 'products' then extensions.json_matches_schema(
-      '{"type":"object","required":["type","url"],"properties":{"type":{"type":"string","enum":["shopify","woocommerce"]},"url":{"type":"string"}}}',
-      data
-    )
-    when 'ads' then extensions.json_matches_schema(
-      '{"type":"object","required":["mode","country"],"properties":{"mode":{"type":"string","enum":["page","search"]},"country":{"type":"string"}}}',
-      data
-    )
-    when 'influencer' then extensions.json_matches_schema(
-      '{"type":"object","required":["influencer_id"],"properties":{"influencer_id":{"type":"string"}}}',
-      data
-    )
-    when 'list' then extensions.json_matches_schema(
-      '{"type":"object","required":["item_kind","items"],"properties":{"item_kind":{"type":"string","enum":["image","text"]},"items":{"type":"array"}}}',
-      data
-    )
-    when 'select' then extensions.json_matches_schema(
-      '{"type":"object","required":["index"],"properties":{"index":{"type":"integer"}}}',
-      data
-    )
-    else false
-  end
+  jsonb_typeof(data) = 'object'
+  and (type <> 'social_account_feed' or data->>'platform' is null
+       or data->>'platform' in ('instagram','facebook','x','linkedin','tiktok','threads','youtube','reddit','pinterest'))
+  and (type <> 'products' or data->>'type' is null or data->>'type' in ('shopify','woocommerce'))
+  and (type <> 'ads' or data->>'mode' is null or data->>'mode' in ('page','search'))
+  and (type <> 'list' or data->>'item_kind' is null or data->>'item_kind' in ('image','text'))
 );
 
 alter table public.nodes_connections add column if not exists mode text not null default 'fixed';
