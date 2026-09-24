@@ -43,6 +43,9 @@
   import { nodeSize } from '$lib/canvas/node-size';
   import { grownTextNodeHeight } from '$lib/canvas/text-node-grow';
   import { scrollGuard } from '$lib/canvas/scroll-guard';
+  import { loadTextViewMode, storeTextViewMode, type TextViewMode } from '$lib/canvas/text-view-mode';
+  import { renderDocHtml } from '$lib/canvas/doc-render';
+  import '$lib/styles/doc-prose.css';
   import { producedRuns } from '$lib/canvas/gen-history';
   import { type Addable } from '$lib/canvas/addable';
   import type { FilledNodeDrag } from '$lib/canvas/drag-payload';
@@ -125,6 +128,26 @@
    * ridimensionato a mano quel nodo — allora `Tile.userHeight` vince e questa mappa non conta più.
    */
   let grownHeights = $state<Record<string, number>>({});
+
+  /**
+   * RAW O MARKDOWN, PER NODO E PER CHI GUARDA — mai scritto sul nodo: due persone sullo stesso
+   * testo possono leggerlo in due forme diverse, e non è uno stato del contenuto, è una
+   * preferenza di lettura. `localStorage` (`text-view-mode.ts`, avvolto in try/catch) la porta
+   * fra un'apertura e l'altra; questa mappa è solo la cache in RAM di quello storage per non
+   * rileggerlo a ogni fotogramma.
+   */
+  let textViewModes = $state<Record<string, TextViewMode>>({});
+
+  const clientStorage = typeof localStorage === 'undefined' ? undefined : localStorage;
+
+  function textViewModeOf(nodeId: string): TextViewMode {
+    return textViewModes[nodeId] ?? (textViewModes[nodeId] = loadTextViewMode(clientStorage, nodeId));
+  }
+
+  function setTextViewMode(nodeId: string, mode: TextViewMode) {
+    textViewModes[nodeId] = mode;
+    storeTextViewMode(clientStorage, nodeId, mode);
+  }
 
   /**
    * IL VERSO DI UNA LINEA STA SU `source_handle`. `nodes_connections` non ha una colonna per il
@@ -1299,7 +1322,29 @@
                    scadrebbe in due ore, e una tela lasciata aperta tutto il giorno mostrerebbe
                    riquadri rotti. -->
               {#if gen.medium === 'text'}
-                <pre class="gen-text nodrag" use:scrollGuard>{text ?? ''}</pre>
+                <div class="gen-text-wrap">
+                  <div class="gen-text-toggle" role="group" aria-label="Vista del testo">
+                    <button
+                      type="button"
+                      class:is-active={textViewModeOf(id) === 'markdown'}
+                      onclick={() => setTextViewMode(id, 'markdown')}
+                    >
+                      Markdown
+                    </button>
+                    <button
+                      type="button"
+                      class:is-active={textViewModeOf(id) === 'raw'}
+                      onclick={() => setTextViewMode(id, 'raw')}
+                    >
+                      Raw
+                    </button>
+                  </div>
+                  {#if textViewModeOf(id) === 'markdown'}
+                    <div class="gen-text gen-text-md doc-prose nodrag" use:scrollGuard>{@html renderDocHtml(text ?? '')}</div>
+                  {:else}
+                    <pre class="gen-text nodrag" use:scrollGuard>{text ?? ''}</pre>
+                  {/if}
+                </div>
               {:else if gen.medium === 'video'}
                 <!-- svelte-ignore a11y_media_has_caption -->
                 <video src={`/p/${data.projectId}/c/${data.canvas.id}/assets/${refId}`} controls playsinline></video>
@@ -1362,7 +1407,52 @@
     overflow: hidden;
   }
 
-  .gen-text { width: 100%; min-height: 100%; margin: 0; padding: 12px; overflow: auto; white-space: pre-wrap; font: inherit; }
+  .gen-text-wrap {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100%;
+  }
+
+  .gen-text-toggle {
+    display: flex;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--line, #e5e5e5);
+    background: var(--paper, #fff);
+  }
+  .gen-text-toggle button {
+    flex: 1;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    font-size: 10.5px;
+    font-weight: 550;
+    color: var(--ink-soft, #6e6e73);
+    cursor: pointer;
+  }
+  .gen-text-toggle button.is-active {
+    background: var(--paper-2, #f9f9f9);
+    color: var(--ink, #1d1d1f);
+  }
+  .gen-text-toggle button + button {
+    border-left: 1px solid var(--line, #e5e5e5);
+  }
+
+  .gen-text {
+    flex: 1;
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 12px;
+    overflow: auto;
+    white-space: pre-wrap;
+    font: inherit;
+  }
+  .gen-text-md {
+    white-space: normal;
+    font-size: 12px;
+  }
 
   .peers { position: absolute; z-index: 10; right: 16px; top: 16px; }
 
