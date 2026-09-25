@@ -5,7 +5,7 @@
   import * as Sheet from '$lib/components/ui/sheet/index.js';
   import { openSheet, closeSheet } from '$lib/canvas/sheet-nav';
   import { SHEET_PAGE_LOADERS, settingsPageLoader } from '$lib/canvas/sheet-pages';
-  import { sheetEntryForPath } from '$lib/shell-nav';
+  import { sheetEntryForPath, SHEET_WIDTHS } from '$lib/shell-nav';
   import { SETTINGS_GROUPS } from '$lib/components/settings/platforms';
   import { cn } from '$lib/utils';
 
@@ -25,6 +25,7 @@
    */
   const sheet = $derived(page.state.sheet ?? null);
   const entry = $derived(sheet ? sheetEntryForPath(sheet.path) : null);
+  const sheetWidth = $derived(entry ? SHEET_WIDTHS[entry.id] ?? SHEET_WIDTHS.settings : SHEET_WIDTHS.settings);
   const settingsSubpath = $derived(sheet ? sheet.path.replace(/^\/settings\/?/, '') || 'connected-accounts' : '');
   const settingsLoader = $derived(sheet && entry?.id === 'settings' ? settingsPageLoader(sheet.path) : null);
 
@@ -39,61 +40,91 @@
 
 {#if browser && sheet && entry}
   <Sheet.Root open {onOpenChange}>
-    <Sheet.Content side="right" class="canvas-sheet" showOverlay={false}>
-      {#if entry.id === 'settings'}
-        <div class="settings-shell">
-          <nav class="settings-switcher" aria-label={$_('app.nav.settings')}>
-            {#each SETTINGS_GROUPS as group (group.labelKey)}
-              <p class="switcher-group">{$_(group.labelKey)}</p>
-              {#each group.items as item (item.section)}
-                <button
-                  type="button"
-                  class={cn('switcher-item', settingsSubpath === item.section && 'is-active')}
-                  onclick={() => openSettingsSection(item.section)}
-                >
-                  {$_(item.labelKey)}
-                </button>
+    <Sheet.Content
+      side="left"
+      class="canvas-sheet"
+      showOverlay={false}
+      style={`--sheet-width: min(${sheetWidth}px, calc(100vw - 84px));`}
+    >
+      <div class="sheet-scroll">
+        {#if entry.id === 'settings'}
+          <div class="settings-shell">
+            <nav class="settings-switcher" aria-label={$_('app.nav.settings')}>
+              {#each SETTINGS_GROUPS as group (group.labelKey)}
+                <p class="switcher-group">{$_(group.labelKey)}</p>
+                {#each group.items as item (item.section)}
+                  <button
+                    type="button"
+                    class={cn('switcher-item', settingsSubpath === item.section && 'is-active')}
+                    onclick={() => openSettingsSection(item.section)}
+                  >
+                    {$_(item.labelKey)}
+                  </button>
+                {/each}
               {/each}
-            {/each}
-          </nav>
-          <div class="settings-body">
-            {#await SHEET_PAGE_LOADERS.settingsLayout() then { default: SettingsLayout }}
-              <SettingsLayout data={sheet.data as never}>
-                {#snippet children()}
-                  {#if settingsLoader}
-                    {#await settingsLoader() then { default: SettingsSectionPage }}
-                      <SettingsSectionPage data={sheet.data as never} form={null} />
-                    {/await}
-                  {/if}
-                {/snippet}
-              </SettingsLayout>
-            {/await}
+            </nav>
+            <div class="settings-body">
+              {#await SHEET_PAGE_LOADERS.settingsLayout() then { default: SettingsLayout }}
+                <SettingsLayout data={sheet.data as never}>
+                  {#snippet children()}
+                    {#if settingsLoader}
+                      {#await settingsLoader() then { default: SettingsSectionPage }}
+                        <SettingsSectionPage data={sheet.data as never} form={null} />
+                      {/await}
+                    {/if}
+                  {/snippet}
+                </SettingsLayout>
+              {/await}
+            </div>
           </div>
-        </div>
-      {:else if entry.id === 'calendar'}
-        {#await SHEET_PAGE_LOADERS.calendar() then { default: CalendarPage }}
-          <CalendarPage data={sheet.data as never} form={null} />
-        {/await}
-      {:else if entry.id === 'ads'}
-        {#await SHEET_PAGE_LOADERS.ads() then { default: AdsSocialPage }}
-          <AdsSocialPage data={sheet.data as never} form={null} />
-        {/await}
-      {:else if entry.id === 'create-post'}
-        {#await SHEET_PAGE_LOADERS.createPost() then { default: CreatePostPage }}
-          <CreatePostPage data={sheet.data as never} form={null} />
-        {/await}
-      {/if}
+        {:else if entry.id === 'calendar'}
+          {#await SHEET_PAGE_LOADERS.calendar() then { default: CalendarPage }}
+            <CalendarPage data={sheet.data as never} form={null} />
+          {/await}
+        {:else if entry.id === 'ads'}
+          {#await SHEET_PAGE_LOADERS.ads() then { default: AdsSocialPage }}
+            <AdsSocialPage data={sheet.data as never} form={null} />
+          {/await}
+        {:else if entry.id === 'create-post'}
+          {#await SHEET_PAGE_LOADERS.createPost() then { default: CreatePostPage }}
+            <CreatePostPage data={sheet.data as never} form={null} />
+          {/await}
+        {/if}
+      </div>
     </Sheet.Content>
   </Sheet.Root>
 {/if}
 
 <style>
-  :global(.canvas-sheet) {
-    inset: 3vh 3vw !important;
-    width: auto !important;
-    max-width: none !important;
-    height: auto !important;
-    border-radius: 0 !important;
+  @layer utilities {
+    :global([data-slot='sheet-content'].canvas-sheet) {
+      top: 44px !important;
+      left: 60px !important;
+      right: auto !important;
+      bottom: 0 !important;
+      height: auto !important;
+      width: var(--sheet-width) !important;
+      max-width: none !important;
+      border-radius: 0 !important;
+      border-left: 1px solid var(--line, #ededef) !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+      padding: 0 !important;
+      gap: 0 !important;
+    }
+
+    @media (max-width: 480px) {
+      :global([data-slot='sheet-content'].canvas-sheet) {
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+      }
+    }
+  }
+
+  .sheet-scroll {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .settings-shell {

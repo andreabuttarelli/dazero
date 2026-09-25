@@ -3,6 +3,7 @@
   import ProjectDragPanel from './ProjectDragPanel.svelte';
   import InfluencersPanel from './InfluencersPanel.svelte';
   import X from '@lucide/svelte/icons/x';
+  import { SHEET_WIDTHS } from '$lib/shell-nav';
 
   /**
    * IL PANNELLO ACCANTO ALLA TELA — Assets, Brands o Influencers, uno alla volta (CLAUDE.md: "One
@@ -24,14 +25,16 @@
     labelKey: string;
     onclose: () => void;
   } = $props();
+
+  const panelWidth = $derived(SHEET_WIDTHS[kind] ?? SHEET_WIDTHS.assets);
 </script>
 
 {#if kind === 'influencers'}
-  <div class="left-panel">
+  <div class="left-panel" style={`width: min(${panelWidth}px, calc(100vw - 84px));`}>
     <InfluencersPanel {projectId} {onclose} />
   </div>
 {:else}
-  <div class="left-panel">
+  <div class="left-panel" style={`width: min(${panelWidth}px, calc(100vw - 84px));`}>
     <div class="left-panel-head">
       <h3>{$_(labelKey)}</h3>
       <button type="button" class="close" onclick={onclose} aria-label={$_('app.shell.closePanel')}>
@@ -49,13 +52,12 @@
     position: absolute;
     z-index: 15;
     left: 60px;
-    top: 12px;
-    bottom: 12px;
-    width: 260px;
+    top: 44px;
+    bottom: 0;
     display: flex;
     flex-direction: column;
     background: var(--paper, #fff);
-    border: 1px solid var(--line, #ededef);
+    border-left: 1px solid var(--line, #ededef);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
   }
 
@@ -93,6 +95,7 @@
   .left-panel-body {
     flex: 1;
     min-height: 0;
+    overflow-y: auto;
     padding: 8px 10px;
   }
 </style>
