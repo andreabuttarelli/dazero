@@ -30,5 +30,12 @@ prompt, stesso modello, un nuovo tentativo.
 In alto sulla tela, il saldo crediti dell'organizzazione è sempre visibile — un click porta alla
 pagina di fatturazione. Ogni generazione consuma crediti in base al medium e al modello scelto;
 il saldo si aggiorna dopo ogni giro.
+
+## Migliora prompt
+
+Sui nodi immagine e video, lo switch **Migliora prompt** riscrive il testo con le buone pratiche
+del modello scelto prima di generare — il prompt scritto nel nodo resta invariato, solo il giro
+lo usa riscritto. È spento di default. Quando è acceso, il prezzo mostrato su Genera e Loop
+include anche il costo della riscrittura.
 `
 } satisfies GuideEntry;
