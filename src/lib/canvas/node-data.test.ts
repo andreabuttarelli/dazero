@@ -343,6 +343,76 @@ describe('validateNodeData — effects', () => {
     const out = validateNodeData('effects', { effects: [], refId: 'asset-1', sourceRefId: 'asset-0' });
     expect(out.ok).toBe(true);
   });
+
+  it('riempie i parametri mancanti con i default della tabella', () => {
+    const out = validateNodeData('effects', { effects: [{ id: 'pixelate', params: {} }] });
+    expect(out).toMatchObject({ ok: true, data: { effects: [{ params: { blockSize: 8 } }] } });
+  });
+
+  it('rifiuta un range fuori dai limiti dell\'effetto, nominando effetto e parametro', () => {
+    const out = validateNodeData('effects', {
+      effects: [{ id: 'pixelate', params: { blockSize: 999 } }]
+    });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/pixelate/);
+      expect(out.error).toMatch(/blockSize/);
+    }
+  });
+
+  it('rifiuta un\'opzione select che non esiste per l\'effetto', () => {
+    const out = validateNodeData('effects', {
+      effects: [{ id: 'dither', params: { mode: 'not-an-option' } }]
+    });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/dither/);
+      expect(out.error).toMatch(/mode/);
+    }
+  });
+
+  it('rifiuta un colore che non è un hex #rrggbb', () => {
+    const out = validateNodeData('effects', {
+      effects: [{ id: 'duotone', params: { shadow: 'not-a-color', highlight: '#ffffff' } }]
+    });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/duotone/);
+      expect(out.error).toMatch(/shadow/);
+    }
+  });
+
+  it('rifiuta un seed non intero', () => {
+    const out = validateNodeData('effects', {
+      effects: [{ id: 'random-colors', params: { seed: 1.5 } }]
+    });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/random-colors/);
+      expect(out.error).toMatch(/seed/);
+    }
+  });
+
+  it('rifiuta un parametro sconosciuto per l\'effetto', () => {
+    const out = validateNodeData('effects', {
+      effects: [{ id: 'pixelate', params: { blockSize: 8, madeUp: 1 } }]
+    });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error).toMatch(/pixelate/);
+      expect(out.error).toMatch(/madeUp/);
+    }
+  });
+
+  it('accetta una pila con più effetti, ognuno coi propri parametri validi', () => {
+    const out = validateNodeData('effects', {
+      effects: [
+        { id: 'pixelate', params: { blockSize: 8 } },
+        { id: 'duotone', params: { shadow: '#000000', highlight: '#ffffff' } }
+      ]
+    });
+    expect(out.ok).toBe(true);
+  });
 });
 
 describe('validateNodeData — un tipo sconosciuto è rifiutato, non passa silenziosamente', () => {

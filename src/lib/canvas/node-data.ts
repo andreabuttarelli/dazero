@@ -22,6 +22,7 @@
 import { z } from 'zod';
 import { SOCIAL_PLATFORMS } from './social-platforms';
 import { EFFECTS } from './effects';
+import type { EffectId, EffectParam } from './effects';
 
 /** Lo stato di una generazione lunga: gli stessi campi per i tre tipi che generano davvero. */
 const GEN_STATUS = ['idle', 'running', 'done', 'failed'] as const;
@@ -227,18 +228,67 @@ const selectSchema = z.object({
   index: z.number().int().positive()
 });
 
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * UNO SCHEMA PARAMETRI PER EFFETTO, GENERATO DALLA TABELLA `EFFECTS` — mai una seconda lista
+ * scritta a mano che diverge al primo parametro aggiunto. `range` diventa un numero fra `min` e
+ * `max`, `select` una delle `options.value`, `color` un hex `#rrggbb`, `seed` un intero. Un
+ * parametro assente prende il `default` della tabella (`.default(...)`), uno che non compare fra
+ * i `params` dell'effetto è rifiutato da `.strict()`.
+ */
+function paramFieldSchema(param: EffectParam) {
+  if (param.kind === 'range') {
+    return z.number().min(param.min).max(param.max).default(param.default);
+  }
+  if (param.kind === 'select') {
+    const values = param.options.map((option) => option.value) as [string, ...string[]];
+    return z.enum(values).default(param.default);
+  }
+  if (param.kind === 'color') {
+    return z.string().regex(HEX_COLOR, 'colore non valido, atteso #rrggbb').default(param.default);
+  }
+  return z.int().default(param.default);
+}
+
+function paramsSchemaFor(id: EffectId) {
+  const shape = Object.fromEntries(EFFECTS[id].params.map((param) => [param.name, paramFieldSchema(param)]));
+  return z.object(shape).strict();
+}
+
 /**
  * `effects`: una PILA di effetti sopra un'immagine a monte (`sourceRefId`), il risultato applicato
  * in `refId` — lo stesso schema `refId`/`sourceRefId` di un nodo che genera, ma senza `genState`:
  * non c'è un provider da aspettare, `applyStack` (`effects/index.ts`) gira nel browser. Ogni `id`
  * di `EffectStep` deve esistere nella tabella `EFFECTS`: un id sconosciuto (un effetto tolto dal
  * catalogo, un refuso scritto a mano) rifiuta il nodo invece di applicare silenziosamente niente.
+ * `params` si valida CONTRO L'EFFETTO SCELTO (`superRefine`, non un secondo `z.union` che accetta
+ * qualunque numero o stringa): lo stesso schema che rifiuta un range fuori limite rifiuta anche un
+ * parametro che quell'effetto non ha.
  */
-const effectStepSchema = z.object({
-  id: z.string().refine((id) => id in EFFECTS, { message: 'effetto sconosciuto' }),
-  params: z.record(z.string(), z.union([z.number(), z.string()])),
-  enabled: z.boolean().default(true)
-});
+const effectStepSchema = z
+  .object({
+    id: z.string().refine((id): id is EffectId => id in EFFECTS, { message: 'effetto sconosciuto' }),
+    params: z.record(z.string(), z.union([z.number(), z.string()])).default({}),
+    enabled: z.boolean().default(true)
+  })
+  .superRefine((step, ctx) => {
+    if (!(step.id in EFFECTS)) return;
+
+    const result = paramsSchemaFor(step.id as EffectId).safeParse(step.params);
+    if (result.success) {
+      step.params = result.data;
+      return;
+    }
+    for (const issue of result.error.issues) {
+      const field = issue.path.length ? issue.path.join('.') : '(parametro)';
+      ctx.addIssue({
+        code: 'custom',
+        path: ['params'],
+        message: `${step.id}.${field}: ${issue.message}`
+      });
+    }
+  });
 
 const effectsSchema = z.object({
   effects: z.array(effectStepSchema).default([]),
