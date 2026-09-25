@@ -51,9 +51,13 @@ export type AiModelRow = {
   input_modalities: string[];
   output_modalities: string[];
   supported_parameters: string[];
-  /** Solo `video`: i token di `resolution` che QUESTO modello accetta (`/videos/models`,
-   *  `supported_resolutions`) — minuscoli, quelli che `POST /videos` valida davvero. Vuoto per
-   *  chat/image, dove il campo non esiste su quella rotta. */
+  /** I token di `resolution` che QUESTO modello accetta — su `/videos/models`,
+   *  `supported_resolutions` (minuscoli: `480p`, `720p`…); su `/images/models`,
+   *  `supported_parameters.resolution.values` (`1K`, `2K`, `4K`, e su Nano Banana 2 anche `512`).
+   *  DIVERSO PER MODELLO: Seedream 5 Lite dichiara `[2K,4K]`, Seedream 5 Pro `[1K,2K]` — nessun
+   *  gradino condiviso, misurato il 2026-09-25 contro `/images/models` (52 righe, vedi
+   *  `offerable-models.ts`). Vuoto per chat, e per un'immagine che non dichiara `resolution`
+   *  affatto (i GPT Image, che usano `quality` invece). */
   supported_resolutions: string[];
   pricing: Record<string, unknown>;
   synced_at: string;
@@ -63,6 +67,20 @@ function toArray(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.map((v) => String(v)).filter(Boolean);
   if (raw && typeof raw === 'object') return Object.keys(raw);
   return [];
+}
+
+/**
+ * Le risoluzioni di un'immagine, da `supported_parameters.resolution.values` — un oggetto
+ * `{type: 'enum', values: [...]}`, non un array semplice come gli altri parametri: `resolution`
+ * è l'UNICO campo di `/images/models` il cui elenco di valori il prodotto legge, quindi è l'unico
+ * per cui `toArray` (pensato per nomi di parametro, non per i loro valori) non basta.
+ */
+function imageResolutionValues(raw: unknown): string[] {
+  if (!raw || typeof raw !== 'object') return [];
+  const entry = (raw as Record<string, unknown>).resolution;
+  if (!entry || typeof entry !== 'object') return [];
+  const values = (entry as { values?: unknown }).values;
+  return Array.isArray(values) ? values.map((v) => String(v)).filter(Boolean) : [];
 }
 
 function chatOrImageRow(m: RawChatOrImageModel, catalogue: 'chat' | 'image', syncedAt: string): AiModelRow | null {
@@ -75,7 +93,7 @@ function chatOrImageRow(m: RawChatOrImageModel, catalogue: 'chat' | 'image', syn
     input_modalities: m.architecture?.input_modalities ?? [],
     output_modalities: m.architecture?.output_modalities ?? [],
     supported_parameters: toArray(m.supported_parameters),
-    supported_resolutions: [],
+    supported_resolutions: catalogue === 'image' ? imageResolutionValues(m.supported_parameters) : [],
     pricing: m.pricing ?? {},
     synced_at: syncedAt
   };

@@ -56,7 +56,7 @@
   import { hasUpstreamText } from '$lib/canvas/upstream-inputs';
   import { effectiveModel } from '$lib/canvas/default-models';
   import { nearestVideoDuration } from '$lib/video-models';
-  import { snapVideoResolution } from '$lib/canvas/gen-node';
+  import { snapResolution } from '$lib/canvas/gen-node';
   import { type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
   import { shareUrlOf } from '$lib/canvas/doc-node';
   import { nodeSize } from '$lib/canvas/node-size';
@@ -1189,7 +1189,25 @@
           const savedResolution = (n.data.params as Record<string, unknown> | undefined)?.resolution as
             | string
             | undefined;
-          const resolution = snapVideoResolution(nextModel, savedResolution);
+          const resolution = snapResolution(nextModel, savedResolution);
+          if (resolution) {
+            nextParams.resolution = resolution;
+          } else {
+            delete nextParams.resolution;
+          }
+        }
+      }
+
+      // Stesso scivolamento per l'immagine: Seedream 5 Lite offre [2K,4K], Seedream 5 Pro [1K,2K]
+      // — una risoluzione salvata che il modello appena scelto non fa più va al suo default, mai
+      // spedita così com'è.
+      if (model !== undefined && n.type === 'image') {
+        const nextModel = catalogue.image?.find((c) => c.id === model);
+        if (nextModel) {
+          const savedResolution = (n.data.params as Record<string, unknown> | undefined)?.resolution as
+            | string
+            | undefined;
+          const resolution = snapResolution(nextModel, savedResolution);
           if (resolution) {
             nextParams.resolution = resolution;
           } else {

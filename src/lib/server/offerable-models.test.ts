@@ -67,37 +67,64 @@ describe('offerableModels — cosa un nodo può davvero scegliere', () => {
     expect(choice?.unitCredits).toBeUndefined();
   });
 
-  it('un modello immagine che dichiara "resolution" fra i supported_parameters offre 1K/2K/4K', async () => {
+  it('ogni modello immagine offre esattamente le sue risoluzioni sincronizzate, non un gradino condiviso', async () => {
+    // Misurato live contro /images/models il 2026-09-25: Seedream 5 Lite non fa 1K, Seedream 5
+    // Pro non fa 4K, Nano Banana 2 fa anche 512 — tre liste diverse per tre modelli diversi.
     const admin = fakeAdmin([
       {
-        id: 'bytedance-seed/seedream-4.5',
+        id: 'bytedance-seed/seedream-5-0-lite',
         catalogue: 'image',
         input_modalities: ['text', 'image'],
         output_modalities: ['image'],
-        supported_parameters: ['resolution', 'aspect_ratio', 'n', 'input_references', 'seed']
+        supported_parameters: ['resolution', 'aspect_ratio', 'n', 'input_references', 'seed'],
+        supported_resolutions: ['2K', '4K']
+      },
+      {
+        id: 'bytedance-seed/seedream-5-0-pro',
+        catalogue: 'image',
+        input_modalities: ['text', 'image'],
+        output_modalities: ['image'],
+        supported_parameters: ['resolution', 'aspect_ratio', 'n', 'input_references', 'seed'],
+        supported_resolutions: ['1K', '2K']
+      },
+      {
+        id: 'google/gemini-3.1-flash-image',
+        catalogue: 'image',
+        input_modalities: ['text', 'image'],
+        output_modalities: ['image', 'text'],
+        supported_parameters: ['resolution', 'aspect_ratio', 'n', 'input_references'],
+        supported_resolutions: ['512', '1K', '2K', '4K']
       }
     ]);
 
     const out = await offerableModels(admin, 'image');
 
-    const choice = out.choices.find((c) => c.id === 'bytedance-seed/seedream-4.5');
-    expect(choice?.resolutions).toEqual(['1K', '2K', '4K']);
+    const lite = out.choices.find((c) => c.id === 'seedream-5-lite');
+    const pro = out.choices.find((c) => c.id === 'seedream-5-pro');
+    const nanoBanana2 = out.choices.find((c) => c.id === 'nano-banana-2');
+
+    expect(lite?.resolutions).toEqual(['2K', '4K']);
+    expect(lite?.resolutions).not.toContain('1K');
+    expect(pro?.resolutions).toEqual(['1K', '2K']);
+    expect(pro?.resolutions).not.toContain('4K');
+    expect(nanoBanana2?.resolutions).toEqual(['512', '1K', '2K', '4K']);
   });
 
-  it('un modello immagine SENZA "resolution" nei supported_parameters non offre il selettore', async () => {
+  it('un modello immagine SENZA risoluzioni sincronizzate non offre il selettore (i GPT Image, che usano "quality")', async () => {
     const admin = fakeAdmin([
       {
-        id: 'recraft/recraft-v4',
+        id: 'openai/gpt-image-2',
         catalogue: 'image',
-        input_modalities: ['text'],
+        input_modalities: ['text', 'image'],
         output_modalities: ['image'],
-        supported_parameters: ['aspect_ratio', 'n', 'input_references']
+        supported_parameters: ['aspect_ratio', 'quality', 'n', 'input_references'],
+        supported_resolutions: []
       }
     ]);
 
     const out = await offerableModels(admin, 'image');
 
-    const choice = out.choices.find((c) => c.id === 'recraft/recraft-v4');
+    const choice = out.choices.find((c) => c.id === GPT_IMAGE_2_MODEL);
     expect(choice?.resolutions).toBeUndefined();
   });
 

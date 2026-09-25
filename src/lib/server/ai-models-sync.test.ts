@@ -32,7 +32,16 @@ const IMAGE_MODELS = {
       id: 'google/gemini-3-pro-image',
       name: 'Google: Nano Banana Pro (image)',
       architecture: { input_modalities: ['text', 'image'], output_modalities: ['image'] },
-      supported_parameters: { input_references: { type: 'range', min: 0, max: 8 } }
+      supported_parameters: {
+        input_references: { type: 'range', min: 0, max: 8 },
+        resolution: { type: 'enum', values: ['1K', '2K', '4K'] }
+      }
+    },
+    {
+      id: 'bytedance-seed/seedream-5-0-lite',
+      name: 'ByteDance Seed: Seedream 5.0 Lite',
+      architecture: { input_modalities: ['text', 'image'], output_modalities: ['image'] },
+      supported_parameters: { resolution: { type: 'enum', values: ['2K', '4K'] } }
     }
   ]
 };
@@ -124,7 +133,7 @@ describe('syncAiModels — dai tre listini del gateway alla tabella', () => {
 
     const out = await syncAiModels(admin, { fetchImpl: okAllThree(), baseUrl: 'https://openrouter.ai/api/v1' });
 
-    expect(out).toEqual({ ok: true, synced: 8 });
+    expect(out).toEqual({ ok: true, synced: 9 });
     expect(upserts).toContainEqual(
       expect.objectContaining({
         id: 'bytedance/seedance-2-5',
@@ -177,6 +186,34 @@ describe('syncAiModels — dai tre listini del gateway alla tabella', () => {
       (r) => (r as Record<string, unknown>).id === 'bytedance/seedance-2.5' && (r as Record<string, unknown>).catalogue === 'video'
     ) as Record<string, unknown>;
     expect(seedance.supported_resolutions).toEqual(['480p', '720p']);
+  });
+
+  it('un modello immagine sincronizzato porta i valori di "resolution", diversi da modello a modello', async () => {
+    const { admin, upserts } = fakeAdmin();
+
+    await syncAiModels(admin, { fetchImpl: okAllThree(), baseUrl: 'https://openrouter.ai/api/v1' });
+
+    const nanoBananaPro = upserts.find(
+      (r) => (r as Record<string, unknown>).id === 'google/gemini-3-pro-image' && (r as Record<string, unknown>).catalogue === 'image'
+    ) as Record<string, unknown>;
+    expect(nanoBananaPro.supported_resolutions).toEqual(['1K', '2K', '4K']);
+
+    const seedreamLite = upserts.find(
+      (r) => (r as Record<string, unknown>).id === 'bytedance-seed/seedream-5-0-lite' && (r as Record<string, unknown>).catalogue === 'image'
+    ) as Record<string, unknown>;
+    expect(seedreamLite.supported_resolutions).toEqual(['2K', '4K']);
+    expect(seedreamLite.supported_resolutions).not.toContain('1K');
+  });
+
+  it('un modello immagine senza "resolution" (i GPT Image, che usano "quality") non porta nessuna risoluzione', async () => {
+    const { admin, upserts } = fakeAdmin();
+
+    await syncAiModels(admin, { fetchImpl: okAllThree(), baseUrl: 'https://openrouter.ai/api/v1' });
+
+    const sunburst = upserts.find(
+      (r) => (r as Record<string, unknown>).id === 'openai/gpt-image-2.5-sunburst' && (r as Record<string, unknown>).catalogue === 'image'
+    ) as Record<string, unknown>;
+    expect(sunburst.supported_resolutions).toEqual([]);
   });
 
   it('lo stesso id su due listini resta due righe distinte, non una che sovrascrive l’altra', async () => {

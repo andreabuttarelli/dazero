@@ -6,7 +6,7 @@ import {
   isGenMedium,
   promptTooLong,
   runStateOf,
-  snapVideoResolution,
+  snapResolution,
   startRun,
   unlockRun,
   type GenNode,
@@ -105,7 +105,7 @@ describe('la risoluzione video dopo un cambio di modello', () => {
   it('resta quella salvata se il nuovo modello la offre ancora', () => {
     const m = choice({ resolutions: ['480p', '720p'] });
 
-    expect(snapVideoResolution(m, '720p')).toBe('720p');
+    expect(snapResolution(m, '720p')).toBe('720p');
   });
 
   it('scivola al default del modello se quella salvata non è più offerta — regressione cb1de6e2', () => {
@@ -113,17 +113,17 @@ describe('la risoluzione video dopo un cambio di modello', () => {
     // scivolare a 720p, non spedire un token che il provider rifiuta.
     const happyhorse = choice({ resolutions: ['720p', '1080p'] });
 
-    expect(snapVideoResolution(happyhorse, '480p')).toBe('720p');
+    expect(snapResolution(happyhorse, '480p')).toBe('720p');
   });
 
   it('senza una risoluzione salvata parte dal default del modello', () => {
     const m = choice({ resolutions: ['720p', '1080p'] });
 
-    expect(snapVideoResolution(m, undefined)).toBe('720p');
+    expect(snapResolution(m, undefined)).toBe('720p');
   });
 
   it('un modello senza selettore non ha nessuna risoluzione da imporre', () => {
-    expect(snapVideoResolution(choice(), '480p')).toBeUndefined();
+    expect(snapResolution(choice(), '480p')).toBeUndefined();
   });
 });
 

@@ -14,7 +14,9 @@ export type GeminiImageRequest = {
       inlineData?: { mimeType: string; data: string };
     }>;
   }>;
-  /** '1K' | '2K' | '4K' — solo `/api/v1/images`, solo i modelli che lo dichiarano fra i
+  /** Il token esatto che il modello scelto dichiara (`ai_models.supported_resolutions`,
+   *  `ModelChoice.resolutions`) — `1K`/`2K`/`4K` per la maggior parte, `512` in più su Nano
+   *  Banana 2. Solo `/api/v1/images`, solo i modelli che dichiarano `resolution` fra i
    *  `supported_parameters`. Assente = la resa di default del modello. */
   config?: { imageConfig?: { aspectRatio?: string; resolution?: string } };
 };

@@ -169,10 +169,13 @@ export function defaultParamsFor(choice: ModelChoice): GenParams {
 /**
  * La risoluzione salvata, se ancora offerta dal modello appena scelto; altrimenti il default del
  * modello — mai un valore fuori da `choice.resolutions`, o il campo mostrerebbe un token che il
- * fornitore rifiuta (v. `video_renders` cb1de6e2, `happyhorse-1.0` senza 480p). Assente = nessun
- * selettore per questo modello: il default e' quello del provider, non nostro.
+ * fornitore rifiuta (v. `video_renders` cb1de6e2, `happyhorse-1.0` senza 480p; lo stesso vale per
+ * un'immagine passata da Seedream 5 Lite, `[2K,4K]`, a Seedream 5 Pro, `[1K,2K]`). Assente =
+ * nessun selettore per questo modello: il default e' quello del provider, non nostro. Un solo
+ * gradino di snap per i due medium che hanno risoluzioni — `ModelChoice.resolutions` non dice da
+ * quale medium viene.
  */
-export function snapVideoResolution(choice: ModelChoice, saved: string | undefined): string | undefined {
+export function snapResolution(choice: ModelChoice, saved: string | undefined): string | undefined {
   const options = choice.resolutions;
   if (!options?.length) return undefined;
   if (saved && options.includes(saved)) return saved;

@@ -87,17 +87,15 @@ async function syncedRows(
 const GENERIC_IMAGE_ASPECTS = ['1:1'];
 
 /**
- * I tre gradini che l'API immagini di OpenRouter pubblica per `resolution` — misurato contro
- * `/api/v1/images/models`: ogni riga che dichiara `resolution` nei suoi `supported_parameters`
- * usa lo stesso `enum` a tre valori (Seedream 4.5/5, Gemini 3, Qwen Image 3, Riverflow, Grok
- * Imagine — v. sync 2026-09-25). Non un tetto in pixel: il nome che l'endpoint accetta è QUESTO,
- * mandare "1024x1024" torna un 400.
+ * LE RISOLUZIONI CHE QUESTO MODELLO ACCETTA DAVVERO — dalla riga sincronizzata
+ * (`ai_models.supported_resolutions`, `/images/models` → `supported_parameters.resolution.values`),
+ * mai un gradino condiviso: misurato il 2026-09-25, Seedream 5 Lite dichiara `[2K,4K]` (mai 1K),
+ * Seedream 5 Pro `[1K,2K]` (mai 4K), Nano Banana 2 `[512,1K,2K,4K]`. Un modello senza `resolution`
+ * fra i suoi parametri (i GPT Image, che usano `quality`) torna vuoto: assente = una sola resa, e
+ * la barra non mostra il selettore.
  */
-const IMAGE_RESOLUTION_TIERS = ['1K', '2K', '4K'];
-
-/** Assente = una sola resa, e la barra non mostra il selettore (`ModelChoice.resolutions`). */
-function imageResolutionsFor(supportedParameters: string[] | null): string[] | undefined {
-  return supportedParameters?.includes('resolution') ? IMAGE_RESOLUTION_TIERS : undefined;
+function imageResolutionsFor(supportedResolutions: string[] | null): string[] | undefined {
+  return supportedResolutions?.length ? supportedResolutions : undefined;
 }
 
 function genericImageChoice(row: SyncedRow): ModelChoice {
@@ -108,7 +106,7 @@ function genericImageChoice(row: SyncedRow): ModelChoice {
     maxRefs: IMAGE_REFS_BUDGET,
     ...providerOf(row.id),
     inputModalities: row.input_modalities ?? [],
-    resolutions: imageResolutionsFor(row.supported_parameters),
+    resolutions: imageResolutionsFor(row.supported_resolutions),
     unitCredits: undefined
   };
 }
@@ -149,7 +147,7 @@ function imageChoice(
   spec: ImageModelSpec,
   wireId: string,
   inputModalities: string[],
-  supportedParameters: string[] | null
+  supportedResolutions: string[] | null
 ): ModelChoice {
   return {
     id: spec.id,
@@ -158,7 +156,7 @@ function imageChoice(
     maxRefs: spec.maxRefs,
     ...providerOf(wireId),
     inputModalities,
-    resolutions: imageResolutionsFor(supportedParameters),
+    resolutions: imageResolutionsFor(supportedResolutions),
     unitCredits: IMAGE_CREDITS
   };
 }
@@ -200,7 +198,7 @@ async function offerableImages(admin: SupabaseClient): Promise<OfferableModels> 
         spec,
         wireId,
         rows.get(wireId)?.input_modalities ?? [],
-        rows.get(wireId)?.supported_parameters ?? null
+        rows.get(wireId)?.supported_resolutions ?? null
       )
     );
   });

@@ -173,8 +173,8 @@ export type RenderImageOpts = {
   /** Il modello con cui il brand MODIFICA. Vale solo con `baseImage`: senza, non c'e' nulla da modificare. */
   refineModel?: string;
   aspectRatio?: AspectRatio;
-  /** '1K' | '2K' | '4K' — solo i modelli che lo dichiarano (`ModelChoice.resolutions`,
-   *  `offerable-models.ts`). Assente = la resa di default del modello. */
+  /** Il token che il modello scelto dichiara — diverso per modello (`ModelChoice.resolutions`,
+   *  `offerable-models.ts`, sincronizzato da `/images/models`). Assente = la resa di default. */
   resolution?: string;
   model?: string;
   craftFloor?: string;
