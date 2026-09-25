@@ -50,6 +50,9 @@ import { promoteToPost, setPostStatus, listSourcesForNodes } from '$lib/server/r
 import { scheduleDelivery } from '$lib/server/repos/post-delivery';
 import { publisher } from '$lib/server/publishing';
 import { listNodesByIds } from '$lib/server/repos/canvas';
+import { suggestNextSteps } from '$lib/canvas/suggest-next-steps';
+import { actionFrequencyFor } from '$lib/server/next-step-stats';
+import { decideWithJev } from '$lib/server/jev';
 
 // L'azione `run` aspetta la generazione DENTRO la richiesta — un'immagine ci mette fino a un
 // minuto, e il default della piattaforma è sotto quella soglia. Senza, la richiesta muore a metà
@@ -1170,6 +1173,38 @@ export const actions: Actions = {
       return fail(409, { reason: result.reason });
     }
     return { outcome: 'undone', redo: result.redo };
+  },
+
+  /**
+   * SUGGERIMENTI DI PROSSIMO PASSO — la tabella (`next-step-actions.ts`) dice cosa ha senso per
+   * il tipo del nodo selezionato, la frequenza storica (`next-step-stats.ts`) li ordina, e Jev
+   * (se `TYPESAFE_API_KEY` è presente) può solo RI-ordinare lo stesso insieme validato — mai
+   * aggiungere un'azione fuori da esso (`suggestNextSteps`, verificato lì).
+   */
+  suggestNextStep: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+
+    const nodeId = String(fd.get('node_id') ?? '');
+    const node = (await listNodes(scope.db, scope)).find((n) => n.id === nodeId);
+    if (!node) {
+      return fail(404, { error: 'nodo non trovato' });
+    }
+
+    const frequency = await actionFrequencyFor(scope.db, scope.orgId, node.type);
+    const decide = process.env.TYPESAFE_API_KEY ? decideWithJev : null;
+    const suggestions = await suggestNextSteps(node.type, frequency, decide);
+
+    return {
+      suggestions: suggestions.map((s) => ({
+        id: s.action.id,
+        label: s.action.label,
+        createsNodeType: s.action.createsNodeType,
+        wiring: s.action.wiring,
+        promptTemplate: s.action.promptTemplate,
+        confidence: s.confidence
+      }))
+    };
   },
 
   /**

@@ -995,7 +995,7 @@
    * lo stesso che decide un collegamento a un nodo ESISTENTE (`connectExisting`, sotto): la
    * domanda "quale porta per quale sorgente" non cambia perché il bersaglio è appena nato.
    */
-  async function connectNew(ids: string[], medium: GenMedium, at: { x: number; y: number }) {
+  async function connectNew(ids: string[], medium: GenMedium, at: { x: number; y: number }, prompt = '') {
     const sources: ConnectSource[] = nodes
       .filter((n) => ids.includes(n.id))
       .map((n) => ({ id: n.id, type: n.type }));
@@ -1009,7 +1009,7 @@
       type: medium,
       x: at.x - w / 2,
       y: at.y - h / 2,
-      data: JSON.stringify({ ...newNodeRow(medium), model })
+      data: JSON.stringify({ ...newNodeRow(medium), model, ...(prompt ? { prompt } : {}) })
     });
     const node = (created?.node ?? null) as CanvasNodeRecord | null;
     if (!node) { return; }

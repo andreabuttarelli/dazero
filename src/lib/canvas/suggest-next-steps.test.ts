@@ -9,10 +9,10 @@ describe('rankedFallback', () => {
     expect(ranked[0].confidence).toBeGreaterThan(ranked[1].confidence);
   });
 
-  it('spreads confidence evenly when no history exists', () => {
+  it('gives the table order a decaying confidence when no history exists, so the top pick clears the threshold', () => {
     const ranked = rankedFallback('image', {});
-    const distinct = new Set(ranked.map((r) => r.confidence));
-    expect(distinct.size).toBe(1);
+    expect(ranked[0].confidence).toBeGreaterThanOrEqual(NEXT_STEP_CONFIDENCE_THRESHOLD);
+    expect(ranked[0].confidence).toBeGreaterThan(ranked[1].confidence);
   });
 
   it('returns nothing for a node type with no actions', () => {
@@ -27,9 +27,7 @@ describe('suggestNextSteps', () => {
     expect(suggestions[0].action.id).toBe('write-caption');
   });
 
-  it('filters out suggestions below the confidence threshold', async () => {
-    const many = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
-    void many;
+  it('never returns a suggestion below the confidence threshold', async () => {
     const suggestions = await suggestNextSteps('image', {}, null);
     for (const s of suggestions) {
       expect(s.confidence).toBeGreaterThanOrEqual(NEXT_STEP_CONFIDENCE_THRESHOLD);

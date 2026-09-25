@@ -5,12 +5,20 @@ export type NextStepSuggestion = { action: NextStepAction; confidence: number };
 
 export const NEXT_STEP_CONFIDENCE_THRESHOLD = 0.3;
 
+const RANK_BASE_CONFIDENCE = 0.5;
+const RANK_DECAY = 0.1;
+
+/**
+ * Il RANGO, non la quota — con sei azioni valide anche la più frequente vale 1/6 della torta, e
+ * un valore in stile probabilità confonderebbe "poco popolare fra tante" con "non pertinente".
+ * La frequenza ordina, la posizione decide la confidenza mostrata.
+ */
 function rankByFrequency(actions: readonly NextStepAction[], frequency: Record<string, number>): NextStepSuggestion[] {
-  const total = actions.reduce((sum, action) => sum + (frequency[action.id] ?? 0), 0);
-  if (total === 0) {
-    return actions.map((action) => ({ action, confidence: 1 / actions.length }));
-  }
-  return actions.map((action) => ({ action, confidence: (frequency[action.id] ?? 0) / total }));
+  const byFrequencyDesc = [...actions].sort((a, b) => (frequency[b.id] ?? 0) - (frequency[a.id] ?? 0));
+  return byFrequencyDesc.map((action, index) => ({
+    action,
+    confidence: Math.max(0, RANK_BASE_CONFIDENCE - index * RANK_DECAY)
+  }));
 }
 
 function byConfidenceDesc(a: NextStepSuggestion, b: NextStepSuggestion): number {

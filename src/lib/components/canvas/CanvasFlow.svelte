@@ -33,6 +33,7 @@
   import CanvasKeys from './CanvasKeys.svelte';
   import CanvasSelectionBridge from './CanvasSelectionBridge.svelte';
   import SelectionToolbar from './SelectionToolbar.svelte';
+  import NextStepChips from './NextStepChips.svelte';
   import ConnectPicker from './ConnectPicker.svelte';
   import type { SelectionActionId } from '$lib/canvas/selection-actions';
   import type { GenMedium, ModelChoice } from '$lib/canvas/gen-node';
@@ -182,7 +183,7 @@
      * i fili li fa chi monta la tela — la stessa divisione di `onCreate`, dove il PUNTO lo decide
      * `CanvasFlow` e la SCRITTURA la pagina. `at` è già in unità di tela, a destra della selezione.
      */
-    onConnectNew?: (ids: string[], medium: GenMedium, at: { x: number; y: number }) => void;
+    onConnectNew?: (ids: string[], medium: GenMedium, at: { x: number; y: number }, prompt?: string) => void;
     /** "Collega a…": gli id scelti e il nodo su cui si è cliccato per chiudere la modalità bersaglio. */
     onConnectExisting?: (ids: string[], targetId: string) => void;
     /** "Esegui flusso": gli id scelti, così com'è per `onDelete`/`onCreatePost`. */
@@ -505,6 +506,29 @@
     connectPickerAt = null;
   }
 
+  /**
+   * UN CHIP CLICCATO — stessa geometria di "Collega a nuovo…" (a destra della selezione), ma il
+   * medium e il prompt arrivano già decisi dal suggerimento, non da una seconda scelta dell'utente.
+   */
+  function pickNextStep(suggestion: {
+    createsNodeType: 'video' | 'text' | 'image' | null;
+    wiring: 'connect-new' | 'create-post';
+    promptTemplate: string;
+  }) {
+    if (!selection.box || !toFlow) return;
+
+    if (suggestion.wiring === 'create-post') {
+      onCreatePost?.(selection.ids);
+      return;
+    }
+    if (!suggestion.createsNodeType) return;
+
+    const at = toFlow({ x: selection.box.x + selection.box.width + 24, y: selection.box.y });
+    onConnectNew?.(selection.ids, suggestion.createsNodeType, at, suggestion.promptTemplate);
+  }
+
+  const nextStepNodeId = $derived(selection.ids.length === 1 ? selection.ids[0] : null);
+
   // La conversione schermo → tela arriva da `CanvasPointer` DOPO il mount — serve al trascinamento
   // (`onDrop`) e al clic sulla barra (`addAtCentre`). `$state` e non un `let` semplice: in una
   // variabile non reattiva chi la legge prima del mount vedrebbe il `null` di partenza per sempre.
@@ -647,6 +671,8 @@
     onaction={runSelectionAction}
     onpropertychange={(patch) => onPropertyChange?.(selection.ids, patch)}
   />
+
+  <NextStepChips box={selection.box} zoom={selection.zoom} nodeId={nextStepNodeId} onpick={pickNextStep} />
 
   {#if connectPickerAt}
     <ConnectPicker at={connectPickerAt} onpick={pickConnectMedium} onclose={() => (connectPickerAt = null)} />
