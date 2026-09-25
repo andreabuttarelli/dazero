@@ -370,9 +370,9 @@
    */
   const productsByNode = $derived((data.products ?? {}) as Record<string, Product[]>);
   const socialPostsByNode = $derived((data.socialPosts ?? {}) as Record<string, SocialPost[]>);
-  const influencersByNode = $derived(
-    (data.influencers ?? {}) as Record<string, { name: string; views: { id: string; label: string; url: string | null }[] }>
-  );
+  type InfluencerTile = { name: string; views: { id: string; label: string; url: string | null }[] };
+  let influencersOverride = $state<Record<string, InfluencerTile> | null>(null);
+  const influencersByNode = $derived(influencersOverride ?? ((data.influencers ?? {}) as Record<string, InfluencerTile>));
 
   /**
    * LE PORTE DI UN NODO CHE PRODUCE, dal modello scelto — mai un elenco scritto a mano. Un
@@ -490,6 +490,7 @@
     edges = (snapshot.connections as Connection[]).map(toEdge);
     productsOverride = (snapshot.products ?? {}) as Record<string, Product[]>;
     socialPostsOverride = (snapshot.socialPosts ?? {}) as Record<string, SocialPost[]>;
+    influencersOverride = (snapshot.influencers ?? {}) as Record<string, InfluencerTile>;
   }
 
   $effect(() => {
@@ -614,6 +615,9 @@
 
     nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created, { select: true })];
     pushGesture(createGesture(created));
+    if (created.type === 'influencer') {
+      void refresh();
+    }
   }
 
   /**

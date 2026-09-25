@@ -57,12 +57,20 @@ const textSchema = z.object({
   ...genState
 });
 
+const libraryMedia = {
+  assetId: z.string().optional(),
+  url: z.string().optional(),
+  name: z.string().optional(),
+  mimeType: z.string().optional()
+};
+
 const imageSchema = z.object({
   prompt: z.string(),
   model: z.string().nullable().optional(),
   aspect_ratio: z.string().optional(),
   resolution: z.string().optional(),
-  ...genState
+  ...genState,
+  ...libraryMedia
 });
 
 const videoSchema = z.object({
@@ -71,7 +79,8 @@ const videoSchema = z.object({
   audio: z.boolean().optional(),
   aspect_ratio: z.string().optional(),
   resolution: z.string().optional(),
-  ...genState
+  ...genState,
+  ...libraryMedia
 });
 
 const docSchema = z.object({

@@ -359,3 +359,16 @@ describe('looseNodeJsonSchema — solo required + enum del discriminante, per il
     expect(shape.required).toEqual([]);
   });
 });
+
+describe('un media trascinato sulla tela nasce con il suo file', () => {
+  it('un\'immagine o un video dalla libreria tiene assetId, nome e tipo', async () => {
+    const { staticMediaData } = await import('./drag-payload');
+    const data = staticMediaData({ assetId: 'asset-1', url: 'https://signed/x.png', name: 'x.png', mimeType: 'image/png' });
+    for (const type of ['image', 'video']) {
+      const verdict = validateNodeData(type, data);
+      expect(verdict.ok).toBe(true);
+      expect(verdict.ok && verdict.data.assetId).toBe('asset-1');
+      expect(verdict.ok && verdict.data.mimeType).toBe('image/png');
+    }
+  });
+});
