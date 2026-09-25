@@ -34,9 +34,12 @@
   import SelectNode from '$lib/components/canvas/SelectNode.svelte';
   import EffectsNode from '$lib/components/canvas/EffectsNode.svelte';
   import EffectsEditor from '$lib/components/canvas/EffectsEditor.svelte';
+  import CompositionNode from '$lib/components/canvas/CompositionNode.svelte';
   import { inputChanged } from '$lib/canvas/effects/editor';
   import { upstreamImageRef } from '$lib/canvas/effects-node';
   import type { EffectStep } from '$lib/canvas/effects';
+  import { upstreamImageRefs } from '$lib/canvas/composition-node';
+  import type { CompositionNode as CompositionNodeState } from '$lib/canvas/composition-node';
   import { listFeedingSelect } from '$lib/canvas/select-node';
   import {
     listConnectors,
@@ -90,6 +93,8 @@
     selectOf,
     effectsOf,
     effectsData,
+    compositionOf,
+    compositionData,
     socialFeedData,
     socialFeedOf
   } from '$lib/canvas-node-data';
@@ -352,6 +357,10 @@
     return upstreamImageRef(effectsId, edges, nodes);
   }
 
+  function upstreamCompositionRefsOf(compositionId: string): string[] {
+    return upstreamImageRefs(compositionId, edges, nodes);
+  }
+
   function assetUrl(refId: string | null): string | null {
     return refId ? `/p/${data.projectId}/c/${data.canvas.id}/assets/${refId}` : null;
   }
@@ -401,6 +410,7 @@
   function connectorsOfNode(n: Tile): ConnectorType[] | undefined {
     if (n.type === 'list') { return listPortsByNode[n.id]; }
     if (n.type === 'effects') { return ['images']; }
+    if (n.type === 'composition') { return ['images']; }
     if (n.type !== 'text' && n.type !== 'image' && n.type !== 'video') { return undefined; }
     const model = typeof n.data.model === 'string' ? n.data.model : null;
     return connectorsForNode(n.type, model, catalogue[n.type] ?? []);
@@ -629,6 +639,36 @@
     const row = effectsEditorId ? nodes.find((n) => n.id === effectsEditorId) : null;
     return row ? effectsOf(row) : null;
   });
+
+  let compositionEditorId = $state<string | null>(null);
+  let CompositionEditorComponent = $state<typeof import('$lib/components/canvas/CompositionEditor.svelte').default | null>(null);
+  const compositionEditing = $derived.by(() => {
+    const row = compositionEditorId ? nodes.find((n) => n.id === compositionEditorId) : null;
+    return row ? compositionOf(row) : null;
+  });
+
+  async function openCompositionEditor(id: string) {
+    compositionEditorId = id;
+    if (!CompositionEditorComponent) {
+      const module = await import('$lib/components/canvas/CompositionEditor.svelte');
+      CompositionEditorComponent = module.default;
+    }
+  }
+
+  async function saveComposition(id: string, next: CompositionNodeState): Promise<boolean> {
+    const current = nodes.find((node) => node.id === id);
+    if (!current) { return false; }
+    const result = await post('write', {
+      node_id: id, version: current.version, data: JSON.stringify(compositionData(next))
+    });
+    const written = result?.node as CanvasNodeRecord | undefined;
+    if (!written) {
+      failed = 'Contenuto non salvato: ricarica prima di continuare';
+      return false;
+    }
+    nodes = nodes.map((node) => (node.id === id ? { ...node, data: written.data, version: written.version } : node));
+    return true;
+  }
 
   async function applyEffects(id: string, steps: EffectStep[], output: Blob): Promise<boolean> {
     const sourceRefId = upstreamImageRefOf(id);
@@ -1612,6 +1652,7 @@
         {@const list = listOf(row)}
         {@const select = selectOf(row)}
         {@const effects = effectsOf(row)}
+        {@const composition = compositionOf(row)}
         {@const uploaded = isUploadedNodeRow(row) ? uploadedNodeOf(row) : null}
         {#if uploaded}
           <UploadedNode node={uploaded} medium={row.type === 'video' ? 'video' : 'image'} />
@@ -1717,6 +1758,13 @@
             inputChanged={inputChanged(effects.sourceRefId, upstreamImageRefOf(id))}
             onopeneditor={() => (effectsEditorId = id)}
           />
+        {:else if composition}
+          <CompositionNode
+            node={composition}
+            posterUrl={assetUrl(composition.refId)}
+            imageCount={upstreamCompositionRefsOf(id).length}
+            onopeneditor={() => openCompositionEditor(id)}
+          />
         {/if}
       {/if}
     {/snippet}
@@ -1730,6 +1778,18 @@
         inputUrl={assetUrl(upstreamImageRefOf(editingId))}
         onapply={(steps, output) => applyEffects(editingId, steps, output)}
         onclose={() => (effectsEditorId = null)}
+      />
+    {/key}
+  {/if}
+
+  {#if compositionEditing && CompositionEditorComponent}
+    {@const editingId = compositionEditing.id}
+    {#key editingId}
+      <CompositionEditorComponent
+        initial={compositionEditing}
+        mediaUrls={upstreamCompositionRefsOf(editingId).map((refId) => assetUrl(refId)).filter((url) => url !== null)}
+        onsave={(next) => saveComposition(editingId, next)}
+        onclose={() => (compositionEditorId = null)}
       />
     {/key}
   {/if}
