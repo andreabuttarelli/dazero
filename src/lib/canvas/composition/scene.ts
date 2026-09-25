@@ -18,6 +18,7 @@ export type CompositionSceneOptions = {
 	camera: CameraPresetId;
 	cameraParams: LayoutParams;
 	background: string;
+	onTextureReady?: () => void;
 };
 
 export type CompositionScene = {
@@ -33,7 +34,7 @@ export function createCompositionScene(canvas: HTMLCanvasElement, options: Compo
 
 	const camera = new THREE.PerspectiveCamera(CAMERA_PRESETS[options.camera].cameraAt(options.cameraParams, 0).fov, 1, 0.1, 500);
 
-	const built = options.media.map((media) => createMesh(media));
+	const built = options.media.map((media) => createMesh(media, options.onTextureReady));
 	const meshes = built.map(({ mesh }) => mesh);
 	for (const mesh of meshes) {
 		scene.add(mesh);
@@ -88,16 +89,22 @@ export function createCompositionScene(canvas: HTMLCanvasElement, options: Compo
 	return { renderAt, resize, dispose };
 }
 
-function createMesh(media: CompositionMedia): { mesh: THREE.Mesh; video: HTMLVideoElement | null } {
+function createMesh(
+	media: CompositionMedia,
+	onTextureReady?: () => void
+): { mesh: THREE.Mesh; video: HTMLVideoElement | null } {
 	const geometry = new THREE.PlaneGeometry(media.aspect, 1);
 	const material = new THREE.MeshBasicMaterial({ transparent: true });
 	const mesh = new THREE.Mesh(geometry, material);
 
 	if (media.kind === 'image') {
-		new THREE.TextureLoader().load(media.url, (texture) => {
+		const loader = new THREE.TextureLoader();
+		loader.setCrossOrigin('anonymous');
+		loader.load(media.url, (texture) => {
 			texture.colorSpace = THREE.SRGBColorSpace;
 			material.map = texture;
 			material.needsUpdate = true;
+			onTextureReady?.();
 		});
 		return { mesh, video: null };
 	}
@@ -107,6 +114,7 @@ function createMesh(media: CompositionMedia): { mesh: THREE.Mesh; video: HTMLVid
 	texture.colorSpace = THREE.SRGBColorSpace;
 	material.map = texture;
 	material.needsUpdate = true;
+	video.addEventListener('loadeddata', () => onTextureReady?.(), { once: true });
 	return { mesh, video };
 }
 

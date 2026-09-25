@@ -58,7 +58,8 @@
       layoutParams,
       camera: cameraId,
       cameraParams,
-      background: '#000000'
+      background: '#000000',
+      onTextureReady: () => scene?.renderAt(time)
     });
     scene.resize(canvas.clientWidth, canvas.clientHeight);
     scene.renderAt(time);
