@@ -77,7 +77,7 @@ export function blockedReason(
  */
 export function withRun(node: GenNode, run: GenRun): GenNode {
   if (!run.mediaId) return node;
-  if (node.runs.some((r) => r.id === run.id)) return node;
+  if (node.runs.some((r) => r.id === run.id || r.mediaId === run.mediaId)) return node;
 
   return { ...node, runs: [...node.runs, run], refId: run.mediaId };
 }
@@ -121,5 +121,12 @@ export function canStartRun(
 }
 
 export function producedRuns(runs: GenRun[]): GenRun[] {
-  return runs.filter((run) => run.mediaId !== null);
+  const seen = new Set<string>();
+  return runs.filter((run) => {
+    if (run.mediaId === null || seen.has(run.mediaId)) {
+      return false;
+    }
+    seen.add(run.mediaId);
+    return true;
+  });
 }

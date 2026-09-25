@@ -158,3 +158,21 @@ describe('la storia di un nodo mostra solo i giri che hanno prodotto qualcosa', 
     expect(producedRuns([run('a', 'x'), run('b', null), run('c', 'y')]).map((r) => r.id)).toEqual(['a', 'c']);
   });
 });
+
+describe('la storia mostra ogni risultato una volta sola', () => {
+  it('due giri con lo stesso asset (il biglietto del loop e il giro vero) sono una voce sola', async () => {
+    const { producedRuns } = await import('./gen-history');
+    const run = (id: string, mediaId: string | null): GenRun => ({ id, mediaId, prompt: 'p', model: null, createdAt: '' });
+    expect(producedRuns([run('t1', 'a'), run('t2', 'b'), run('r1', 'a'), run('r2', 'b')]).map((r) => r.id)).toEqual(['t1', 't2']);
+  });
+});
+
+describe('un giro in arrivo con un risultato già in storia non lo duplica', () => {
+  it('withRun ignora un secondo giro con lo stesso asset', async () => {
+    const { withRun } = await import('./gen-history');
+    const first: GenRun = { id: 't1', mediaId: 'a', prompt: 'p', model: null, createdAt: '' };
+    const node = { runs: [first], refId: 'a' } as unknown as GenNode;
+    const next = withRun(node, { ...first, id: 'r1' });
+    expect(next.runs.map((r) => r.id)).toEqual(['t1']);
+  });
+});
