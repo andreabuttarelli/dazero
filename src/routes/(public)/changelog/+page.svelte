@@ -8,17 +8,17 @@
 </script>
 
 <svelte:head>
-  <title>{isIt ? 'Novità' : 'Changelog'} — dazero</title>
-  <meta name="description" content={isIt ? 'Tutte le novità, miglioramenti e correzioni di dazero. Scopri cosa cambia nel prodotto.' : 'All new features, improvements and fixes in dazero. See what changed in the product.'} />
-  <meta property="og:title" content="{isIt ? 'Novità' : 'Changelog'} — dazero" />
-  <meta property="og:description" content={isIt ? 'Tutte le novità, miglioramenti e correzioni di dazero.' : 'All new features, improvements and fixes in dazero.'} />
+  <title>{isIt ? 'Novità' : 'Changelog'} — feega</title>
+  <meta name="description" content={isIt ? 'Tutte le novità, miglioramenti e correzioni di feega. Scopri cosa cambia nel prodotto.' : 'All new features, improvements and fixes in feega. See what changed in the product.'} />
+  <meta property="og:title" content="{isIt ? 'Novità' : 'Changelog'} — feega" />
+  <meta property="og:description" content={isIt ? 'Tutte le novità, miglioramenti e correzioni di feega.' : 'All new features, improvements and fixes in feega.'} />
 </svelte:head>
 
 <main class="changelog-page">
   <div class="changelog-wrap">
     <header class="changelog-header">
       <p class="cl-eyebrow">{isIt ? 'Novità' : 'Changelog'}</p>
-      <h1 class="cl-title">{isIt ? 'Cosa cambia in dazero' : 'What changed in dazero'}</h1>
+      <h1 class="cl-title">{isIt ? 'Cosa cambia in feega' : 'What changed in feega'}</h1>
       <p class="cl-subtitle">{isIt ? 'Ogni aggiunta, miglioramento e correzione al prodotto — dal più recente al più vecchio.' : 'Every addition, improvement and fix to the product — from most recent to oldest.'}</p>
     </header>
 
