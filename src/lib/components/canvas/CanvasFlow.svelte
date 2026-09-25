@@ -205,6 +205,7 @@
         duration?: number;
         resolution?: string;
         audio?: boolean;
+        enhancePrompt?: boolean;
         repeat?: number;
         dynamicParams?: Record<string, unknown>;
       }

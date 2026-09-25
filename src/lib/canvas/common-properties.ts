@@ -17,7 +17,7 @@
  * di sempre — questo file non sa cosa sia una `version`.
  */
 
-export type GenFieldId = 'model' | 'aspectRatio' | 'duration' | 'resolution' | 'audio' | 'repeat';
+export type GenFieldId = 'model' | 'aspectRatio' | 'duration' | 'resolution' | 'audio' | 'enhancePrompt' | 'repeat';
 
 export type CommonValue<T> = { kind: 'same'; value: T } | { kind: 'mixed' } | { kind: 'unset' } | { kind: 'absent' };
 
@@ -64,6 +64,11 @@ export const GEN_FIELDS: readonly GenField[] = [
     read: (n) => paramOf(n, 'audio')
   },
   {
+    id: 'enhancePrompt',
+    appliesTo: NOT_TEXT,
+    read: (n) => paramOf(n, 'enhancePrompt')
+  },
+  {
     id: 'repeat',
     appliesTo: () => true,
     read: (n) => paramOf(n, 'repeat')
@@ -78,6 +83,7 @@ export type CommonProperties = {
   duration: CommonValue<number>;
   resolution: CommonValue<string>;
   audio: CommonValue<boolean>;
+  enhancePrompt: CommonValue<boolean>;
   repeat: CommonValue<number>;
 };
 
@@ -122,6 +128,7 @@ export function commonPropertiesOf(nodes: NodeSummary[]): CommonProperties {
     duration: { kind: 'absent' },
     resolution: { kind: 'absent' },
     audio: { kind: 'absent' },
+    enhancePrompt: { kind: 'absent' },
     repeat: { kind: 'absent' }
   };
 
@@ -140,6 +147,7 @@ export function commonPropertiesOf(nodes: NodeSummary[]): CommonProperties {
     duration: commonFieldOf(byId.duration, type, nodes),
     resolution: commonFieldOf(byId.resolution, type, nodes),
     audio: commonFieldOf(byId.audio, type, nodes),
+    enhancePrompt: commonFieldOf(byId.enhancePrompt, type, nodes),
     repeat: commonFieldOf(byId.repeat, type, nodes)
   };
 }

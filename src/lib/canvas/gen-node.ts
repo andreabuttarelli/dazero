@@ -65,6 +65,9 @@ export type GenParams = {
   /** Assente = la resa di default del modello. Solo per i modelli con più di una risoluzione. */
   resolution?: string;
   audio?: boolean;
+  /** Riscrive il prompt con le buone pratiche del modello scelto prima di generare
+   *  (`prompt-enhance.ts`). Default off — mai a insaputa dell'utente. */
+  enhancePrompt?: boolean;
   /** Quante varianti semplici in loop, quando il nodo non ha archi `iterate` (`loop-plan.ts`,
    *  CLAUDE.md — "repeat N"). Con degli assi collegati non conta: le combinazioni le dettano i
    *  valori, non questo numero. */
