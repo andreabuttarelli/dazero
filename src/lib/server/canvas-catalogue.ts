@@ -28,6 +28,7 @@ import { chatInputModalities } from './ai-models-sync';
 import type { GenMedium, ModelChoice } from '$lib/canvas/gen-node';
 import { providerOf } from '$lib/canvas/model-provider';
 import { createAdminClient } from './supabase-admin';
+import { TEXT_NODE_CREDITS } from '$lib/server/content-cost';
 
 export type MediumCatalogue = { choices: ModelChoice[]; synced: boolean };
 
@@ -55,7 +56,8 @@ export async function canvasModelCatalogue(): Promise<Record<GenMedium, MediumCa
         label: m.label,
         aspectRatios: [],
         ...providerOf(m.id),
-        inputModalities: textModalities.get(m.id) ?? []
+        inputModalities: textModalities.get(m.id) ?? [],
+        unitCredits: TEXT_NODE_CREDITS
       })),
       synced: true
     },

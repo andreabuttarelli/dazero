@@ -41,6 +41,11 @@ export type ModelChoice = {
    *  (`canvas/connectors.ts`) traduce nelle porte del nodo. Assente per il testo, che non passa
    *  da `offerable-models.ts` e non ha porte oltre a quella fissa. */
   inputModalities?: string[];
+  /** I crediti per UN giro di questo modello, alla durata `minDuration` per un video — dallo
+   *  stesso listino di `content-cost.ts` (`billedCreditsFor`), calcolato una volta sul server e
+   *  spedito qui perché il client non ha (e non deve avere) le tariffe. Assente = prezzo ignoto:
+   *  `gen-cost.ts::creditsForRun` torna `null`, mai un numero inventato. */
+  unitCredits?: number;
 };
 
 /** Quel che l'utente ha scelto nell'overlay. Non è il catalogo: è la scelta dentro al catalogo. */

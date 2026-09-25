@@ -31,6 +31,17 @@ describe('offerableModels — cosa un nodo può davvero scegliere', () => {
     expect(out.choices.map((c) => c.id)).toContain(GPT_IMAGE_2_MODEL);
   });
 
+  it('ogni immagine offerta porta un unitCredits — il prezzo che il bottone "Genera" mostra', async () => {
+    const admin = fakeAdmin([
+      { id: 'openai/gpt-image-2', catalogue: 'image', input_modalities: ['text', 'image'], output_modalities: ['image'] }
+    ]);
+
+    const out = await offerableModels(admin, 'image');
+
+    const choice = out.choices.find((c) => c.id === GPT_IMAGE_2_MODEL);
+    expect(choice?.unitCredits).toBeGreaterThan(0);
+  });
+
   it('un modello sincronizzato SENZA una riga di integrazione nostra non è offerto', async () => {
     // Un id che l'API immagini pubblica ma che non abbiamo mai integrato (nessuno spec in
     // image-models.ts lo referenzia): sappiamo cosa accetta, non sappiamo come chiamarlo.

@@ -16,6 +16,7 @@
   import { blockedReason, canStartRun, shownIndex } from '$lib/canvas/gen-history';
   import { effectiveModel } from '$lib/canvas/default-models';
   import { scrollGuard } from '$lib/canvas/scroll-guard';
+  import { creditsForRun, creditsForLoop } from '$lib/canvas/gen-cost';
 
   let {
     node,
@@ -106,6 +107,11 @@
   );
   const canRun = $derived(canStartRun(node, choices, upstream) && !tooLong);
   const shown = $derived(shownIndex(node));
+
+  /** Quanto costerebbe UN giro, con lo stesso modello/parametri che "Genera" spedirebbe adesso —
+   *  `null` quando il catalogo non porta un prezzo per questo modello, mai un numero inventato. */
+  const runCredits = $derived(creditsForRun({ medium: node.medium, model: choice ?? null, params: node.params }));
+  const loopCredits = $derived(creditsForLoop({ medium: node.medium, model: choice ?? null, params: node.params }, loopCombinationCount));
 
   /**
    * SE QUESTO NODO HA UNA FASCIA `.gen-body` DA MOSTRARE — la stessa regola che decide se
@@ -249,11 +255,11 @@
         </button>
       {:else if onrunloop && loopVisible}
         <button type="button" class="gen-loop" onclick={() => onrunloop?.()} disabled={!canRun}>
-          Loop ×{loopCombinationCount}
+          Loop ×{loopCombinationCount}{#if loopCredits !== null} · ~{loopCredits} cr{/if}
         </button>
       {/if}
       <button type="button" onclick={() => onrun?.()} disabled={!canRun}>
-        {state === 'done' ? 'Rifai' : 'Genera'}
+        {state === 'done' ? 'Rifai' : 'Genera'}{#if runCredits !== null} · ~{runCredits} cr{/if}
       </button>
     </div>
   </footer>

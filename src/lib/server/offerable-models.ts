@@ -34,6 +34,7 @@ import type { GenMedium, ModelChoice } from '$lib/canvas/gen-node';
 import type { MediaModelSlot } from '$lib/media-model-slots';
 import { wireModelId } from '$lib/server/ai-models-sync';
 import { providerOf } from '$lib/canvas/model-provider';
+import { IMAGE_CREDITS, videoCredits } from '$lib/server/content-cost';
 
 const VIDEO_SPEC_IDS = [
   'bytedance/seedance-2-5',
@@ -71,7 +72,8 @@ function imageChoice(spec: ImageModelSpec, wireId: string, inputModalities: stri
     aspectRatios: spec.aspectRatios,
     maxRefs: spec.maxRefs,
     ...providerOf(wireId),
-    inputModalities
+    inputModalities,
+    unitCredits: IMAGE_CREDITS
   };
 }
 
@@ -85,7 +87,8 @@ function videoChoice(spec: VideoModelSpec, wireId: string, inputModalities: stri
     maxPromptChars: spec.maxPromptChars,
     generateAudio: spec.generateAudio,
     ...providerOf(wireId),
-    inputModalities
+    inputModalities,
+    unitCredits: videoCredits(spec.id)
   };
 }
 
