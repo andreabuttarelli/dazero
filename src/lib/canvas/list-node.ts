@@ -9,6 +9,8 @@
  * PURO: nessun database qui. `writeNodeData`/`write` (la pagina) restano l'unico posto che scrive
  * — questo file dice solo come una lista cambia, non come si salva.
  */
+import type { ConnectorType } from './connectors';
+
 export const LIST_ITEM_KINDS = ['image', 'text'] as const;
 
 export type ListItemKind = (typeof LIST_ITEM_KINDS)[number];
@@ -120,4 +122,55 @@ export function reorderItem(list: ListNode, from: number, to: number): ListNode 
 
 export function listLabel(item: ListItem, index: number): string {
   return item.label?.trim() || `${index + 1}`;
+}
+
+/** Un nodo collegato alla porta di una lista: il medium che porta, e il suo output di ora —
+ *  `null` finché non ha ancora prodotto niente. */
+export type WiredListSource = { nodeId: string; kind: ListItemKind; item: ListItem | null };
+
+export type ListValue = { item: ListItem; wiredFrom: string | null };
+
+export type ListValues = { itemKind: ListItemKind; values: ListValue[]; pending: string[] };
+
+const WIRED_KIND: Partial<Record<string, ListItemKind>> = { image: 'image', text: 'text', doc: 'text' };
+
+/** Il medium che un nodo di questo tipo porta in una lista, o null quando non ne porta. */
+export function wiredKindOf(nodeType: string): ListItemKind | null {
+  return WIRED_KIND[nodeType] ?? null;
+}
+
+/** I fili che entrano in una lista, per id — lo stesso ordine di `upstream-inputs.ts::incomingEdges`. */
+export function wiresInto<E extends { id: string; targetNodeId: string }>(listId: string, edges: E[]): E[] {
+  return edges.filter((e) => e.targetNodeId === listId).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
+/** Il medium di una lista: quello dei suoi item, o del primo filo quando è vuota; null se nessuno dei due. */
+export function listKindOf(list: Pick<ListNode, 'itemKind' | 'items'>, wired: WiredListSource[]): ListItemKind | null {
+  if (list.items.length) return list.itemKind;
+  return wired[0]?.kind ?? null;
+}
+
+const LIST_PORT: Record<ListItemKind, ConnectorType> = { image: 'images', text: 'text' };
+
+export function listConnectors(kind: ListItemKind | null): ConnectorType[] {
+  return kind ? [LIST_PORT[kind]] : ['text', 'images'];
+}
+
+/**
+ * I VALORI DI UNA LISTA, L'UNICA RISPOSTA — loop, `select`, un nodo a valle e la tile leggono
+ * questa, mai `items` da soli. Prima gli item scritti a mano, poi l'output vivo di ogni filo
+ * nell'ordine dei fili. Un filo il cui nodo non ha ancora prodotto non è un valore: è `pending`,
+ * che la tile mostra e il loop non conta. Un filo di medium diverso dalla lista non entra affatto.
+ */
+export function listValues(list: Pick<ListNode, 'itemKind' | 'items'>, wired: WiredListSource[]): ListValues {
+  const itemKind = listKindOf(list, wired) ?? list.itemKind;
+  const matching = wired.filter((w) => w.kind === itemKind);
+
+  const values: ListValue[] = [
+    ...list.items.map((item) => ({ item, wiredFrom: null })),
+    ...matching.filter((w) => w.item).map((w) => ({ item: w.item!, wiredFrom: w.nodeId }))
+  ];
+  const pending = matching.filter((w) => !w.item).map((w) => w.nodeId);
+
+  return { itemKind, values, pending };
 }
