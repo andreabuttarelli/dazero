@@ -23,6 +23,7 @@
     node,
     choices = [],
     catalogueSynced = true,
+    enhanceUnitCredits,
     hasUpstreamText = false,
     loopQueued = 0,
     loopVisible = false,
@@ -46,6 +47,10 @@
      * regola "non sincronizzato, non offerto" (`offerable-models.ts`).
      */
     catalogueSynced?: boolean;
+    /** Il prezzo di UNA riscrittura "Migliora prompt" per questo medium (`canvas-catalogue.ts`),
+     *  dallo stesso listino di `TEXT_NODE_CREDITS` — assente = costo ignoto, il preventivo non
+     *  aggiunge un extra. */
+    enhanceUnitCredits?: number;
     /** Un testo a monte collegato conta come prompt quando il nodo non ne ha uno suo
      *  (`hasPrompt`, `gen-node.ts`) — chi usa il nodo lo calcola da `edges`/`nodes`, che il nodo
      *  stesso non conosce. */
@@ -111,8 +116,15 @@
 
   /** Quanto costerebbe UN giro, con lo stesso modello/parametri che "Genera" spedirebbe adesso —
    *  `null` quando il catalogo non porta un prezzo per questo modello, mai un numero inventato. */
-  const runCredits = $derived(creditsForRun({ medium: node.medium, model: choice ?? null, params: node.params }));
-  const loopCredits = $derived(creditsForLoop({ medium: node.medium, model: choice ?? null, params: node.params }, loopCombinationCount));
+  const runCredits = $derived(
+    creditsForRun({ medium: node.medium, model: choice ?? null, params: node.params, enhanceUnitCredits })
+  );
+  const loopCredits = $derived(
+    creditsForLoop(
+      { medium: node.medium, model: choice ?? null, params: node.params, enhanceUnitCredits },
+      loopCombinationCount
+    )
+  );
 
   /**
    * SE QUESTO NODO HA UNA FASCIA `.gen-body` DA MOSTRARE — la stessa regola che decide se

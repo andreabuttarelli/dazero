@@ -15,7 +15,16 @@
  */
 import type { GenMedium, GenParams, ModelChoice } from './gen-node';
 
-export type RunCostInput = { medium: GenMedium; model: ModelChoice | null; params: GenParams };
+export type RunCostInput = {
+  medium: GenMedium;
+  model: ModelChoice | null;
+  params: GenParams;
+  /** Il prezzo di UNA riscrittura (`prompt-enhance.ts`, un giro del modello di craft), dallo
+   *  stesso listino di `content-cost.ts::TEXT_NODE_CREDITS` — mandato dal catalogo perché il
+   *  client non ha (e non deve avere) le tariffe. Assente = costo ignoto: si aggiunge zero, mai
+   *  un numero inventato. */
+  enhanceUnitCredits?: number;
+};
 
 /**
  * 720p costa ESATTAMENTE il doppio di 480p (misurato, v. `video.ts`). `unitCredits` è prezzato a
@@ -40,7 +49,12 @@ export function creditsForRun(input: RunCostInput): number | null {
   const unit = input.model?.unitCredits;
   if (typeof unit !== 'number') return null;
 
-  if (input.medium !== 'video') return unit;
+  const enhanceExtra =
+    input.params.enhancePrompt && typeof input.enhanceUnitCredits === 'number'
+      ? input.enhanceUnitCredits
+      : 0;
+
+  if (input.medium !== 'video') return unit + enhanceExtra;
 
   const resolution = input.params.resolution;
   const resolutionMultiplier = resolution ? RESOLUTION_MULTIPLIERS[resolution] : 1;
@@ -49,10 +63,10 @@ export function creditsForRun(input: RunCostInput): number | null {
   const base = input.model?.minDuration;
   const duration = input.params.duration;
   if (typeof base !== 'number' || base <= 0 || typeof duration !== 'number' || duration <= 0) {
-    return Math.round(unit * resolutionMultiplier);
+    return Math.round(unit * resolutionMultiplier) + enhanceExtra;
   }
 
-  return Math.round(unit * (duration / base) * resolutionMultiplier);
+  return Math.round(unit * (duration / base) * resolutionMultiplier) + enhanceExtra;
 }
 
 /** Il totale di un loop di `count` giri identici — `null` appena il prezzo di uno solo lo è. */

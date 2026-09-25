@@ -30,7 +30,14 @@ import { providerOf } from '$lib/canvas/model-provider';
 import { createAdminClient } from './supabase-admin';
 import { TEXT_NODE_CREDITS } from '$lib/server/content-cost';
 
-export type MediumCatalogue = { choices: ModelChoice[]; synced: boolean };
+export type MediumCatalogue = {
+  choices: ModelChoice[];
+  synced: boolean;
+  /** Il prezzo di UNA riscrittura "Migliora prompt" (`prompt-enhance.ts`), dallo stesso listino
+   *  di `TEXT_NODE_CREDITS` — la riscrittura è un giro del modello di craft, lo stesso mestiere
+   *  di un nodo testo. Assente su `text`: il testo non ha craft di prompting da riscrivere. */
+  enhanceUnitCredits?: number;
+};
 
 /**
  * Il catalogo completo, un medium alla volta.
@@ -61,7 +68,7 @@ export async function canvasModelCatalogue(): Promise<Record<GenMedium, MediumCa
       })),
       synced: true
     },
-    image,
-    video
+    image: { ...image, enhanceUnitCredits: TEXT_NODE_CREDITS },
+    video: { ...video, enhanceUnitCredits: TEXT_NODE_CREDITS }
   };
 }

@@ -1620,6 +1620,7 @@
             node={{ ...gen, runs: runsByNode[row.id] ?? [] }}
             choices={mediumCatalogue[gen.medium].choices}
             catalogueSynced={mediumCatalogue[gen.medium].synced}
+            enhanceUnitCredits={mediumCatalogue[gen.medium].enhanceUnitCredits}
             hasUpstreamText={hasUpstreamTextByNode[row.id] ?? false}
             loopQueued={loopQueuedByNode[row.id] ?? 0}
             loopVisible={loopAffordanceByNode[row.id]?.visible ?? false}

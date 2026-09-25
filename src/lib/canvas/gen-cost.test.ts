@@ -93,3 +93,54 @@ describe('creditsForLoop — N giri identici', () => {
     expect(creditsForLoop({ medium: 'image', model: unpricedChoice, params: {} }, 5)).toBeNull();
   });
 });
+
+describe('creditsForRun — con "Migliora prompt" acceso', () => {
+  it('aggiunge il costo della riscrittura al prezzo del giro', () => {
+    const out = creditsForRun({
+      medium: 'image',
+      model: imageChoice,
+      params: { enhancePrompt: true },
+      enhanceUnitCredits: 3
+    });
+    expect(out).toBe(17);
+  });
+
+  it('switch spento: nessun extra, anche con un costo di riscrittura noto', () => {
+    const out = creditsForRun({
+      medium: 'image',
+      model: imageChoice,
+      params: { enhancePrompt: false },
+      enhanceUnitCredits: 3
+    });
+    expect(out).toBe(14);
+  });
+
+  it('costo di riscrittura ignoto: resta la stima base, nessun extra mostrato', () => {
+    const out = creditsForRun({
+      medium: 'image',
+      model: imageChoice,
+      params: { enhancePrompt: true }
+    });
+    expect(out).toBe(14);
+  });
+
+  it('un video con lo switch acceso somma la riscrittura al prezzo scalato', () => {
+    const out = creditsForRun({
+      medium: 'video',
+      model: videoChoice,
+      params: { duration: 8, enhancePrompt: true },
+      enhanceUnitCredits: 3
+    });
+    expect(out).toBe(83);
+  });
+});
+
+describe('creditsForLoop — con "Migliora prompt" acceso', () => {
+  it('la riscrittura si paga una volta per giro, non una volta sola', () => {
+    const out = creditsForLoop(
+      { medium: 'image', model: imageChoice, params: { enhancePrompt: true }, enhanceUnitCredits: 3 },
+      3
+    );
+    expect(out).toBe(51);
+  });
+});
