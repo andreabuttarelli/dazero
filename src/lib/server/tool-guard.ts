@@ -251,7 +251,7 @@ export async function assertPublicUrl(url: URL, scheme: UrlScheme = 'http-or-htt
  * verbatim: a CDN that starts refusing an unfamiliar agent answers 403, and a 403 here is
  * indistinguishable from the expired link this whole archive exists to beat.
  */
-export const ARCHIVE_USER_AGENT = 'Mozilla/5.0 (compatible; dazeroArchive/1.0)';
+export const ARCHIVE_USER_AGENT = 'Mozilla/5.0 (compatible; feegaArchive/1.0)';
 
 export type SafeFetchResult = { url: string; status: number; ok: boolean; headers: Headers; body: string };
 
@@ -283,7 +283,7 @@ async function fetchFollowingGatedRedirects(
   const timeoutMs = opts.timeoutMs ?? 15_000;
   const maxRedirects = opts.maxRedirects ?? 4;
   const scheme = opts.scheme ?? 'http-or-https';
-  const userAgent = opts.userAgent ?? `dazero-Tools/1.0 (+${env.CRAWLER_CONTACT_URL || 'https://dazero.co'})`;
+  const userAgent = opts.userAgent ?? `feega-Tools/1.0 (+${env.CRAWLER_CONTACT_URL || 'https://feega.app'})`;
 
   let current = new URL(/^https?:\/\//i.test(input.trim()) ? input.trim() : `https://${input.trim()}`);
   const deadline = Date.now() + timeoutMs;

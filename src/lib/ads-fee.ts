@@ -1,6 +1,6 @@
 import { billedCreditsFor } from '$lib/server/credit-ladder';
 
-/** dazero management fee on top of platform ad spend (model A: pass-through + markup). */
+/** feega management fee on top of platform ad spend (model A: pass-through + markup). */
 export const AD_MANAGEMENT_FEE_RATE = 0.12;
 
 /**
@@ -33,7 +33,7 @@ export function creditsForSpend(spend: number): number {
 }
 
 /**
- * Accept what a human (or the AI) actually types: "dazero.co" is a URL to everyone except
+ * Accept what a human (or the AI) actually types: "feega.app" is a URL to everyone except
  * `<input type="url">` and `new URL()`. Adds the scheme when it is missing rather than rejecting
  * the value. Returns '' for anything that still isn't a usable http(s) URL.
  */

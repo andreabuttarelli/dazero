@@ -26,7 +26,7 @@
 </script>
 
 <svelte:head>
-  <title>{$_(copy.title)} · dazero</title>
+  <title>{$_(copy.title)} · feega</title>
   <meta name="robots" content="noindex" />
 </svelte:head>
 

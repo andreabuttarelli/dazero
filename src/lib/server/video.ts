@@ -291,10 +291,10 @@ export function maxWordsForDuration(seconds: number): number {
  */
 export function brandPronunciationHints(script: string | null | undefined): string {
   const text = String(script ?? '');
-  if (!/\bdazero\b/i.test(text)) return '';
+  if (!/\bfeega\b/i.test(text)) return '';
   return [
     'PRONUNCIATION — Italian brand name, even if the rest of the line is English:',
-    '"dazero" = ah-no-MAH-lyah (Italian /anoˈmalja/, stress on MA, final "lia" as one soft "lyah").',
+    '"feega" = ah-no-MAH-lyah (Italian /anoˈmalja/, stress on MA, final "lia" as one soft "lyah").',
     'NOT English "anomaly". NEVER Anomida, Anonimita, Annanomita, Anonimia, or Anomaly-uh.'
   ].join(' ');
 }

@@ -1,5 +1,5 @@
 /**
- * L'INGRESSO DI OGNI ROTTA `/api/v1/org/**`: Bearer JWT o chiave `dazero_`, risolto in UN'org sola.
+ * L'INGRESSO DI OGNI ROTTA `/api/v1/org/**`: Bearer JWT o chiave `feega_`, risolto in UN'org sola.
  *
  * Il nuovo `api_keys` non porta più `permissions.brand_ids` — porta `org_id` NOT NULL: una chiave
  * vale per un'org, non per un elenco di brand da filtrare a mano. `checkApiKeyWriteAccess` in
@@ -12,7 +12,7 @@
  *                                       decide da sola quali righe esistono per questo utente.
  *                                       `resolveOrgId` sceglie QUALE delle sue org, fra quelle
  *                                       che `orgs_members` gli riconosce.
- *   Chiave API (`dazero_…`)          →  nessun JWT esiste: si risolve con service role (l'unico
+ *   Chiave API (`feega_…`)          →  nessun JWT esiste: si risolve con service role (l'unico
  *                                       modo di leggere `api_keys` prima di sapere chi è, la stessa
  *                                       ragione già in `SERVICE_ROLE_USES` per `cli-auth.ts`), e
  *                                       l'org è ESATTAMENTE quella della chiave — non una scelta.
@@ -37,7 +37,7 @@ export type OrgCaller = {
 
 export type AuthFailure = { status: number; body: { error: string; message?: string } };
 
-const API_KEY_PREFIXES = ['dazero_', 'anomalia_', '021_live_'];
+const API_KEY_PREFIXES = ['feega_', 'anomalia_', '021_live_'];
 
 function isApiKey(token: string): boolean {
   return API_KEY_PREFIXES.some((p) => token.startsWith(p));

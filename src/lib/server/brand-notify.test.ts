@@ -34,7 +34,7 @@ describe('brand-notify', () => {
 				html: '<p>x</p>',
 				text: 'x'
 			}),
-			push: { url: 'https://dazero.co/app/x', tag: 'test' }
+			push: { url: 'https://feega.app/app/x', tag: 'test' }
 		});
 		expect(emailed).toBe(2);
 		expect(sendEmail).toHaveBeenCalledTimes(2);
@@ -51,7 +51,7 @@ describe('brand-notify', () => {
 			[{ userId: 'u1', email: 'a@x.com', locale: 'en' }],
 			{
 				buildEmail: (_l, to) => ({ to, subject: 'Hello', html: 'h', text: 't' }),
-				push: { url: 'https://dazero.co/', tag: 't' }
+				push: { url: 'https://feega.app/', tag: 't' }
 			}
 		);
 		expect(emailed).toBe(1);
@@ -63,7 +63,7 @@ describe('brand-notify', () => {
 		await expect(
 			pushToBrandContacts({} as never, [{ userId: 'u1', email: 'a@x.com', locale: 'en' }], {
 				body: 'hi',
-				url: 'https://dazero.co/',
+				url: 'https://feega.app/',
 				tag: 't'
 			})
 		).resolves.toEqual({ sent: 0, reached: 0 });
@@ -79,7 +79,7 @@ describe('brand-notify', () => {
 				{ userId: 'u1', email: 'a@x.com', locale: 'en' },
 				{ userId: 'u2', email: 'b@x.com', locale: 'it' }
 			],
-			{ body: 'hi', url: 'https://dazero.co/', tag: 't' }
+			{ body: 'hi', url: 'https://feega.app/', tag: 't' }
 		);
 		expect(res).toEqual({ sent: 2, reached: 1 });
 	});

@@ -12,7 +12,7 @@ import { isInternalEmail } from './server/internal-users';
 
 describe('isProdHost', () => {
   it('accetta solo la produzione vera', () => {
-    for (const h of ['dazero.co', 'www.dazero.co', 'blog.cliente.it', 'localhost.com']) {
+    for (const h of ['feega.app', 'www.feega.app', 'blog.cliente.it', 'localhost.com']) {
       expect(isProdHost(h), h).toBe(true);
     }
   });
@@ -49,7 +49,7 @@ describe('isProdHost', () => {
 
 describe('trackingAllowed', () => {
   it('è il guard ambiente completo (host + dev)', () => {
-    expect(trackingAllowed('dazero.co')).toBe(true);
+    expect(trackingAllowed('feega.app')).toBe(true);
     expect(trackingAllowed('localhost')).toBe(false);
     expect(trackingAllowed('deploy.vercel.app')).toBe(false);
   });
@@ -58,9 +58,9 @@ describe('trackingAllowed', () => {
 describe('isInternalEmail', () => {
   it('riconosce domini e account del team', () => {
     for (const e of [
-      'andrea@dazero.co',
-      'ANDREA@DAZERO.CO',
-      'a@mail.dazero.co',
+      'andrea@feega.app',
+      'ANDREA@FEEGA.APP',
+      'a@mail.feega.app',
       'interno-a@example.com',
       'INTERNO-B@EXAMPLE.COM'
     ]) {
@@ -71,9 +71,9 @@ describe('isInternalEmail', () => {
   it('non tocca i clienti', () => {
     for (const e of [
       'cliente@gmail.com',
-      'chi@dazero.co.evil.com',
-      'chi@notdazero.co',
-      'dazero.co',
+      'chi@feega.app.evil.com',
+      'chi@notfeega.app',
+      'feega.app',
       '',
       null,
       undefined

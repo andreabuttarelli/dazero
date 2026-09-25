@@ -4,12 +4,12 @@ import { createTestSupabase } from '$lib/testkit/supabase';
 /**
  * IL CANCELLO CHE NON DEVE MAI LASCIAR PASSARE UN'ALTRA ORG.
  *
- * Una chiave API `dazero_…` risolve `org_id` dalla riga trovata per `key_hash`: chi chiama non lo
+ * Una chiave API `feega_…` risolve `org_id` dalla riga trovata per `key_hash`: chi chiama non lo
  * sceglie mai. Se il chiamante passa un `orgId` diverso da quello della chiave, la richiesta va
  * rifiutata con lo stesso 404 di un id che non esiste — mai un errore che distingua le due cose,
  * o la rotta diventa un modo di scoprire quali org esistono.
  */
-const RAW_KEY = 'dazero_live_test-tenant-safety';
+const RAW_KEY = 'feega_live_test-tenant-safety';
 
 async function hashApiKey(key: string): Promise<string> {
   const data = new TextEncoder().encode(key);
@@ -118,7 +118,7 @@ describe('resolveOrgCaller: una chiave API non sceglie mai la sua org', () => {
   it('una chiave inesistente (hash che non matcha nessuna riga) è rifiutata', async () => {
     const resolveOrgCaller = await resolveWith({ org_id: 'org-mine' });
 
-    const result = await resolveOrgCaller('dazero_live_not-the-right-key');
+    const result = await resolveOrgCaller('feega_live_not-the-right-key');
 
     expect('error' in result).toBe(true);
     if ('error' in result) expect(result.error.status).toBe(401);

@@ -122,7 +122,7 @@ export const PLANS: Plan[] = [
       'Autopublish to 2 social accounts',
       'Editorial plan on autopilot',
       'Blog articles built to rank',
-      'Backlink network across dazero brands',
+      'Backlink network across feega brands',
       'Meta & Google Ads — you approve spend'
     ],
     platforms: ['instagram', 'tiktok', 'linkedin', 'x', 'facebook', 'threads', 'youtube', 'bluesky', 'reddit'],
@@ -144,7 +144,7 @@ export const PLANS: Plan[] = [
     highlights: [
       'Autopublish to 8 social accounts',
       'Higher capacity across posts, blog & leads',
-      'Backlink network across dazero brands',
+      'Backlink network across feega brands',
       'Up to 4K images / videos',
       'Leads on X, Threads & LinkedIn too (~30–60/day)',
       'Priority human support'

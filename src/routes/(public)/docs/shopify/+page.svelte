@@ -52,7 +52,7 @@
   </p>
 </DocsStep>
 
-<DocsStep step={4} title="Connect in dazero">
+<DocsStep step={4} title="Connect in feega">
   <p>
     {$_('docs.shopify.s35')} <strong>{$_('docs.shopify.s36')}</strong> {$_('docs.shopify.s37')} <strong>{$_('docs.shopify.s38')}</strong>{$_('docs.shopify.s39')}
     <strong>⋮</strong> {$_('docs.shopify.s40')}

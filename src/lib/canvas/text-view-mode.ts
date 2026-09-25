@@ -1,6 +1,6 @@
 export type TextViewMode = 'raw' | 'markdown';
 
-const KEY_PREFIX = 'dazero:text-view-mode:';
+const KEY_PREFIX = 'feega:text-view-mode:';
 
 export function loadTextViewMode(storage: Storage | undefined, nodeId: string): TextViewMode {
   try {

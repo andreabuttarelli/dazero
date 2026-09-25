@@ -10,7 +10,7 @@
 
 <div class="wrap">
   <div class="card">
-    <a class="brand" href="/">dazero</a>
+    <a class="brand" href="/">feega</a>
     <h1>{$_('login.resetPage.title')}</h1>
     <p class="sub">{$_('login.resetPage.sub')}</p>
 

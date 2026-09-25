@@ -60,7 +60,7 @@ export class PlanRequiredError extends Error {
 }
 
 export interface BillingProvider {
-  readonly kind: 'open' | 'dazero';
+  readonly kind: 'open' | 'feega';
 
   /** Throws (CreditsExhaustedError for 'credits', QuotaExceededError otherwise) when denied. */
   gate(kind: QuotaKind, ctx: BillingContext): Promise<void>;

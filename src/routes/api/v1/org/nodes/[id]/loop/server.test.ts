@@ -39,7 +39,7 @@ const PROJECT = 'project-1';
 const CANVAS = 'canvas-1';
 
 function call(handler: typeof GET | typeof POST | typeof DELETE, id: string, body?: unknown, method?: string) {
-  const url = new URL(`https://dazero.test/api/v1/org/nodes/${id}/loop`);
+  const url = new URL(`https://feega.test/api/v1/org/nodes/${id}/loop`);
   return (handler as (event: unknown) => Promise<Response>)({
     request: new Request(url, {
       method: method ?? (body ? 'POST' : 'GET'),

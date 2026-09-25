@@ -45,7 +45,7 @@ function mockSupabase(rows: any[]) {
 describe('buildMemoryContext skills', () => {
   it('injects only the trigger line and does not count a listing as usage', async () => {
     const { supabase, rpc } = mockSupabase([
-      { id: 'f1', category: 'fact', key: 'site', value: 'The site is dazero.co', confidence: 1 },
+      { id: 'f1', category: 'fact', key: 'site', value: 'The site is feega.app', confidence: 1 },
       {
         id: 's1',
         category: 'skill',

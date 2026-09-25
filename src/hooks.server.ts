@@ -164,7 +164,7 @@ export const handle: Handle = sequence(csrf, Sentry.sentryHandle(), async ({ eve
   }
 
   // Growth referral: `?ref=CODE` → first-party cookie (30d). Captured on marketing/app only —
-  // brand blogs stay clean; their Powered-by badge already links to dazero.co/?ref=….
+  // brand blogs stay clean; their Powered-by badge already links to feega.app/?ref=….
   if (!isBlogRoute) {
     captureReferralCookie(event.cookies, event.url.searchParams.get('ref'));
   }

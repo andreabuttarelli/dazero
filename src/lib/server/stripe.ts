@@ -159,7 +159,7 @@ export async function createOneTimeCreditCheckout(opts: {
         price_data: {
           currency: 'usd',
           unit_amount: Math.round(opts.price * 100),
-          product_data: { name: `${opts.credits} dazero credits` }
+          product_data: { name: `${opts.credits} feega credits` }
         },
         quantity: 1
       }

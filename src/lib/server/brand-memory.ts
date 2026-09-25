@@ -711,7 +711,7 @@ Rules:
  * the brand ever gives us — far stronger than any inferred style — so extract GENERALIZABLE
  * writing rules from it ("shortens captions", "removes emoji", "never uses formal address") and
  * persist them as high-confidence user memories. They flow into every future prompt via
- * enrichProfileWithMemory/buildMemoryContext, which is how dazero gets better week after week
+ * enrichProfileWithMemory/buildMemoryContext, which is how feega gets better week after week
  * instead of staying frozen. Fire-and-forget by design: never throws, returns entries written.
  */
 export async function learnFromCaptionEdit(

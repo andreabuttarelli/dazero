@@ -7,7 +7,7 @@ vi.mock('$lib/server/cli-auth', () => ({
   loadBrandForUser: vi.fn(),
   checkApiKeyWriteAccess: vi.fn(() => undefined)
 }));
-vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://dazero.test' }));
+vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://feega.test' }));
 
 import { POST } from './+server';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
@@ -43,7 +43,7 @@ const IG = {
   connected_at: '2026-08-01T10:00:00.000Z'
 };
 
-const url = 'https://dazero.test/api/v1/brands/demo/social/connect';
+const url = 'https://feega.test/api/v1/brands/demo/social/connect';
 
 const mint = (body: unknown, accounts: Row[] = [], brand: Row = BRAND, balance = ACCOUNT_SEAT_CREDITS) => {
   vi.mocked(authenticate).mockResolvedValue({
@@ -72,7 +72,7 @@ describe('POST /api/v1/brands/:slug/social/connect', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('location')).toBeNull();
     expect(body.ok).toBe(true);
-    expect(body.url).toBe('https://dazero.test/p/project-1/settings/connect/instagram');
+    expect(body.url).toBe('https://feega.test/p/project-1/settings/connect/instagram');
     expect(body.already_connected).toBe(false);
   });
 
@@ -104,7 +104,7 @@ describe('POST /api/v1/brands/:slug/social/connect', () => {
 
     expect(res.status).toBe(409);
     expect(body.error).toBe('insufficient_credits');
-    expect(body.manage_url).toBe('https://dazero.test/p/project-1/settings/connected-accounts');
+    expect(body.manage_url).toBe('https://feega.test/p/project-1/settings/connected-accounts');
   });
 
   it('riautorizzare una piattaforma già collegata non è mai bloccato dal saldo', async () => {

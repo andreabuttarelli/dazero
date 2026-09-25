@@ -42,35 +42,35 @@ describe('agent notification email', () => {
   it('renders **bold** and makes bare links clickable', () => {
     const html = agentNotifyEmailHtml('en', {
       ...base,
-      body: '**Nine posts** are live: https://www.dazero.co/app/acme/calendar'
+      body: '**Nine posts** are live: https://www.feega.app/app/acme/calendar'
     });
     expect(html).toContain('<strong>Nine posts</strong>');
-    expect(html).toContain('href="https://www.dazero.co/app/acme/calendar"');
+    expect(html).toContain('href="https://www.feega.app/app/acme/calendar"');
   });
 
   it('adds the CTA only when there is a link, with the agent’s own label', () => {
     const withCta = agentNotifyEmailHtml('en', {
       ...base,
       body: 'x',
-      ctaUrl: 'https://www.dazero.co/app/acme',
+      ctaUrl: 'https://www.feega.app/app/acme',
       ctaLabel: 'Review the posts →'
     });
-    expect(withCta).toContain('href="https://www.dazero.co/app/acme"');
+    expect(withCta).toContain('href="https://www.feega.app/app/acme"');
     expect(withCta).toContain('Review the posts');
 
     const without = agentNotifyEmailHtml('en', { ...base, body: 'x' });
-    expect(without).not.toContain('href="https://www.dazero.co/app/acme"');
+    expect(without).not.toContain('href="https://www.feega.app/app/acme"');
   });
 
   it('always ships a plain-text alternative carrying the same words', () => {
     const text = agentNotifyEmailText('en', {
       ...base,
       body: 'Nine posts are waiting.',
-      ctaUrl: 'https://www.dazero.co/app/acme'
+      ctaUrl: 'https://www.feega.app/app/acme'
     });
     expect(text).toContain('Week 3 is ready');
     expect(text).toContain('Nine posts are waiting.');
-    expect(text).toContain('https://www.dazero.co/app/acme');
+    expect(text).toContain('https://www.feega.app/app/acme');
     expect(text).not.toContain('<');
   });
 

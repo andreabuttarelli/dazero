@@ -47,7 +47,7 @@
   <p>{$_('docs.wix.s19')} <strong>{$_('docs.wix.s20')}</strong></p>
 </DocsStep>
 
-<DocsStep step={4} title="Connect in dazero">
+<DocsStep step={4} title="Connect in feega">
   <p>
     {$_('docs.wix.s21')} <strong>{$_('docs.wix.s22')}</strong> {$_('docs.wix.s23')} <strong>{$_('docs.wix.s24')}</strong>{$_('docs.wix.s25')}
     <strong>⋮</strong> {$_('docs.wix.s26')} <strong>{$_('docs.wix.s27')}</strong> {$_('docs.wix.s28')}

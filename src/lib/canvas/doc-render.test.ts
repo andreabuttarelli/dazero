@@ -15,8 +15,8 @@ describe('il markdown generato da un modello si rende, mai si esegue', () => {
   });
 
   it('un link https resta un link vero', () => {
-    const html = renderDocHtml('[dazero](https://dazero.co)');
-    expect(html).toContain('href="https://dazero.co"');
+    const html = renderDocHtml('[feega](https://feega.app)');
+    expect(html).toContain('href="https://feega.app"');
   });
 
   it('markdown comune si rende — grassetto, elenco, titolo', () => {

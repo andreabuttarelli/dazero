@@ -2,7 +2,7 @@
  * Web MCP — il terzo consumatore del registry.
  *
  * `BRAND_ENDPOINTS` genera gia' i comandi della CLI e i tool del server MCP. Qui genera anche gli
- * strumenti che una pagina espone a un agente che gira NEL browser dell'utente: chi apre dazero
+ * strumenti che una pagina espone a un agente che gira NEL browser dell'utente: chi apre feega
  * con un agente nel browser puo' farla lavorare senza passare dal nostro server MCP, e senza una
  * chiave API, perche' la sessione e' gia' quella della persona che sta guardando.
  *

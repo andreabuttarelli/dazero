@@ -76,7 +76,7 @@
     };
   }
 
-  const STORAGE_KEY = $derived(`dazero:brand-wizard:${data.project.id}`);
+  const STORAGE_KEY = $derived(`feega:brand-wizard:${data.project.id}`);
 
   let step = $state<Step>('website');
   let draft = $state<Draft>(emptyDraft());

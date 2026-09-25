@@ -4,7 +4,7 @@
 //
 // No default token. The value is public (same data-token as the client script) but it is OURS:
 // baked in as a fallback, every self-hosted install identified its own logged-in users — email
-// and name — into dazero's Seline project. Without PUBLIC_SELINE_TOKEN this module no-ops,
+// and name — into feega's Seline project. Without PUBLIC_SELINE_TOKEN this module no-ops,
 // like Sentry without a DSN.
 
 import { swallow } from '$lib/server/swallow';

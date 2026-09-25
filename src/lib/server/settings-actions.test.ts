@@ -127,7 +127,7 @@ describe('invite/revokeInvite sullo schema nuovo (orgs_invites, non brand_invite
     const result = await invite({
       request: { formData: () => Promise.resolve(fd) },
       params: { brand: 'acme' },
-      url: new URL('https://dazero.test/p/x/settings/team'),
+      url: new URL('https://feega.test/p/x/settings/team'),
       cookies: { get: () => undefined },
       locals: { supabase: fakeBrandClient({ id: 'brand-1', name: 'Acme', org_id: 'org-1' }) }
     } as never);

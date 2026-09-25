@@ -52,7 +52,7 @@ function seedRows() {
     social_accounts: [
       { id: ACCOUNT_ID, brand_id: BRAND, platform: 'instagram', zernio_account_id: 'zern-1', status: 'connected' }
     ],
-    assets: [{ id: 'asset-1', type: 'image', url: 'https://cdn.dazero.co/asset-1.jpg' }]
+    assets: [{ id: 'asset-1', type: 'image', url: 'https://cdn.feega.app/asset-1.jpg' }]
   };
 }
 

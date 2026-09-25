@@ -84,7 +84,7 @@
   const websiteParam = $derived(sanitizeWebsiteParam($page.url.searchParams.get('website')));
   const chosenPlan = $derived(isPlanKey(planParam) ? planByKey(planParam) : null);
 
-  // CLI login: opened by the dazero CLI. Show a consent notice and carry the port/state through.
+  // CLI login: opened by the feega CLI. Show a consent notice and carry the port/state through.
   const cliPort = $derived(data.cliPort ?? '');
   const cliState = $derived(data.cliState ?? '');
 </script>
@@ -98,12 +98,12 @@
 <div class="split">
   <section class="pane form-pane">
     <div class="form-inner">
-      <a class="brand" href="/">dazero</a>
+      <a class="brand" href="/">feega</a>
 
       {#if cliPort}
         <div class="cli-notice">
           <span class="cli-icon" aria-hidden="true">⌘</span>
-          <span>dazero CLI sta richiedendo accesso al tuo account</span>
+          <span>feega CLI sta richiedendo accesso al tuo account</span>
         </div>
       {/if}
 

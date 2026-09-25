@@ -7,7 +7,7 @@
  *   RLS-scoped (Bearer JWT via MCP HTTP)  →  `org_isolation` decide da sé; l'`orgId` qui è solo un
  *                                            filtro in più per restare sulla conversazione in corso,
  *                                            esattamente come `brand_id` nel gemello.
- *   service-role (chiave API `dazero_…`)  →  non esiste nessun JWT da far valutare a Postgres — una
+ *   service-role (chiave API `feega_…`)  →  non esiste nessun JWT da far valutare a Postgres — una
  *                                            chiave API non è un utente loggato — quindi il confine
  *                                            lo impone QUESTO CODICE: ogni lettura porta `org_id eq`
  *                                            per costruzione, mai per scelta di chi chiama. Un id di

@@ -41,7 +41,7 @@ const XMP_NS = 'http://ns.adobe.com/xap/1.0/';
 const PNG_XMP_KEYWORD = 'XML:com.adobe.xmp';
 
 /** The XMP packet. Kept minimal on purpose: one claim, no personal data, no brand identifiers. */
-export function syntheticXmp(sourceType: DigitalSourceType, tool = 'dazero'): string {
+export function syntheticXmp(sourceType: DigitalSourceType, tool = 'feega'): string {
   return (
     `<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>` +
     `<x:xmpmeta xmlns:x="adobe:ns:meta/">` +
@@ -179,7 +179,7 @@ export async function markVideoSynthetic(
         '-c', 'copy',
         '-movflags', 'use_metadata_tags+faststart',
         '-metadata', `DigitalSourceType=http://cv.iptc.org/newscodes/digitalsourcetype/${sourceType}`,
-        '-metadata', 'comment=AI-generated with dazero',
+        '-metadata', 'comment=AI-generated with feega',
         out
       ],
       { stdio: 'pipe', timeout: 60_000 }
@@ -243,7 +243,7 @@ export async function signC2pa(
         : await createTestSigner();
     const c2pa = createC2pa({ signer });
     const manifest = new ManifestBuilder({
-      claim_generator: 'dazero',
+      claim_generator: 'feega',
       format: mimeType,
       assertions: [
         {

@@ -16,26 +16,26 @@ describe('appOrigin', () => {
   }
 
   it('keeps localhost on the request origin', async () => {
-    const appOrigin = await loadWith('https://dazero.co');
+    const appOrigin = await loadWith('https://feega.app');
     expect(appOrigin(new URL('http://localhost:5173/login'))).toBe('http://localhost:5173');
   });
 
   it('uses www request origin when PUBLIC_APP_URL is apex', async () => {
-    const appOrigin = await loadWith('https://dazero.co');
-    expect(appOrigin(new URL('https://www.dazero.co/login?next=onboarding'))).toBe(
-      'https://www.dazero.co'
+    const appOrigin = await loadWith('https://feega.app');
+    expect(appOrigin(new URL('https://www.feega.app/login?next=onboarding'))).toBe(
+      'https://www.feega.app'
     );
   });
 
   it('uses apex request origin when PUBLIC_APP_URL is www', async () => {
-    const appOrigin = await loadWith('https://www.dazero.co');
-    expect(appOrigin(new URL('https://dazero.co/login'))).toBe('https://dazero.co');
+    const appOrigin = await loadWith('https://www.feega.app');
+    expect(appOrigin(new URL('https://feega.app/login'))).toBe('https://feega.app');
   });
 
   it('uses the vercel preview origin', async () => {
-    const appOrigin = await loadWith('https://dazero.co');
-    expect(appOrigin(new URL('https://dazero-git-x.vercel.app/login'))).toBe(
-      'https://dazero-git-x.vercel.app'
+    const appOrigin = await loadWith('https://feega.app');
+    expect(appOrigin(new URL('https://feega-git-x.vercel.app/login'))).toBe(
+      'https://feega-git-x.vercel.app'
     );
   });
 });

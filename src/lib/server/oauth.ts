@@ -8,11 +8,11 @@ import { appOrigin } from './app-url';
 import { signPayload, verifyPayload } from './token';
 
 /**
- * OAuth 2.1 authorization server for the remote MCP endpoint (https://mcp.dazero.co/mcp).
+ * OAuth 2.1 authorization server for the remote MCP endpoint (https://mcp.feega.app/mcp).
  *
  * That server answers 401 with
  *   WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource"
- * and the metadata names `https://dazero.co` as its authorization server — this app.
+ * and the metadata names `https://feega.app` as its authorization server — this app.
  * The tokens we hand out are plain Supabase session tokens, i.e. exactly what the MCP
  * server (and `src/lib/server/cli-auth.ts`) already accept as `Authorization: Bearer …`,
  * so nothing on the resource side has to change.
@@ -21,7 +21,7 @@ import { signPayload, verifyPayload } from './token';
  * a registration is a signed, self-describing client_id (see issueClientId).
  */
 
-export const OAUTH_SCOPE = 'dazero';
+export const OAUTH_SCOPE = 'feega';
 
 const CODE_TTL = 60_000;                          // authorization code: one round-trip
 const CLIENT_TTL = 1000 * 60 * 60 * 24 * 365 * 5; // registration: effectively permanent

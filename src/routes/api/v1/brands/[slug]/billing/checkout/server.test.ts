@@ -40,7 +40,7 @@ vi.mock('$lib/server/billing-readiness', () => ({
 	billingGrantsReady: (...args: unknown[]) => billingGrantsReady(...args)
 }));
 vi.mock('$lib/server/research', () => ({ structured: (...args: unknown[]) => structured(...args) }));
-vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://dazero.test' }));
+vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://feega.test' }));
 vi.mock('$lib/server/feature-flags', () => ({ isPlanGoEnabled: () => false }));
 
 import { POST } from './+server';
@@ -65,7 +65,7 @@ const ORG_BILLING_NO_SUBSCRIPTION = {
 };
 
 function call(body: unknown = {}, slug = 'demo') {
-	const url = new URL(`https://dazero.test/api/v1/brands/${slug}/billing/checkout`);
+	const url = new URL(`https://feega.test/api/v1/brands/${slug}/billing/checkout`);
 	return (POST as (event: unknown) => Promise<Response>)({
 		request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),
 		params: { slug },
@@ -111,7 +111,7 @@ describe('POST /api/v1/brands/:slug/billing/checkout', () => {
 
 		expect(createBillingPortalSession).toHaveBeenCalledWith({
 			customerId: 'cus_org',
-			returnUrl: 'https://dazero.test/app/billing',
+			returnUrl: 'https://feega.test/app/billing',
 			flow: 'upgrade',
 			subscriptionId: 'sub_org'
 		});
@@ -165,7 +165,7 @@ describe('POST /api/v1/brands/:slug/billing/checkout', () => {
 
 		expect(res.status).toBe(409);
 		expect(body.error).toBe('no_subscription');
-		expect(body.app_billing_url).toBe('https://dazero.test/app/billing');
+		expect(body.app_billing_url).toBe('https://feega.test/app/billing');
 		expect(createBillingPortalSession).not.toHaveBeenCalled();
 	});
 
@@ -193,8 +193,8 @@ describe('POST /api/v1/brands/:slug/billing/checkout', () => {
 				orgId: 'org-1',
 				priceId: 'price_sub_30',
 				credits: 3000,
-				successUrl: 'https://dazero.test/app/billing',
-				cancelUrl: 'https://dazero.test/app/billing'
+				successUrl: 'https://feega.test/app/billing',
+				cancelUrl: 'https://feega.test/app/billing'
 			});
 		});
 
@@ -205,7 +205,7 @@ describe('POST /api/v1/brands/:slug/billing/checkout', () => {
 
 			expect(res.status).toBe(409);
 			expect(body.error).toBe('subscriptions_not_configured');
-			expect(body.app_billing_url).toBe('https://dazero.test/app/billing');
+			expect(body.app_billing_url).toBe('https://feega.test/app/billing');
 			expect(createSubscriptionCheckout).not.toHaveBeenCalled();
 			expect(createBillingPortalSession).not.toHaveBeenCalled();
 		});
@@ -227,7 +227,7 @@ describe('POST /api/v1/brands/:slug/billing/checkout', () => {
 
 		expect(res.status).toBe(409);
 		expect(body.error).toBe('no_customer');
-		expect(body.app_billing_url).toBe('https://dazero.test/app/billing');
+		expect(body.app_billing_url).toBe('https://feega.test/app/billing');
 	});
 
 	it('a Stripe outage is ours: 502, not a 4xx that accuses the caller', async () => {

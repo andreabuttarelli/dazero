@@ -267,7 +267,7 @@ function adsCreateAction(channel: AdsChannel): NonNullable<Actions[string]> {
         .flatMap((v) => String(v).split('\n'))
         .map((s) => s.trim())
         .filter(Boolean);
-    // "dazero.co" is what the AI (and a human) writes — add the scheme instead of rejecting it.
+    // "feega.app" is what the AI (and a human) writes — add the scheme instead of rejecting it.
     const url = (k: string) => normalizeUrl(str(k));
 
     // Social ads are Meta-only for now — ignore any other platform posted from the form.

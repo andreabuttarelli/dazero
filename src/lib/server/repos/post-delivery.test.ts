@@ -28,7 +28,7 @@ const accountRows = [
 ];
 
 const assetRows = [
-  { id: 'asset-1', org_id: ORG, type: 'image', url: 'https://cdn.dazero.co/asset-1.jpg' }
+  { id: 'asset-1', org_id: ORG, type: 'image', url: 'https://cdn.feega.app/asset-1.jpg' }
 ];
 
 function fakePublisher(overrides: Partial<SocialPublisher> = {}): SocialPublisher {
@@ -125,7 +125,7 @@ describe('scheduleDelivery', () => {
     const { db } = fakeDb({
       posts: [twoImages],
       social_accounts: [threadsAccount],
-      assets: [assetRows[0], { id: 'asset-2', org_id: ORG, type: 'image', url: 'https://cdn.dazero.co/asset-2.jpg' }]
+      assets: [assetRows[0], { id: 'asset-2', org_id: ORG, type: 'image', url: 'https://cdn.feega.app/asset-2.jpg' }]
     });
     const publisher = fakePublisher();
 

@@ -37,11 +37,11 @@ describe('sanitizeBrandColors', () => {
 
 describe('normalizeWebsite', () => {
   it('mette lo schema a un dominio nudo', () => {
-    expect(normalizeWebsite('dazero.co')).toBe('https://dazero.co');
+    expect(normalizeWebsite('feega.app')).toBe('https://feega.app');
   });
 
   it('lascia stare un URL che ce l’ha già', () => {
-    expect(normalizeWebsite('http://dazero.co/x')).toBe('http://dazero.co/x');
+    expect(normalizeWebsite('http://feega.app/x')).toBe('http://feega.app/x');
   });
 
   it('vuoto è null, non stringa vuota: la colonna deve poter essere "non impostata"', () => {
@@ -94,8 +94,8 @@ describe('sanitizeThemeColor', () => {
 
 describe('splitWebsiteOrHandle', () => {
   it('un dominio resta un sito, con lo schema davanti', () => {
-    expect(splitWebsiteOrHandle('dazero.co')).toEqual({ website: 'https://dazero.co', handle: null });
-    expect(splitWebsiteOrHandle('https://dazero.co')).toEqual({ website: 'https://dazero.co', handle: null });
+    expect(splitWebsiteOrHandle('feega.app')).toEqual({ website: 'https://feega.app', handle: null });
+    expect(splitWebsiteOrHandle('https://feega.app')).toEqual({ website: 'https://feega.app', handle: null });
   });
 
   it('la chiocciola e la parola senza punti sono handle, non siti', () => {

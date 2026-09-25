@@ -251,10 +251,10 @@ describe('suggestVideoDuration / resolveVideoDuration', () => {
 
   it('concise PAS (~42 words) fits a 15s clip without losing the solution', () => {
     const pas =
-      "I was still writing captions at midnight and nothing had posted. It was eating my evenings — then dazero drafted the visuals and the copy, I just tap approve. Anyway try it and tell me I'm wrong.";
+      "I was still writing captions at midnight and nothing had posted. It was eating my evenings — then feega drafted the visuals and the copy, I just tap approve. Anyway try it and tell me I'm wrong.";
     expect(resolveVideoDuration(15, pas, 'bytedance/seedance-2-5')).toBe(15);
     const fitted = fitScriptToDuration(pas, 15);
-    expect(fitted.toLowerCase()).toMatch(/dazero/);
+    expect(fitted.toLowerCase()).toMatch(/feega/);
     expect(fitted.toLowerCase()).toMatch(/tell me i'm wrong|try it/);
     expect(spokenWordCount(fitted)).toBeLessThanOrEqual(48);
   });

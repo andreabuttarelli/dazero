@@ -66,7 +66,7 @@ function formEvent(usd: string) {
 	return {
 		request: { formData: async () => data },
 		params: { brand: 'demo' },
-		url: new URL('https://dazero.test/app/demo/settings/billing'),
+		url: new URL('https://feega.test/app/demo/settings/billing'),
 		locals: { supabase: ownerSupabase() }
 	} as never;
 }

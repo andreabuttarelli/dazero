@@ -35,7 +35,7 @@ const CANVAS = 'canvas-1';
 const USER = 'user-1';
 
 function call(id: string, body: unknown) {
-  const url = new URL(`https://dazero.test/api/v1/org/nodes/${id}/generate`);
+  const url = new URL(`https://feega.test/api/v1/org/nodes/${id}/generate`);
   return (POST as (event: unknown) => Promise<Response>)({
     request: new Request(url, {
       method: 'POST',
@@ -69,7 +69,7 @@ describe('POST /api/v1/org/nodes/:id/generate', () => {
     runGenNode.mockResolvedValue({
       kind: 'done',
       run: { id: 'run-1', status: 'done', outputAssetId: 'asset-1' },
-      asset: { id: 'asset-1', type: 'image', url: 'https://dazero.co/a/1' }
+      asset: { id: 'asset-1', type: 'image', url: 'https://feega.app/a/1' }
     });
 
     const { res, body } = await call(NODE, {

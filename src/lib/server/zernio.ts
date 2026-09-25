@@ -33,8 +33,8 @@ export async function ensureBrandProfile(brand: BrandRef): Promise<string> {
   if (brand.zernio_profile_id) return brand.zernio_profile_id;
 
   const profileId = await publisher.createProfile({
-    name: `dazero · ${brand.name}`,
-    description: `dazero brand ${brand.id}`
+    name: `feega · ${brand.name}`,
+    description: `feega brand ${brand.id}`
   });
   const { createAdminClient } = await import('./supabase-admin');
   await createAdminClient().from('brands').update({ zernio_profile_id: profileId }).eq('id', brand.id);

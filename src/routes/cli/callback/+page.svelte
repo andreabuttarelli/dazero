@@ -24,16 +24,16 @@
       setTimeout(() => { window.location.href = '/app'; }, 2500);
     } catch {
       status = 'error';
-      errorMsg = 'Impossibile raggiungere la CLI. Assicurati che dazero sia in esecuzione e riprova.';
+      errorMsg = 'Impossibile raggiungere la CLI. Assicurati che feega sia in esecuzione e riprova.';
     }
   }
 </script>
 
-<svelte:head><title>Autorizza CLI — dazero</title></svelte:head>
+<svelte:head><title>Autorizza CLI — feega</title></svelte:head>
 
 <div class="wrap">
   <div class="card">
-    <div class="logo">dazero</div>
+    <div class="logo">feega</div>
 
     {#if status === 'done'}
       <div class="done">
@@ -42,10 +42,10 @@
         <p>Torna al terminale. Questa pagina si chiuderà tra poco.</p>
       </div>
     {:else}
-      <h2>dazero CLI vuole accedere al tuo account</h2>
+      <h2>feega CLI vuole accedere al tuo account</h2>
       <p class="email">{userEmail}</p>
       <p class="desc">
-        La CLI di dazero gestirà i tuoi brand e i contenuti dal terminale, usando le stesse autorizzazioni del tuo account.
+        La CLI di feega gestirà i tuoi brand e i contenuti dal terminale, usando le stesse autorizzazioni del tuo account.
       </p>
 
       {#if status === 'error'}

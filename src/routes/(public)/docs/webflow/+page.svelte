@@ -42,7 +42,7 @@
   <p>{$_('docs.webflow.s20')}</p>
 </DocsStep>
 
-<DocsStep step={3} title="Connect in dazero">
+<DocsStep step={3} title="Connect in feega">
   <p>
     {$_('docs.webflow.s21')} <strong>{$_('docs.webflow.s22')}</strong> {$_('docs.webflow.s23')} <strong>{$_('docs.webflow.s24')}</strong>{$_('docs.webflow.s25')}
     <strong>⋮</strong> {$_('docs.webflow.s26')}

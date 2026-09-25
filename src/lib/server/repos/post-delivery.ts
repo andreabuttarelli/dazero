@@ -12,7 +12,7 @@ import { formatFor, type Platform } from '$lib/platform-capabilities';
  * "<zernio post id>" }`. La chiave è l'account, non la piattaforma — un brand con due account
  * sulla stessa piattaforma altrimenti collidono sulla stessa chiave — e Zernio pubblica un post
  * per (account, piattaforma) alla volta (`SocialPublisher.publish`, un `accountId` solo, un
- * `postId` di ritorno): un post dazero mandato a tre account fa tre chiamate e porta tre id.
+ * `postId` di ritorno): un post feega mandato a tre account fa tre chiamate e porta tre id.
  */
 
 type ZernioPostIds = Record<string, string>;

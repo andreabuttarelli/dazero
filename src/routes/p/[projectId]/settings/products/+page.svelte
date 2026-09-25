@@ -21,7 +21,7 @@
       {/each}
     </div>
   {:else}
-    <div class="empty">No products yet. Run <code>dazero products &lt;slug&gt; sync</code> to import the catalog from the connected store.</div>
+    <div class="empty">No products yet. Run <code>feega products &lt;slug&gt; sync</code> to import the catalog from the connected store.</div>
   {/if}
 </section>
 

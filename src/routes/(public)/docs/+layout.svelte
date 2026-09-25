@@ -109,7 +109,7 @@
     const path = $page.url.pathname || '/';
     const origin = $page.url.origin;
     const parts = path.split('/').filter(Boolean);
-    const items: { name: string; item: string }[] = [{ name: 'dazero', item: `${origin}/` }];
+    const items: { name: string; item: string }[] = [{ name: 'feega', item: `${origin}/` }];
     let acc = '';
     for (const part of parts) {
       acc += `/${part}`;

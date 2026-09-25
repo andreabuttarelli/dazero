@@ -10,7 +10,7 @@ const { GET } = await import('./+server');
 
 async function redirectFor(code: string) {
   const event = {
-    url: new URL(`https://dazero.co/auth/callback?code=${code}`),
+    url: new URL(`https://feega.app/auth/callback?code=${code}`),
     cookies: {},
     locals: { supabase: { auth: { exchangeCodeForSession } } }
   };

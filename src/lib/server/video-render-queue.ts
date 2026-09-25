@@ -308,7 +308,7 @@ async function notifyThread(admin: SupabaseClient, row: VideoRenderRow, outcome:
 
 		const { sendPushToUser } = await import('$lib/server/web-push');
 		await sendPushToUser(admin, row.user_id, {
-			title: 'dazero',
+			title: 'feega',
 			body: `Video: ${outcome}`,
 			url: projectId && row.post_id ? `/p/${projectId}/calendar?post=${row.post_id}` : '/',
 			tag: `video-render-${row.id}`,

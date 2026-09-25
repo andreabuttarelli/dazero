@@ -2,16 +2,16 @@
   let { data } = $props();
 </script>
 
-<svelte:head><title>Autorizza accesso — dazero</title></svelte:head>
+<svelte:head><title>Autorizza accesso — feega</title></svelte:head>
 
 <div class="wrap">
   <div class="card">
-    <div class="logo">dazero</div>
+    <div class="logo">feega</div>
 
     {#if data.fatal}
       <h2>Richiesta non valida</h2>
       <p class="desc">{data.fatal}</p>
-      <a class="btn-cancel" href="/app">Torna ad dazero</a>
+      <a class="btn-cancel" href="/app">Torna ad feega</a>
     {:else}
       <h2>{data.clientName} vuole accedere al tuo account</h2>
       <p class="email">{data.userEmail}</p>

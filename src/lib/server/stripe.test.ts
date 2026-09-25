@@ -256,7 +256,7 @@ describe('createOneTimeCreditCheckout', () => {
 					price_data: {
 						currency: 'usd',
 						unit_amount: 10000,
-						product_data: { name: '7840 dazero credits' }
+						product_data: { name: '7840 feega credits' }
 					},
 					quantity: 1
 				}

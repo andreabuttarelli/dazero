@@ -43,7 +43,7 @@ export const POSTS_DESIGN_ORIGIN = 'https://posts.design';
  * crawler and not a training-set collector. An anonymous UA on a site that names AI crawlers in its
  * robots.txt would be the wrong way to arrive.
  */
-export const POSTS_DESIGN_UA = `dazeroMotionReference/1.0 (+${env.CRAWLER_CONTACT_URL || 'https://dazero.co'}; on-demand design reference lookup; no training, no storage)`;
+export const POSTS_DESIGN_UA = `feegaMotionReference/1.0 (+${env.CRAWLER_CONTACT_URL || 'https://feega.app'}; on-demand design reference lookup; no training, no storage)`;
 
 /** Index TTL. The wall adds a handful of posts a day — an hour is fresh enough for a creative turn. */
 const INDEX_TTL_MS = 60 * 60 * 1000;

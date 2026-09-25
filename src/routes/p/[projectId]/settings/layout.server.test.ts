@@ -59,7 +59,7 @@ describe('settings +layout.server load', () => {
 
 		await (load as (e: unknown) => Promise<Record<string, unknown>>)({
 			parent: async () => ({ brand: { id: 'brand-1', slug: 'demo', org_id: 'org-1' } }),
-			url: new URL('https://dazero.test/p/x/settings/team'),
+			url: new URL('https://feega.test/p/x/settings/team'),
 			locals: { supabase }
 		});
 
@@ -76,7 +76,7 @@ describe('settings +layout.server load', () => {
 
 		const data = await (load as (e: unknown) => Promise<Record<string, unknown>>)({
 			parent: async () => ({ brand: { id: 'brand-1', slug: 'demo', org_id: 'org-1' } }),
-			url: new URL('https://dazero.test/p/x/settings/team'),
+			url: new URL('https://feega.test/p/x/settings/team'),
 			locals: { supabase }
 		});
 

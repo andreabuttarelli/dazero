@@ -175,7 +175,7 @@ describe('il cancello: senza sessione utente non si legge', () => {
   });
 
   it('il rimedio dice come si torna dentro, non solo che si è fuori', () => {
-    expect(NO_SESSION_ERROR.fix).toMatch(/dazero login/);
+    expect(NO_SESSION_ERROR.fix).toMatch(/feega login/);
   });
 });
 

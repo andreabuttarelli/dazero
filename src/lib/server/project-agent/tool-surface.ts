@@ -28,7 +28,7 @@ const NOOP_CLOSE = async () => {};
 
 /**
  * Apre i tool del brand solo quando un brand è attaccato al progetto. Il JWT resta sul server:
- * il browser parla solo con la nostra rotta, mai con mcp.dazero.co.
+ * il browser parla solo con la nostra rotta, mai con mcp.feega.app.
  */
 export async function openAgentTools(input: {
   projectTools: Record<string, Tool>;

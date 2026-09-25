@@ -2,7 +2,7 @@
   "landing": {
     "hero": {
       "connect": {
-        "title": "Connect dazero to your AI",
+        "title": "Connect feega to your AI",
         "subtitle": "It works with any agent that speaks MCP. Pick the way that suits you.",
         "close": "Close",
         "copy": "Copy",
@@ -15,7 +15,7 @@
         "auto": {
           "s1": "Copy the text below.",
           "s2": "Paste it into your AI — Claude, ChatGPT, Cursor, whichever you use.",
-          "s3": "It connects to dazero and asks you to sign in. That's it.",
+          "s3": "It connects to feega and asks you to sign in. That's it.",
           "peek": "See what you're copying",
           "note": "Nothing to install here: the sign-in happens in your agent, and no API key ever leaves this page."
         },
@@ -24,7 +24,7 @@
           "docs": "Docs"
         },
         "cli": {
-          "lead": "For a terminal. Same account, same brands — useful for scripts and CI, not needed to use dazero from an agent.",
+          "lead": "For a terminal. Same account, same brands — useful for scripts and CI, not needed to use feega from an agent.",
           "note": "The CLI and the local MCP server share one session, so signing in once covers both."
         },
         "how": {
@@ -38,7 +38,7 @@
       }
     },
     "nav": {
-      "brandAria": "dazero — pronounced oh to one"
+      "brandAria": "feega — pronounced oh to one"
     }
   },
   "pricing": {
@@ -65,11 +65,11 @@
       },
       "starter": {
         "tagline": "For one brand getting consistent.",
-        "highlights": "Autopublish to 2 social accounts|Editorial plan on autopilot|Blog articles built to rank|Backlink network across dazero brands|Meta & Google Ads — you approve spend"
+        "highlights": "Autopublish to 2 social accounts|Editorial plan on autopilot|Blog articles built to rank|Backlink network across feega brands|Meta & Google Ads — you approve spend"
       },
       "pro": {
         "tagline": "The full autonomous manager.",
-        "highlights": "Autopublish to 8 social accounts|Higher capacity across posts, blog & leads|Backlink network across dazero brands|Up to 4K images / videos|Leads on X, Threads & LinkedIn too (~30–60/day)|Priority human support"
+        "highlights": "Autopublish to 8 social accounts|Higher capacity across posts, blog & leads|Backlink network across feega brands|Up to 4K images / videos|Leads on X, Threads & LinkedIn too (~30–60/day)|Priority human support"
       }
     }
   },
@@ -144,8 +144,8 @@
   },
   "meta": {
     "login": {
-      "titleSignin": "dazero — Sign in",
-      "titleSignup": "dazero — Create account"
+      "titleSignin": "feega — Sign in",
+      "titleSignup": "feega — Create account"
     }
   },
   "warnings": {
@@ -207,7 +207,7 @@
     },
     "continueOnboarding": {
       "title": "Finish setting up your brand",
-      "msg": "Ask dazero in chat to add people, competitors, strategy and your first posts — or keep exploring and come back anytime."
+      "msg": "Ask feega in chat to add people, competitors, strategy and your first posts — or keep exploring and come back anytime."
     },
     "pending": {
       "title": "{count} posts to review",
@@ -235,7 +235,7 @@
     },
     "blogOff": {
       "title": "Blog not active",
-      "msg": "Turn on the blog so dazero also generates articles — from your editorial plan and from radar news, not just social posts."
+      "msg": "Turn on the blog so feega also generates articles — from your editorial plan and from radar news, not just social posts."
     }
   },
   "app": {
@@ -335,7 +335,7 @@
       "active": "Active",
       "disconnect": "Disconnect",
       "noAccountsTitle": "No accounts connected yet",
-      "noAccountsBody": "Connect one below — dazero imports it automatically when you come back.",
+      "noAccountsBody": "Connect one below — feega imports it automatically when you come back.",
       "syncedToast": "✓ Synced.",
       "disconnectedToast": "✓ Disconnected.",
       "connectPlatform": "Connect a platform",
@@ -358,7 +358,7 @@
         "firstName": "First name",
         "lastName": "Last name",
         "session": "Session",
-        "signOutDesc": "Sign out of dazero on this device.",
+        "signOutDesc": "Sign out of feega on this device.",
         "saved": "Profile saved.",
         "avatarSaved": "Profile photo updated.",
         "avatarRemoved": "Profile photo removed.",
@@ -368,7 +368,7 @@
       "appearance": {
         "title": "Appearance",
         "theme": "Theme",
-        "themeDesc": "Choose light or dark mode for the dazero interface."
+        "themeDesc": "Choose light or dark mode for the feega interface."
       },
       "billing": {
         "title": "Plan & billing",
@@ -392,10 +392,10 @@
         "copyLink": "Copy link",
         "copied": "Copied",
         "badgeTitle": "Public badge",
-        "badgeDesc": "Paste this on your site. It links to your invite and credits both of you when someone starts with dazero.",
+        "badgeDesc": "Paste this on your site. It links to your invite and credits both of you when someone starts with feega.",
         "copyBadge": "Copy badge HTML",
-        "blogNoteTitle": "On your dazero blog",
-        "blogNote": "The Powered by dazero badge is already in your public blog footer — with your referral link baked in.",
+        "blogNoteTitle": "On your feega blog",
+        "blogNote": "The Powered by feega badge is already in your public blog footer — with your referral link baked in.",
         "statCredited": "Successful invites",
         "statCredits": "Credits earned",
         "history": "Recent referrals",
@@ -572,9 +572,9 @@
         "clicksTrend": "Clicks",
         "clicksTrendSub": "Engagement from synced windows",
         "spendSplit": "Spend split",
-        "spendSplitSub": "dazero vs other ads on the account",
+        "spendSplitSub": "feega vs other ads on the account",
         "topCampaigns": "Top campaigns by spend",
-        "topCampaignsSub": "Created or boosted from dazero",
+        "topCampaignsSub": "Created or boosted from feega",
         "filters": "Filters",
         "source": "Source",
         "sourceAll": "All",
@@ -589,7 +589,7 @@
         "accountTitle": "Ads on connected accounts",
         "accountSub": "{n} on your connected accounts (includes existing Meta/Google ads)",
         "noSeries": "No synced spend yet — approve a campaign or hit Refresh.",
-        "noOurs": "No dazero campaigns match these filters.",
+        "noOurs": "No feega campaigns match these filters.",
         "noAccount": "No ads found on connected ad accounts yet. Connect Meta/Google Ads and Refresh."
       },
       "channel": {
@@ -818,7 +818,7 @@
     }
   },
   "cookie": {
-    "text": "We use cookies to run dazero and, with your consent, to understand how it's used and improve it.",
+    "text": "We use cookies to run feega and, with your consent, to understand how it's used and improve it.",
     "reject": "Reject",
     "accept": "Accept"
   },

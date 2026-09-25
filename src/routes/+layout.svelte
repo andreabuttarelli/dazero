@@ -83,7 +83,7 @@
   });
 
   // Public brand blogs (custom domain / default path / preview) are served on the BRAND's turf —
-  // never load dazero's cookie banner or its (PostHog) analytics there. CookieBanner is what starts
+  // never load feega's cookie banner or its (PostHog) analytics there. CookieBanner is what starts
   // anonymous analytics, so suppressing it keeps the brand's blog tracking-free by default.
   const isBlog = $derived(
     !!$page.route.id && (
@@ -105,7 +105,7 @@
   $effect(() => { if (!isBlog) { loadMetaPixel(); trackBookingClicks(); } });
 
   // Cookie banner is region-gated: EEA/UK/CH visitors are asked for consent, everyone else gets
-  // full analytics with no banner. Skipped on brand blogs (no dazero analytics there at all).
+  // full analytics with no banner. Skipped on brand blogs (no feega analytics there at all).
   $effect(() => { if (!isBlog) initConsentForRegion(data?.country); });
 
   // Resolve the colour theme for EVERY page (not just ones with the marketing nav): read the

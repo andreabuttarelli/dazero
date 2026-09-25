@@ -160,7 +160,7 @@ export function computeBrandWarnings(i: BrandWarningInput): AppWarning[] {
   if (i.competitorCount === 0) out.push({ id: 'studio-no-competitors', severity: 'suggestion', title: 'warnings.studioCompetitors.title', message: 'warnings.studioCompetitors.msg', href: i.base });
   if (!i.hasHashtags) out.push({ id: 'studio-no-hashtags', severity: 'suggestion', title: 'warnings.studioHashtags.title', message: 'warnings.studioHashtags.msg', href: `${i.base}/settings/brand#hashtags` });
 
-  // Blog not opted in → dazero's plan generates social only. Nudge the user to enable it so
+  // Blog not opted in → feega's plan generates social only. Nudge the user to enable it so
   // the pipeline also produces blog articles.
   if (!i.blogEnabled) out.push({ id: 'blog-not-enabled', severity: 'suggestion', title: 'warnings.blogOff.title', message: 'warnings.blogOff.msg', href: `${i.base}/site` });
 
@@ -203,7 +203,7 @@ export const brandWarnings = writable<AppWarning[]>([]);
 // ponytail: localStorage, come SHELL_PREF_KEYS — quindi il "visto" è PER DISPOSITIVO. Segnarle
 // viste sul portatile le lascia accese sul telefono. Farlo per utente vorrebbe una colonna dove
 // salvare preferenze utente, che oggi non c'è: la proposta di migration è nel report.
-export const seenWarningsKey = (brandSlug: string) => `dazero.warningsSeen.${brandSlug}`;
+export const seenWarningsKey = (brandSlug: string) => `feega.warningsSeen.${brandSlug}`;
 
 /**
  * Le segnalazioni non ancora viste. `seen` è l'insieme salvato all'ultima apertura del pannello.

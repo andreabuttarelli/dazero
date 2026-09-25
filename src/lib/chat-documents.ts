@@ -18,7 +18,7 @@ export const MAX_CHAT_CONVERT_BYTES = 100 * 1024 * 1024;
 /** Knowledge ingest stays tighter: embedding/chunking a 100 MB dump is a different job. */
 export const MAX_KNOWLEDGE_FILE_BYTES = 20 * 1024 * 1024;
 
-export const ATTACHED_DOCS_MARKER = '<!--dazero-attached-docs-->';
+export const ATTACHED_DOCS_MARKER = '<!--feega-attached-docs-->';
 export const CHAT_CONVERT_FOLDER = 'chat-convert';
 
 /** Formats markitdown-ts (and the knowledge ingest) can turn into markdown. */

@@ -6,7 +6,7 @@ import { env as publicEnv } from '$env/dynamic/public';
 // live host: a canonical/sitemap URL on a redirecting host is what makes strict crawlers report
 // robots.txt as unfetchable.
 function fallbackSite(): string {
-  return publicEnv.PUBLIC_FALLBACK_APP_URL || 'https://www.dazero.co';
+  return publicEnv.PUBLIC_FALLBACK_APP_URL || 'https://www.feega.app';
 }
 
 export function siteUrl(reqOrigin?: string): string {

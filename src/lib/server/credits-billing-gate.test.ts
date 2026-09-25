@@ -4,8 +4,8 @@ import type { BillingProvider } from '$lib/billing/contract';
 // gateCredits() (the chokepoint 29 call sites use) now delegates to billingProvider().gate().
 // Mocking '$lib/server/billing' directly — gateCredits's one dependency — proves the delegation
 // itself cleanly: a fake provider that denies makes gateCredits throw, a fake provider that
-// allows makes it resolve, with no Supabase involved. (dazero-provider.test.ts separately
-// proves the real dazero provider's gate('credits', ...) still calls the real,
+// allows makes it resolve, with no Supabase involved. (feega-provider.test.ts separately
+// proves the real feega provider's gate('credits', ...) still calls the real,
 // unrewritten gateCreditsCore.)
 
 const mockProvider: { current: BillingProvider | null } = { current: null };
@@ -13,7 +13,7 @@ vi.mock('./billing', () => ({
   billingProvider: async () => mockProvider.current
 }));
 
-function fakeProvider(kind: 'open' | 'dazero', gate: BillingProvider['gate']): BillingProvider {
+function fakeProvider(kind: 'open' | 'feega', gate: BillingProvider['gate']): BillingProvider {
   return {
     kind,
     gate,
@@ -25,9 +25,9 @@ function fakeProvider(kind: 'open' | 'dazero', gate: BillingProvider['gate']): B
 }
 
 describe('gateCredits() delegation', () => {
-  it('propagates a denial thrown by the provider (mirrors dazero when the ledger is exhausted)', async () => {
+  it('propagates a denial thrown by the provider (mirrors feega when the ledger is exhausted)', async () => {
     const { CreditsExhaustedError } = await import('$lib/server/credits');
-    mockProvider.current = fakeProvider('dazero', async () => {
+    mockProvider.current = fakeProvider('feega', async () => {
       throw new CreditsExhaustedError({
         used: 400,
         quota: 400,

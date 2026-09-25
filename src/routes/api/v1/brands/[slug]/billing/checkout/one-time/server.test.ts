@@ -22,7 +22,7 @@ vi.mock('$lib/server/stripe', () => ({
 vi.mock('$lib/server/billing-readiness', () => ({
 	billingGrantsReady: (...args: unknown[]) => billingGrantsReady(...args)
 }));
-vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://dazero.test' }));
+vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://feega.test' }));
 
 import { POST } from './+server';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
@@ -46,7 +46,7 @@ const ORG_BILLING_NO_CUSTOMER = {
 };
 
 function call(body: unknown = { usd: 30 }, slug = 'demo') {
-	const url = new URL(`https://dazero.test/api/v1/brands/${slug}/billing/checkout/one-time`);
+	const url = new URL(`https://feega.test/api/v1/brands/${slug}/billing/checkout/one-time`);
 	return (POST as (event: unknown) => Promise<Response>)({
 		request: new Request(url, { method: 'POST', body: JSON.stringify(body) }),
 		params: { slug },
@@ -87,8 +87,8 @@ describe('POST /api/v1/brands/:slug/billing/checkout/one-time', () => {
 			orgId: 'org-1',
 			price: 30,
 			credits: 2100,
-			successUrl: 'https://dazero.test/app/billing',
-			cancelUrl: 'https://dazero.test/app/billing'
+			successUrl: 'https://feega.test/app/billing',
+			cancelUrl: 'https://feega.test/app/billing'
 		});
 	});
 

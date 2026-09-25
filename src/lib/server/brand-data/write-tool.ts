@@ -60,7 +60,7 @@ export const NO_SESSION_WRITE_ERROR = {
   error: 'no_user_session',
   message:
     '`insert_row` and `update_row` write the database AS THIS USER: anon key + their JWT, so Postgres RLS lets the agent write exactly where the user could and nowhere else. This client is not user-scoped — it is a background/queue turn or a CLI API-key request, and both hold a service-role client (`bypassrls=true`) that would write into ANY brand in the database. Refusing to write with it, and refusing harder than the read does: a read with the wrong client returns rows that are not yours, a write leaves them behind.',
-  fix: 'Use this surface\'s own write tools — each one scopes to this brand by construction. Or come back as yourself: these write wherever the caller carries their own session — the app, `dazero login`, and MCP.'
+  fix: 'Use this surface\'s own write tools — each one scopes to this brand by construction. Or come back as yourself: these write wherever the caller carries their own session — the app, `feega login`, and MCP.'
 } as const;
 
 type Filter = {

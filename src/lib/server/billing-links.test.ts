@@ -24,7 +24,7 @@ const PAYING_ORG = {
 	brandCount: 2
 };
 
-const RETURN_URL = 'https://dazero.test/app/billing';
+const RETURN_URL = 'https://feega.test/app/billing';
 
 beforeEach(() => {
 	vi.clearAllMocks();

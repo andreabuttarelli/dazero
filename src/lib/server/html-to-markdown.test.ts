@@ -12,13 +12,13 @@ describe('htmlToMarkdown', () => {
         <button class="absolute">Copy</button>
         <svg viewBox="0 0 24 24"><path d="M18 13v6"/></svg>
         <pre>curl -H "Authorization: Bearer $TOKEN" \\
-  https://dazero.co/api/v1/brands</pre>
+  https://feega.app/api/v1/brands</pre>
       </div>
       <table><thead><tr><th>Code</th></tr></thead><tbody><tr><td>401</td></tr></tbody></table>
     `);
 
     expect(md).toContain('# API');
-    expect(md).toContain('```\ncurl -H "Authorization: Bearer $TOKEN" \\\n  https://dazero.co/api/v1/brands\n```');
+    expect(md).toContain('```\ncurl -H "Authorization: Bearer $TOKEN" \\\n  https://feega.app/api/v1/brands\n```');
     expect(md).not.toContain('Copy');
     expect(md).not.toMatch(/nope|viewBox|<path/);
     expect(md).toContain('| Code |'); // gfm tables survive

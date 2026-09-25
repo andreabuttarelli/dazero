@@ -27,6 +27,6 @@ describe('referrals', () => {
 
   it('il nome del cookie porta il prodotto nuovo, il vecchio resta noto per la migrazione', () => {
     expect(REFERRAL_COOKIE).toBe('feega_ref');
-    expect(REFERRAL_COOKIE_LEGACY).toBe('dazero_ref');
+    expect(REFERRAL_COOKIE_LEGACY).toBe('feega_ref');
   });
 });

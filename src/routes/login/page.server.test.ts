@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { isRedirect } from '@sveltejs/kit';
 import { load } from './+page.server';
 
-const ORIGIN = 'https://dazero.co';
+const ORIGIN = 'https://feega.app';
 const SIGNED_IN = { session: { access_token: 'jwt' }, user: { id: 'u1' } };
 
 function run(path: string) {

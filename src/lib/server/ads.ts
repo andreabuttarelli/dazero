@@ -198,7 +198,7 @@ export async function rankBoostCandidates(
       .limit(80)
   ]);
 
-  // Index dazero posts by Zernio external id for caption/media join.
+  // Index feega posts by Zernio external id for caption/media join.
   const byExternal = new Map<string, (typeof posts extends (infer T)[] | null ? T : never)>();
   for (const p of posts ?? []) {
     if (p.external_post_id) byExternal.set(p.external_post_id, p);
@@ -214,7 +214,7 @@ export async function rankBoostCandidates(
 
   const out: BoostCandidate[] = [];
 
-  // Prefer dazero-published posts (have external_post_id we can boost).
+  // Prefer feega-published posts (have external_post_id we can boost).
   for (const p of posts ?? []) {
     const plat = (p.platform ?? '').toLowerCase();
     if (!BOOSTABLE_PLATFORMS.has(plat)) continue;
@@ -641,7 +641,7 @@ export async function approveCampaign(
   // Zernio replays a key verbatim and rejects the SAME key with a different body (422). Approving,
   // failing, editing the budget and approving again is a different body — so the key carries a
   // digest of what we are about to send. Same request retried = replayed; edited = fresh key.
-  const idempotencyKey = `dazero-ad-${campaign.id}-${shortDigest({
+  const idempotencyKey = `feega-ad-${campaign.id}-${shortDigest({
     budgetAmount,
     budgetType,
     goal,
@@ -1599,7 +1599,7 @@ export async function getPaidSummary(
       ...c,
       metrics: latestByCampaign.get(c.id) ?? null,
       fatigue: diagnosisByCampaign.get(c.id) ?? null,
-      source: 'dazero' as const
+      source: 'feega' as const
     })),
     totals: {
       spend: totalSpend,

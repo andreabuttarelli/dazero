@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { dedupePresence, peersHere, sharesLocation } from './presence-peers';
 
-const HOME = '/app/dazero';
+const HOME = '/app/feega';
 const CHAT = 'de4e0fba-a2d3-47ed-982e-363a1d212f58';
 
 const meta = (over: Record<string, unknown> = {}) => ({
@@ -16,13 +16,13 @@ const meta = (over: Record<string, unknown> = {}) => ({
 describe('sharesLocation', () => {
 	it('matches on the same route', () => {
 		expect(sharesLocation(meta(), { path: HOME, threadId: null })).toBe(true);
-		expect(sharesLocation(meta(), { path: '/app/dazero/plan', threadId: null })).toBe(false);
+		expect(sharesLocation(meta(), { path: '/app/feega/plan', threadId: null })).toBe(false);
 	});
 
 	it('matches on the same thread even from a different route', () => {
 		// The desktop workbench keeps the open thread in a memory store, so two people can be in
 		// the same conversation while their URLs disagree.
-		const peer = meta({ path: '/app/dazero/plan', threadId: CHAT });
+		const peer = meta({ path: '/app/feega/plan', threadId: CHAT });
 		expect(sharesLocation(peer, { path: HOME, threadId: CHAT })).toBe(true);
 	});
 
@@ -74,8 +74,8 @@ describe('peersHere', () => {
 	it('keeps only the peers sharing the viewer location', () => {
 		const peers = [
 			meta({ userId: 'u2', path: HOME }),
-			meta({ userId: 'u3', path: '/app/dazero/plan' }),
-			meta({ userId: 'u4', path: '/app/dazero/plan', threadId: CHAT })
+			meta({ userId: 'u3', path: '/app/feega/plan' }),
+			meta({ userId: 'u4', path: '/app/feega/plan', threadId: CHAT })
 		];
 		const here = peersHere(peers, { path: HOME, threadId: CHAT });
 		expect(here.map((p) => p.userId)).toEqual(['u2', 'u4']);

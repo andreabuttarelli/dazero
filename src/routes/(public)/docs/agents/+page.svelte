@@ -55,14 +55,14 @@
 
 <h2 id="install-skill">{$_('docs.agents.s23')}</h2>
 <p>{$_('docs.agents.s44')}</p>
-<pre><code>npx skills add andreabuttarelli/dazero --skill dazero</code></pre>
+<pre><code>npx skills add andreabuttarelli/feega --skill feega</code></pre>
 <p>{$_('docs.agents.s24')}</p>
 <pre><code># Claude Code
-/plugin marketplace add andreabuttarelli/dazero
-/plugin install dazero@dazero
+/plugin marketplace add andreabuttarelli/feega
+/plugin install feega@feega
 
 # Codex
-codex plugin marketplace add andreabuttarelli/dazero</code></pre>
+codex plugin marketplace add andreabuttarelli/feega</code></pre>
 <p>{@html $_('docs.agents.s46')}</p>
 
 <h2 id="auth">{$_('docs.agents.s47')}</h2>
@@ -99,11 +99,11 @@ codex plugin marketplace add andreabuttarelli/dazero</code></pre>
 
 <h2 id="cli-fallback">{$_('docs.agents.s64')}</h2>
 <p>{$_('docs.agents.s65')}</p>
-<pre><code>curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash
-dazero login
-dazero brands
-dazero content &lt;slug&gt; --status pending_user
-dazero approve &lt;slug&gt; --all</code></pre>
+<pre><code>curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash
+feega login
+feega brands
+feega content &lt;slug&gt; --status pending_user
+feega approve &lt;slug&gt; --all</code></pre>
 
 <hr />
 
@@ -112,8 +112,8 @@ dazero approve &lt;slug&gt; --all</code></pre>
   <li><a href={'/docs/mcp'}>{$_('docs.agents.s67')}</a> — {$_('docs.agents.s68')}</li>
   <li><a href={'/docs/cli'}>{$_('docs.agents.s69')}</a> — {$_('docs.agents.s70')}</li>
   <li>
-    <a href="https://github.com/andreabuttarelli/dazero" target="_blank" rel="noopener noreferrer"
-      >dazero</a
+    <a href="https://github.com/andreabuttarelli/feega" target="_blank" rel="noopener noreferrer"
+      >feega</a
     >
     — {$_('docs.agents.s71')}
   </li>

@@ -5,7 +5,7 @@ vi.mock('$lib/server/cli-auth', () => ({
   authenticate: vi.fn(),
   loadBrandForUser: vi.fn()
 }));
-vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://dazero.test' }));
+vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://feega.test' }));
 
 import { GET } from './+server';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
@@ -41,7 +41,7 @@ const IG = {
   connected_at: '2026-08-01T10:00:00.000Z'
 };
 
-const url = 'https://dazero.test/api/v1/brands/demo/social/accounts';
+const url = 'https://feega.test/api/v1/brands/demo/social/accounts';
 
 const read = (accounts: Row[] = [IG], brand: Row = BRAND, balance = ACCOUNT_SEAT_CREDITS) => {
   vi.mocked(authenticate).mockResolvedValue({
@@ -114,7 +114,7 @@ describe('GET /api/v1/brands/:slug/social/accounts', () => {
 
     expect(body.platform_choices).toContain('linkedin');
     expect(body.manage_url).toBe(
-      'https://dazero.test/p/project-1/settings/connected-accounts'
+      'https://feega.test/p/project-1/settings/connected-accounts'
     );
   });
 

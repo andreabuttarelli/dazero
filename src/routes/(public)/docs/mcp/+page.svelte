@@ -30,10 +30,10 @@
 </p>
 
 <pre><code>Your agent
-   │  stdio (local)     →  bun run mcp  /  dazero-mcp
-   │  HTTPS (remote)    →  https://mcp.dazero.co/mcp  + Bearer
+   │  stdio (local)     →  bun run mcp  /  feega-mcp
+   │  HTTPS (remote)    →  https://mcp.feega.app/mcp  + Bearer
    ▼
-dazero API  (/api/v1/*)</code></pre>
+feega API  (/api/v1/*)</code></pre>
 
 <div class="docs-note">
   <strong>{$_('docs.mcp.s15')}</strong> {$_('docs.mcp.s16')}
@@ -48,23 +48,23 @@ dazero API  (/api/v1/*)</code></pre>
   <li>{$_('docs.mcp.s21')}</li>
   <li>
     {$_('docs.mcp.s22')}
-    <pre><code>dazero login
+    <pre><code>feega login
 # once, in a terminal — the CLI and the local MCP server share one session</code></pre>
   </li>
   <li>
     {$_('docs.mcp.s23')}
     <pre><code>&#123;
   "mcpServers": &#123;
-    "dazero": &#123;
+    "feega": &#123;
       "command": "bun",
-      "args": ["run", "/ABS/PATH/to/dazero/cli/mcp/stdio.ts"]
+      "args": ["run", "/ABS/PATH/to/feega/cli/mcp/stdio.ts"]
     &#125;
   &#125;
 &#125;</code></pre>
     <p>{$_('docs.mcp.s24')}</p>
     <pre><code>&#123;
   "mcpServers": &#123;
-    "dazero": &#123; "command": "dazero-mcp" &#125;
+    "feega": &#123; "command": "feega-mcp" &#125;
   &#125;
 &#125;</code></pre>
   </li>
@@ -76,15 +76,15 @@ dazero API  (/api/v1/*)</code></pre>
 <ol>
   <li>
     {$_('docs.mcp.s28')}
-    <pre><code>curl -sS https://mcp.dazero.co/health</code></pre>
+    <pre><code>curl -sS https://mcp.feega.app/health</code></pre>
     <p>{$_('docs.mcp.s29')}</p>
   </li>
   <li>
     {$_('docs.mcp.s30')}
     <pre><code>&#123;
   "mcpServers": &#123;
-    "dazero": &#123;
-      "url": "https://mcp.dazero.co/mcp"
+    "feega": &#123;
+      "url": "https://mcp.feega.app/mcp"
     &#125;
   &#125;
 &#125;</code></pre>
@@ -205,8 +205,8 @@ bun run mcp:http
   <li><a href={'/docs/cli'}>{$_('docs.mcp.s74')}</a> — {$_('docs.mcp.s75')}</li>
   <li><a href={'/docs/api'}>{$_('docs.mcp.s76')}</a> — {$_('docs.mcp.s77')}</li>
   <li>
-    <a href="https://github.com/andreabuttarelli/dazero" target="_blank" rel="noopener noreferrer"
-      >dazero</a
+    <a href="https://github.com/andreabuttarelli/feega" target="_blank" rel="noopener noreferrer"
+      >feega</a
     >
     — {$_('docs.mcp.s78')}
   </li>

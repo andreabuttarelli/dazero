@@ -93,7 +93,7 @@ export function influencerNodeSize(): { w: number; h: number } {
  * non legge anche questo, un file trascinato qui non fa niente — non crea un nodo vuoto per
  * sbaglio, che sarebbe peggio di un trascinamento che non funziona ancora.
  */
-export const CANVAS_DRAG_FILLED_NODE = 'application/x-dazero-filled-node';
+export const CANVAS_DRAG_FILLED_NODE = 'application/x-feega-filled-node';
 
 export type FilledNodeDrag = {
   type: 'image' | 'video' | 'text' | 'doc' | 'influencer' | 'social_account_feed';

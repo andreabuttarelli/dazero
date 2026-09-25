@@ -1,7 +1,7 @@
 /**
  * NASCONDERE IL SITO DI MARKETING, TENERE L'APP.
  *
- * Su un'installazione self-hosted le pagine pubbliche di dazero.co non sono
+ * Su un'installazione self-hosted le pagine pubbliche di feega.app non sono
  * mobili di casa propria. `HIDE_MARKETING=1` (anche `true` / `yes`) le tiene
  * fuori dal sitemap, così un crawler non le indicizza da un dominio che non è
  * il nostro.

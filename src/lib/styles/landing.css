@@ -1,5 +1,5 @@
 /* ============================================================
-     dazero — calm automation, Apple-grade restraint.
+     feega — calm automation, Apple-grade restraint.
      One typeface family, dramatic weight contrast, Apple's
      signature off-white (#f5f5f7), a single calm accent.
      The "softer" feeling comes from one faint hero glow and
@@ -98,7 +98,7 @@
   /* Override the global app.css `.brand` (dashboard) which adds padding: 4px 8px 22px — that
      bottom padding pushes the wordmark to the top of the bar. Specific enough to win the cascade. */
   header.nav .brand { padding: 0; }
-  /* Logo mark larger than the 19px "dazero" wordmark so the symbol leads (nav + footer). */
+  /* Logo mark larger than the 19px "feega" wordmark so the symbol leads (nav + footer). */
   .brand .brandmark { width: 30px; height: 30px; }
   header.nav .brand .brandmark { width: 44px; height: 44px; }
   .brand .dot {
@@ -107,14 +107,14 @@
     box-shadow: 0 0 0 4px rgba(var(--accent-2-rgb), 0.12);
   }
 
-  /* Wordmark plays on the name: dazero reads as "0 to 1" (zero-to-one,
+  /* Wordmark plays on the name: feega reads as "0 to 1" (zero-to-one,
      the growth promise). The middle "2" IS the "to" — accented, and on hover
      it expands into the full phrase. Default stays compact + legible. */
   .logo { display: inline-flex; align-items: baseline; font-weight: 700; }
   .logo .mid {
     position: relative; display: inline-block;
     width: 1ch; text-align: center;
-    /* Monochrome wordmark — the "2" matches the rest of "dazero" (no coloured accent). */
+    /* Monochrome wordmark — the "2" matches the rest of "feega" (no coloured accent). */
     color: inherit;
     transition: width .42s var(--ease);
   }
@@ -411,7 +411,7 @@
   /* ---------- Phone mockup: the "approve with one tap" proof ---------- */
   .stage { margin-top: 0; display: flex; justify-content: center; position: relative; }
 
-  /* Floating capability cards around the phone — concrete proof of what dazero does. */
+  /* Floating capability cards around the phone — concrete proof of what feega does. */
   .float {
     position: absolute; z-index: 4;
     display: flex; align-items: center; gap: 10px;
@@ -1238,7 +1238,7 @@
     .nav-left { display: contents; } /* children become direct grid items */
     .nav-left > .brand { grid-column: 1; justify-self: start; }
     .nav-left > :not(.brand) { display: none; } /* hide sound button */
-    .logo-text { display: none; } /* hide "dazero" wordmark on mobile, icon only */
+    .logo-text { display: none; } /* hide "feega" wordmark on mobile, icon only */
     .nav-right { grid-column: 2; justify-self: end; gap: 8px; }
     .nav-right .nav-link { display: none; }
     .nav-right .nav-github { display: none; } /* GitHub lives in the drawer */

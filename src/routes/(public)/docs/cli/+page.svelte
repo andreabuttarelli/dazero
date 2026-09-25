@@ -18,7 +18,7 @@
 </p>
 
 <h2>{$_('docs.cli.s6')}</h2>
-<pre><code>curl -sSL https://dazero.co/install.sh | bash</code></pre>
+<pre><code>curl -sSL https://feega.app/install.sh | bash</code></pre>
 
 <p>
   {@html $_('docs.cli.s7')}
@@ -30,17 +30,17 @@
 </p>
 
 <h2>{$_('docs.cli.s10')}</h2>
-<pre><code>dazero brands                          # List brands
-dazero dashboard &lt;slug&gt;                # Brand overview
-dazero content &lt;slug&gt; --status pending_user  # Pending posts
-dazero approve &lt;slug&gt; --all            # Approve all pending
-dazero post &lt;slug&gt; &lt;id&gt; edit --caption "..." # Edit post
-dazero calendar &lt;slug&gt;                 # Monthly scheduled posts
-dazero products &lt;slug&gt; sync            # Re-import the store catalog
-dazero ads &lt;slug&gt;                      # Ad campaigns</code></pre>
+<pre><code>feega brands                          # List brands
+feega dashboard &lt;slug&gt;                # Brand overview
+feega content &lt;slug&gt; --status pending_user  # Pending posts
+feega approve &lt;slug&gt; --all            # Approve all pending
+feega post &lt;slug&gt; &lt;id&gt; edit --caption "..." # Edit post
+feega calendar &lt;slug&gt;                 # Monthly scheduled posts
+feega products &lt;slug&gt; sync            # Re-import the store catalog
+feega ads &lt;slug&gt;                      # Ad campaigns</code></pre>
 
 <h2>{$_('docs.cli.s11')}</h2>
-<pre><code>dazero update</code></pre>
+<pre><code>feega update</code></pre>
 
 <h2>{$_('docs.cli.s12')}</h2>
 <p>

@@ -17,13 +17,13 @@ import { env } from '$env/dynamic/private';
 function internalDomains(): string[] {
   const raw = env.INTERNAL_EMAIL_DOMAINS?.trim();
   if (!raw) {
-    return ['dazero.co'];
+    return ['feega.app'];
   }
   const list = raw
     .split(',')
     .map((d) => d.trim().toLowerCase())
     .filter(Boolean);
-  return list.length ? list : ['dazero.co'];
+  return list.length ? list : ['feega.app'];
 }
 
 /**
