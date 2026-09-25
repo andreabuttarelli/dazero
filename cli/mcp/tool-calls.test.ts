@@ -45,7 +45,7 @@ const fake: Server = createServer((req: IncomingMessage, res) => {
 
     // Le chiamate che il tool fa all'app: è lì che si vede se il nome viaggia con la richiesta.
     if (path.startsWith('/api/')) {
-      apiCalls.push({ path, tool: (req.headers['x-dazero-tool'] as string | undefined) ?? null });
+      apiCalls.push({ path, tool: (req.headers['x-feega-tool'] as string | undefined) ?? null });
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -164,7 +164,7 @@ describe('il nome del tool viaggia con le chiamate che il tool fa', () => {
    * Il pezzo che lega `mcp_logs` a `ai_calls`: senza questa intestazione la spesa resta attribuita
    * a un'etichetta condivisa fra l'autopilot, la chat e gli agenti esterni — cioè a nessuno.
    */
-  test('la richiesta all’app porta x-dazero-tool', async () => {
+  test('la richiesta all’app porta x-feega-tool', async () => {
     await callTool('query', {}, signedIn);
 
     expect(apiCalls).toContainEqual({ path: '/api/v1/org/query', tool: 'query' });

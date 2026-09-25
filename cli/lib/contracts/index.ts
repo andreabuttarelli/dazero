@@ -26,7 +26,8 @@ export const RESOURCE_SEGMENT = ':id';
  * al modello, non chi l'ha causata: senza questo nome la spesa di un tool non è separabile da
  * quella di nessun altro, e «questo tool vale quello che costa» resta senza risposta.
  */
-export const TOOL_HEADER = 'x-dazero-tool';
+export const TOOL_HEADER = 'x-feega-tool';
+export const TOOL_HEADER_LEGACY = 'x-dazero-tool';
 
 /**
  * Il nome arriva dalla rete, quindi non è un nome finché non lo si guarda: si accetta solo la

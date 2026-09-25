@@ -105,6 +105,10 @@ describe('il tool che ha chiesto il lavoro', () => {
 		expect((await spendUnder({ 'x-dazero-tool': 'plan_week' })).operation).toBe('planStrategy:tool:plan_week');
 	});
 
+	it('accetta anche il nome nuovo dell’intestazione', async () => {
+		expect((await spendUnder({ 'x-feega-tool': 'plan_week' })).operation).toBe('planStrategy:tool:plan_week');
+	});
+
 	it('non scrive quello che un nome di tool non è', async () => {
 		expect((await spendUnder({ 'x-dazero-tool': 'DROP TABLE ai_calls' })).operation).toBe('planStrategy');
 	});

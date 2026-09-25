@@ -7,7 +7,7 @@ import { createUserDb, type Db } from '$lib/server/db/client';
 import { env as publicEnv } from '$env/dynamic/public';
 import type { Handle } from '@sveltejs/kit';
 import { withBrandContext, withToolContext } from '$lib/server/ai-log';
-import { TOOL_HEADER, toolFromHeader } from '@feega/api-contracts';
+import { TOOL_HEADER, TOOL_HEADER_LEGACY, toolFromHeader } from '@feega/api-contracts';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { captureReferralCookie } from '$lib/server/referrals';
 import { isCsrfForbidden } from '$lib/server/csrf';
@@ -213,7 +213,10 @@ export const handle: Handle = sequence(csrf, Sentry.sentryHandle(), async ({ eve
   // stabilisce a quale brand addebitarla. Una rotta non può dimenticarsene, e il nome si convalida
   // qui — arriva dalla rete, non dal nostro codice.
   const inTool = <T>(fn: () => T): T =>
-    withToolContext(toolFromHeader(event.request.headers.get(TOOL_HEADER)), fn);
+    withToolContext(
+      toolFromHeader(event.request.headers.get(TOOL_HEADER) ?? event.request.headers.get(TOOL_HEADER_LEGACY)),
+      fn
+    );
 
   if (slug) {
     const brandId = await brandIdFromSlug(slug);
