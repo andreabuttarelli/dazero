@@ -23,6 +23,10 @@ import { z } from 'zod';
 import { SOCIAL_PLATFORMS } from './social-platforms';
 import { EFFECTS } from './effects';
 import type { EffectId, EffectParam } from './effects';
+import { LAYOUTS } from './composition/index';
+import { CAMERA_PRESETS } from './composition/camera';
+import type { LayoutId } from './composition/types';
+import type { CameraPresetId } from './composition/camera';
 
 /** Lo stato di una generazione lunga: gli stessi campi per i tre tipi che generano davvero. */
 const GEN_STATUS = ['idle', 'running', 'done', 'failed'] as const;
@@ -296,6 +300,38 @@ const effectsSchema = z.object({
   sourceRefId: z.string().nullish()
 });
 
+const LAYOUT_IDS = Object.keys(LAYOUTS) as [LayoutId, ...LayoutId[]];
+const CAMERA_PRESET_IDS = Object.keys(CAMERA_PRESETS) as [CameraPresetId, ...CameraPresetId[]];
+const COMPOSITION_ASPECTS = ['9:16', '1:1', '16:9'] as const;
+
+const compositionCameraSchema = z.object({
+  preset: z.enum(CAMERA_PRESET_IDS),
+  params: z.record(z.string(), z.union([z.number(), z.string()])).default({}),
+  keyframes: z
+    .array(
+      z.object({
+        t: z.number(),
+        camera: z.object({
+          position: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+          target: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+          fov: z.number()
+        }),
+        easing: z.enum(['linear', 'ease-in-out'])
+      })
+    )
+    .optional()
+});
+
+const compositionSchema = z.object({
+  layout: z.enum(LAYOUT_IDS),
+  layoutParams: z.record(z.string(), z.union([z.number(), z.string()])).default({}),
+  camera: compositionCameraSchema,
+  background: z.object({ color: z.string().regex(HEX_COLOR, 'colore non valido, atteso #rrggbb') }),
+  duration: z.number().positive(),
+  aspect: z.enum(COMPOSITION_ASPECTS),
+  refId: z.string().nullish()
+});
+
 /**
  * LA TABELLA — un tipo nuovo è una riga qui, non un `if` in `write-tool.ts`. `nodes_type_check`
  * (vedi `org-data/checks.ts`) deve restare la stessa lista, e `node-data.test.ts` lo verifica.
@@ -313,7 +349,8 @@ export const NODE_DATA_SCHEMAS = {
   influencer: influencerSchema,
   list: listSchema,
   select: selectSchema,
-  effects: effectsSchema
+  effects: effectsSchema,
+  composition: compositionSchema
 } as const;
 
 export type NodeType = keyof typeof NODE_DATA_SCHEMAS;

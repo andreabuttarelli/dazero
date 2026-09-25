@@ -104,7 +104,8 @@ const NODE_OUTPUT: Partial<Record<string, ConnectorType>> = {
   image: 'images',
   influencer: 'images',
   video: 'videos',
-  effects: 'images'
+  effects: 'images',
+  composition: 'videos'
 };
 
 export function outputConnectorOf(nodeType: string): ConnectorType | null {

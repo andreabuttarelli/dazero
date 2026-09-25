@@ -48,7 +48,8 @@ export const NODE_KINDS = [
   'memory',
   'iframe',
   'list',
-  'effects'
+  'effects',
+  'composition'
 ] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
@@ -106,7 +107,10 @@ export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
   list: { medium: null, generated: true, accepts: ['text', 'image'], requires: [] },
   // Un nodo `effects` applica una pila di filtri a UN'immagine a monte: produce un'immagine, ne
   // richiede una — non un prompt, la pila di effetti non è testo da scrivere qui.
-  effects: { medium: 'image', generated: true, accepts: ['image'], requires: ['image'] }
+  effects: { medium: 'image', generated: true, accepts: ['image'], requires: ['image'] },
+  // Un nodo `composition` compone più immagini in una scena 3D animata: produce un video (fase 3),
+  // richiede almeno un'immagine collegata — senza materiale la scena non ha cosa mostrare.
+  composition: { medium: 'video', generated: true, accepts: ['image'], requires: ['image'] }
 };
 
 /** Da `posts.content_type` al medium: è il ruolo che porta dentro il medium, e qui si separano. */

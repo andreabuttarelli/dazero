@@ -18,6 +18,7 @@ import UserRound from '@lucide/svelte/icons/user-round';
 import List from '@lucide/svelte/icons/list';
 import MousePointerClick from '@lucide/svelte/icons/mouse-pointer-click';
 import LayoutTemplate from '@lucide/svelte/icons/layout-template';
+import Orbit from '@lucide/svelte/icons/orbit';
 import type { Component } from 'svelte';
 import { ADDABLE_ICON } from './addable-icons';
 import { ADDABLE_LABEL } from './addable';
@@ -29,7 +30,8 @@ export const NODE_KIND_ICON: Record<NodeType, Component> = {
   ads: Megaphone,
   influencer: UserRound,
   list: List,
-  select: MousePointerClick
+  select: MousePointerClick,
+  composition: Orbit
 };
 
 export const NODE_KIND_LABEL: Record<NodeType, string> = {
@@ -38,5 +40,6 @@ export const NODE_KIND_LABEL: Record<NodeType, string> = {
   ads: 'Ads',
   influencer: 'Influencer',
   list: 'Lista',
-  select: 'Selezione'
+  select: 'Selezione',
+  composition: 'Composizione'
 };

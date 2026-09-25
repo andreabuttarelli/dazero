@@ -173,7 +173,8 @@ const KIND_MAP: Record<string, CanvasNode['kind']> = {
   video: 'video',
   doc: 'document',
   iframe: 'iframe',
-  effects: 'image'
+  effects: 'image',
+  composition: 'video'
 };
 
 function toCanvasKind(type: string): CanvasNode['kind'] {

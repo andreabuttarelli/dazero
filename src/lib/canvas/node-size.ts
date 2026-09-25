@@ -8,6 +8,7 @@ import { influencerNodeSize } from './influencer-node';
 import { listNodeSize } from './list-node';
 import { selectNodeSize } from './select-node';
 import { effectsNodeSize } from './effects-node';
+import { compositionNodeSize } from './composition-node';
 
 type Size = { w: number; h: number };
 
@@ -26,7 +27,8 @@ const NODE_SIZE: Record<NodeType, () => Size> = {
   influencer: influencerNodeSize,
   list: listNodeSize,
   select: selectNodeSize,
-  effects: effectsNodeSize
+  effects: effectsNodeSize,
+  composition: compositionNodeSize
 };
 
 export function nodeSize(type: string): Size {

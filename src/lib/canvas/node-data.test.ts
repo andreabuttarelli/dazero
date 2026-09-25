@@ -22,6 +22,7 @@ describe('NODE_DATA_SCHEMAS — una riga per tipo, tutti i 10 valori di nodes_ty
         'image',
         'influencer',
         'effects',
+        'composition',
         'list',
         'products',
         'select',
@@ -412,6 +413,57 @@ describe('validateNodeData — effects', () => {
       ]
     });
     expect(out.ok).toBe(true);
+  });
+});
+
+describe('validateNodeData — composition', () => {
+  const validComposition = {
+    layout: 'tilted-grid',
+    camera: { preset: 'slow-orbit', params: {} },
+    background: { color: '#000000' },
+    duration: 6,
+    aspect: '9:16'
+  };
+
+  it('accetta un nodo valido con un layout e una camera noti', () => {
+    const out = validateNodeData('composition', validComposition);
+    expect(out.ok).toBe(true);
+  });
+
+  it('rifiuta un layout sconosciuto', () => {
+    const out = validateNodeData('composition', { ...validComposition, layout: 'not-a-layout' });
+    expect(out.ok).toBe(false);
+  });
+
+  it('rifiuta un preset camera sconosciuto', () => {
+    const out = validateNodeData('composition', {
+      ...validComposition,
+      camera: { preset: 'not-a-preset', params: {} }
+    });
+    expect(out.ok).toBe(false);
+  });
+
+  it('rifiuta un aspect ratio fuori dai tre ammessi', () => {
+    const out = validateNodeData('composition', { ...validComposition, aspect: '4:3' });
+    expect(out.ok).toBe(false);
+  });
+
+  it('rifiuta una durata non positiva', () => {
+    const out = validateNodeData('composition', { ...validComposition, duration: 0 });
+    expect(out.ok).toBe(false);
+  });
+
+  it('rifiuta un colore di sfondo non esadecimale', () => {
+    const out = validateNodeData('composition', {
+      ...validComposition,
+      background: { color: 'red' }
+    });
+    expect(out.ok).toBe(false);
+  });
+
+  it('accetta refId assente e valorizzato', () => {
+    expect(validateNodeData('composition', validComposition).ok).toBe(true);
+    expect(validateNodeData('composition', { ...validComposition, refId: 'asset-1' }).ok).toBe(true);
   });
 });
 
