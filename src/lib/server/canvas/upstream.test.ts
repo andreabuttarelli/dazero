@@ -513,17 +513,18 @@ describe('upstreamInputsFor — list con nodi collegati: i fili portano l\'outpu
   const WIRED_A = 'f1f1f1f1-f1f1-f1f1-f1f1-f1f1f1f1f1f1';
   const WIRED_B = 'f2f2f2f2-f2f2-f2f2-f2f2-f2f2f2f2f2f2';
   const WIRED_EMPTY = 'f3f3f3f3-f3f3-f3f3-f3f3-f3f3f3f3f3f3';
-  const asset = (id: string, url: string) => ({ id, project_id: 'p1', type: 'image', url, content: null, mime_type: 'image/png', bytes: null, width: null, height: null, duration_s: null, source: 'generated', source_node_id: null, created_at: 'now' });
-  const edge = (id: string, source: string, target: string) => ({ id, canvas_id: CANVAS, source_node_id: source, target_node_id: target, source_handle: null, target_handle: null });
+  const asset = (id: string, url: string) => ({ id, org_id: ORG, project_id: 'p1', type: 'image', url, content: null, mime_type: 'image/png', bytes: null, width: null, height: null, duration_s: null, source: 'generated', source_node_id: null, created_at: 'now' });
+  const row = (id: string, type: string, data: Record<string, unknown>) => ({ ...nodeRow(id, type, data), org_id: ORG, deleted_at: null });
+  const edge = (id: string, source: string, target: string) => ({ id, org_id: ORG, canvas_id: CANVAS, source_node_id: source, target_node_id: target, source_handle: null, target_handle: null, mode: 'fixed', deleted_at: null });
 
   it('una lista riempita da due immagini collegate alimenta i loro asset, dopo gli item manuali', async () => {
     const { db } = fakeDb({
       nodes: [
-        nodeRow(LIST_NODE, 'list', { item_kind: 'image', items: [{ label: 'a', asset_id: ASSET }] }),
-        nodeRow(WIRED_A, 'image', { prompt: 'uno', refId: IMAGE_ASSET_1 }),
-        nodeRow(WIRED_B, 'image', { prompt: 'due', refId: IMAGE_ASSET_2 }),
-        nodeRow(WIRED_EMPTY, 'image', { prompt: 'mai girato', refId: null }),
-        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: 'qwen3-pro' })
+        row(LIST_NODE, 'list', { item_kind: 'image', items: [{ label: 'a', asset_id: ASSET }] }),
+        row(WIRED_A, 'image', { prompt: 'uno', refId: IMAGE_ASSET_1 }),
+        row(WIRED_B, 'image', { prompt: 'due', refId: IMAGE_ASSET_2 }),
+        row(WIRED_EMPTY, 'image', { prompt: 'mai girato', refId: null }),
+        row(IMAGE_NODE, 'image', { prompt: '', model: 'qwen3-pro' })
       ],
       nodes_connections: [
         edge('e1', WIRED_A, LIST_NODE),
@@ -532,7 +533,7 @@ describe('upstreamInputsFor — list con nodi collegati: i fili portano l\'outpu
         edge('e4', LIST_NODE, IMAGE_NODE)
       ],
       assets: [asset(ASSET, 'canvas-assets/manual.png'), asset(IMAGE_ASSET_1, 'canvas-assets/a.png'), asset(IMAGE_ASSET_2, 'canvas-assets/b.png')]
-    });
+    }, { filter: true });
 
     const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE, model: 'qwen3-pro', medium: 'image' });
 
@@ -542,14 +543,14 @@ describe('upstreamInputsFor — list con nodi collegati: i fili portano l\'outpu
   it('un\'iterazione di loop su un item collegato vede l\'asset della sorgente', async () => {
     const { db } = fakeDb({
       nodes: [
-        nodeRow(LIST_NODE, 'list', { item_kind: 'image', items: [] }),
-        nodeRow(WIRED_A, 'image', { prompt: 'uno', refId: IMAGE_ASSET_1 }),
-        nodeRow(WIRED_B, 'image', { prompt: 'due', refId: IMAGE_ASSET_2 }),
-        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: 'qwen3-pro' })
+        row(LIST_NODE, 'list', { item_kind: 'image', items: [] }),
+        row(WIRED_A, 'image', { prompt: 'uno', refId: IMAGE_ASSET_1 }),
+        row(WIRED_B, 'image', { prompt: 'due', refId: IMAGE_ASSET_2 }),
+        row(IMAGE_NODE, 'image', { prompt: '', model: 'qwen3-pro' })
       ],
       nodes_connections: [edge('e1', WIRED_A, LIST_NODE), edge('e2', WIRED_B, LIST_NODE), edge('e3', LIST_NODE, IMAGE_NODE)],
       assets: [asset(IMAGE_ASSET_1, 'canvas-assets/a.png'), asset(IMAGE_ASSET_2, 'canvas-assets/b.png')]
-    });
+    }, { filter: true });
 
     const out = await upstreamInputsFor(db, {
       orgId: ORG,

@@ -43,7 +43,7 @@
  */
 import type { Db } from '$lib/server/db/client';
 import { runGenNode, type StartRun } from '$lib/server/canvas/generate';
-import { findNode, createNode, writeNodeData, listConnections, type CanvasNodeRecord } from '$lib/server/repos/canvas';
+import { findNode, createNode, writeNodeData, listConnections, listNodes, type CanvasNodeRecord } from '$lib/server/repos/canvas';
 import {
   createRun,
   claimRun,
@@ -55,7 +55,7 @@ import {
 import { planCombinations, loopSafety, type LoopCombine, type PlannedCombination, type LoopSafety } from '$lib/canvas/loop-plan';
 import { axesFrom, iterateSelectionFor, type LoopEdge, type LoopSourceNode } from '$lib/canvas/loop-axes';
 import { estimateLoopCredits, type LoopCostEstimate } from './loop-cost';
-import { upstreamInputsFor } from './upstream';
+import { resolvedListValues, upstreamInputsFor } from './upstream';
 import { orgCreditBalance } from '$lib/server/credits';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import type { Actor } from '$lib/server/repos/actor';
@@ -84,19 +84,24 @@ function combineOf(node: CanvasNodeRecord): LoopCombine {
 }
 
 async function axesForNode(db: Db, scope: { orgId: string; canvasId: string; nodeId: string }) {
-  const connections = await listConnections(db, { orgId: scope.orgId, canvasId: scope.canvasId });
-  const sourceIds = [...new Set(connections.filter((c) => c.targetNodeId === scope.nodeId).map((c) => c.sourceNodeId))];
+  const [nodes, connections] = await Promise.all([
+    listNodes(db, { orgId: scope.orgId, canvasId: scope.canvasId }),
+    listConnections(db, { orgId: scope.orgId, canvasId: scope.canvasId })
+  ]);
+  const canvasNodes = new Map(nodes.map((n) => [n.id, n]));
+  const incoming = connections.filter((c) => c.targetNodeId === scope.nodeId);
 
-  const sources = await Promise.all(sourceIds.map((id) => findNode(db, { orgId: scope.orgId, nodeId: id })));
   const nodesById = new Map<string, LoopSourceNode>();
-  for (const source of sources) {
+  for (const edge of incoming) {
+    const source = canvasNodes.get(edge.sourceNodeId);
     if (!source) continue;
-    nodesById.set(source.id, { id: source.id, type: source.type, itemCount: listItemsOf(source).length });
+    const itemCount = source.type === 'list'
+      ? (await resolvedListValues(db, scope.orgId, source, connections, canvasNodes)).values.length
+      : 0;
+    nodesById.set(source.id, { id: source.id, type: source.type, itemCount });
   }
 
-  const edges: LoopEdge[] = connections
-    .filter((c) => c.targetNodeId === scope.nodeId)
-    .map((c) => ({ sourceNodeId: c.sourceNodeId, targetNodeId: c.targetNodeId, mode: c.mode }));
+  const edges: LoopEdge[] = incoming.map((c) => ({ sourceNodeId: c.sourceNodeId, targetNodeId: c.targetNodeId, mode: c.mode }));
 
   return axesFrom(scope.nodeId, edges, nodesById);
 }

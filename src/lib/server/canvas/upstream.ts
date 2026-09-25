@@ -9,6 +9,16 @@ import {
   type UpstreamNode
 } from '$lib/canvas/upstream-inputs';
 import type { Modalities } from '$lib/canvas/connectors';
+import {
+  isListItemKind,
+  listValues,
+  wiredKindOf,
+  wiresInto,
+  type ListItem,
+  type ListItemKind,
+  type ListValues,
+  type WiredListSource
+} from '$lib/canvas/list-node';
 
 /**
  * DAL DATABASE ALLA FORMA PURA CHE `upstream-inputs.ts` LEGGE.
@@ -95,48 +105,72 @@ async function influencerMediaUrls(db: Db, node: CanvasNodeRecord): Promise<stri
   return views.map((v) => signed.get(v.storagePath)).filter((url): url is string => Boolean(url));
 }
 
-/** Un item di `list.data.items`, con la stessa riserva per campo di ogni lettura da un jsonb. */
-type ListItem = { label?: string; asset_id?: string; text?: string; url?: string };
-
-function listItemsOf(node: CanvasNodeRecord): { itemKind: string; items: ListItem[] } {
-  const itemKind = typeof node.data.item_kind === 'string' ? node.data.item_kind : 'image';
+function listOfRow(node: CanvasNodeRecord): { itemKind: ListItemKind; items: ListItem[] } {
+  const kind = typeof node.data.item_kind === 'string' && isListItemKind(node.data.item_kind) ? node.data.item_kind : 'image';
   const items = Array.isArray(node.data.items) ? (node.data.items as ListItem[]) : [];
-  return { itemKind, items };
+  return { itemKind: kind, items };
+}
+
+/** L'output di ORA di un nodo collegato a una lista: l'asset del suo ultimo giro per un'immagine,
+ *  il testo (generato, o il prompt) per un testo — `sourceText`, la stessa regola di ogni altro filo. */
+async function wiredItem(db: Db, orgId: string, node: CanvasNodeRecord, kind: ListItemKind): Promise<ListItem | null> {
+  const refId = typeof node.data.refId === 'string' ? node.data.refId : null;
+  const asset = refId ? await findAsset(db, { orgId, assetId: refId }) : null;
+
+  if (kind === 'text') {
+    const text = sourceText(node, asset);
+    return text ? { text } : null;
+  }
+  return asset?.url ? { asset_id: refId!, url: asset.url } : null;
 }
 
 /**
- * OGNI `asset_id` DI UNA LISTA, RISOLTO IN UN GIRO SOLO — `findAssets` invece di un `findAsset`
- * per item: una lista di 50 modelli non fa 50 letture separate. Gli item con `url` già pronto
- * (trascinati da fuori l'asset library, o incollati) non entrano nel giro: non hanno bisogno di
- * una riga da leggere.
+ * I VALORI DI UNA LISTA LATO SERVER: gli item a mano più l'output vivo di ogni nodo collegato,
+ * attraverso `listValues` — la stessa funzione pura che la tile legge. Un loop, un `select` e un
+ * filo `fixed` passano tutti da qui, mai da `data.items` da soli.
  */
-async function itemMediaUrl(item: ListItem, assetsById: Map<string, { url: string | null }>): Promise<string | null> {
+export async function resolvedListValues(
+  db: Db,
+  orgId: string,
+  list: CanvasNodeRecord,
+  connections: Connection[],
+  nodesById: Map<string, CanvasNodeRecord>
+): Promise<ListValues> {
+  const wired: WiredListSource[] = [];
+  for (const edge of wiresInto(list.id, connections)) {
+    const source = nodesById.get(edge.sourceNodeId);
+    const kind = source ? wiredKindOf(source.type) : null;
+    if (!source || !kind) continue;
+    wired.push({ nodeId: source.id, kind, item: await wiredItem(db, orgId, source, kind) });
+  }
+  return listValues(listOfRow(list), wired);
+}
+
+/**
+ * Un `asset_id` di un item a mano si risolve con `findAssets`, in un giro solo per tutta la lista;
+ * un item che porta già `url` (un filo, o trascinato da fuori la libreria) non ne ha bisogno.
+ */
+function itemMediaUrl(item: ListItem, assetsById: Map<string, { url: string | null }>): string | null {
   if (item.url) return item.url;
   if (!item.asset_id) return null;
   return assetsById.get(item.asset_id)?.url ?? null;
 }
 
 async function resolveItemAssets(db: Db, orgId: string, items: ListItem[]) {
-  const ids = items.map((item) => item.asset_id).filter((id): id is string => Boolean(id));
+  const ids = items.filter((item) => !item.url).map((item) => item.asset_id).filter((id): id is string => Boolean(id));
   return findAssets(db, { orgId, assetIds: ids });
 }
 
-/**
- * OGNI ITEM DI `list`, RISOLTO — TUTTI, per un filo `fixed` (la stessa dottrina di
- * `influencerMediaUrls`: un `list` collegato senza `iterate` alimenta con OGNI valore, non uno
- * a caso). L'esecutore del loop (`loop.ts`, non ancora scritto qui) legge `data.items` da sé per
- * un filo `iterate` — una combinazione per iterazione, non tutte insieme.
- */
-async function listMediaUrls(db: Db, orgId: string, node: CanvasNodeRecord): Promise<string[]> {
-  const { items } = listItemsOf(node);
+/** Ogni valore di una lista, risolto — TUTTI, per un filo `fixed`: la stessa dottrina di
+ *  `influencerMediaUrls`, un `list` collegato senza `iterate` alimenta con ogni valore. */
+async function listMediaUrls(db: Db, orgId: string, values: ListValues): Promise<string[]> {
+  const items = values.values.map((v) => v.item);
   const assetsById = await resolveItemAssets(db, orgId, items);
-  const urls = await Promise.all(items.map((item) => itemMediaUrl(item, assetsById)));
-  return urls.filter((url): url is string => Boolean(url));
+  return items.map((item) => itemMediaUrl(item, assetsById)).filter((url): url is string => Boolean(url));
 }
 
-function listTexts(node: CanvasNodeRecord): string[] {
-  const { items } = listItemsOf(node);
-  return items.map((item) => item.text).filter((t): t is string => Boolean(t?.trim()));
+function listTexts(values: ListValues): string[] {
+  return values.values.map((v) => v.item.text).filter((t): t is string => Boolean(t?.trim()));
 }
 
 /**
@@ -159,47 +193,19 @@ function listFeeding(node: CanvasNodeRecord, connections: Connection[], nodesByI
 }
 
 /**
- * L'ITEM DI UNA LISTA ALL'INDICE DATO (1-based), risolto a testo o url — la stessa domanda che
- * `select` fa sulla propria lista a monte, e che un'iterazione di loop fa su un asse `iterate`
- * (`iterateSelection`, sotto): un indice fuori range o una lista vuota tornano "niente da dare",
- * mai un valore a caso.
+ * IL VALORE DI UNA LISTA ALL'INDICE DATO (1-based), risolto a testo o url — la stessa domanda che
+ * `select` fa sulla propria lista a monte, e che un'iterazione di loop fa su un asse `iterate`:
+ * un indice fuori range o una lista vuota tornano "niente da dare", mai un valore a caso.
  */
-async function itemAt(
-  db: Db,
-  orgId: string,
-  list: CanvasNodeRecord,
-  index: number
-): Promise<{ text: string | null; mediaUrl: string | null }> {
-  const { itemKind, items } = listItemsOf(list);
-  const item = index >= 1 && index <= items.length ? items[index - 1] : null;
+async function itemAt(db: Db, orgId: string, values: ListValues, index: number): Promise<{ text: string | null; mediaUrl: string | null }> {
+  const item = index >= 1 && index <= values.values.length ? values.values[index - 1].item : null;
   if (!item) return { text: null, mediaUrl: null };
 
-  if (itemKind === 'text') {
+  if (values.itemKind === 'text') {
     return { text: item.text?.trim() ? item.text : null, mediaUrl: null };
   }
   const assetsById = await resolveItemAssets(db, orgId, [item]);
-  return { text: null, mediaUrl: await itemMediaUrl(item, assetsById) };
-}
-
-/**
- * IL VALORE CHE `select` PORTA A VALLE: l'item ALL'INDICE SCELTO (1-based, come `data.index`)
- * della lista a monte — MAI la lista intera. Fuori range, lista vuota o nessuna lista collegata
- * tornano tutti "niente da dare": lo stesso `text: null, mediaUrl: null` di un nodo mai girato, e
- * `resolveUpstreamInputs` lo rifiuta con lo stesso messaggio — mai un valore scelto a caso al
- * posto di uno mancante.
- */
-async function selectValue(
-  db: Db,
-  orgId: string,
-  node: CanvasNodeRecord,
-  connections: Connection[],
-  nodesById: Map<string, CanvasNodeRecord>
-): Promise<{ text: string | null; mediaUrl: string | null }> {
-  const list = listFeeding(node, connections, nodesById);
-  if (!list) return { text: null, mediaUrl: null };
-
-  const index = typeof node.data.index === 'number' ? node.data.index : 0;
-  return itemAt(db, orgId, list, index);
+  return { text: null, mediaUrl: itemMediaUrl(item, assetsById) };
 }
 
 async function toUpstreamNode(
@@ -222,29 +228,31 @@ async function toUpstreamNode(
   }
 
   if (node.type === 'list') {
-    const { itemKind } = listItemsOf(node);
+    const values = await resolvedListValues(db, orgId, node, connections, nodesById);
+    const medium = values.itemKind === 'text' ? 'text' : 'image';
 
-    // UN'ITERAZIONE DI LOOP VEDE UN ITEM SOLO — quando questo nodo è nella mappa, si risolve come
+    // UN'ITERAZIONE DI LOOP VEDE UN VALORE SOLO — quando questo nodo è nella mappa, si risolve come
     // farebbe un `select` su se stesso a quell'indice, non con l'intera lista (il comportamento
-    // `fixed`, invariato quando la mappa non lo nomina). Il resolver puro non lo sa: per lui è un
-    // nodo con `text`/`mediaUrl` singoli, esattamente come qualunque altro nodo sorgente.
+    // `fixed`, invariato quando la mappa non lo nomina).
     if (node.id in iterateSelection) {
-      const value = await itemAt(db, orgId, node, iterateSelection[node.id]);
-      return { id: node.id, type: node.type, medium: itemKind === 'text' ? 'text' : 'image', model: null, text: value.text, mediaUrl: value.mediaUrl };
+      const value = await itemAt(db, orgId, values, iterateSelection[node.id]);
+      return { id: node.id, type: node.type, medium, model: null, text: value.text, mediaUrl: value.mediaUrl };
     }
 
-    if (itemKind === 'text') {
-      const texts = listTexts(node);
-      return { id: node.id, type: node.type, medium: 'text', model: null, text: texts.join('\n\n') || null, mediaUrl: null };
+    if (values.itemKind === 'text') {
+      return { id: node.id, type: node.type, medium, model: null, text: listTexts(values).join('\n\n') || null, mediaUrl: null };
     }
-    return { id: node.id, type: node.type, medium: 'image', model: null, text: null, mediaUrl: null, mediaUrls: await listMediaUrls(db, orgId, node) };
+    return { id: node.id, type: node.type, medium, model: null, text: null, mediaUrl: null, mediaUrls: await listMediaUrls(db, orgId, values) };
   }
 
   if (node.type === 'select') {
     const list = listFeeding(node, connections, nodesById);
-    const medium: 'text' | 'image' = list ? (listItemsOf(list).itemKind === 'text' ? 'text' : 'image') : 'image';
-    const value = await selectValue(db, orgId, node, connections, nodesById);
-    return { id: node.id, type: node.type, medium, model: null, text: value.text, mediaUrl: value.mediaUrl };
+    if (!list) return { id: node.id, type: node.type, medium: 'image', model: null, text: null, mediaUrl: null };
+
+    const values = await resolvedListValues(db, orgId, list, connections, nodesById);
+    const index = typeof node.data.index === 'number' ? node.data.index : 0;
+    const value = await itemAt(db, orgId, values, index);
+    return { id: node.id, type: node.type, medium: values.itemKind === 'text' ? 'text' : 'image', model: null, text: value.text, mediaUrl: value.mediaUrl };
   }
 
   const refId = typeof node.data.refId === 'string' ? node.data.refId : null;
