@@ -16,11 +16,12 @@ import { browser } from '$app/environment';
 
 export type Consent = 'granted' | 'denied' | null;
 
-const STORAGE_KEY = 'dazero_cookie_consent_v1';
+const STORAGE_KEY = 'feega_cookie_consent_v1';
+const STORAGE_KEY_LEGACY = 'dazero_cookie_consent_v1';
 
 function read(): Consent {
   if (!browser) return null;
-  const v = localStorage.getItem(STORAGE_KEY);
+  const v = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(STORAGE_KEY_LEGACY);
   return v === 'granted' || v === 'denied' ? v : null;
 }
 

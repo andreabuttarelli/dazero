@@ -10,9 +10,12 @@ function fakeLocalStorage() {
   };
 }
 
+let testLocalStorage: ReturnType<typeof fakeLocalStorage>;
+
 describe('quale scheda del pannello chat era aperta (Chat o Guide)', () => {
   beforeEach(() => {
-    (globalThis as { localStorage?: unknown }).localStorage = fakeLocalStorage();
+    testLocalStorage = fakeLocalStorage();
+    (globalThis as { localStorage?: unknown }).localStorage = testLocalStorage;
   });
 
   it('senza nulla salvato, la scheda è chat', () => {
@@ -25,10 +28,12 @@ describe('quale scheda del pannello chat era aperta (Chat o Guide)', () => {
   });
 
   it('un valore fuori vocabolario ripiega su chat', () => {
-    (globalThis as { localStorage: ReturnType<typeof fakeLocalStorage> }).localStorage.setItem(
-      'dazero.chatTab',
-      'qualcosa-altro'
-    );
+    testLocalStorage.setItem('feega.chatTab', 'qualcosa-altro');
     expect(readChatTab()).toBe('chat');
+  });
+
+  it('legge ancora una chiave scritta prima della rinomina', () => {
+    testLocalStorage.setItem('dazero.chatTab', 'guide');
+    expect(readChatTab()).toBe('guide');
   });
 });

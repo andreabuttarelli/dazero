@@ -1,6 +1,15 @@
 /** Persistent shell layout prefs (sidebar). Browser localStorage. */
 
 export const SHELL_PREF_KEYS = {
+  sidebarOpen: 'feega.sidebarOpen',
+  sidebarPanePx: 'feega.sidebarPanePx',
+  sidebarPane: 'feega.sidebarPane',
+  chatPanelPx: 'feega.chatPanelPx',
+  chatOpen: 'feega.chatOpen',
+  chatTab: 'feega.chatTab'
+} as const;
+
+const SHELL_PREF_KEYS_LEGACY = {
   sidebarOpen: 'dazero.sidebarOpen',
   sidebarPanePx: 'dazero.sidebarPanePx',
   sidebarPane: 'dazero.sidebarPane',
@@ -20,7 +29,7 @@ export const SIDEBAR_OPEN_COOKIE = 'sidebar_state';
 export const SIDEBAR_OPEN_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
 /** Last brand slug visited — used by `/app` to resume the right project after login. */
-export const LAST_BRAND_COOKIE = 'dazero_last_brand';
+export const LAST_BRAND_COOKIE = 'feega_last_brand';
 export const LAST_BRAND_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
 const SIDEBAR_W_DEFAULT = 280;
@@ -31,10 +40,20 @@ function canUseStorage(): boolean {
   return typeof localStorage !== 'undefined';
 }
 
+const LEGACY_BY_KEY = new Map<string, string>(
+  (Object.keys(SHELL_PREF_KEYS) as (keyof typeof SHELL_PREF_KEYS)[]).map((name) => [
+    SHELL_PREF_KEYS[name],
+    SHELL_PREF_KEYS_LEGACY[name]
+  ])
+);
+
 function readRaw(key: string): string | null {
   if (!canUseStorage()) return null;
   try {
-    return localStorage.getItem(key);
+    const value = localStorage.getItem(key);
+    if (value !== null) return value;
+    const legacyKey = LEGACY_BY_KEY.get(key);
+    return legacyKey ? localStorage.getItem(legacyKey) : null;
   } catch {
     return null;
   }

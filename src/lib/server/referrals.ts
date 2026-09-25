@@ -7,7 +7,8 @@ import { env as publicEnv } from '$env/dynamic/public';
 /** Credits gifted to BOTH referrer and referee on first-brand redemption. */
 export const REFERRAL_CREDITS_EACH = 500;
 
-export const REFERRAL_COOKIE = 'dazero_ref';
+export const REFERRAL_COOKIE = 'feega_ref';
+export const REFERRAL_COOKIE_LEGACY = 'dazero_ref';
 export const REFERRAL_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 const CODE_RE = /^[a-z0-9]{6,12}$/;
@@ -29,6 +30,7 @@ export function captureReferralCookie(cookies: Cookies, raw: string | null | und
 
 export function clearReferralCookie(cookies: Cookies): void {
   cookies.delete(REFERRAL_COOKIE, { path: '/' });
+  cookies.delete(REFERRAL_COOKIE_LEGACY, { path: '/' });
 }
 
 function randomCode(len = 8): string {
@@ -162,7 +164,7 @@ export async function tryRedeemReferral(opts: {
   refereeUserId: string;
   refereeBrandId: string;
 }): Promise<RedeemResult> {
-  const raw = opts.cookies.get(REFERRAL_COOKIE);
+  const raw = opts.cookies.get(REFERRAL_COOKIE) ?? opts.cookies.get(REFERRAL_COOKIE_LEGACY);
   if (!isValidReferralCode(raw)) return { ok: false, reason: 'no_cookie' };
   const code = raw.toLowerCase();
 
