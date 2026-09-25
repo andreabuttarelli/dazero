@@ -73,7 +73,6 @@
         duration?: number;
         resolution?: string;
         audio?: boolean;
-        enhancePrompt?: boolean;
         repeat?: number;
         dynamicParams?: Record<string, unknown>;
       }
@@ -245,18 +244,6 @@
               onchange={(e) => onpropertychange?.({ audio: e.currentTarget.checked })}
             />
             audio
-          </label>
-        {/if}
-
-        {#if properties.enhancePrompt.kind !== 'absent'}
-          <label class="toggle">
-            <input
-              type="checkbox"
-              checked={valueOr(properties.enhancePrompt, false) ?? false}
-              indeterminate={properties.enhancePrompt.kind === 'mixed'}
-              onchange={(e) => onpropertychange?.({ enhancePrompt: e.currentTarget.checked })}
-            />
-            Migliora prompt
           </label>
         {/if}
 

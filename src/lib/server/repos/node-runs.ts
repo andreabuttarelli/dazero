@@ -220,21 +220,6 @@ export async function completeRun(
   }
 }
 
-export async function setRunPrompt(
-  db: Db,
-  input: { orgId: string; runId: string; prompt: string }
-): Promise<void> {
-  const { error } = await db
-    .from('node_runs')
-    .update({ prompt: input.prompt })
-    .eq('id', input.runId)
-    .eq('org_id', input.orgId);
-
-  if (error) {
-    throw error;
-  }
-}
-
 export async function failRun(
   db: Db,
   input: { orgId: string; runId: string; error: string }
