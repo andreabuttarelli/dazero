@@ -118,6 +118,13 @@ returns finished here — it comes back `queued` with an `external_job_id`, and 
 later on a tick you do not control: poll the node with `query` rather than waiting on this call.
 Spends credits; `credits_exhausted` means the org is out.
 
+## Render an effects node
+
+`apply_effects` renders an `effects` node's stack (pixelate, duotone, glitch, …) onto its upstream
+image, the same render `EffectsEditor` does in the browser. Set the stack with `update_row` on
+`nodes.data.effects` first — `describe_node_types({ type: 'effects' })` lists every effect and its
+params — then call `apply_effects`. Spends no credits.
+
 ## Loop a node over many combinations
 
 `run_node_loop` queues every combination from a node's `iterate` wires (or a plain "repeat N")

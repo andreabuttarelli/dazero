@@ -4,7 +4,7 @@ import { MCP_INSTRUCTIONS } from './server.ts';
 
 /**
  * IL LEDGER DEL RITIRO. La superficie MCP passa da decine di tool brand-scoped (piano editoriale,
- * studio, media, SEO/GEO, blog…) a quindici org-scoped: `query` legge tutto, tre generici
+ * studio, media, SEO/GEO, blog…) a sedici org-scoped: `query` legge tutto, tre generici
  * scrivono qualunque riga (nodi della tela compresi — disegnare non è un'azione sul mondo),
  * `describe_node_types` dà la forma di `nodes.data`, `run_node_generation` è il click Generare
  * della tela, `run_node_loop`/`preview_node_loop`/`cancel_node_loop` sono lo stesso click messo
@@ -39,7 +39,7 @@ async function tools(): Promise<Tool[]> {
 }
 
 /**
- * Le uniche undici che restano. `list_posts` e `list_ad_campaigns` non sono un secondo `query`:
+ * Le uniche dodici che restano. `list_posts` e `list_ad_campaigns` non sono un secondo `query`:
  * leggono le due famiglie autonome con i loro filtri propri (brand + status), la stessa asimmetria
  * che i tool di scrittura hanno con `insert_row`. `describe_node_types` è la terza eccezione, e
  * per lo stesso motivo: la forma di `nodes.data` per `type` non è una riga a cui applicare
@@ -58,13 +58,14 @@ const RESTANO = [
   'create_ad_campaign',
   'approve_ad_campaign',
   'run_node_generation',
+  'apply_effects',
   'run_node_loop',
   'preview_node_loop',
   'cancel_node_loop'
 ];
 
-describe('la superficie MCP è le quindici dichiarate', () => {
-  test('tools/list è esattamente questi quindici nomi', async () => {
+describe('la superficie MCP è le sedici dichiarate', () => {
+  test('tools/list è esattamente questi sedici nomi', async () => {
     const names = (await tools()).map((t) => t.name).sort();
 
     expect(names).toEqual([...RESTANO].sort());

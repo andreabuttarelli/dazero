@@ -113,9 +113,15 @@ anything goes, so a filter that hits eleven is refused whole and you are told ho
 
 `describe_node_types({ org, type? })` returns the JSON Schema `insert_row`/`update_row` actually
 enforce on `nodes.data`, per `type` (`text`, `image`, `video`, `doc`, `iframe`,
-`social_account_feed`, `social_post_mockup`, `products`, `ads`). Omit `type` for all nine at once.
-Model/aspect-ratio/duration limits are NOT here — call `run_node_generation` and read its refusal,
-or check the model's own docs, since those are a fact of the model, not the node.
+`social_account_feed`, `social_post_mockup`, `products`, `ads`, `influencer`, `list`, `select`,
+`effects`). Omit `type` for all thirteen at once. Model/aspect-ratio/duration limits are NOT here
+— call `run_node_generation` and read its refusal, or check the model's own docs, since those are
+a fact of the model, not the node.
+
+`effects` holds a stack of image filters (pixelate, posterize, duotone, dither, halftone, noise,
+rgb-shift, glitch, wave, swirl, pinch, ascii, random-colors) over an upstream image — the schema
+returned for it lists every effect's params with their ranges/options/defaults. Set the stack with
+`update_row`, then call `apply_effects` to render it.
 
 ## Generation
 
@@ -134,6 +140,11 @@ A `video` never returns finished here: it comes back `queued` with an `external_
 run, and the render lands later, asynchronously — the node stays `running` until a later tick
 deposits the asset. Poll the node (`query`) rather than expecting a file now. Spends credits; a
 `credits_exhausted` failure means the org is out.
+
+`apply_effects({ org, node_id })` renders an `effects` node's stack onto its upstream image and
+writes the result as the node's `refId` — the same render `EffectsEditor` does in the browser, for
+when there is no browser. Set the stack first with `update_row` on `nodes.data.effects`, then call
+this. Spends no credits.
 
 ## Node loops
 

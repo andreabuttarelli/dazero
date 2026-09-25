@@ -102,29 +102,17 @@ export function registerOrgDataTools(server: McpServer) {
       title: 'Node data shapes',
       description:
         'What `data` must look like on a `nodes` row, per `type` — the JSON Schema `insert_row`/' +
-        '`update_row` actually enforce on `nodes`, not a guess. Omit `type` for all 12 at once; name ' +
-        'one to save tokens once you know which you need. `list` holds N iteration values (images or ' +
-        'text, never mixed); `select` picks exactly one item back out of a list by a 1-based `index`. ' +
-        'Limits (aspect ratios, durations, prompt length) are NOT here — those come from ' +
-        '`get_media_models`, because they are a fact of the model, not the node. Free.',
+        '`update_row` actually enforce on `nodes`, not a guess. Omit `type` for every type at once; ' +
+        'name one to save tokens once you know which you need — an unknown `type` comes back as an ' +
+        'error naming the ones that exist, so this list is never hand-maintained here. `list` holds ' +
+        'N iteration values (images or text, never mixed); `select` picks exactly one item back out ' +
+        'of a list by a 1-based `index`; `effects` holds a stack of image filters over an upstream ' +
+        'image, each with its own params — set it with `update_row`, then render it with ' +
+        '`apply_effects`. Limits (aspect ratios, durations, prompt length) are NOT here — those come ' +
+        'from `get_media_models`, because they are a fact of the model, not the node. Free.',
       inputSchema: z.object({
         org,
-        type: z
-          .enum([
-            'text',
-            'image',
-            'video',
-            'doc',
-            'iframe',
-            'social_account_feed',
-            'social_post_mockup',
-            'products',
-            'ads',
-            'influencer',
-            'list',
-            'select'
-          ])
-          .optional()
+        type: z.string().optional()
       }),
       annotations: { readOnlyHint: true }
     },

@@ -60,6 +60,26 @@ export function registerNodeTools(server: McpServer) {
   );
 
   server.registerTool(
+    'apply_effects',
+    {
+      title: 'Render an effects node',
+      description:
+        'Renders an `effects` node\'s stack onto its upstream image and lands the result as the ' +
+        'node\'s `refId` — the same render `EffectsEditor` does in the browser, run server-side so ' +
+        'an agent without a browser can do it. Set the stack first with `update_row` on `nodes.data.' +
+        'effects` (see `describe_node_types` for the effect list and their params), then call this. ' +
+        'Refused before anything runs if `data.sourceRefId` is empty (nothing upstream to render) — ' +
+        'wire an image into the node first. Spends no credits: no AI provider is called.',
+      inputSchema: z.object({ org, node_id: z.string() }),
+      annotations: { readOnlyHint: false, destructiveHint: false }
+    },
+    async ({ org, node_id }) =>
+      withAuth((token) =>
+        call(token, 'POST', `/api/v1/org/nodes/${encodeURIComponent(node_id)}/apply-effects`, org)
+      )
+  );
+
+  server.registerTool(
     'run_node_loop',
     {
       title: 'Queue a generation node loop',
