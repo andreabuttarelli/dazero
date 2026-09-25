@@ -204,14 +204,18 @@ describe('clampVideoDuration (model-aware)', () => {
 });
 
 describe('videoDurationOptions', () => {
-  it('Grok / Seedance 2 stop at 15s', () => {
-    expect(videoDurationOptions('grok-imagine-video-1-5-preview')).toEqual([10, 13, 15]);
-    expect(videoDurationOptions('bytedance/seedance-2')).toEqual([10, 13, 15]);
-    expect(videoDurationOptions('bytedance/seedance-2-fast')).toEqual([10, 13, 15]);
+  it('offre ogni secondo dentro la finestra del modello, non un gradino ogni tot', () => {
+    expect(videoDurationOptions('grok-imagine-video-1-5-preview')).toEqual(
+      Array.from({ length: 15 }, (_, i) => i + 1)
+    );
+    expect(videoDurationOptions('bytedance/seedance-2')).toEqual(
+      Array.from({ length: 12 }, (_, i) => i + 4)
+    );
   });
 
-  it('Seedance 2.5 unlocks 20s and 30s', () => {
-    expect(videoDurationOptions('bytedance/seedance-2-5')).toEqual([10, 13, 15, 20, 30]);
+  it('Seedance 2.5 arriva a 30, gli altri Seedance 2 a 15', () => {
+    expect(videoDurationOptions('bytedance/seedance-2-5')).toContain(30);
+    expect(videoDurationOptions('bytedance/seedance-2-fast')).not.toContain(20);
   });
 });
 
@@ -221,15 +225,16 @@ describe('suggestVideoDuration / resolveVideoDuration', () => {
     expect(suggestVideoDuration(null, 'bytedance/seedance-2-5')).toBe(MIN_DURATION);
   });
 
-  it('sizes to the shortest rung that can hold every word (never undershoot)', () => {
-    // maxWordsForDuration(10)=32, (13)=41, (15)=48 on 3.5 w/s × 0.92
+  it('sizes to the shortest SECOND that can hold every word (never undershoot)', () => {
+    // maxWordsForDuration(10)=32, (14)=45, (15)=48 on 3.5 w/s × 0.92 — con ogni secondo offerto,
+    // il taglio e' al secondo esatto, non al prossimo gradino di prodotto.
     const ten = Array.from({ length: 32 }, (_, i) => `w${i}`).join(' ');
     const fifteen = Array.from({ length: 48 }, (_, i) => `w${i}`).join(' ');
     expect(suggestVideoDuration(ten, 'grok-imagine-video-1-5-preview')).toBe(10);
     expect(suggestVideoDuration(fifteen, 'grok-imagine-video-1-5-preview')).toBe(15);
-    // 45 words is nearer to 13s raw, but 13s only holds 41 — must bump to 15.
+    // 45 parole stanno esattamente in 14s: niente piu' il salto a 15 di un gradino piu' largo.
     const fortyFive = Array.from({ length: 45 }, (_, i) => `w${i}`).join(' ');
-    expect(suggestVideoDuration(fortyFive, 'bytedance/seedance-2-5')).toBe(15);
+    expect(suggestVideoDuration(fortyFive, 'bytedance/seedance-2-5')).toBe(14);
   });
 
   it('Seedance 2.5 can suggest 20s/30s for longer scripts', () => {

@@ -97,6 +97,14 @@ export type VideoModelCaps = {
   supportsUpscale: boolean;
   /** Whether the job input accepts generate_audio (Seedance). */
   generateAudio: boolean;
+  /**
+   * I SOLI secondi che il provider accetta, quando NON è un intervallo continuo — un modello che
+   * documenta "5s o 10s" e rifiuta 7. Assente (il caso di ogni modello qui oggi: Grok, Seedance,
+   * Kling accettano qualunque intero fra `minDuration` e `maxDuration`) vuol dire intervallo
+   * continuo, e `videoDurationOptions` offre ogni secondo di quella finestra — non un gradino
+   * arbitrario, che avrebbe nascosto durate che il provider accetta davvero.
+   */
+  durations?: readonly number[];
 };
 
 export type VideoModelSpec = VideoModelCaps & {
@@ -350,23 +358,25 @@ export function videoModelCaps(model: string): VideoModelCaps {
 }
 
 /**
- * I GRADINI CHE UN SELETTORE OFFRE, non un numero libero fra `minDuration` e `maxDuration`.
+ * I GRADINI CHE UN SELETTORE OFFRE.
  *
- * Nessuno spec dichiara un elenco discreto proprio (`durations`) o uno step: i provider integrati
- * qui (Grok, Seedance, Kling) pubblicano solo un minimo e un tetto in secondi. I candidati sotto
- * sono i gradini di prodotto già in uso in Settings (`video.ts`, prima di questo file), filtrati
- * sulla finestra del modello scelto — mai un numero fuori da `[minDuration, maxDuration]`. Il
- * tetto del modello resta sempre scegliibile anche quando non è uno dei gradini, o un modello con
- * `maxDuration: 30` (Seedance 2.5) offrirebbe solo fino a 20.
+ * Un modello con `durations` (nessuno, oggi) offre ESATTAMENTE quell'elenco: sono i soli valori
+ * che il provider accetta, e un secondo in più o in meno tornerebbe un rifiuto dopo un giro di
+ * rete. Un modello senza (Grok, Seedance, Kling: min/max soli, qualunque intero in mezzo è
+ * accettato) offre OGNI secondo fra `minDuration` e `maxDuration` — non un gradino arbitrario:
+ * un passo di 2s o 3s nasconderebbe durate che il provider fattura comunque.
  */
-const DURATION_STEPS: readonly number[] = [10, 13, 15, 20, 30];
-
 export function videoDurationOptions(model?: string | null): number[] {
-  const caps = videoModelCaps(String(model ?? '').trim());
-  const floor = caps.minDuration;
-  const opts = DURATION_STEPS.filter((s) => s >= floor && s <= caps.maxDuration);
-  if (!opts.includes(caps.maxDuration) && caps.maxDuration >= floor) opts.push(caps.maxDuration);
-  return opts.sort((a, b) => a - b);
+  const spec = videoModelSpec(String(model ?? '').trim());
+  const caps = spec ?? UNKNOWN_CAPS;
+
+  if (spec?.durations) {
+    return [...spec.durations].sort((a, b) => a - b);
+  }
+
+  const opts: number[] = [];
+  for (let s = caps.minDuration; s <= caps.maxDuration; s++) opts.push(s);
+  return opts;
 }
 
 /**

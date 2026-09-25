@@ -151,7 +151,10 @@ export function spokenWordCount(script: string | null | undefined): number {
  * ma troppo breve: quello tronca a metà frase.
  */
 export function suggestVideoDuration(script: string | null | undefined, model?: string | null): number {
-  const optsList = videoDurationOptions(model);
+  // Il pavimento di PRODOTTO (MIN_DURATION), non il minimo grezzo del provider: `videoDurationOptions`
+  // oggi elenca ogni secondo della finestra del modello (per il selettore della tela), e il suo
+  // primo valore può essere 1 — sotto il pavimento sotto cui una clip non regge hook→body→cta.
+  const optsList = videoDurationOptions(model).filter((s) => s >= MIN_DURATION);
   const floor = optsList[0] ?? MIN_DURATION;
   const words = spokenWordCount(script);
   if (!words) return floor;

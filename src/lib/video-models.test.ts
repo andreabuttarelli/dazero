@@ -134,21 +134,28 @@ describe('il refine ha un modello raggiungibile', () => {
 });
 
 describe('videoDurationOptions', () => {
-  it('include i gradini di prodotto dentro la finestra del modello', () => {
-    expect(videoDurationOptions('grok-imagine/text-to-video')).toEqual([10, 13, 15]);
+  it('un modello a intervallo continuo offre OGNI secondo dentro la sua finestra', () => {
+    // grok-imagine/image-to-video: minDuration 1, maxDuration 15.
+    expect(videoDurationOptions('grok-imagine/image-to-video')).toEqual(
+      Array.from({ length: 15 }, (_, i) => i + 1)
+    );
   });
 
-  it('aggiunge il tetto del modello quando non è un gradino', () => {
-    // seedance-2-5 arriva a 30, che non è fra [10,13,15,20,30]... anzi lo è: kling arriva a 15.
-    expect(videoDurationOptions('kling-3.0/video')).toEqual([10, 13, 15]);
+  it('un modello a intervallo continuo con minimo > 1 parte da lì', () => {
+    // kling-3.0/video: minDuration 3, maxDuration 15.
+    expect(videoDurationOptions('kling-3.0/video')).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
   });
 
-  it('seedance-2-5 offre anche il proprio tetto di 30', () => {
-    expect(videoDurationOptions('bytedance/seedance-2-5')).toEqual([10, 13, 15, 20, 30]);
+  it('seedance-2-5 offre ogni secondo da 4 a 30', () => {
+    expect(videoDurationOptions('bytedance/seedance-2-5')).toEqual(
+      Array.from({ length: 27 }, (_, i) => i + 4)
+    );
   });
 
-  it('un id sconosciuto ricade sulla finestra Grok', () => {
-    expect(videoDurationOptions('modello-mai-visto')).toEqual([10, 13, 15]);
+  it('un id sconosciuto ricade sulla finestra Grok, 1..15', () => {
+    expect(videoDurationOptions('modello-mai-visto')).toEqual(
+      Array.from({ length: 15 }, (_, i) => i + 1)
+    );
   });
 });
 

@@ -163,7 +163,7 @@ describe('offerableSlotChoices — i sei mestieri delle settings, filtrati sui m
 });
 
 describe('offerableModels video — durata e risoluzione', () => {
-  it('un video offerto porta i gradini di durata del proprio modello', async () => {
+  it('un video offerto porta ogni secondo dentro la finestra del proprio modello', async () => {
     const admin = fakeAdmin([
       { id: 'bytedance/seedance-2.5', catalogue: 'video', input_modalities: ['text', 'image'], output_modalities: ['video'] }
     ]);
@@ -171,7 +171,7 @@ describe('offerableModels video — durata e risoluzione', () => {
     const out = await offerableModels(admin, 'video');
 
     const choice = out.choices.find((c) => c.id === SEEDANCE_25_MODEL);
-    expect(choice?.durationOptions).toEqual([10, 13, 15, 20, 30]);
+    expect(choice?.durationOptions).toEqual(Array.from({ length: 27 }, (_, i) => i + 4));
   });
 
   it('un video offerto porta le risoluzioni 480p/720p', async () => {
