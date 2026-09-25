@@ -61,6 +61,9 @@ export type GenerateMediaOpts = {
   baseMediaId?: string;
   /** Secondi. Assente → la preferenza del brand. */
   durationSeconds?: number;
+  /** '480p' | '720p'. Assente → la preferenza del brand, poi il default del prodotto
+   *  (`clampVideoResolution`). Solo video: l'immagine non ha ancora una resa scelta dal modello. */
+  resolution?: string;
   /**
    * Il fotogramma FINALE — richiede `baseMediaId` come iniziale, e vale solo sulla famiglia
    * Seedance (`RenderVideoOpts.lastFrameUrl`): un modello senza riferimenti multimodali lo ignora,
@@ -711,7 +714,7 @@ async function startVideo(opts: GenerateMediaOpts): Promise<VideoJobResult> {
       duration: opts.durationSeconds ?? (prefs.videoDuration as number | undefined),
       visualStyle,
       instructions: prefs.videoInstructions as string | null | undefined,
-      resolution: prefs.videoResolution as string | null | undefined,
+      resolution: opts.resolution ?? (prefs.videoResolution as string | null | undefined),
       model:
         opts.model ??
         ((opts.baseMediaId ? prefs.videoImageModel : prefs.videoModel) as string | null | undefined)

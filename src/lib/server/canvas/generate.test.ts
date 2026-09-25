@@ -321,6 +321,35 @@ describe('un nodo senza prompt proprio ma con un testo a monte collegato gira lo
       expect.objectContaining({ prompt: expectedPrompt })
     );
   }
+
+  it('params.resolution scelto nella barra raggiunge generateVideoWithoutBrand', async () => {
+    generateVideoWithoutBrand.mockReset();
+    generateVideoWithoutBrand.mockResolvedValue({ ok: true, jobId: 'job-1' });
+
+    const videoNodeRow = { ...freshNodeRow, type: 'video' };
+    const { db } = fakeDb(
+      { nodes: [videoNodeRow], assets: [] },
+      { updateRows: { nodes: [{ ...videoNodeRow, version: 2 }] } }
+    );
+
+    const result = await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'video',
+      prompt: 'a dancing cat',
+      model: 'bytedance/seedance-2-5',
+      params: { resolution: '720p' },
+      expectedVersion: 1
+    });
+
+    expect(result.kind).toBe('queued');
+    expect(generateVideoWithoutBrand).toHaveBeenCalledWith(
+      expect.objectContaining({ resolution: '720p' })
+    );
+  });
 });
 
 /**

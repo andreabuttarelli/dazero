@@ -357,6 +357,7 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
       model: input.model ?? undefined,
       aspectRatio: input.params.aspectRatio as never,
       durationSeconds: input.params.duration,
+      resolution: input.params.resolution,
       baseMediaId: upstream.startFrameUrl ?? undefined,
       lastFrameUrl: lastFrame[0],
       referenceImageUrls,
