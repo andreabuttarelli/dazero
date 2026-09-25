@@ -3,7 +3,8 @@ export type GuideSlug =
   | 'generare'
   | 'loop'
   | 'selezione-e-scorciatoie'
-  | 'creare-un-post';
+  | 'creare-un-post'
+  | 'effetti';
 
 export type GuideEntry = {
   slug: GuideSlug;
