@@ -5,7 +5,7 @@ import { NODE_TYPES, NODE_DATA_SCHEMAS } from './node-data';
 import { SOCIAL_PLATFORMS } from './social-platforms';
 
 const TYPE_MIGRATION_PATH = fileURLToPath(
-  new URL('../../../supabase/canvas-migrations/20260925_effects_node.sql', import.meta.url)
+  new URL('../../../supabase/canvas-migrations/20260925_composition_node.sql', import.meta.url)
 );
 const SHAPE_MIGRATION_PATH = fileURLToPath(
   new URL('../../../supabase/canvas-migrations/20260923_loop_nodes.sql', import.meta.url)
