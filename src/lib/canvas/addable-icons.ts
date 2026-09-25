@@ -21,6 +21,7 @@ import Rss from '@lucide/svelte/icons/rss';
 import List from '@lucide/svelte/icons/list';
 import MousePointerClick from '@lucide/svelte/icons/mouse-pointer-click';
 import WandSparkles from '@lucide/svelte/icons/wand-sparkles';
+import Orbit from '@lucide/svelte/icons/orbit';
 import type { Component } from 'svelte';
 import type { Addable } from './addable';
 
@@ -34,5 +35,6 @@ export const ADDABLE_ICON: Record<Addable, Component> = {
   social_account_feed: Rss,
   list: List,
   select: MousePointerClick,
-  effects: WandSparkles
+  effects: WandSparkles,
+  composition: Orbit
 };

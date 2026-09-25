@@ -28,7 +28,8 @@ export const CANVAS_ADDABLE = [
   'social_account_feed',
   'list',
   'select',
-  'effects'
+  'effects',
+  'composition'
 ] as const;
 
 export type Addable = (typeof CANVAS_ADDABLE)[number];
@@ -61,5 +62,6 @@ export const ADDABLE_LABEL: Record<Addable, string> = {
   social_account_feed: 'Feed social',
   list: 'Lista',
   select: 'Selezione',
-  effects: 'Effetti'
+  effects: 'Effetti',
+  composition: 'Composizione'
 };

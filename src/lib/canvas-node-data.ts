@@ -312,6 +312,18 @@ export function newNodeRow(what: Addable): Record<string, unknown> {
     return { effects: [], refId: null, sourceRefId: null };
   }
 
+  if (what === 'composition') {
+    return {
+      layout: DEFAULT_COMPOSITION_LAYOUT,
+      layoutParams: {},
+      camera: { preset: DEFAULT_COMPOSITION_CAMERA, params: {} },
+      background: { color: '#000000' },
+      duration: DEFAULT_COMPOSITION_DURATION,
+      aspect: DEFAULT_COMPOSITION_ASPECT,
+      refId: null
+    };
+  }
+
   return { prompt: '', model: null, params: {}, refId: null };
 }
 
