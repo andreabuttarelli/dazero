@@ -56,6 +56,7 @@ const VIDEO_MODELS = {
       supported_frame_images: ['first_frame', 'last_frame'],
       supported_resolutions: ['480p', '720p'],
       generate_audio: true,
+      seed: true,
       pricing_skus: { video_tokens: '0.0000107' }
     },
     {
@@ -214,6 +215,73 @@ describe('syncAiModels — dai tre listini del gateway alla tabella', () => {
       (r) => (r as Record<string, unknown>).id === 'openai/gpt-image-2.5-sunburst' && (r as Record<string, unknown>).catalogue === 'image'
     ) as Record<string, unknown>;
     expect(sunburst.supported_resolutions).toEqual([]);
+  });
+
+  it('un modello immagine porta lo schema intero di ogni parametro dichiarato, non solo i nomi', async () => {
+    const { admin, upserts } = fakeAdmin();
+
+    await syncAiModels(admin, { fetchImpl: okAllThree(), baseUrl: 'https://openrouter.ai/api/v1' });
+
+    const nanoBananaPro = upserts.find(
+      (r) => (r as Record<string, unknown>).id === 'google/gemini-3-pro-image' && (r as Record<string, unknown>).catalogue === 'image'
+    ) as Record<string, unknown>;
+    expect(nanoBananaPro.param_schema).toEqual({
+      input_references: { type: 'range', min: 0, max: 8 },
+      resolution: { type: 'enum', values: ['1K', '2K', '4K'] }
+    });
+  });
+
+  it('un modello di chat non porta param_schema', async () => {
+    const { admin, upserts } = fakeAdmin();
+
+    await syncAiModels(admin, { fetchImpl: okAllThree(), baseUrl: 'https://openrouter.ai/api/v1' });
+
+    const chatSeedance = upserts.find(
+      (r) => (r as Record<string, unknown>).id === 'bytedance/seedance-2-5' && (r as Record<string, unknown>).catalogue === 'chat'
+    ) as Record<string, unknown>;
+    expect(chatSeedance.param_schema).toEqual({});
+  });
+
+  it('un modello video porta generate_audio/seed nello schema solo quando li dichiara', async () => {
+    const { admin, upserts } = fakeAdmin();
+
+    await syncAiModels(admin, { fetchImpl: okAllThree(), baseUrl: 'https://openrouter.ai/api/v1' });
+
+    const seedance = upserts.find(
+      (r) => (r as Record<string, unknown>).id === 'bytedance/seedance-2.5' && (r as Record<string, unknown>).catalogue === 'video'
+    ) as Record<string, unknown>;
+    expect(seedance.param_schema).toEqual({ generate_audio: { type: 'boolean' }, seed: { type: 'boolean' } });
+
+    const grok = upserts.find(
+      (r) => (r as Record<string, unknown>).id === 'x-ai/grok-imagine-video-1.5' && (r as Record<string, unknown>).catalogue === 'video'
+    ) as Record<string, unknown>;
+    expect(grok.param_schema).toEqual({ generate_audio: { type: 'boolean' } });
+  });
+
+  it('quando la colonna param_schema non esiste ancora, riprova senza e scrive comunque', async () => {
+    const upserts: unknown[] = [];
+    let firstAttempt = true;
+    const admin = {
+      from: () => ({
+        upsert: (rows: unknown[]) => {
+          if (firstAttempt) {
+            firstAttempt = false;
+            return {
+              then: (resolve: (v: { error: { message: string } }) => unknown) =>
+                resolve({ error: { message: 'column "param_schema" of relation "ai_models" does not exist' } })
+            };
+          }
+          upserts.push(...rows);
+          return { then: (resolve: (v: { error: null }) => unknown) => resolve({ error: null }) };
+        }
+      })
+    } as unknown as SupabaseClient;
+
+    const out = await syncAiModels(admin, { fetchImpl: okAllThree(), baseUrl: 'https://openrouter.ai/api/v1' });
+
+    expect(out).toEqual({ ok: true, synced: 9 });
+    expect(upserts.length).toBe(9);
+    expect((upserts[0] as Record<string, unknown>).param_schema).toBeUndefined();
   });
 
   it('lo stesso id su due listini resta due righe distinte, non una che sovrascrive l’altra', async () => {

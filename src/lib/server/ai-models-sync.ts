@@ -39,6 +39,7 @@ type RawVideoModel = {
   name?: string;
   supported_frame_images?: unknown;
   generate_audio?: unknown;
+  seed?: unknown;
   supported_resolutions?: unknown;
   pricing_skus?: Record<string, unknown>;
 };
@@ -59,6 +60,11 @@ export type AiModelRow = {
    *  `offerable-models.ts`). Vuoto per chat, e per un'immagine che non dichiara `resolution`
    *  affatto (i GPT Image, che usano `quality` invece). */
   supported_resolutions: string[];
+  /** Lo schema DICHIARATO di ogni parametro extra — {paramName: {type, values?, min?, max?}} —
+   *  per il renderer generico del toolbar. Su image, `supported_parameters` di /images/models
+   *  presa intera (non solo le chiavi, come fa `supported_parameters` sopra). Su video,
+   *  `generate_audio`/`seed` quando il modello li dichiara true/false. Vuoto per chat. */
+  param_schema: Record<string, unknown>;
   pricing: Record<string, unknown>;
   synced_at: string;
 };
@@ -83,6 +89,10 @@ function imageResolutionValues(raw: unknown): string[] {
   return Array.isArray(values) ? values.map((v) => String(v)).filter(Boolean) : [];
 }
 
+function imageParamSchema(raw: unknown): Record<string, unknown> {
+  return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+}
+
 function chatOrImageRow(m: RawChatOrImageModel, catalogue: 'chat' | 'image', syncedAt: string): AiModelRow | null {
   if (!m.id) return null;
   return {
@@ -94,6 +104,7 @@ function chatOrImageRow(m: RawChatOrImageModel, catalogue: 'chat' | 'image', syn
     output_modalities: m.architecture?.output_modalities ?? [],
     supported_parameters: toArray(m.supported_parameters),
     supported_resolutions: catalogue === 'image' ? imageResolutionValues(m.supported_parameters) : [],
+    param_schema: catalogue === 'image' ? imageParamSchema(m.supported_parameters) : {},
     pricing: m.pricing ?? {},
     synced_at: syncedAt
   };
@@ -113,6 +124,13 @@ function videoModalitiesOf(m: RawVideoModel): { input: string[]; output: string[
   return { input, output: ['video'] };
 }
 
+function videoParamSchema(m: RawVideoModel): Record<string, unknown> {
+  const schema: Record<string, unknown> = {};
+  if (typeof m.generate_audio === 'boolean') schema.generate_audio = { type: 'boolean' };
+  if (typeof m.seed === 'boolean') schema.seed = { type: 'boolean' };
+  return schema;
+}
+
 function videoRow(m: RawVideoModel, syncedAt: string): AiModelRow | null {
   if (!m.id) return null;
   const { input, output } = videoModalitiesOf(m);
@@ -125,12 +143,24 @@ function videoRow(m: RawVideoModel, syncedAt: string): AiModelRow | null {
     output_modalities: output,
     supported_parameters: [],
     supported_resolutions: toArray(m.supported_resolutions),
+    param_schema: videoParamSchema(m),
     pricing: m.pricing_skus ?? {},
     synced_at: syncedAt
   };
 }
 
 export type SyncOutcome = { ok: true; synced: number } | { ok: false; reason: string };
+
+/**
+ * La migration di `param_schema` (20260925130000) può non essere ancora applicata quando questo
+ * sync gira — la regola del progetto è che il codice vivo tollera l'assenza della colonna finché
+ * non è applicata. Postgres risponde con `42703` (`column "param_schema" of relation "ai_models"
+ * does not exist`, messaggio esatto di PostgREST): un solo retry, senza quella chiave, invece di
+ * far fallire l'intero sync per una colonna che non è ancora lì.
+ */
+function isMissingParamSchemaColumn(message: string): boolean {
+  return message.includes('param_schema') && message.includes('does not exist');
+}
 
 type CatalogueFetch<Raw> = {
   path: string;
@@ -185,6 +215,12 @@ export async function syncAiModels(
   }
 
   const { error } = await admin.from('ai_models').upsert(rows, { onConflict: 'id,catalogue' });
+  if (error && isMissingParamSchemaColumn(error.message)) {
+    const rowsWithoutParamSchema = rows.map(({ param_schema: _param_schema, ...rest }) => rest);
+    const retry = await admin.from('ai_models').upsert(rowsWithoutParamSchema, { onConflict: 'id,catalogue' });
+    if (retry.error) return { ok: false, reason: retry.error.message };
+    return { ok: true, synced: rows.length };
+  }
   if (error) return { ok: false, reason: error.message };
 
   return { ok: true, synced: rows.length };
