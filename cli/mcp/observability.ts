@@ -25,7 +25,9 @@ export type McpLogEvent = {
 };
 
 let sentryReady = false;
-let supabaseAdmin: SupabaseClient | null | undefined;
+let supabaseAdmin: SupabaseClient | undefined;
+let supabaseAdminConfigKey: string | undefined;
+let warnedMissingEnv = false;
 
 function ensureSentry() {
   if (sentryReady) return;
@@ -52,16 +54,20 @@ function ensureSentry() {
  * avviso per ogni tool chiamato sarebbe rumore che si impara a saltare.
  */
 function getSupabaseAdmin(): SupabaseClient | null {
-  if (supabaseAdmin !== undefined) return supabaseAdmin;
   const url = process.env.PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
-    const missing = [!url && 'PUBLIC_SUPABASE_URL', !key && 'SUPABASE_SERVICE_ROLE_KEY'].filter(Boolean);
-    console.error(`[mcp] mcp_logs disabled: ${missing.join(' and ')} not set — no tool call is recorded`);
-    supabaseAdmin = null;
+    if (!warnedMissingEnv) {
+      warnedMissingEnv = true;
+      const missing = [!url && 'PUBLIC_SUPABASE_URL', !key && 'SUPABASE_SERVICE_ROLE_KEY'].filter(Boolean);
+      console.error(`[mcp] mcp_logs disabled: ${missing.join(' and ')} not set — no tool call is recorded`);
+    }
     return null;
   }
+  const configKey = `${url}\u0000${key}`;
+  if (supabaseAdmin && supabaseAdminConfigKey === configKey) return supabaseAdmin;
   supabaseAdmin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  supabaseAdminConfigKey = configKey;
   return supabaseAdmin;
 }
 
