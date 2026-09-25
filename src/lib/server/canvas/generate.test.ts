@@ -890,6 +890,7 @@ describe('rigenerare un nodo che ha già un risultato non lo perde se il nuovo g
 function videoReconcileDb(initial: {
   node: { id: string; orgId: string; data: Record<string, unknown>; version: number };
   run: { id: string; taskId: string; attempts?: number };
+  renderStatus?: string;
 }) {
   const nodeState = { data: { ...initial.node.data }, version: initial.node.version };
   const runState = {
@@ -910,6 +911,7 @@ function videoReconcileDb(initial: {
     finished_at: null as string | null
   };
   const insertedAssets: Array<{ url: string; type: string; source: string }> = [];
+  const renderState = { status: initial.renderStatus ?? 'rendering' };
 
   const nodeRow = () => ({
     id: initial.node.id,
@@ -1016,10 +1018,34 @@ function videoReconcileDb(initial: {
                   resolution: '480p',
                   cover_url: null,
                   persist_opts: { captions: false, tighten: false },
-                  submitted_at: new Date().toISOString()
+                  submitted_at: new Date().toISOString(),
+                  status: renderState.status
                 },
                 error: null
               })
+            })
+          }),
+          update: (patch: Record<string, unknown>) => ({
+            eq: (col1: string, val1: string) => ({
+              eq: (col2: string, val2: string) => {
+                const matches = val1 === runState.external_job_id && (col2 !== 'status' || renderState.status === val2);
+                const apply = () => {
+                  if (matches) Object.assign(renderState, patch);
+                };
+                return {
+                  select: () => ({
+                    maybeSingle: async () => {
+                      if (!matches) return { data: null, error: null };
+                      apply();
+                      return { data: { id: runState.external_job_id }, error: null };
+                    }
+                  }),
+                  then: (resolve?: (v: { data: null; error: null }) => void) => {
+                    apply();
+                    resolve?.({ data: null, error: null });
+                  }
+                };
+              }
             })
           })
         };
@@ -1073,6 +1099,7 @@ function videoReconcileDb(initial: {
     db: db as unknown as Db,
     currentNode: () => ({ data: nodeState.data, version: nodeState.version }),
     currentRun: () => ({ ...runState }),
+    currentRenderStatus: () => renderState.status,
     insertedAssets
   };
 }
@@ -1173,5 +1200,37 @@ describe('reconcileVideoNodeRuns chiude un video in coda quando il fornitore ha 
     const data = currentNode().data as { running?: boolean; error?: string | null };
     expect(data.running).toBe(false);
     expect(data.error).toContain('provider rejected the job');
+  });
+
+  /**
+   * Il difetto pagato il 25/09/2026: `videos/render/work` (reconcileVideoRenders) e questo
+   * riconciliatore leggono la STESSA riga `video_renders` da due tick concorrenti. Il claim su
+   * `node_runs` protegge da un secondo tick di QUESTO riconciliatore, ma non da quell'altro
+   * processo — che reclama `video_renders` direttamente, non `node_runs`. Risultato osservato:
+   * `finishVideoRender` chiamato due volte sullo stesso job, due righe `ai_calls`, due addebiti.
+   *
+   * Qui si simula l'altro riconciliatore arrivato per primo: la riga `video_renders` è già
+   * `finishing` quando questo tick la legge. Il fix è reclamarla ANCHE qui, prima di finire — se
+   * il claim fallisce, il giro si rilascia senza chiamare `finishVideoRender`.
+   */
+  it('un video_renders già preso dall’altro riconciliatore non si finisce due volte', async () => {
+    finishVideoRender.mockResolvedValue({
+      status: 'done',
+      url: 'https://storage.example/media/user-1/generated/clip.mp4',
+      durationSeconds: 1,
+      resolution: '480p'
+    });
+
+    const { db, currentRun } = videoReconcileDb({
+      node: { id: NODE, orgId: ORG, data: { prompt: 'a dancing cat', model: 'grok-imagine-video-1-5-preview', running: true }, version: 3 },
+      run: { id: RUN, taskId: 'openrouter:job-6' },
+      renderStatus: 'finishing'
+    });
+
+    const result = await reconcileVideoNodeRuns(db);
+
+    expect(finishVideoRender).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ checked: 1, done: 0, failed: 0, pending: 1 });
+    expect(currentRun().status).toBe('running');
   });
 });

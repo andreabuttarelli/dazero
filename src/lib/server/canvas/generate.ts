@@ -435,6 +435,42 @@ async function findVideoRenderRow(db: Db, renderId: string): Promise<VideoRender
   return (data as VideoRenderLookup | null) ?? null;
 }
 
+/**
+ * `video_renders` ha il SUO riconciliatore (`reconcileVideoRenders`, `videos/render/work`), che
+ * ogni minuto reclama e finisce la stessa riga per conto proprio. Il claim su `node_runs` protegge
+ * SOLO da un secondo tick di QUESTO riconciliatore — non da quell'altro processo, che non tocca
+ * `node_runs` per niente. Senza reclamare anche `video_renders` qui, i due tick possono chiamare
+ * `finishVideoRender` sullo stesso job in parallelo: due righe `ai_calls`, due addebiti (pagato il
+ * 25/09/2026, vedi LESSONS.md).
+ *
+ * `rendering → finishing`, stessa transizione e stesso significato di `video-render-queue.ts`:
+ * zero righe aggiornate vuol dire che l'altro riconciliatore l'ha già presa, non un errore.
+ */
+async function claimVideoRenderRow(db: Db, renderId: string): Promise<boolean> {
+  const { data, error } = await (db as unknown as { from(table: string): any })
+    .from('video_renders')
+    .update({ status: 'finishing', claimed_at: new Date().toISOString() })
+    .eq('id', renderId)
+    .eq('status', 'rendering')
+    .select('id')
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  return !!data;
+}
+
+/** Reso a `rendering`: il prossimo tick, di uno dei due riconciliatori, può riprovare. */
+async function releaseVideoRenderClaim(db: Db, renderId: string): Promise<void> {
+  await (db as unknown as { from(table: string): any })
+    .from('video_renders')
+    .update({ status: 'rendering', claimed_at: null })
+    .eq('id', renderId)
+    .eq('status', 'finishing')
+    .then(undefined, () => {});
+}
+
 function toStartRunShape(run: NodeRun): StartRun {
   return {
     orgId: run.orgId,
@@ -479,6 +515,7 @@ export async function reconcileVideoNodeRuns(db: Db): Promise<VideoReconcileOutc
     }
 
     const startRunShape: StartRun = { ...toStartRunShape(run), projectId: node.projectId, canvasId: node.canvasId };
+    let claimedRenderId: string | null = null;
 
     try {
       const row = await findVideoRenderRow(db, run.externalJobId);
@@ -487,6 +524,18 @@ export async function reconcileVideoNodeRuns(db: Db): Promise<VideoReconcileOutc
         failed += 1;
         continue;
       }
+
+      // Reclamare la riga `video_renders` PRIMA di chiamare `finishVideoRender`: senza, l'altro
+      // riconciliatore (`videos/render/work`) può finire lo stesso job nello stesso istante, e
+      // ognuno addebita la sua riga `ai_calls`. Zero righe aggiornate = l'altro l'ha già presa:
+      // si rilascia il claim su `node_runs` e si riprova al prossimo tick, come un `pending`.
+      const claimedRender = await claimVideoRenderRow(db, row.id);
+      if (!claimedRender) {
+        await releaseClaim(db, { orgId: run.orgId, runId: run.id });
+        pending += 1;
+        continue;
+      }
+      claimedRenderId = row.id;
 
       const submitted = rowToSubmitted({
         id: row.id,
@@ -513,6 +562,7 @@ export async function reconcileVideoNodeRuns(db: Db): Promise<VideoReconcileOutc
       );
 
       if (outcome.status === 'pending') {
+        await releaseVideoRenderClaim(db, row.id);
         await releaseClaim(db, { orgId: run.orgId, runId: run.id });
         pending += 1;
         continue;
@@ -521,6 +571,7 @@ export async function reconcileVideoNodeRuns(db: Db): Promise<VideoReconcileOutc
       if (outcome.status === 'failed') {
         const exhausted = !outcome.retryable || run.attempts + 1 >= VIDEO_RUN_MAX_ATTEMPTS;
         if (!exhausted) {
+          await releaseVideoRenderClaim(db, row.id);
           await retryClaim(db, { orgId: run.orgId, runId: run.id, attempts: run.attempts + 1, error: outcome.error });
           pending += 1;
           continue;
@@ -549,6 +600,9 @@ export async function reconcileVideoNodeRuns(db: Db): Promise<VideoReconcileOutc
       }));
       done += 1;
     } catch (error) {
+      if (claimedRenderId) {
+        await releaseVideoRenderClaim(db, claimedRenderId).catch(() => {});
+      }
       const message = error instanceof Error ? error.message : 'video_reconcile_failed';
       const exhausted = run.attempts + 1 >= VIDEO_RUN_MAX_ATTEMPTS;
       if (!exhausted) {

@@ -326,6 +326,21 @@ Su una pagina SvelteKit renderizzata server-side, il DOM del bottone esiste — 
 
 ## Codice
 
+### Un claim atomico su UNA tabella non protegge un job che vive su DUE
+`reconcileVideoRenders` (`video-render-queue.ts`, cron `videos/render/work`) claima
+`video_renders.status` prima di finire un render. `reconcileVideoNodeRuns`
+(`canvas/generate.ts`, cron `canvas/runs/tick`) claima `node_runs.status` prima dello
+stesso lavoro — ma per un nodo video il job vero vive anche in `video_renders`
+(`node_runs.external_job_id` è il suo id), e quel secondo riconciliatore la leggeva
+per id e chiamava `finishVideoRender` **senza mai reclamare quella riga**. Due cron
+ogni minuto, due lock su due tabelle diverse, zero protezione reciproca: ogni tick
+che arrivava per primo su ciascuna tabella fatturava. Pagato in produzione, un job
+fino a 5 volte. Segnale: due `ai_calls` per lo stesso `job <id>` a distanza di
+centinaia di ms — o cinque, a distanza di minuti, sullo stesso org. Mossa: un job
+finito da due percorsi diversi ha bisogno di UN claim per riga che entrambi
+rispettano, non di un claim per percorso — e "il claim è atomico" va verificato
+chiedendo *su quale tabella*, non dando per scontato che copra il lavoro sottostante.
+
 ### Un blocco che dichiara CHI è l'agente va in TESTA, o perde contro il prompt che lo precede
 Il brief del DM lo aveva già pagato — in coda il modello salutava l'utente per nome — e per questo
 sta in testa in `live.ts` e in `queue.ts`. Il blocco del custom agent, che è la stessa cosa (una

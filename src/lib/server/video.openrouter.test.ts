@@ -136,22 +136,19 @@ describe('il cablaggio del video verso OpenRouter', () => {
   });
 
   /**
-   * C'È UN TRASPORTO SOLO, quindi un modello fuori dal suo catalogo non ha un ripiego: aveva un
-   * altro fornitore da cui passare, e quel fornitore non esiste più.
-   *
-   * Il render si rifiuta con il motivo, invece di partire verso un'API che non risponde.
+   * Un modello fuori dal catalogo NON viene più rifiutato qui: passa dritto a OpenRouter, che è
+   * l'unico trasporto e l'unico giudice di cosa esiste davvero (v. 2026-09-25, `resolveVideoModel`
+   * non valida più contro un elenco locale). Rifiutarlo prima del fornitore bloccherebbe modelli
+   * nuovi non ancora speccati nel repo ma già serviti da OpenRouter.
    */
-  it('un modello che OpenRouter non ha non ha un trasporto, e il render si rifiuta', async () => {
+  it('un modello fuori dal catalogo locale passa comunque a OpenRouter', async () => {
     stubFetch();
-    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { submitVideoRender } = await import('./video');
 
     const out = await submitVideoRender('p', { model: 'un/modello-che-non-esiste' });
 
-    expect(out, 'nessun render senza trasporto').toBeUndefined();
-    expect(err).toHaveBeenCalledWith(expect.stringMatching(/non è nel catalogo video/));
-    expect(hits, 'nemmeno un giro di rete').toEqual([]);
-    err.mockRestore();
+    expect(out?.model).toBe('un/modello-che-non-esiste');
+    expect(hits.some((h) => h.includes('openrouter.ai/api/v1/videos'))).toBe(true);
   });
 
   /**
