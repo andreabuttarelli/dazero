@@ -17,7 +17,7 @@
  * di sempre — questo file non sa cosa sia una `version`.
  */
 
-export type GenFieldId = 'model' | 'aspectRatio' | 'duration' | 'audio' | 'repeat';
+export type GenFieldId = 'model' | 'aspectRatio' | 'duration' | 'resolution' | 'audio' | 'repeat';
 
 export type CommonValue<T> = { kind: 'same'; value: T } | { kind: 'mixed' } | { kind: 'unset' } | { kind: 'absent' };
 
@@ -54,6 +54,11 @@ export const GEN_FIELDS: readonly GenField[] = [
     read: (n) => paramOf(n, 'duration')
   },
   {
+    id: 'resolution',
+    appliesTo: NOT_TEXT,
+    read: (n) => paramOf(n, 'resolution')
+  },
+  {
     id: 'audio',
     appliesTo: NOT_TEXT,
     read: (n) => paramOf(n, 'audio')
@@ -71,6 +76,7 @@ export type CommonProperties = {
   model: CommonValue<string | null>;
   aspectRatio: CommonValue<string>;
   duration: CommonValue<number>;
+  resolution: CommonValue<string>;
   audio: CommonValue<boolean>;
   repeat: CommonValue<number>;
 };
@@ -95,6 +101,7 @@ export function commonPropertiesOf(nodes: NodeSummary[]): CommonProperties {
     model: { kind: 'absent' },
     aspectRatio: { kind: 'absent' },
     duration: { kind: 'absent' },
+    resolution: { kind: 'absent' },
     audio: { kind: 'absent' },
     repeat: { kind: 'absent' }
   };
@@ -112,6 +119,7 @@ export function commonPropertiesOf(nodes: NodeSummary[]): CommonProperties {
     model: commonFieldOf(byId.model, type, nodes),
     aspectRatio: commonFieldOf(byId.aspectRatio, type, nodes),
     duration: commonFieldOf(byId.duration, type, nodes),
+    resolution: commonFieldOf(byId.resolution, type, nodes),
     audio: commonFieldOf(byId.audio, type, nodes),
     repeat: commonFieldOf(byId.repeat, type, nodes)
   };

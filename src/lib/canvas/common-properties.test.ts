@@ -93,9 +93,9 @@ describe('cosa hanno in comune più nodi selezionati', () => {
 });
 
 describe('GEN_FIELDS — una tabella sola, letta sia da un nodo solo che da una selezione', () => {
-  it('elenca model, aspectRatio, duration, audio, repeat — i campi che GenNode mostra', () => {
+  it('elenca model, aspectRatio, duration, resolution, audio, repeat — i campi che GenNode mostra', () => {
     const ids = GEN_FIELDS.map((f) => f.id);
-    expect(ids).toEqual(['model', 'aspectRatio', 'duration', 'audio', 'repeat']);
+    expect(ids).toEqual(['model', 'aspectRatio', 'duration', 'resolution', 'audio', 'repeat']);
   });
 
   it('repeat si applica anche al testo: non dipende dal modello', () => {
@@ -103,18 +103,21 @@ describe('GEN_FIELDS — una tabella sola, letta sia da un nodo solo che da una 
     expect(byId.repeat.appliesTo('text')).toBe(true);
   });
 
-  it('aspectRatio, duration e audio non si applicano al testo', () => {
+  it('aspectRatio, duration, resolution e audio non si applicano al testo', () => {
     const byId = Object.fromEntries(GEN_FIELDS.map((f) => [f.id, f]));
     expect(byId.aspectRatio.appliesTo('text')).toBe(false);
     expect(byId.duration.appliesTo('text')).toBe(false);
+    expect(byId.resolution.appliesTo('text')).toBe(false);
     expect(byId.audio.appliesTo('text')).toBe(false);
     expect(byId.model.appliesTo('text')).toBe(true);
   });
 
-  it('duration e audio si applicano a image e video', () => {
+  it('duration, resolution e audio si applicano a image e video', () => {
     const byId = Object.fromEntries(GEN_FIELDS.map((f) => [f.id, f]));
     expect(byId.duration.appliesTo('image')).toBe(true);
     expect(byId.duration.appliesTo('video')).toBe(true);
+    expect(byId.resolution.appliesTo('image')).toBe(true);
+    expect(byId.resolution.appliesTo('video')).toBe(true);
     expect(byId.audio.appliesTo('image')).toBe(true);
     expect(byId.audio.appliesTo('video')).toBe(true);
   });

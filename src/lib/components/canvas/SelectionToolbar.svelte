@@ -26,6 +26,7 @@
   import type { WorkflowEdge } from '$lib/canvas/workflow-plan';
   import { SELECTION_ACTION_ICON } from '$lib/canvas/selection-action-icons';
   import { commonPropertiesOf, type CommonValue } from '$lib/canvas/common-properties';
+  import { nearestVideoDuration } from '$lib/video-models';
   import { effectiveModel } from '$lib/canvas/default-models';
   import { TOOLBAR_HIDE_BELOW_ZOOM, toolbarScale } from '$lib/canvas/toolbar-scale';
   import { filterChoices, groupByProvider } from '$lib/canvas/model-picker';
@@ -65,7 +66,7 @@
     catalogueSynced?: boolean;
     onaction?: (id: SelectionActionId) => void;
     /** Un campo cambiato dalla barra, applicato a ogni nodo selezionato — uno o molti. */
-    onpropertychange?: (patch: { model?: string | null; aspectRatio?: string; duration?: number; audio?: boolean; repeat?: number }) => void;
+    onpropertychange?: (patch: { model?: string | null; aspectRatio?: string; duration?: number; resolution?: string; audio?: boolean; repeat?: number }) => void;
   } = $props();
 
   const visible = $derived(box !== null && zoom >= TOOLBAR_HIDE_BELOW_ZOOM);
@@ -175,20 +176,39 @@
           </select>
         {/if}
 
-        {#if properties.duration.kind !== 'absent' && typeof choice?.maxDuration === 'number' && choice.maxDuration > 0}
-          <label class="duration">
-            <input
-              type="number"
-              class="field number"
-              min={choice.minDuration ?? 1}
-              max={choice.maxDuration}
-              placeholder={properties.duration.kind === 'mixed' ? 'Mixed' : undefined}
-              value={valueOr(properties.duration, choice.minDuration ?? 1) ?? ''}
-              oninput={(e) => onpropertychange?.({ duration: Number(e.currentTarget.value) })}
-              aria-label="Durata in secondi"
-            />
-            <span class="unit">s</span>
-          </label>
+        {#if properties.duration.kind !== 'absent' && choice?.durationOptions?.length}
+          <select
+            class="field"
+            value={String(
+              valueOr(properties.duration, choice.durationOptions[0]) ??
+                choice.durationOptions[0]
+            )}
+            onchange={(e) => onpropertychange?.({ duration: Number(e.currentTarget.value) })}
+            aria-label="Durata"
+          >
+            {#if properties.duration.kind === 'mixed'}
+              <option value="" disabled selected>Mixed</option>
+            {/if}
+            {#each choice.durationOptions as seconds (seconds)}
+              <option value={seconds}>{seconds}s</option>
+            {/each}
+          </select>
+        {/if}
+
+        {#if properties.resolution.kind !== 'absent' && choice?.resolutions && choice.resolutions.length > 1}
+          <select
+            class="field"
+            value={valueOr(properties.resolution, choice.resolutions[0]) ?? ''}
+            onchange={(e) => onpropertychange?.({ resolution: e.currentTarget.value })}
+            aria-label="Risoluzione"
+          >
+            {#if properties.resolution.kind === 'mixed'}
+              <option value="" disabled selected>Mixed</option>
+            {/if}
+            {#each choice.resolutions as res (res)}
+              <option value={res}>{res}</option>
+            {/each}
+          </select>
         {/if}
 
         {#if properties.audio.kind !== 'absent' && choice?.generateAudio !== undefined}
