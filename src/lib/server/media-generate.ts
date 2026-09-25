@@ -110,6 +110,24 @@ export type GenerateMediaResult =
   | { ok: false; error: 'duration_out_of_range'; reason: string }
   | { ok: false; error: 'model_not_for_slot'; allowed: string[] };
 
+/**
+ * Il cancello contro cui il canvas valida un modello scelto per chiamata, non lo slot a ruolo.
+ *
+ * Sotto un brand `slotAccepts` resta il cancello giusto: uno slot di `content_prefs` governa un
+ * MESTIERE fisso (rigenera, anima), e un modello sincronizzato senza spec non sa ancora dichiarare
+ * il suo ruolo. Il canvas non promette un ruolo — offre "quello che il menu ha mostrato" — e il
+ * menu è `offerableModels`: lo stesso elenco, letto qui invece di un secondo cancello.
+ */
+async function canvasModelAccepts(
+  admin: SupabaseClient,
+  medium: 'image' | 'video',
+  model: string
+): Promise<boolean> {
+  const { offerableModels } = await import('$lib/server/offerable-models');
+  const { choices } = await offerableModels(admin, medium);
+  return choices.some((c) => c.id === model);
+}
+
 const IMAGE_MIME = 'image/png';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -460,10 +478,23 @@ async function runImageJob(
   // Il catalogo è quello vero, lo stesso che governa set_media_model: un secondo elenco
   // divergerebbe dal primo al prossimo modello aggiunto, e la metà vecchia rifiuterebbe in
   // silenzio un modello valido.
+  //
+  // Il canvas (`job.brandId === null`) non ha uno slot a ruolo: valida contro `offerableModels`,
+  // lo stesso elenco che il menu del nodo ha già mostrato — un modello sincronizzato senza spec
+  // passa qui anche se `slotAccepts` lo rifiuterebbe, perché quel cancello guarda un ruolo che il
+  // canvas non promette.
   const refining = !!job.baseMediaId;
-  const slot = mediaModelSlot(refining ? 'imageRefineModel' : 'imageModel');
-  if (job.model && slot && !slotAccepts(slot, job.model)) {
-    return { ok: false, error: 'model_not_for_slot', allowed: slotChoices(slot).map((c) => c.id) };
+  if (job.model && job.brandId === null) {
+    const { createAdminClient } = await import('$lib/server/supabase-admin');
+    const accepted = await canvasModelAccepts(createAdminClient(), 'image', job.model);
+    if (!accepted) {
+      return { ok: false, error: 'model_not_for_slot', allowed: [] };
+    }
+  } else {
+    const slot = mediaModelSlot(refining ? 'imageRefineModel' : 'imageModel');
+    if (job.model && slot && !slotAccepts(slot, job.model)) {
+      return { ok: false, error: 'model_not_for_slot', allowed: slotChoices(slot).map((c) => c.id) };
+    }
   }
 
   // Senza brand non c'è niente da leggere: valgono i default del prodotto. Andarci lo stesso
@@ -641,10 +672,19 @@ async function startVideo(opts: GenerateMediaOpts): Promise<VideoJobResult> {
   // Animare una foto e filmare da un prompt sono due MESTIERI, e il catalogo lo sa gia': lo slot
   // cambia, quindi cambia anche l'elenco dei modelli ammessi. Sceglierne uno solo accetterebbe un
   // modello che poi il renderer scarta.
-  const { mediaModelSlot, slotAccepts, slotChoices } = await import('$lib/media-model-slots');
-  const slot = mediaModelSlot(opts.baseMediaId ? 'videoImageModel' : 'videoModel');
-  if (opts.model && slot && !slotAccepts(slot, opts.model)) {
-    return { ok: false, error: 'model_not_for_slot', allowed: slotChoices(slot).map((c) => c.id) };
+  // Stessa distinzione della gemella immagine: il canvas valida contro `offerableModels` (nessun
+  // ruolo promesso), lo slot a ruolo resta il cancello dei mestieri sotto un brand.
+  if (opts.model && opts.brandId === null) {
+    const accepted = await canvasModelAccepts(admin, 'video', opts.model);
+    if (!accepted) {
+      return { ok: false, error: 'model_not_for_slot', allowed: [] };
+    }
+  } else {
+    const { mediaModelSlot, slotAccepts, slotChoices } = await import('$lib/media-model-slots');
+    const slot = mediaModelSlot(opts.baseMediaId ? 'videoImageModel' : 'videoModel');
+    if (opts.model && slot && !slotAccepts(slot, opts.model)) {
+      return { ok: false, error: 'model_not_for_slot', allowed: slotChoices(slot).map((c) => c.id) };
+    }
   }
 
   // La copertina e' l'immagine da animare, e vive nella libreria di QUESTO brand: la risoluzione
