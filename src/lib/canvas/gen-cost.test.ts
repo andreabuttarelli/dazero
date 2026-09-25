@@ -51,6 +51,23 @@ describe('creditsForRun — un giro solo', () => {
     expect(out).toBe(40);
   });
 
+  it('720p costa il doppio di 480p, alla stessa durata', () => {
+    const out480 = creditsForRun({ medium: 'video', model: videoChoice, params: { duration: 4, resolution: '480p' } });
+    const out720 = creditsForRun({ medium: 'video', model: videoChoice, params: { duration: 4, resolution: '720p' } });
+    expect(out480).toBe(40);
+    expect(out720).toBe(80);
+  });
+
+  it('durata e risoluzione insieme si moltiplicano', () => {
+    const out = creditsForRun({ medium: 'video', model: videoChoice, params: { duration: 8, resolution: '720p' } });
+    expect(out).toBe(160);
+  });
+
+  it('nessuna risoluzione nei params: il moltiplicatore di 480p, che è 1×', () => {
+    const out = creditsForRun({ medium: 'video', model: videoChoice, params: { duration: 4 } });
+    expect(out).toBe(40);
+  });
+
   it('un modello senza unitCredits: nessun numero, mai uno sbagliato', () => {
     expect(creditsForRun({ medium: 'image', model: unpricedChoice, params: {} })).toBeNull();
     expect(creditsForRun({ medium: 'video', model: unpricedChoice, params: { duration: 8 } })).toBeNull();

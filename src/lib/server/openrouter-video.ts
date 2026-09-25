@@ -59,9 +59,15 @@ export function openrouterVideoHeaders(): Record<string, string> {
   return { authorization: `Bearer ${apiKey() ?? ''}` };
 }
 
-/** Undefined quando il catalogo video di OpenRouter non ha quel modello: non è servibile di qui. */
-export function openrouterVideoModel(model: string): string | undefined {
-  return videoModelSpec(model)?.openrouterId;
+/**
+ * L'id sul filo per questo modello. Uno spec nostro lo traduce (`videoModelSpec(model).openrouterId`,
+ * il caso `bytedance/seedance-2-5` → `bytedance/seedance-2.5`); un modello sincronizzato da
+ * OpenRouter ma senza spec (`offerableModels`, CLAUDE.md "l'app comanda") non è "non servibile" —
+ * `model` stesso è già l'id sul filo, passato così com'è, come `generateImageOnOpenrouterImages`
+ * fa per le immagini.
+ */
+export function openrouterVideoModel(model: string): string {
+  return videoModelSpec(model)?.openrouterId ?? model;
 }
 
 const JOB_TAG = 'openrouter:';
@@ -133,9 +139,7 @@ export async function submitOpenrouterVideo(
   signal?: AbortSignal
 ): Promise<{ jobId?: string; error?: string }> {
   if (!apiKey()) return { error: 'OPENROUTER_API_KEY assente: questo render non ha un trasporto' };
-  const model = openrouterVideoModel(render.model);
-  if (!model) return { error: `${render.model} non è nel catalogo video di OpenRouter` };
-  return submit(model, render, signal);
+  return submit(openrouterVideoModel(render.model), render, signal);
 }
 
 async function submit(
@@ -212,7 +216,7 @@ export async function renderOpenrouterVideo(
     logAiCall({
       label,
       provider: 'openrouter',
-      model: model ?? render.model,
+      model,
       prompt: render.prompt,
       ms: Date.now() - t0,
       ok: outcome.status === 'done',
@@ -226,7 +230,6 @@ export async function renderOpenrouterVideo(
   };
 
   if (!apiKey()) return done({ status: 'failed', error: 'OPENROUTER_API_KEY assente: questo render non ha un trasporto' });
-  if (!model) return done({ status: 'failed', error: `${render.model} non è nel catalogo video di OpenRouter` });
 
   let jobId = opts.resumeJobId;
   if (!jobId) {

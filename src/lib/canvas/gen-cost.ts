@@ -18,6 +18,16 @@ import type { GenMedium, GenParams, ModelChoice } from './gen-node';
 export type RunCostInput = { medium: GenMedium; model: ModelChoice | null; params: GenParams };
 
 /**
+ * 720p costa ESATTAMENTE il doppio di 480p (misurato, v. `video.ts`). `unitCredits` è prezzato a
+ * 480p — la risoluzione a cui nasce un nodo — quindi 480p resta 1× e ogni altro gradino scala da
+ * qui, non da un numero a parte per ciascuno.
+ */
+const RESOLUTION_MULTIPLIERS: Record<string, number> = {
+  '480p': 1,
+  '720p': 2
+};
+
+/**
  * I crediti per UN giro di questo medium/modello/parametri, o `null` quando il prezzo non si sa.
  */
 export function creditsForRun(input: RunCostInput): number | null {
@@ -26,13 +36,15 @@ export function creditsForRun(input: RunCostInput): number | null {
 
   if (input.medium !== 'video') return unit;
 
+  const resolutionMultiplier = RESOLUTION_MULTIPLIERS[input.params.resolution ?? ''] ?? 1;
+
   const base = input.model?.minDuration;
   const duration = input.params.duration;
   if (typeof base !== 'number' || base <= 0 || typeof duration !== 'number' || duration <= 0) {
-    return unit;
+    return Math.round(unit * resolutionMultiplier);
   }
 
-  return Math.round(unit * (duration / base));
+  return Math.round(unit * (duration / base) * resolutionMultiplier);
 }
 
 /** Il totale di un loop di `count` giri identici — `null` appena il prezzo di uno solo lo è. */

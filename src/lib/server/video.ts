@@ -877,7 +877,7 @@ async function finishOpenrouterRender(
   logAiCall({
     label: 'video.render',
     provider: 'openrouter',
-    model: openrouterVideoModel(submitted.model) ?? submitted.model,
+    model: openrouterVideoModel(submitted.model),
     prompt: submitted.prompt,
     ms: Math.max(0, Date.now() - submitted.submittedAt),
     ok: true,
