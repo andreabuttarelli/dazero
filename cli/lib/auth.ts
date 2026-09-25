@@ -5,8 +5,30 @@ import { homedir } from 'os';
 import { join } from 'path';
 import { appUrl as resolveAppUrl } from './config.ts';
 
-const CONFIG_DIR = join(homedir(), '.config', 'dazero');
-const SESSION_FILE = join(CONFIG_DIR, 'session.json');
+// Resolved per call, not at import time: `homedir()` reads $HOME, and a module-level
+// constant would freeze whatever $HOME was at first import — wrong under test, and
+// wrong for anyone who changes it in their environment mid-process.
+function configDir() {
+  return join(homedir(), '.config', 'feega');
+}
+
+function sessionFile() {
+  return join(configDir(), 'session.json');
+}
+
+function oldSessionFile() {
+  return join(homedir(), '.config', 'dazero', 'session.json');
+}
+
+// Already-logged-in users have a session at the old ~/.config/dazero path. Read it once,
+// migrate it to the new location, and never touch the old path again.
+function migrateOldSession() {
+  const dst = sessionFile();
+  const src = oldSessionFile();
+  if (existsSync(dst) || !existsSync(src)) return;
+  mkdirSync(configDir(), { recursive: true });
+  writeFileSync(dst, readFileSync(src, 'utf8'));
+}
 
 export type StoredSession = {
   access_token: string;
@@ -21,8 +43,9 @@ export type StoredSession = {
 // or Supabase revokes the refresh token.
 export async function loadSession(): Promise<StoredSession | null> {
   try {
-    if (!existsSync(SESSION_FILE)) return null;
-    const stored = JSON.parse(readFileSync(SESSION_FILE, 'utf8')) as StoredSession;
+    migrateOldSession();
+    if (!existsSync(sessionFile())) return null;
+    const stored = JSON.parse(readFileSync(sessionFile(), 'utf8')) as StoredSession;
     if (!stored.refresh_token) return null;
 
     const stillValid = stored.expires_at && Date.now() / 1000 < stored.expires_at - 30;
@@ -57,7 +80,7 @@ export async function loadSession(): Promise<StoredSession | null> {
 export async function requireSession(): Promise<StoredSession> {
   const s = await loadSession();
   if (!s) {
-    console.error('Sessione scaduta o non trovata. Esegui: dazero login');
+    console.error('Sessione scaduta o non trovata. Esegui: feega login');
     process.exit(1);
   }
   return s;
@@ -83,12 +106,12 @@ export async function passwordLogin(email: string, password: string): Promise<St
 }
 
 export function saveSession(s: StoredSession) {
-  mkdirSync(CONFIG_DIR, { recursive: true });
-  writeFileSync(SESSION_FILE, JSON.stringify(s, null, 2));
+  mkdirSync(configDir(), { recursive: true });
+  writeFileSync(sessionFile(), JSON.stringify(s, null, 2));
 }
 
 export function clearSession() {
-  try { unlinkSync(SESSION_FILE); } catch {}
+  try { unlinkSync(sessionFile()); } catch {}
 }
 
 function anonClient() {
