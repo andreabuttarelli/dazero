@@ -353,7 +353,8 @@ async function runOneCombination(
     model,
     params: (node.data.params ?? {}) as StartRun['params'],
     expectedVersion: fresh.version,
-    actor: ctx.actor
+    actor: ctx.actor,
+    iterateSelection
   };
 
   const out = await runGenNode(db, startRun);

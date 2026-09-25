@@ -48,6 +48,10 @@ export type StartRun = {
   expectedVersion: number;
   /** Assente = il click di una persona. Un agente passa `kind: 'agent'` e la sua chiave. */
   actor?: Actor;
+  /** Un'iterazione di loop (`loop.ts`): quale item di ogni `list` a monte questo giro vede,
+   *  invece della lista intera — la stessa mappa che `upstreamInputsFor` accetta. Assente = un
+   *  giro ordinario, ogni `list` a monte si comporta come un filo `fixed`. */
+  iterateSelection?: Record<string, number>;
 };
 
 export type RunOutcome =
@@ -261,7 +265,8 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
     canvasId: input.canvasId,
     nodeId: input.nodeId,
     model: input.model,
-    medium: input.medium
+    medium: input.medium,
+    iterateSelection: input.iterateSelection
   });
 
   // UN MODELLO SPARITO DA `ai_models` FERMA IL GIRO PRIMA DI SPENDERE — mai dopo aver chiesto al
