@@ -272,7 +272,6 @@
       "resizeChat": "Resize chat",
       "collapseChat": "Collapse chat",
       "expandChat": "Show chat",
-      "credits": "{count} credits",
       "chatTab": "Chat",
       "guideTab": "Guide",
       "guideBack": "Back to guides",
@@ -399,7 +398,6 @@
         "statCredited": "Successful invites",
         "statCredits": "Credits earned",
         "history": "Recent referrals",
-        "credits": "credits",
         "statusCredited": "Credited",
         "statusRejected": "Rejected",
         "empty": "No referrals yet — share your link to start earning credits."

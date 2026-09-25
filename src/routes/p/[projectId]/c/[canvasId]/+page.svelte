@@ -1420,7 +1420,7 @@
    */
 </script>
 
-<svelte:head><title>dazero — {data.canvas.name}</title></svelte:head>
+<svelte:head><title>feega — {data.canvas.name}</title></svelte:head>
 
 <div class="canvas">
   {#if peers.length}
