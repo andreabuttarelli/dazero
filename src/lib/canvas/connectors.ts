@@ -46,6 +46,11 @@ export function isListValued(connector: ConnectorType): boolean {
   return LIST_VALUED.has(connector);
 }
 
+/** Una `list` raccoglie: ogni sua porta prende più fili, anche `text`, che altrove è uno solo. */
+export function portListValued(nodeType: string, connector: ConnectorType): boolean {
+  return nodeType === 'list' || isListValued(connector);
+}
+
 /**
  * Come si chiama ogni connettore, per chi guarda — il `title`/`aria-label` di ogni maniglia sulla
  * tile e il messaggio di rifiuto in `upstream-inputs.ts`. Una tabella sola: quel file importava
@@ -187,6 +192,10 @@ const PORTS_ACCEPTING: Record<ConnectorType, readonly ConnectorType[]> = {
 
 export function portAccepts(port: ConnectorType, output: ConnectorType): boolean {
   return PORTS_ACCEPTING[output].includes(port);
+}
+
+export function anyPortAccepts(ports: readonly ConnectorType[], output: ConnectorType): boolean {
+  return ports.some((port) => portAccepts(port, output));
 }
 
 export type PortSide = 'source' | 'target';

@@ -46,7 +46,8 @@ export const NODE_KINDS = [
   'media',
   'document',
   'memory',
-  'iframe'
+  'iframe',
+  'list'
 ] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
@@ -98,7 +99,10 @@ export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
   // È testo perché quel che se ne può usare a valle è quel che c'è scritto — «riassumi questa
   // pagina», «fai un'immagine ispirata a questa» sono le catene che la rendono utile. L'immagine
   // che il sito mostra non è sua: è del sito, e non c'è un file da passare a valle.
-  iframe: { medium: 'text', generated: false, accepts: [], requires: [] }
+  iframe: { medium: 'text', generated: false, accepts: [], requires: [] },
+  // Una lista raccoglie immagini o testo dai nodi collegati. Quale dei due lo decide la sua porta
+  // (`list-node.ts::listConnectors`), non questa riga: qui non si sa ancora cosa contiene.
+  list: { medium: null, generated: true, accepts: ['text', 'image'], requires: [] }
 };
 
 /** Da `posts.content_type` al medium: è il ruolo che porta dentro il medium, e qui si separano. */

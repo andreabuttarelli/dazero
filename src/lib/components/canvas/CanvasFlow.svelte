@@ -43,7 +43,7 @@
   import { isAddable, type Addable } from '$lib/canvas/addable';
   import { DEFAULT_EDGE_KIND, edgeKindsFor, verdictBetween } from '$lib/canvas/connect-rules';
   import { connectorAccepts } from '$lib/canvas/connector-ports';
-  import { isListValued, landingPort, type ConnectorType } from '$lib/canvas/connectors';
+  import { anyPortAccepts, landingPort, portListValued, type ConnectorType } from '$lib/canvas/connectors';
   import { setTileRender } from '$lib/canvas/tile-render-context';
   import { setTileResize } from '$lib/canvas/tile-resize-context';
   import type { CanvasNode } from '$lib/canvas/graph';
@@ -322,9 +322,15 @@
 
     const connector = targetHandle as ConnectorType | null | undefined;
     const connectors = connectorsOf.get(target);
+    const output = tiles.find((t) => t.id === source)?.output ?? null;
+    if (output && connectors?.length && !anyPortAccepts(connectors, output)) {
+      refusal = `nessuna porta accetta ${output}`;
+      return false;
+    }
     if (connector && connectors?.includes(connector)) {
       const portEdges = edges.map((e) => ({ id: e.id, target: e.target, targetHandle: e.targetHandle ?? null }));
-      const free = connectorAccepts(portEdges, target, connector, isListValued(connector));
+      const targetKind = tiles.find((t) => t.id === target)?.kind ?? '';
+      const free = connectorAccepts(portEdges, target, connector, portListValued(targetKind, connector));
       if (!free) {
         refusal = `porta ${connector} già occupata`;
         return false;
