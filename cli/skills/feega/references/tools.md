@@ -1,11 +1,11 @@
-# dazero MCP tools ↔ CLI
+# feega MCP tools ↔ CLI
 
 Twelve tools, all reachable through the org you belong to — no `slug` required on any of them,
 because the canvas is org-scoped and a brand is only a `brand_id` value inside it. Ids accept short
 unambiguous prefixes on list-derived reads; a `where` on `id` in `delete_row` and `update_row`
 takes the full id, because an ambiguous prefix would touch the wrong row and neither comes back.
 
-The CLI is narrower: it is brand-scoped (`dazero <command> <slug>`) and does not expose `query`,
+The CLI is narrower: it is brand-scoped (`feega <command> <slug>`) and does not expose `query`,
 `insert_row`, `update_row`, `delete_row`, `describe_node_types` or `run_node_generation` — those
 are MCP only, because they reach the whole database directly, which the CLI's fixed set of
 brand-scoped REST endpoints does not.
@@ -14,12 +14,12 @@ brand-scoped REST endpoints does not.
 
 | MCP | CLI |
 |-----|-----|
-| (none — the host does OAuth on HTTP, `dazero login` locally) | `dazero login` / `dazero logout` |
-| — | `dazero brands` |
+| (none — the host does OAuth on HTTP, `feega login` locally) | `feega login` / `feega logout` |
+| — | `feega brands` |
 
 There is no sign-in tool. On remote HTTP the host walks the OAuth round itself; on stdio the
-session is the CLI's, so `dazero login` in a terminal covers both. Confirm with `query` on
-`brands` (MCP) or `dazero brands` (CLI): rows come back, or nobody is signed in.
+session is the CLI's, so `feega login` in a terminal covers both. Confirm with `query` on
+`brands` (MCP) or `feega brands` (CLI): rows come back, or nobody is signed in.
 
 ## Reading is one tool
 
@@ -67,17 +67,17 @@ read why and change your call.
 
 | you want | how |
 |---|---|
-| your projects/brands | `query` on `brands` — `id`, `slug`, `name`, `plan`, `status`; CLI `dazero brands` |
-| the brand at a glance | `dazero dashboard <slug>` and `dazero status <slug>` — no single table stands in for them |
+| your projects/brands | `query` on `brands` — `id`, `slug`, `name`, `plan`, `status`; CLI `feega brands` |
+| the brand at a glance | `feega dashboard <slug>` and `feega status <slug>` — no single table stands in for them |
 | a project's canvases | `query` on `canvases` — `id`, `name`, `project_id`, `viewport`, filtered `project_id` `eq` |
 | the nodes on a canvas | `query` on `nodes` — `id`, `type`, `data`, `version`, filtered `canvas_id` `eq` and `deleted_at` `is` null |
 | a node's connections | `query` on `nodes_connections` — `source_node_id`, `target_node_id`, `target_handle`, filtered on the canvas's node ids |
-| posts, by status | `query` on `posts` — `id`, `status`, `caption`, `scheduled_for`, `brand_id`; CLI `dazero content <slug> [--status …]` |
-| one post, whole | the same read with an `id` filter and `limit: 1`; CLI `dazero post <slug> <id>` |
-| the calendar | `query` on `scheduled_posts` or `posts` filtered on `scheduled_for`; CLI `dazero calendar <slug> [--month YYYY-MM]` |
+| posts, by status | `query` on `posts` — `id`, `status`, `caption`, `scheduled_for`, `brand_id`; CLI `feega content <slug> [--status …]` |
+| one post, whole | the same read with an `id` filter and `limit: 1`; CLI `feega post <slug> <id>` |
+| the calendar | `query` on `scheduled_posts` or `posts` filtered on `scheduled_for`; CLI `feega calendar <slug> [--month YYYY-MM]` |
 | what a post came from | `query` on `post_sources` embedding `nodes`, filtered `post_id` `eq` |
-| ad campaigns | `query` on `ad_campaigns` — `id`, `name`, `status`, `budget_amount`, `budget_type`, `approved_by`; CLI `dazero ads <slug>` |
-| products | `query` on `products` — `id`, `title`, `pricing`, `url`, `featured`, `images`; CLI `dazero products <slug>` |
+| ad campaigns | `query` on `ad_campaigns` — `id`, `name`, `status`, `budget_amount`, `budget_type`, `approved_by`; CLI `feega ads <slug>` |
+| products | `query` on `products` — `id`, `title`, `pricing`, `url`, `featured`, `images`; CLI `feega products <slug>` |
 | connected accounts | `query` on `social_accounts` — `platform`, `username`, `status`, `connected_at` |
 | what `nodes.data` must look like | `describe_node_types` — not a `query`, since it reads a schema, not a table |
 
@@ -166,13 +166,13 @@ list. Returns how many combinations it actually stopped.
 
 | MCP | CLI |
 |-----|-----|
-| `list_posts` | `dazero content <slug> [--status …]` |
+| `list_posts` | `feega content <slug> [--status …]` |
 | `create_post` | (MCP only) |
-| `set_post_status` | (MCP only — CLI equivalents are `dazero post <slug> <id> approve\|publish\|reject`) |
-| — | `dazero post <slug> <id> edit …` |
-| — | `dazero post <slug> <id> render` |
-| — | `dazero post <slug> <id> reschedule --scheduledFor …` |
-| — | `dazero approve <slug> [--all] [--dry]` |
+| `set_post_status` | (MCP only — CLI equivalents are `feega post <slug> <id> approve\|publish\|reject`) |
+| — | `feega post <slug> <id> edit …` |
+| — | `feega post <slug> <id> render` |
+| — | `feega post <slug> <id> reschedule --scheduledFor …` |
+| — | `feega approve <slug> [--all] [--dry]` |
 
 A post (`posts` table) is the promoted artifact — caption, media, brand — different from a canvas
 node, which is raw material. `post_sources` links a post back to the nodes it came from.
@@ -190,10 +190,10 @@ Free.
 not schedule or publish it. Free.
 
 The CLI's post surface is a different, older-shaped set of REST endpoints that still work
-brand-scoped: `dazero post <slug> <id> edit` changes caption/title/link/subreddit/media/platforms
+brand-scoped: `feega post <slug> <id> edit` changes caption/title/link/subreddit/media/platforms
 without a render or a credit; `render` draws the missing image from the post's prompt; `approve`
 schedules it; `publish` sends it immediately; `reschedule --scheduledFor …` moves it; `reject`
-deletes a pending one. `dazero approve <slug> --all` approves every pending post in one pass — MCP
+deletes a pending one. `feega approve <slug> --all` approves every pending post in one pass — MCP
 has no equivalent on purpose: `set_post_status` moves one post's status at a time, and there is no
 approve-everything tool, because approving distribution for a whole queue from a misread question
 is the incident this asymmetry exists to prevent.
@@ -202,14 +202,14 @@ is the incident this asymmetry exists to prevent.
 
 | MCP | CLI |
 |-----|-----|
-| `list_ad_campaigns` | `dazero ads <slug>` |
-| `create_ad_campaign` | `dazero ads <slug> --create --name … --headline …` |
-| `approve_ad_campaign` | `dazero ads <slug> --approve <id>` |
+| `list_ad_campaigns` | `feega ads <slug>` |
+| `create_ad_campaign` | `feega ads <slug> --create --name … --headline …` |
+| `approve_ad_campaign` | `feega ads <slug> --approve <id>` |
 
 An ad campaign spends real money, so `create_ad_campaign` never produces something already
 publishable: it always drafts `draft`, `approved_by: null`. `approve_ad_campaign` is the only door
 that lets it spend, and it is refused over an API key on purpose — an agent cannot approve its own
-spend. This only works from a signed-in person's own session (the app, `dazero login`, or the MCP
+spend. This only works from a signed-in person's own session (the app, `feega login`, or the MCP
 host doing OAuth). If you are an agent and this fails, tell the person to approve it themselves.
 
 `list_ad_campaigns({ org, brand_id, status? })` reads a brand's campaigns with their status and
@@ -223,7 +223,7 @@ billed by calling this. Free.
 
 `approve_ad_campaign({ org, id })` lets a drafted campaign spend.
 
-The CLI's `dazero ads <slug>` surface also covers what MCP does not expose yet — sync, propose,
+The CLI's `feega ads <slug>` surface also covers what MCP does not expose yet — sync, propose,
 remix, pause/resume, duplicate, delete — through a single brand-scoped REST endpoint
 (`/api/v1/brands/:slug/ads`), separate from the org-scoped `ad_campaigns` table MCP reads and
 writes.

@@ -19,7 +19,7 @@ import type { AddressInfo } from 'node:net';
  */
 
 const USER_ID = '3f1c9a52-0d47-4c8b-9e21-5b7d0a2f6c84';
-const USER_EMAIL = 'test@dazero.co';
+const USER_EMAIL = 'test@feega.app';
 const BEARER = 'access-token-for-the-test';
 
 const rows: Record<string, unknown>[] = [];
@@ -63,7 +63,7 @@ process.env.PUBLIC_APP_URL = origin;
 // Nessuna sessione CLI su disco: senza bearer il tool si ferma su `requireAuth` e non parla con
 // nessuno. La riga deve esserci comunque — un tool che fallisce è quello che più di tutti si vuole
 // nei log, e prima non lasciava niente.
-process.env.HOME = mkdtempSync(join(tmpdir(), 'dazero-mcp-'));
+process.env.HOME = mkdtempSync(join(tmpdir(), 'feega-mcp-'));
 
 const { handleMcpFetch } = await import('./http-app.ts');
 

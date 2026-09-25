@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "dazero": {
+    "feega": {
       "type": "http",
-      "url": "https://mcp.dazero.co/mcp"
+      "url": "https://mcp.feega.app/mcp"
     }
   }
 }

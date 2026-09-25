@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url';
 
 const CLI = fileURLToPath(new URL('../', import.meta.url));
 const MCP_TOOLS = join(CLI, 'mcp', 'tools');
-const SKILL = join(CLI, 'skills', 'dazero', 'SKILL.md');
-const REFERENCE = join(CLI, 'skills', 'dazero', 'references', 'tools.md');
+const SKILL = join(CLI, 'skills', 'feega', 'SKILL.md');
+const REFERENCE = join(CLI, 'skills', 'feega', 'references', 'tools.md');
 
 /**
  * La superficie MCP reale non nasce da un registro: e' cablata a mano in

@@ -84,7 +84,7 @@ export function registerAdsTools(server: McpServer) {
       title: 'Approve an ad campaign',
       description:
         'Let a drafted campaign spend. REFUSED over an API key on purpose: an agent cannot approve ' +
-        'its own spend — this only works from a signed-in person\'s own session (the app, or `dazero ' +
+        'its own spend — this only works from a signed-in person\'s own session (the app, or `feega ' +
         'login`). If you are an agent and this fails, tell the person to approve it themselves.',
       inputSchema: z.object({ org, id: z.string() }),
       annotations: { readOnlyHint: false, destructiveHint: true }

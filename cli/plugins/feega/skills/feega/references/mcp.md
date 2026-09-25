@@ -1,28 +1,28 @@
-# dazero MCP — setup & usage
+# feega MCP — setup & usage
 
-Model Context Protocol server for dazero. Same HTTPS client and OAuth as the CLI.
+Model Context Protocol server for feega. Same HTTPS client and OAuth as the CLI.
 **No static API tokens.**
 
 ```
 Host (Cursor / Claude / …)
-  ├─ stdio  → bun run mcp / dazero-mcp
-  └─ HTTPS  → https://mcp.dazero.co/mcp  (+ Bearer on remote)
-         └─ dazero API /api/v1/org/* and /api/v1/brands/:slug/*
+  ├─ stdio  → bun run mcp / feega-mcp
+  └─ HTTPS  → https://mcp.feega.app/mcp  (+ Bearer on remote)
+         └─ feega API /api/v1/org/* and /api/v1/brands/:slug/*
 ```
 
 ## 1. Pick a transport
 
 | Mode | When | Endpoint / command | Auth |
 |------|------|--------------------|------|
-| **stdio** | Local agent on your machine | `bun run mcp` or `dazero-mcp` | existing `dazero login` session |
+| **stdio** | Local agent on your machine | `bun run mcp` or `feega-mcp` | existing `feega login` session |
 | **HTTP local** | Local Streamable HTTP | `bun run mcp:http` → `http://localhost:8787/mcp` | Bearer **or** session file |
-| **HTTP remote** | Shared / cloud host | `https://mcp.dazero.co/mcp` | **Bearer required** |
+| **HTTP remote** | Shared / cloud host | `https://mcp.feega.app/mcp` | **Bearer required** |
 
 Health check (HTTP):
 
 ```bash
-curl -sS https://mcp.dazero.co/health
-# {"ok":true,"name":"dazero-mcp","transport":"streamable-http","mcp":"/mcp"}
+curl -sS https://mcp.feega.app/health
+# {"ok":true,"name":"feega-mcp","transport":"streamable-http","mcp":"/mcp"}
 ```
 
 OAuth resource metadata: `GET /.well-known/oauth-protected-resource`.
@@ -36,9 +36,9 @@ Clone or install the repo, then in Cursor MCP settings:
 ```json
 {
   "mcpServers": {
-    "dazero": {
+    "feega": {
       "command": "bun",
-      "args": ["run", "/ABS/PATH/to/dazero/cli/mcp/stdio.ts"]
+      "args": ["run", "/ABS/PATH/to/feega/cli/mcp/stdio.ts"]
     }
   }
 }
@@ -49,7 +49,7 @@ If the binary is on `PATH` after install:
 ```json
 {
   "mcpServers": {
-    "dazero": { "command": "dazero-mcp" }
+    "feega": { "command": "feega-mcp" }
   }
 }
 ```
@@ -59,8 +59,8 @@ If the binary is on `PATH` after install:
 ```json
 {
   "mcpServers": {
-    "dazero": {
-      "url": "https://mcp.dazero.co/mcp"
+    "feega": {
+      "url": "https://mcp.feega.app/mcp"
     }
   }
 }
@@ -72,7 +72,7 @@ The host must send OAuth Bearer. If it cannot yet, use [mcp-remote](https://www.
 
 ```bash
 git clone https://github.com/andreabuttarelli/dazero.git
-cd dazero/cli
+cd feega/cli
 bun install
 bun run mcp          # stdio
 bun run mcp:http     # http://localhost:8787/mcp
@@ -82,8 +82,8 @@ bun run mcp:http     # http://localhost:8787/mcp
 
 **Local (stdio / local HTTP)**
 
-1. Run `dazero login` in a terminal — it opens the browser.
-2. Session is stored at `~/.config/dazero/session.json` and shared with the CLI.
+1. Run `feega login` in a terminal — it opens the browser.
+2. Session is stored at `~/.config/feega/session.json` and shared with the CLI.
 3. Confirm with a `query` on `brands` — rows come back, or you are not signed in.
 
 **Remote HTTP**
@@ -92,7 +92,7 @@ Your host does this on its own: the server publishes `/.well-known/oauth-protect
 answers an unauthenticated call with `401 WWW-Authenticate: Bearer`, which is the standard round
 Claude Code, Claude.ai and Cursor already know how to walk.
 
-1. If you are calling it by hand: obtain a Supabase access token via dazero OAuth (same token
+1. If you are calling it by hand: obtain a Supabase access token via feega OAuth (same token
    inside `session.json` after CLI login: field used as Bearer).
 2. Send on every request: `Authorization: Bearer <access_token>`.
 3. Without it you get JSON-RPC **401** — that is expected, not a server crash.
@@ -116,12 +116,12 @@ Ids from list-derived reads accept short unambiguous prefixes (same rule as the 
 | 401 on `/mcp` | Missing/invalid Bearer on remote | Let the host do the OAuth round, or pass the access token yourself, or use stdio |
 | 404 on `/health` | Wrong deploy root / path | Expect `/health` and `/mcp` on the MCP host |
 | Tools missing | MCP not connected in host | Check Cursor MCP panel; restart host |
-| Auth works in CLI but not MCP | Different machine / no session file | Run `dazero login` on the machine running the MCP server |
+| Auth works in CLI but not MCP | Different machine / no session file | Run `feega login` on the machine running the MCP server |
 | `conflict` on `run_node_generation` | Stale `version` — someone else wrote the node since you read it | Re-read the node with `query`, take its current `version`, retry |
-| `Not an https or loopback URI: cursor://anysphere.cursor-mcp/oauth/callback` | Cursor DCR uses a custom-scheme callback; dazero OAuth only allows https/loopback | Use **stdio** MCP, update Cursor (localhost `:8787` callback), or pass Bearer; see [docs/mcp.md](../../../docs/mcp.md#cursor--remote-http-oauth) |
+| `Not an https or loopback URI: cursor://anysphere.cursor-mcp/oauth/callback` | Cursor DCR uses a custom-scheme callback; feega OAuth only allows https/loopback | Use **stdio** MCP, update Cursor (localhost `:8787` callback), or pass Bearer; see [docs/mcp.md](../../../docs/mcp.md#cursor--remote-http-oauth) |
 
 ## 6. More
 
 - Full tool list: [tools.md](tools.md)
 - CLI fallback: [cli.md](cli.md)
-- Product: https://dazero.co · Repo: https://github.com/andreabuttarelli/dazero
+- Product: https://feega.app · Repo: https://github.com/andreabuttarelli/dazero

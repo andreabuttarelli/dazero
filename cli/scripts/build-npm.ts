@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 /**
- * Build Node-targeted JS bundles for npm (`npm i -g dazero-cli`).
+ * Build Node-targeted JS bundles for npm (`npm i -g feega-cli`).
  *
  *   bun run scripts/build-npm.ts
  *
  * Output:
- *   dist-npm/cli.js        → bin `dazero`
- *   dist-npm/mcp-stdio.js  → bin `dazero-mcp`
+ *   dist-npm/cli.js        → bin `feega`
+ *   dist-npm/mcp-stdio.js  → bin `feega-mcp`
  *   dist-npm/package.json  → publishable package root (copied fields)
  */
 
@@ -65,14 +65,14 @@ const publishPkg = {
   bugs: pkg.bugs,
   type: 'module',
   bin: {
-    dazero: './cli.js',
-    'dazero-mcp': './mcp-stdio.js',
+    feega: './cli.js',
+    'feega-mcp': './mcp-stdio.js',
   },
   engines: {
     node: '>=20',
   },
   keywords: [
-    'dazero',
+    'feega',
     'cli',
     'social-media',
     'mcp',

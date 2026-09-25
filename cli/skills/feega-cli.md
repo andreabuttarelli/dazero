@@ -1,30 +1,30 @@
-# dazero Skill (MCP + CLI)
+# feega Skill (MCP + CLI)
 
 Flat copy for Claude Code / multi-tool installers.  
-**Canonical publishable skill:** [`dazero/SKILL.md`](./dazero/SKILL.md) (Agent Skills / skills.sh).
+**Canonical publishable skill:** [`feega/SKILL.md`](./feega/SKILL.md) (Agent Skills / skills.sh).
 
 ```bash
-npx skills add andreabuttarelli/dazero --skill dazero
+npx skills add andreabuttarelli/dazero --skill feega
 bash scripts/install-skill.sh --project
 ```
 
-Prefer **MCP tools** when connected; otherwise the **`dazero` CLI**. OAuth only — no static tokens.
-Details: [dazero/references/mcp.md](./dazero/references/mcp.md) · [tools.md](./dazero/references/tools.md) · [cli.md](./dazero/references/cli.md).
+Prefer **MCP tools** when connected; otherwise the **`feega` CLI**. OAuth only — no static tokens.
+Details: [feega/references/mcp.md](./feega/references/mcp.md) · [tools.md](./feega/references/tools.md) · [cli.md](./feega/references/cli.md).
 
 ## Auth
 
-- Local: `dazero login` (terminal) → `~/.config/dazero/session.json`, shared with the MCP server
-- Remote MCP (`https://mcp.dazero.co/mcp`): `Authorization: Bearer <access_token>`
-- Confirm with a `query` on `brands` (MCP) or `dazero brands` (CLI) — never guess a brand or org
+- Local: `feega login` (terminal) → `~/.config/feega/session.json`, shared with the MCP server
+- Remote MCP (`https://mcp.feega.app/mcp`): `Authorization: Bearer <access_token>`
+- Confirm with a `query` on `brands` (MCP) or `feega brands` (CLI) — never guess a brand or org
 
 ## Cursor MCP (stdio)
 
 ```json
 {
   "mcpServers": {
-    "dazero": {
+    "feega": {
       "command": "bun",
-      "args": ["run", "/ABS/PATH/to/dazero-cli/mcp/stdio.ts"]
+      "args": ["run", "/ABS/PATH/to/feega-cli/mcp/stdio.ts"]
     }
   }
 }
@@ -35,7 +35,7 @@ Details: [dazero/references/mcp.md](./dazero/references/mcp.md) · [tools.md](./
 ```json
 {
   "mcpServers": {
-    "dazero": { "url": "https://mcp.dazero.co/mcp" }
+    "feega": { "url": "https://mcp.feega.app/mcp" }
   }
 }
 ```
@@ -44,8 +44,8 @@ Details: [dazero/references/mcp.md](./dazero/references/mcp.md) · [tools.md](./
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash
-dazero login
-dazero brands
-dazero content <slug> --status pending_user
-dazero approve <slug> --all
+feega login
+feega brands
+feega content <slug> --status pending_user
+feega approve <slug> --all
 ```

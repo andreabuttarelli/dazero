@@ -4,7 +4,7 @@ import { c, info } from '../lib/display.ts';
 
 export async function cmdUpgrade(slug: string) {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: feega login'); process.exit(1); }
 
   const detail = await api.getBrand(session.access_token, slug);
   const brand = detail.brand;

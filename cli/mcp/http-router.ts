@@ -30,7 +30,7 @@ export async function routeMcpHttp(req: Request): Promise<Response> {
   if (url.pathname === '/health' || url.pathname === '/' || url.pathname === '/api/health') {
     return json({
       ok: true,
-      name: 'dazero-mcp',
+      name: 'feega-mcp',
       transport: 'streamable-http',
       mcp: '/mcp',
     });
@@ -45,7 +45,7 @@ export async function routeMcpHttp(req: Request): Promise<Response> {
     return json({
       resource: `${publicUrl}/mcp`,
       authorization_servers: [appUrl],
-      scopes_supported: ['dazero'],
+      scopes_supported: ['feega'],
       bearer_methods_supported: ['header'],
     });
   }

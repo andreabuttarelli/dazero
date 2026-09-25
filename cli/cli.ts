@@ -10,20 +10,20 @@ const program = new Command();
 program.hook('preAction', () => assertEnv());
 
 program
-  .name('dazero')
-  .description('CLI per gestire dazero — social media AI autopilot')
+  .name('feega')
+  .description('CLI per gestire feega — social media AI autopilot')
   .version('0.1.0')
   .addHelpText('after', `
 Esempi:
-  $ dazero brands                   Lista tutti i brand
-  $ dazero dashboard my-brand       Dashboard completa
+  $ feega brands                   Lista tutti i brand
+  $ feega dashboard my-brand       Dashboard completa
 
 Documentazione completa: cli/README.md
 `);
 
 program
   .command('login')
-  .description('Accedi a dazero (default: apre il browser)')
+  .description('Accedi a feega (default: apre il browser)')
   .option('--email <email>', 'email per login non interattivo (richiede --password o --password-stdin)')
   .option('--password <password>', 'password per login non interattivo (richiede --email)')
   .option('--password-stdin', 'legge la password da stdin, fuori da history e process list')
@@ -34,7 +34,7 @@ program
 
 program
   .command('logout')
-  .description('Disconnettiti da dazero')
+  .description('Disconnettiti da feega')
   .action(async () => {
     const { cmdLogout } = await import('./commands/logout.ts');
     await cmdLogout();
@@ -117,7 +117,7 @@ program
 
 program
   .command('update')
-  .description('Aggiorna dazero CLI all\'ultima versione')
+  .description('Aggiorna feega CLI all\'ultima versione')
   .action(async () => {
     const { cmdUpdate } = await import('./commands/update.ts');
     await cmdUpdate();

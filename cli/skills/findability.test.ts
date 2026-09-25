@@ -16,7 +16,7 @@ import { MCP_INSTRUCTIONS } from '../mcp/server.ts';
  * incontrare solo la prima.
  *
  * Le descrizioni si leggono dal SERVER VERO (`tools/list`), non da un registro dichiarativo: la
- * superficie MCP di dazero è cablata a mano in `cli/mcp/tools/*.ts`, e un contratto REST separato
+ * superficie MCP di feega è cablata a mano in `cli/mcp/tools/*.ts`, e un contratto REST separato
  * (`cli/lib/contracts/`) descrive le rotte brand-scoped che il CLI chiama — leggere quello per
  * `tools/list` mentirebbe sul tool che un agente vede davvero.
  */
@@ -45,7 +45,7 @@ const HAND_WRITTEN_TARIFF = /\b\d+\s*credits?\b/i;
  * riferimento farebbe passare la riga mentre la superficie che si legge davvero tace.
  */
 const SKILL = readFileSync(
-  fileURLToPath(new URL('./dazero/SKILL.md', import.meta.url)),
+  fileURLToPath(new URL('./feega/SKILL.md', import.meta.url)),
   'utf8'
 ).toLowerCase();
 

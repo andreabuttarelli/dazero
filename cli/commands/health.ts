@@ -23,7 +23,7 @@ export async function cmdHealth() {
     const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
     const data: StatusResponse = await res.json();
 
-    section('dazero API Status');
+    section('feega API Status');
 
     const overall = data.status === 'ok'
       ? chalk.green.bold('● All systems operational')

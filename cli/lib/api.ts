@@ -1,6 +1,6 @@
 /**
- * Thin HTTP client for the dazero CLI.
- * No Supabase, no DB access, no secrets — just HTTP calls to the dazero API.
+ * Thin HTTP client for the feega CLI.
+ * No Supabase, no DB access, no secrets — just HTTP calls to the feega API.
  */
 
 import { AsyncLocalStorage } from 'node:async_hooks';

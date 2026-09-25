@@ -4,7 +4,7 @@ import { table, c } from '../lib/display.ts';
 
 export async function cmdBrands() {
   const session = await loadSession();
-  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: dazero login'); process.exit(1); }
+  if (!session) { console.error('Sessione scaduta o non trovata. Esegui: feega login'); process.exit(1); }
 
   const brands = await api.listBrands(session.access_token);
 

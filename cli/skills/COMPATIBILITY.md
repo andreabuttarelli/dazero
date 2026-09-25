@@ -2,32 +2,32 @@
 
 ## Publishable Agent Skill (recommended)
 
-Package: [`skills/dazero/`](./dazero/) — follows [agentskills.io](https://agentskills.io/specification).  
-Canonical for `npx skills` / skills.sh. The Claude/Codex plugin mirrors the same tree at [`plugins/dazero/skills/dazero/`](../plugins/dazero/skills/dazero/) — run `bash scripts/sync-plugin-skill.sh` after skill edits.
+Package: [`skills/feega/`](./feega/) — follows [agentskills.io](https://agentskills.io/specification).  
+Canonical for `npx skills` / skills.sh. The Claude/Codex plugin mirrors the same tree at [`plugins/feega/skills/feega/`](../plugins/feega/skills/feega/) — run `bash scripts/sync-plugin-skill.sh` after skill edits.
 
 ```bash
-npx skills add andreabuttarelli/dazero --skill dazero
-npx skills add andreabuttarelli/dazero --skill dazero -g   # global
+npx skills add andreabuttarelli/dazero --skill feega
+npx skills add andreabuttarelli/dazero --skill feega -g   # global
 ```
 
 Appears on directories that index public GitHub skills (e.g. skills.sh) via install telemetry — no separate submission.
 
 | File | Role |
 |------|------|
-| `dazero/SKILL.md` | Frontmatter + short instructions |
-| `dazero/references/mcp.md` | MCP connect / auth |
-| `dazero/references/tools.md` | Tool ↔ CLI map |
-| `dazero/references/cli.md` | CLI install + commands |
+| `feega/SKILL.md` | Frontmatter + short instructions |
+| `feega/references/mcp.md` | MCP connect / auth |
+| `feega/references/tools.md` | Tool ↔ CLI map |
+| `feega/references/cli.md` | CLI install + commands |
 
 ## Claude Code & Codex plugins (marketplace submit)
 
-Installable plugin: [`plugins/dazero/`](../plugins/dazero/) (skill + remote MCP).  
+Installable plugin: [`plugins/feega/`](../plugins/feega/) (skill + remote MCP).  
 Full submit checklist: [`docs/plugins.md`](../docs/plugins.md).
 
 ```bash
 # Claude Code — add this repo as a marketplace, then install
 /plugin marketplace add andreabuttarelli/dazero
-/plugin install dazero@dazero
+/plugin install feega@dazero
 
 # Codex — add marketplace from the repo
 codex plugin marketplace add andreabuttarelli/dazero
@@ -40,12 +40,12 @@ Public directory submit forms:
 
 ## Legacy / multi-tool installer
 
-[`dazero-cli.md`](./dazero-cli.md) + `bash scripts/install-skill.sh` still copies into Claude, `.cursorrules`, `AGENTS.md`, etc.
+[`feega-cli.md`](./feega-cli.md) + `bash scripts/install-skill.sh` still copies into Claude, `.cursorrules`, `AGENTS.md`, etc.
 
 | Tool | File | Location |
 |------|------|----------|
-| **Cursor Agent Skills** | `SKILL.md` | `.cursor/skills/dazero/` |
-| **Claude Code** | `dazero-cli.md` or skill dir | `.claude/skills/` |
+| **Cursor Agent Skills** | `SKILL.md` | `.cursor/skills/feega/` |
+| **Claude Code** | `feega-cli.md` or skill dir | `.claude/skills/` |
 | **Cursor rules** | `.cursorrules` | Project root |
 | **GitHub Copilot** | `copilot-instructions.md` | `.github/` |
 | **AGENTS.md / llms.txt** | project docs | Root |

@@ -1,34 +1,34 @@
 ---
-name: dazero
+name: feega
 description: >-
-  Operate dazero (infinite canvas for social content) via MCP tools or the
-  dazero CLI: canvas nodes, generation, posts, ad campaigns. Use when the user
-  mentions dazero, dazero.co, a dazero canvas, approving social posts, or
+  Operate feega (infinite canvas for social content) via MCP tools or the
+  feega CLI: canvas nodes, generation, posts, ad campaigns. Use when the user
+  mentions feega, feega.app, a feega canvas, approving social posts, or
   managing brand content and ads from an agent.
 license: Apache-2.0
 compatibility: >-
-  Requires network access to dazero.co (or PUBLIC_APP_URL). Prefer dazero MCP
-  when connected; otherwise the dazero CLI (Bun or installed binary) after OAuth login.
+  Requires network access to feega.app (or PUBLIC_APP_URL). Prefer feega MCP
+  when connected; otherwise the feega CLI (Bun or installed binary) after OAuth login.
 metadata:
   author: andreabuttarelli
   version: "2.0.0"
-  homepage: https://dazero.co
+  homepage: https://feega.app
   repository: https://github.com/andreabuttarelli/dazero
-  mcp: https://mcp.dazero.co/mcp
+  mcp: https://mcp.feega.app/mcp
 ---
 
-# dazero
+# feega
 
-Drive [dazero](https://dazero.co) — an infinite canvas of typed nodes (text, image, video, doc,
+Drive [feega](https://feega.app) — an infinite canvas of typed nodes (text, image, video, doc,
 iframe, social feed, social post mockup, products, ads) — through **MCP tools** (preferred) or the
-**`dazero` CLI**. Same OAuth identity. **No static API tokens.**
+**`feega` CLI**. Same OAuth identity. **No static API tokens.**
 
 ## Choose interface
 
 | Situation | Action |
 |-----------|--------|
-| dazero MCP is connected | Call MCP tools (`query`, `create_post`, `run_node_generation`, …) |
-| MCP not available | Shell: `dazero …` after `dazero login` |
+| feega MCP is connected | Call MCP tools (`query`, `create_post`, `run_node_generation`, …) |
+| MCP not available | Shell: `feega …` after `feega login` |
 
 MCP reaches the whole org: any project, canvas, node, post or ad campaign the signed-in user can
 see. The CLI is narrower and always brand-scoped — it is the fallback for approving, editing and
@@ -38,13 +38,13 @@ reading posts and ads without a connected agent. Never invent REST endpoints or 
 
 **Signing in is not a tool** — there is nothing to call. Two paths, and both end in the same JWT:
 
-1. **Local MCP / CLI:** run `dazero login` in a terminal, once. The session lands in
-   `~/.config/dazero/session.json` and the CLI and the MCP server share it.
-2. **Remote MCP** (`https://mcp.dazero.co/mcp`): your host does the OAuth round itself — it reads
+1. **Local MCP / CLI:** run `feega login` in a terminal, once. The session lands in
+   `~/.config/feega/session.json` and the CLI and the MCP server share it.
+2. **Remote MCP** (`https://mcp.feega.app/mcp`): your host does the OAuth round itself — it reads
    `/.well-known/oauth-protected-resource` and answers the `401 WWW-Authenticate: Bearer`
    challenge. Nothing for you to do; a missing Bearer is a 401, not a broken server.
 
-Confirm it worked with `query` on `projects` or `dazero brands`: rows come back, or you are not
+Confirm it worked with `query` on `projects` or `feega brands`: rows come back, or you are not
 signed in.
 
 Setup details: [references/mcp.md](references/mcp.md).
@@ -155,7 +155,7 @@ is the only door that lets it spend, and it only opens for a signed-in person's 
 ## Install this skill
 
 ```bash
-npx skills add andreabuttarelli/dazero --skill dazero
+npx skills add andreabuttarelli/dazero --skill feega
 ```
 
 Or install the marketplace plugin (skill + remote MCP):
@@ -163,11 +163,11 @@ Or install the marketplace plugin (skill + remote MCP):
 ```bash
 # Claude Code
 /plugin marketplace add andreabuttarelli/dazero
-/plugin install dazero@dazero
+/plugin install feega@dazero
 
 # Codex
 codex plugin marketplace add andreabuttarelli/dazero
 ```
 
-Or copy this folder into `.cursor/skills/dazero/` / `~/.claude/skills/dazero/`.  
+Or copy this folder into `.cursor/skills/feega/` / `~/.claude/skills/feega/`.  
 Submit / packaging details: [`docs/plugins.md`](../../../../docs/plugins.md).

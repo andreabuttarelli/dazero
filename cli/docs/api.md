@@ -4,7 +4,7 @@ Tutti gli endpoint sono sotto `/api/v1/` e richiedono autenticazione Bearer toke
 copre le rotte brand-scoped (`/api/v1/brands/:slug/*`) che il CLI chiama — la fallback quando MCP
 non è connesso. Un agente MCP non passa da qui: legge e scrive con `query`/`insert_row`/
 `update_row`/`delete_row`/`run_node_generation`, org-scoped, non brand-scoped — vedi
-[`skills/dazero/references/tools.md`](../skills/dazero/references/tools.md).
+[`skills/feega/references/tools.md`](../skills/feega/references/tools.md).
 
 ## Autenticazione
 
@@ -12,7 +12,7 @@ non è connesso. Un agente MCP non passa da qui: legge e scrive con `query`/`ins
 Authorization: Bearer <jwt_token>
 ```
 
-Il token viene ottenuto tramite il flow OAuth della CLI. Viene salvato in `~/.config/dazero/session.json` e rinnovato automaticamente.
+Il token viene ottenuto tramite il flow OAuth della CLI. Viene salvato in `~/.config/feega/session.json` e rinnovato automaticamente.
 
 ## Brand
 

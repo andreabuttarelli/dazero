@@ -49,8 +49,8 @@ export async function requireAuth(): Promise<
     return {
       ok: false,
       result: fail(
-        'Not authenticated. Locally: run `dazero login` in a terminal — the CLI and this server share one session file. ' +
-          'For remote HTTP (mcp.dazero.co): send Authorization: Bearer <access_token> from your dazero OAuth session. ' +
+        'Not authenticated. Locally: run `feega login` in a terminal — the CLI and this server share one session file. ' +
+          'For remote HTTP (mcp.feega.app): send Authorization: Bearer <access_token> from your feega OAuth session. ' +
           'No static API tokens are supported.',
       ),
     };

@@ -4,8 +4,8 @@ import { join } from 'path';
 import { fileURLToPath } from 'url';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const CANONICAL = join(ROOT, 'skills', 'dazero');
-const PLUGIN = join(ROOT, 'plugins', 'dazero', 'skills', 'dazero');
+const CANONICAL = join(ROOT, 'skills', 'feega');
+const PLUGIN = join(ROOT, 'plugins', 'feega', 'skills', 'feega');
 
 function listFiles(dir: string, prefix = ''): string[] {
   const out: string[] = [];
@@ -19,7 +19,7 @@ function listFiles(dir: string, prefix = ''): string[] {
 }
 
 describe('plugin skill mirror', () => {
-  test('plugins/dazero/skills/dazero matches skills/dazero', () => {
+  test('plugins/feega/skills/feega matches skills/feega', () => {
     expect(existsSync(join(CANONICAL, 'SKILL.md'))).toBe(true);
     expect(existsSync(join(PLUGIN, 'SKILL.md'))).toBe(true);
     const a = listFiles(CANONICAL);
@@ -34,9 +34,9 @@ describe('plugin skill mirror', () => {
 
   test('plugin manifests exist', () => {
     const MONO_ROOT = join(ROOT, '..');
-    expect(existsSync(join(ROOT, 'plugins/dazero/.claude-plugin/plugin.json'))).toBe(true);
-    expect(existsSync(join(ROOT, 'plugins/dazero/.codex-plugin/plugin.json'))).toBe(true);
-    expect(existsSync(join(ROOT, 'plugins/dazero/.mcp.json'))).toBe(true);
+    expect(existsSync(join(ROOT, 'plugins/feega/.claude-plugin/plugin.json'))).toBe(true);
+    expect(existsSync(join(ROOT, 'plugins/feega/.codex-plugin/plugin.json'))).toBe(true);
+    expect(existsSync(join(ROOT, 'plugins/feega/.mcp.json'))).toBe(true);
     expect(existsSync(join(MONO_ROOT, '.claude-plugin/marketplace.json'))).toBe(true);
     expect(existsSync(join(MONO_ROOT, '.agents/plugins/marketplace.json'))).toBe(true);
   });

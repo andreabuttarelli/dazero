@@ -1,33 +1,33 @@
-# dazero plugin — Claude Code & Codex submit
+# feega plugin — Claude Code & Codex submit
 
-The installable plugin lives in [`plugins/dazero/`](../plugins/dazero/). It bundles:
+The installable plugin lives in [`plugins/feega/`](../plugins/feega/). It bundles:
 
-- Agent skill → `skills/dazero/` (`SKILL.md` + `references/`)
-- Remote MCP → `.mcp.json` → `https://mcp.dazero.co/mcp`
+- Agent skill → `skills/feega/` (`SKILL.md` + `references/`)
+- Remote MCP → `.mcp.json` → `https://mcp.feega.app/mcp`
 - Manifests → `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`
 
 Repo marketplaces (self-host / team install):
 
 | Agent | Marketplace file | Add / install |
 |-------|------------------|---------------|
-| Claude Code | [`.claude-plugin/marketplace.json`](../.claude-plugin/marketplace.json) | `/plugin marketplace add andreabuttarelli/dazero` then `/plugin install dazero@dazero` |
+| Claude Code | [`.claude-plugin/marketplace.json`](../.claude-plugin/marketplace.json) | `/plugin marketplace add andreabuttarelli/dazero` then `/plugin install feega@dazero` |
 | Codex / ChatGPT | [`.agents/plugins/marketplace.json`](../.agents/plugins/marketplace.json) | `codex plugin marketplace add andreabuttarelli/dazero` |
 
 Local test (Claude):
 
 ```bash
-claude --plugin-dir ./plugins/dazero
-claude plugin validate ./plugins/dazero
+claude --plugin-dir ./plugins/feega
+claude plugin validate ./plugins/feega
 claude plugin validate .   # marketplace + plugin
 ```
 
-Canonical Agent Skill for `npx skills`: `skills/dazero/`.  
+Canonical Agent Skill for `npx skills`: `skills/feega/`.  
 After editing it, sync into the plugin with `bash scripts/sync-plugin-skill.sh`.
 
 ## Submit to Claude community directory
 
 1. Push this repo publicly (already on GitHub).
-2. Run `claude plugin validate ./plugins/dazero` and fix issues.
+2. Run `claude plugin validate ./plugins/feega` and fix issues.
 3. Submit the **GitHub repo URL** at one of:
    - [platform.claude.com/plugins/submit](https://platform.claude.com/plugins/submit) (Console — individuals)
    - [claude.ai admin submissions](https://claude.ai/admin-settings/directory/submissions/plugins/new) (Team / Enterprise)
@@ -41,10 +41,10 @@ Docs: [Submitting your plugin](https://claude.com/docs/plugins/submit) · [Plugi
 1. OpenAI Platform org with **Apps Management → Write** and a **verified** developer/business identity.
 2. Open the [plugin submission portal](https://developers.openai.com/plugins/deploy/submission).
 3. Create plugin → prefer **With MCP** (skills + MCP):
-   - MCP URL: `https://mcp.dazero.co/mcp` (Universal)
+   - MCP URL: `https://mcp.feega.app/mcp` (Universal)
    - Scan Tools, domain verification, tool annotations
-   - Skills: upload the `plugins/dazero/skills/` tree **or** import static skills from MCP if exposed
-4. Fill listing (logo, privacy `https://www.dazero.co/privacy`, terms `https://www.dazero.co/terms`, support/website).
+   - Skills: upload the `plugins/feega/skills/` tree **or** import static skills from MCP if exposed
+4. Fill listing (logo, privacy `https://www.feega.app/privacy`, terms `https://www.feega.app/terms`, support/website).
 5. Add starter prompts + **5 positive / 3 negative** test cases; demo credentials without MFA if reviewers need login.
 6. Submit for review → after approval, **publish** from the portal (not automatic).
 
@@ -52,4 +52,4 @@ Docs: [Submit plugins](https://developers.openai.com/plugins/deploy/submission) 
 
 ## Auth note
 
-Remote MCP requires an dazero OAuth Bearer JWT (same session as `dazero login`). Hosts that cannot attach Bearer should use local stdio MCP (`dazero-mcp` / `bun run mcp`) after CLI login — see [`docs/mcp.md`](mcp.md).
+Remote MCP requires an feega OAuth Bearer JWT (same session as `feega login`). Hosts that cannot attach Bearer should use local stdio MCP (`feega-mcp` / `bun run mcp`) after CLI login — see [`docs/mcp.md`](mcp.md).

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * dazero MCP server (Streamable HTTP) — local Bun.serve.
+ * feega MCP server (Streamable HTTP) — local Bun.serve.
  * Production on Vercel uses api/*.ts (Node), not this file.
  */
 import { loadEnv } from '../lib/config.ts';
@@ -49,5 +49,5 @@ const server = Bun.serve({
   },
 });
 
-console.error(`dazero MCP (HTTP) on http://localhost:${server.port}/mcp`);
+console.error(`feega MCP (HTTP) on http://localhost:${server.port}/mcp`);
 console.error(`Health: http://localhost:${server.port}/health`);

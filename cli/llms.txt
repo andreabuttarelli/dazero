@@ -1,8 +1,8 @@
-# dazero CLI
+# feega CLI
 
-CLI for dazero — an infinite canvas of typed nodes (text, image, video, doc, iframe, social
+CLI for feega — an infinite canvas of typed nodes (text, image, video, doc, iframe, social
 feed, social post mockup, products, ads) — from the terminal. Brand-scoped; MCP is the
-org-scoped, richer surface for agents (see docs/mcp.md and skills/dazero/references/tools.md).
+org-scoped, richer surface for agents (see docs/mcp.md and skills/feega/references/tools.md).
 
 ## Installation
 
@@ -13,62 +13,62 @@ curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scr
 ## Commands
 
 ### Overview
-- `dazero brands` — List all brands
-- `dazero dashboard <slug>` — Full brand dashboard
-- `dazero status <slug>` — Detailed status
-- `dazero health` — Check Supabase / Gemini / Zernio API status
+- `feega brands` — List all brands
+- `feega dashboard <slug>` — Full brand dashboard
+- `feega status <slug>` — Detailed status
+- `feega health` — Check Supabase / Gemini / Zernio API status
 
 ### Posts
-- `dazero content <slug> [--status <status>]` — List/filter posts (status: pending_user, approved, scheduled, published, failed)
-- `dazero content <slug> --clear <status>` — Bulk-delete posts with that status
-- `dazero approve <slug> [--all] [--dry]` — Approve pending posts
-- `dazero post <slug> <id>` — Show post: text, media, platforms
-- `dazero post <slug> <id> edit [--caption|--title|--link|--subreddit|--firstComment|--imagePrompt|--media|--format|--platforms|--platformCaption|--slot|--product]` — Edit fields (no render, no credits)
-- `dazero post <slug> <id> render` — Generate the missing image from the prompt
-- `dazero post <slug> <id> approve` — Approve single post
-- `dazero post <slug> <id> publish` — Publish immediately
-- `dazero post <slug> <id> reschedule --scheduledFor "2026-06-20T10:00"` — Reschedule
-- `dazero post <slug> <id> reject` — Delete pending post
+- `feega content <slug> [--status <status>]` — List/filter posts (status: pending_user, approved, scheduled, published, failed)
+- `feega content <slug> --clear <status>` — Bulk-delete posts with that status
+- `feega approve <slug> [--all] [--dry]` — Approve pending posts
+- `feega post <slug> <id>` — Show post: text, media, platforms
+- `feega post <slug> <id> edit [--caption|--title|--link|--subreddit|--firstComment|--imagePrompt|--media|--format|--platforms|--platformCaption|--slot|--product]` — Edit fields (no render, no credits)
+- `feega post <slug> <id> render` — Generate the missing image from the prompt
+- `feega post <slug> <id> approve` — Approve single post
+- `feega post <slug> <id> publish` — Publish immediately
+- `feega post <slug> <id> reschedule --scheduledFor "2026-06-20T10:00"` — Reschedule
+- `feega post <slug> <id> reject` — Delete pending post
 
 Editing a SCHEDULED post re-syncs it to Zernio automatically, so what goes out is what you edited.
 
 ### Calendar
-- `dazero calendar <slug> [--month YYYY-MM]` — Monthly scheduled posts
+- `feega calendar <slug> [--month YYYY-MM]` — Monthly scheduled posts
 
 ### Products
-- `dazero products <slug> [list|sync]` — List catalog, or re-import from the connected store (Shopify/Woo)
+- `feega products <slug> [list|sync]` — List catalog, or re-import from the connected store (Shopify/Woo)
 
 ### Ads
-- `dazero ads <slug>` — Ad campaigns, spend, metrics + boost candidates
-- `dazero ads <slug> --sync` — Sync ad accounts + metrics
-- `dazero ads <slug> --propose` — Propose boosts from top organic posts
-- `dazero ads <slug> --remix` — Remix competitor/trending ads into ranked creative briefs
-- `dazero ads <slug> --create --name "..." --headline "..." [--platform metaads|googleads] [--budget N]` — Create a standalone proposal
-- `dazero ads <slug> --approve <id> [--budget N] [--goal ...]` — Approve + launch on Zernio
-- `dazero ads <slug> --pause <id>` — Pause a campaign (all its creatives)
-- `dazero ads <slug> --resume <id>` — Resume a paused campaign
-- `dazero ads <slug> --pause <id> --ad <adId>` — Pause one creative only (A/B)
-- `dazero ads <slug> --resume <id> --ad <adId>` — Resume one creative only
-- `dazero ads <slug> --duplicate <id>` — Duplicate a campaign (paused copy as new proposal)
-- `dazero ads <slug> --delete <id>` — Delete a campaign on the platform (history kept)
-- `dazero ads <slug> --reject <id>` — Reject a proposal
+- `feega ads <slug>` — Ad campaigns, spend, metrics + boost candidates
+- `feega ads <slug> --sync` — Sync ad accounts + metrics
+- `feega ads <slug> --propose` — Propose boosts from top organic posts
+- `feega ads <slug> --remix` — Remix competitor/trending ads into ranked creative briefs
+- `feega ads <slug> --create --name "..." --headline "..." [--platform metaads|googleads] [--budget N]` — Create a standalone proposal
+- `feega ads <slug> --approve <id> [--budget N] [--goal ...]` — Approve + launch on Zernio
+- `feega ads <slug> --pause <id>` — Pause a campaign (all its creatives)
+- `feega ads <slug> --resume <id>` — Resume a paused campaign
+- `feega ads <slug> --pause <id> --ad <adId>` — Pause one creative only (A/B)
+- `feega ads <slug> --resume <id> --ad <adId>` — Resume one creative only
+- `feega ads <slug> --duplicate <id>` — Duplicate a campaign (paused copy as new proposal)
+- `feega ads <slug> --delete <id>` — Delete a campaign on the platform (history kept)
+- `feega ads <slug> --reject <id>` — Reject a proposal
 
 ### Account & billing
-- `dazero upgrade <slug>` — Open plan upgrade page
+- `feega upgrade <slug>` — Open plan upgrade page
 
 ### System
-- `dazero login [--email --password | --password-stdin]` — Authenticate
-- `dazero logout` — Clear the local session
-- `dazero update` — Update CLI to latest version
-- `dazero --help` — Show help
+- `feega login [--email --password | --password-stdin]` — Authenticate
+- `feega logout` — Clear the local session
+- `feega update` — Update CLI to latest version
+- `feega --help` — Show help
 
 ## Environment
 
-- `PUBLIC_APP_URL` — Backend URL (default: http://localhost:5173, falls back to https://dazero.co)
+- `PUBLIC_APP_URL` — Backend URL (default: http://localhost:5173, falls back to https://feega.app)
 
 ## Auth
 
-Run `dazero login` once to authenticate via browser, or non-interactively with `dazero login --email you@example.com --password …` (or `--password-stdin` to keep the password out of shell history and `ps`). Session is saved in `~/.config/dazero/session.json`.
+Run `feega login` once to authenticate via browser, or non-interactively with `feega login --email you@example.com --password …` (or `--password-stdin` to keep the password out of shell history and `ps`). Session is saved in `~/.config/feega/session.json`.
 
 ## MCP
 
@@ -82,8 +82,8 @@ bun run mcp          # stdio
 bun run mcp:http     # http://localhost:8787/mcp
 ```
 
-Remote (Vercel / `mcp.dazero.co`): `Authorization: Bearer <access_token>`. Full map: `docs/mcp.md`,
-`skills/dazero/references/tools.md`.
+Remote (Vercel / `mcp.feega.app`): `Authorization: Bearer <access_token>`. Full map: `docs/mcp.md`,
+`skills/feega/references/tools.md`.
 
 ## Observability (Sentry + Supabase)
 

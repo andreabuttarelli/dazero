@@ -1,15 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
-  "name": "dazero",
-  "displayName": "dazero",
+  "name": "feega",
+  "displayName": "feega",
   "version": "1.0.0",
-  "description": "Operate dazero (social media AI autopilot) via MCP or CLI: brands, posts, plans, studio, SEO/GEO, and blog.",
+  "description": "Operate feega (social media AI autopilot) via MCP or CLI: brands, posts, plans, studio, SEO/GEO, and blog.",
   "author": {
     "name": "Andrea Buttarelli",
     "email": "andreabuttarelli.design@gmail.com",
     "url": "https://github.com/andreabuttarelli"
   },
-  "homepage": "https://dazero.co",
+  "homepage": "https://feega.app",
   "repository": "https://github.com/andreabuttarelli/dazero",
   "license": "Apache-2.0",
   "keywords": [
@@ -18,7 +18,7 @@
     "mcp",
     "seo",
     "geo",
-    "dazero",
+    "feega",
     "autopilot"
   ]
 }

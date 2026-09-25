@@ -1,6 +1,6 @@
-# dazero CLI — infinite-canvas CLI, MCP Server & Agent Skill
+# feega CLI — infinite-canvas CLI, MCP Server & Agent Skill
 
-[dazero](https://dazero.co) is an infinite canvas of typed nodes (text, image, video, doc,
+[feega](https://feega.app) is an infinite canvas of typed nodes (text, image, video, doc,
 iframe, social feed, social post mockup, products, ads) for producing and publishing social
 content. This repository is its command-line client, [MCP server](docs/mcp.md) (Model Context
 Protocol — `stdio` + HTTP) and agent skill: everything you need to read and write the canvas,
@@ -10,27 +10,27 @@ This repository ships **three ways** to drive the same product (same OAuth, same
 
 | | What | Who it’s for |
 |---|------|----------------|
-| **CLI** | `dazero` terminal commands, brand-scoped | Humans & scripts |
+| **CLI** | `feega` terminal commands, brand-scoped | Humans & scripts |
 | **MCP** | Model Context Protocol server (`stdio` + HTTP), org-scoped | Cursor, Claude, other MCP hosts |
-| **Skill** | Agent Skill (`skills/dazero/`) | Coding agents / skills.sh / `npx skills` |
+| **Skill** | Agent Skill (`skills/feega/`) | Coding agents / skills.sh / `npx skills` |
 
-> **You need a dazero account.** This is a client, not a standalone tool: every call talks to
-> the dazero API over HTTPS. Without an account there is nothing to drive.
+> **You need a feega account.** This is a client, not a standalone tool: every call talks to
+> the feega API over HTTPS. Without an account there is nothing to drive.
 
-With the dazero CLI you can browse brands, approve pending posts, edit a post's caption or media,
+With the feega CLI you can browse brands, approve pending posts, edit a post's caption or media,
 re-render a missing image, manage ad campaigns and re-sync a connected store's product catalog —
 from the terminal **or** from an AI agent like Cursor or Claude talking to the MCP server.
 
 ```text
 ┌─────────────┐   ┌─────────────┐   ┌──────────────────┐
-│  dazero   │   │  MCP host   │   │  Agent + Skill   │
+│  feega   │   │  MCP host   │   │  Agent + Skill   │
 │    CLI      │   │ (Cursor…)   │   │  (npx skills)    │
 └──────┬──────┘   └──────┬──────┘   └────────┬─────────┘
        │                 │                   │
        │    lib/api.ts + OAuth session       │
        └─────────────────┼───────────────────┘
                          ▼
-                 dazero /api/v1/*
+                 feega /api/v1/*
 ```
 
 ---
@@ -43,7 +43,7 @@ Pick one:
 
 | Method | Command | Notes |
 |--------|---------|--------|
-| **npm** | `npm install -g dazero-cli` | Needs Node.js ≥ 20 |
+| **npm** | `npm install -g feega-cli` | Needs Node.js ≥ 20 |
 | **Homebrew** | see below | macOS / Linux, standalone binary |
 | **Installer** | see below | curl script → binary on PATH |
 | **From source** | see below | Needs [Bun](https://bun.sh) |
@@ -51,41 +51,41 @@ Pick one:
 **npm**
 
 ```bash
-npm install -g dazero-cli
-# or:  pnpm add -g dazero-cli   /   bun add -g dazero-cli
-dazero login
+npm install -g feega-cli
+# or:  pnpm add -g feega-cli   /   bun add -g feega-cli
+feega login
 ```
 
 **Homebrew** — formula lives in the [`andreabuttarelli/homebrew-tap`](https://github.com/andreabuttarelli/homebrew-tap) repository:
 
 ```bash
 brew tap andreabuttarelli/tap https://github.com/andreabuttarelli/homebrew-tap
-brew install dazero
-dazero login
+brew install feega
+feega login
 ```
 
 **Installer (standalone binary)** — macOS arm64/x64 and Linux arm64/x64, no Node/Bun required:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash
-dazero login
+feega login
 ```
 
-Update later with `dazero update`, or `npm install -g dazero-cli@latest` / `brew upgrade dazero` depending on how you installed. More detail: [`docs/distribute.md`](docs/distribute.md).
+Update later with `feega update`, or `npm install -g feega-cli@latest` / `brew upgrade feega` depending on how you installed. More detail: [`docs/distribute.md`](docs/distribute.md).
 
 ### Quick start
 
 ```bash
-dazero brands
-dazero dashboard my-brand
-dazero content my-brand --status pending_user
-dazero approve my-brand --all
-dazero calendar my-brand
-dazero ads my-brand --remix
+feega brands
+feega dashboard my-brand
+feega content my-brand --status pending_user
+feega approve my-brand --all
+feega calendar my-brand
+feega ads my-brand --remix
 ```
 
-Every command takes the brand slug as its first argument. `dazero --help` lists them all;
-`dazero <command> --help` details one. Short id prefixes from tables are accepted; ambiguous
+Every command takes the brand slug as its first argument. `feega --help` lists them all;
+`feega <command> --help` details one. Short id prefixes from tables are accepted; ambiguous
 prefixes error instead of guessing.
 
 | Area | Commands |
@@ -105,7 +105,7 @@ Requires [Bun](https://bun.sh).
 
 ```bash
 git clone https://github.com/andreabuttarelli/dazero.git
-cd dazero-cli
+cd feega-cli
 bun install
 bun run cli.ts --help
 ```
@@ -121,16 +121,16 @@ bun run mcp          # stdio (local hosts)
 bun run mcp:http     # http://localhost:8787/mcp
 ```
 
-Remote: `https://mcp.dazero.co/mcp` (Bearer JWT required). Health: `GET /health`.
+Remote: `https://mcp.feega.app/mcp` (Bearer JWT required). Health: `GET /health`.
 
 **Cursor — stdio**
 
 ```json
 {
   "mcpServers": {
-    "dazero": {
+    "feega": {
       "command": "bun",
-      "args": ["run", "/ABS/PATH/to/dazero-cli/mcp/stdio.ts"]
+      "args": ["run", "/ABS/PATH/to/feega-cli/mcp/stdio.ts"]
     }
   }
 }
@@ -141,7 +141,7 @@ Remote: `https://mcp.dazero.co/mcp` (Bearer JWT required). Health: `GET /health`
 ```json
 {
   "mcpServers": {
-    "dazero": { "url": "https://mcp.dazero.co/mcp" }
+    "feega": { "url": "https://mcp.feega.app/mcp" }
   }
 }
 ```
@@ -150,8 +150,8 @@ If Connect fails with `Not an https or loopback URI: cursor://…`, your Cursor 
 using the custom-scheme OAuth callback — use **stdio** above, update Cursor (loopback
 `http://localhost:8787/callback`), or see [`docs/mcp.md`](docs/mcp.md#cursor--remote-http-oauth).
 
-- Local stdio: `dazero login` (no sign-in tool) → `~/.config/dazero/session.json`
-  (script/CI alternative: `dazero login --email tu@email --password …` or `--password-stdin`, no browser)
+- Local stdio: `feega login` (no sign-in tool) → `~/.config/feega/session.json`
+  (script/CI alternative: `feega login --email tu@email --password …` or `--password-stdin`, no browser)
 - Remote HTTP: `Authorization: Bearer <access_token>` (401 without it is expected)
 
 ---
@@ -161,12 +161,12 @@ using the custom-scheme OAuth callback — use **stdio** above, update Cursor (l
 Publishable [Agent Skill](https://agentskills.io) for Cursor, Claude, skills.sh, and friends:
 
 ```bash
-npx skills add andreabuttarelli/dazero --skill dazero
+npx skills add andreabuttarelli/dazero --skill feega
 # or
 bash scripts/install-skill.sh --project
 ```
 
-Package: [`skills/dazero/`](skills/dazero/) → [`plugins/dazero/skills/dazero/`](plugins/dazero/) (`SKILL.md` + `references/` for MCP setup, tool map, CLI).
+Package: [`skills/feega/`](skills/feega/) → [`plugins/feega/skills/feega/`](plugins/feega/) (`SKILL.md` + `references/` for MCP setup, tool map, CLI).
 
 When the skill is active, agents prefer **MCP tools** if connected, otherwise the **CLI**.
 
@@ -177,7 +177,7 @@ Same skill + remote MCP, packaged for plugin install and directory submit:
 ```bash
 # Claude Code
 /plugin marketplace add andreabuttarelli/dazero
-/plugin install dazero@dazero
+/plugin install feega@feega
 
 # Codex
 codex plugin marketplace add andreabuttarelli/dazero
@@ -189,35 +189,35 @@ Submit checklist (Claude community directory + OpenAI Plugins Directory): **[`do
 
 ## Configuration
 
-Zero config by default → `https://dazero.co`, with automatic fallback to
+Zero config by default → `https://feega.app`, with automatic fallback to
 `http://localhost:5173` when a local app is answering.
 
 | Variable | Purpose |
 |----------|---------|
-| `PUBLIC_APP_URL` | Point CLI/MCP at another dazero instance |
+| `PUBLIC_APP_URL` | Point CLI/MCP at another feega instance |
 | `SENTRY_DSN` | (MCP HTTP / Vercel) Errors → Sentry |
 | `SUPABASE_SERVICE_ROLE_KEY` | (MCP HTTP / Vercel) Rows in `mcp_logs` |
 | `MCP_PUBLIC_URL` | Public MCP base URL for OAuth metadata |
 
-Session: `~/.config/dazero/session.json`. `dazero logout` clears it. No secrets are embedded
+Session: `~/.config/feega/session.json`. `feega logout` clears it. No secrets are embedded
 in this repo or the binary.
 
 ---
 
 ## Architecture
 
-Thin HTTPS client — no DB access, no coupling to the dazero server codebase:
+Thin HTTPS client — no DB access, no coupling to the feega server codebase:
 
 ```
 CLI  ──┐
-MCP  ──┼── HTTPS ──►  /api/v1/*  ──►  dazero
+MCP  ──┼── HTTPS ──►  /api/v1/*  ──►  feega
 Skill ─┘   (guides agents to CLI or MCP)
 ```
 
 - CLI commands: `commands/` + `cli.ts`
 - HTTP client: `lib/api.ts` only
 - MCP: `mcp/` (reuses `lib/api.ts`, registers tools)
-- Skill / plugins: `skills/dazero/` → `plugins/dazero/` (Claude + Codex marketplace manifests)
+- Skill / plugins: `skills/feega/` → `plugins/feega/` (Claude + Codex marketplace manifests)
 
 ---
 
@@ -236,8 +236,8 @@ bun run vercel-build      # MCP bundles under mcp/api/
 ```
 
 Releases: push a `v*` tag → CI typechecks, tests, cross-compiles binaries + `.tar.gz` +
-`SHA256SUMS.txt` on the GitHub Release, bumps [`Formula/dazero.rb`](Formula/dazero.rb),
-and publishes `dazero-cli` to npm when `NPM_TOKEN` is set. Details: [`docs/distribute.md`](docs/distribute.md).
+`SHA256SUMS.txt` on the GitHub Release, bumps [`Formula/feega.rb`](Formula/feega.rb),
+and publishes `feega-cli` to npm when `NPM_TOKEN` is set. Details: [`docs/distribute.md`](docs/distribute.md).
 
 ---
 

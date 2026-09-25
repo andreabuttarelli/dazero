@@ -10,7 +10,7 @@ const read = (rel: string) => readFileSync(join(REPO, rel), 'utf8');
 
 const workflow = read('.github/workflows/cli-release.yml');
 const installer = read('cli/scripts/install.sh');
-const formula = read('cli/Formula/dazero.rb');
+const formula = read('cli/Formula/feega.rb');
 const formulaUpdater = read('cli/scripts/update-homebrew-formula.sh');
 
 const TAG_PREFIX = 'cli-v';
@@ -39,7 +39,7 @@ describe('release tag prefix', () => {
 
 describe('published binaries are verifiable', () => {
   test('the workflow publishes SHA256SUMS.txt with the binaries', () => {
-    expect(workflow).toContain('sha256sum dazero-* > SHA256SUMS.txt');
+    expect(workflow).toContain('sha256sum feega-* > SHA256SUMS.txt');
     expect(workflow).toContain('cli/dist/SHA256SUMS.txt');
   });
 

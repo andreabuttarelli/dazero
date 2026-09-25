@@ -68,7 +68,7 @@ jobs:
 
       - name: Checksums
         working-directory: cli/dist
-        run: sha256sum dazero-* > SHA256SUMS.txt
+        run: sha256sum feega-* > SHA256SUMS.txt
 
       - name: Update Homebrew formula
         if: startsWith(github.ref, 'refs/tags/cli-v')
@@ -89,7 +89,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            cli/dist/dazero-*
+            cli/dist/feega-*
             cli/dist/SHA256SUMS.txt
           generate_release_notes: true
 
@@ -100,7 +100,7 @@ jobs:
         run: |
           git clone https://x-access-token:${TAP_TOKEN}@github.com/andreabuttarelli/homebrew-tap.git tap
           mkdir -p tap/Formula
-          cp cli/Formula/dazero.rb tap/Formula/dazero.rb
+          cp cli/Formula/feega.rb tap/Formula/feega.rb
           cd tap
           if git diff --quiet; then
             echo "Tap unchanged"
@@ -108,15 +108,15 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/dazero.rb
-          git commit -m "dazero ${GITHUB_REF_NAME#cli-v}"
+          git add Formula/feega.rb
+          git commit -m "feega ${GITHUB_REF_NAME#cli-v}"
           git push
 
       - name: Upload build artifacts (manual runs)
         if: ${{ !startsWith(github.ref, 'refs/tags/cli-v') }}
         uses: actions/upload-artifact@v4
         with:
-          name: dazero-dist
+          name: feega-dist
           path: |
-            cli/dist/dazero-*
+            cli/dist/feega-*
             cli/dist/SHA256SUMS.txt

@@ -1,7 +1,7 @@
 {
-  "name": "dazero-cli",
+  "name": "feega-cli",
   "version": "0.1.0",
-  "description": "Command-line client for dazero — the social media AI autopilot.",
+  "description": "Command-line client for feega — the social media AI autopilot.",
   "license": "Apache-2.0",
   "author": "Andrea Buttarelli",
   "repository": {
@@ -9,17 +9,17 @@
     "url": "git+https://github.com/andreabuttarelli/dazero.git",
     "directory": "cli"
   },
-  "homepage": "https://dazero.co",
+  "homepage": "https://feega.app",
   "bugs": {
     "url": "https://github.com/andreabuttarelli/dazero/issues"
   },
   "type": "module",
   "bin": {
-    "dazero": "./cli.ts",
-    "dazero-mcp": "./mcp/stdio.ts"
+    "feega": "./cli.ts",
+    "feega-mcp": "./mcp/stdio.ts"
   },
   "keywords": [
-    "dazero",
+    "feega",
     "cli",
     "social-media",
     "mcp",
