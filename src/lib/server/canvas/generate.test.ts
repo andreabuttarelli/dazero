@@ -74,6 +74,9 @@ vi.mock('$lib/server/media-generate', () => ({ generateImagesWithoutBrand, gener
 const { llmText } = vi.hoisted(() => ({ llmText: vi.fn() }));
 vi.mock('$lib/server/llm', () => ({ llmText }));
 
+const { enhancePrompt } = vi.hoisted(() => ({ enhancePrompt: vi.fn() }));
+vi.mock('$lib/server/prompt-enhance', () => ({ enhancePrompt }));
+
 const { finishVideoRender } = vi.hoisted(() => ({ finishVideoRender: vi.fn() }));
 vi.mock('$lib/server/video', () => ({ finishVideoRender }));
 
@@ -386,6 +389,114 @@ describe('un nodo senza prompt proprio ma con un testo a monte collegato gira lo
     expect(generateImagesWithoutBrand).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ resolution: '2K' })
+    );
+  });
+});
+
+/**
+ * `params.enhancePrompt` RISCRIVE IL PROMPT PRIMA DI GENERARE, SOLO SU IMAGE/VIDEO E SOLO SE
+ * ACCESO — mai a insaputa dell'utente, mai sul testo. `enhancePrompt` (`prompt-enhance.ts`) verifica
+ * già da sé la propria riscrittura e non rifiuta mai: un fallimento di rete diventa comunque il
+ * prompt originale, mai un giro bloccato per questo.
+ */
+describe('params.enhancePrompt riscrive il prompt prima di generare', () => {
+  beforeEach(() => {
+    generateImagesWithoutBrand.mockReset();
+    generateImagesWithoutBrand.mockResolvedValue({
+      ok: true,
+      media: [{ storage_path: 'u/media/generated.png', mime: 'image/png', width: 1024, height: 1024 }],
+      costUsd: 0.02
+    });
+    enhancePrompt.mockReset();
+  });
+
+  it('acceso: passa il prompt riscritto al fornitore, non l\'originale', async () => {
+    enhancePrompt.mockResolvedValue({
+      prompt: 'a photorealistic cat, studio lighting',
+      model: 'openai/gpt-image',
+      changed: true,
+      notes: ['riscritto']
+    });
+
+    const imageNodeRow = { ...freshNodeRow, type: 'image' };
+    const { db } = fakeDb(
+      { nodes: [imageNodeRow], assets: [] },
+      { updateRows: { nodes: [{ ...imageNodeRow, version: 2 }] } }
+    );
+
+    await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'image',
+      prompt: 'a cat',
+      model: 'openai/gpt-image',
+      params: { enhancePrompt: true },
+      expectedVersion: 1
+    });
+
+    expect(enhancePrompt).toHaveBeenCalledWith({ prompt: 'a cat', model: 'openai/gpt-image' });
+    expect(generateImagesWithoutBrand).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ prompt: 'a photorealistic cat, studio lighting' })
+    );
+  });
+
+  it('spento: non chiama enhancePrompt, usa il prompt originale', async () => {
+    const imageNodeRow = { ...freshNodeRow, type: 'image' };
+    const { db } = fakeDb(
+      { nodes: [imageNodeRow], assets: [] },
+      { updateRows: { nodes: [{ ...imageNodeRow, version: 2 }] } }
+    );
+
+    await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'image',
+      prompt: 'a cat',
+      model: 'openai/gpt-image',
+      params: {},
+      expectedVersion: 1
+    });
+
+    expect(enhancePrompt).not.toHaveBeenCalled();
+    expect(generateImagesWithoutBrand).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ prompt: 'a cat' })
+    );
+  });
+
+  it('la riscrittura fallisce: genera comunque, con il prompt originale', async () => {
+    enhancePrompt.mockRejectedValue(new Error('gateway down'));
+
+    const imageNodeRow = { ...freshNodeRow, type: 'image' };
+    const { db } = fakeDb(
+      { nodes: [imageNodeRow], assets: [] },
+      { updateRows: { nodes: [{ ...imageNodeRow, version: 2 }] } }
+    );
+
+    const result = await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'image',
+      prompt: 'a cat',
+      model: 'openai/gpt-image',
+      params: { enhancePrompt: true },
+      expectedVersion: 1
+    });
+
+    expect(result.kind).toBe('done');
+    expect(generateImagesWithoutBrand).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ prompt: 'a cat' })
     );
   });
 });

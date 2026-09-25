@@ -128,6 +128,13 @@ returned for it lists every effect's params with their ranges/options/defaults. 
 | MCP | CLI |
 |-----|-----|
 | `run_node_generation` | (MCP only — the canvas UI's Generate button is the equivalent, not a CLI command) |
+| `enhance_prompt` | (MCP only) |
+
+`enhance_prompt({ org, prompt, model, shot_mode? })` rewrites a brief into the shape the given
+model wants — labelled sections, one paragraph, a command when editing, whatever that model's
+craft calls for. It rewrites, it never invents: a rewrite that adds a subject, asks for readable
+text or states an aspect ratio is thrown away, and the original comes back with `changed: false`
+and why in `notes`, same as a model with no guide. No brand, no draw, no file — spends credits.
 
 `run_node_generation({ org, node_id, medium, prompt, model, version, params? })` fills an existing
 canvas node — it never creates one (`insert_row` does that). `medium` (`text`, `image` or `video`)

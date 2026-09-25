@@ -93,9 +93,16 @@ describe('cosa hanno in comune più nodi selezionati', () => {
 });
 
 describe('GEN_FIELDS — una tabella sola, letta sia da un nodo solo che da una selezione', () => {
-  it('elenca model, aspectRatio, duration, resolution, audio, repeat — i campi che GenNode mostra', () => {
+  it('elenca model, aspectRatio, duration, resolution, audio, enhancePrompt, repeat — i campi che GenNode mostra', () => {
     const ids = GEN_FIELDS.map((f) => f.id);
-    expect(ids).toEqual(['model', 'aspectRatio', 'duration', 'resolution', 'audio', 'repeat']);
+    expect(ids).toEqual(['model', 'aspectRatio', 'duration', 'resolution', 'audio', 'enhancePrompt', 'repeat']);
+  });
+
+  it('enhancePrompt non si applica al testo', () => {
+    const byId = Object.fromEntries(GEN_FIELDS.map((f) => [f.id, f]));
+    expect(byId.enhancePrompt.appliesTo('text')).toBe(false);
+    expect(byId.enhancePrompt.appliesTo('image')).toBe(true);
+    expect(byId.enhancePrompt.appliesTo('video')).toBe(true);
   });
 
   it('repeat si applica anche al testo: non dipende dal modello', () => {

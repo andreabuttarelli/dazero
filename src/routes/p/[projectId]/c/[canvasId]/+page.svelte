@@ -1150,6 +1150,7 @@
       duration?: number;
       resolution?: string;
       audio?: boolean;
+      enhancePrompt?: boolean;
       repeat?: number;
       /** I campi dichiarati da `ai_models.param_schema` che il toolbar generico scrive — un solo
        *  bucket dinamico, invece di un campo esplicito per ogni nome di parametro possibile. */

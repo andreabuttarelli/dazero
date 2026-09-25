@@ -13,6 +13,7 @@ import {
   releaseClaim,
   retryClaim,
   setExternalJob,
+  setRunPrompt,
   type NodeRun
 } from '$lib/server/repos/node-runs';
 import { findNode, writeNodeData } from '$lib/server/repos/canvas';
@@ -200,6 +201,30 @@ async function writeNodeDataRetrying(
   return false;
 }
 
+/**
+ * IL PROMPT DAVVERO MANDATO AL FORNITORE, SOLO SU IMAGE/VIDEO E SOLO SE `params.enhancePrompt` È
+ * ACCESO — mai sul testo, che non ha craft di prompting. `enhancePrompt` (`prompt-enhance.ts`)
+ * verifica già da sé la propria riscrittura (soggetti persi, testo leggibile chiesto, aspect ratio
+ * dichiarato) e non rifiuta mai: torna `changed:false` col motivo. Un rigetto della rete non deve
+ * comunque fermare un giro che ha già pagato la lettura dell'upstream — l'originale resta buono.
+ */
+async function enhancedPromptFor(input: StartRun, prompt: string): Promise<string> {
+  if (!input.params.enhancePrompt || !input.model) {
+    return prompt;
+  }
+  if (input.medium !== 'image' && input.medium !== 'video') {
+    return prompt;
+  }
+
+  const { enhancePrompt } = await import('$lib/server/prompt-enhance');
+  try {
+    const out = await enhancePrompt({ prompt, model: input.model });
+    return out.prompt || prompt;
+  } catch {
+    return prompt;
+  }
+}
+
 async function giveUp(db: Db, input: StartRun, version: number, run: NodeRun, message: string): Promise<void> {
   await failRun(db, { orgId: input.orgId, runId: run.id, error: message }).catch(() => {});
 
@@ -289,6 +314,11 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
     return { kind: 'refused', error: 'prompt_required' };
   }
 
+  const sentPrompt = await enhancedPromptFor(input, prompt);
+  if (sentPrompt !== prompt) {
+    await setRunPrompt(db, { orgId: input.orgId, runId: run.id, prompt: sentPrompt });
+  }
+
   try {
     if (input.medium === 'text') {
       const { llmText } = await import('$lib/server/llm');
@@ -321,7 +351,7 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
       const out = await generateImagesWithoutBrand(db as never, {
         orgId: input.orgId,
         userId: input.userId,
-        prompt,
+        prompt: sentPrompt,
         model: input.model ?? undefined,
         count: ONE_RENDER,
         aspectRatio: input.params.aspectRatio as never,
@@ -365,7 +395,7 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
     const out = await generateVideoWithoutBrand({
       orgId: input.orgId,
       userId: input.userId,
-      prompt,
+      prompt: sentPrompt,
       model: input.model ?? undefined,
       aspectRatio: input.params.aspectRatio as never,
       durationSeconds: input.params.duration,

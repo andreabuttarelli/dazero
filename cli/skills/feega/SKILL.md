@@ -118,6 +118,11 @@ returns finished here — it comes back `queued` with an `external_job_id`, and 
 later on a tick you do not control: poll the node with `query` rather than waiting on this call.
 Spends credits; `credits_exhausted` means the org is out.
 
+`enhance_prompt` rewrites a brief into the shape the model you are about to render with wants —
+pass `model`, use the `prompt` it returns. It rewrites, never invents: a rewrite that changes the
+subject or states an aspect ratio is thrown away, `changed: false`, reason in `notes`. Spends
+credits.
+
 ## Render an effects node
 
 `apply_effects` renders an `effects` node's stack (pixelate, duotone, glitch, …) onto its upstream

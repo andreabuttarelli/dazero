@@ -7,6 +7,7 @@ import { registerOrgDataTools } from './tools/org-data.ts';
 import { registerPostTools } from './tools/posts.ts';
 import { registerAdsTools } from './tools/ads.ts';
 import { registerNodeTools } from './tools/nodes.ts';
+import { registerPromptTools } from './tools/prompts.ts';
 
 /**
  * Il client la mostra da solo al handshake, una volta per sessione, PRIMA di ogni descrizione e
@@ -141,6 +142,7 @@ export function createFeegaMcpServer(): McpServer {
   registerPostTools(server);
   registerAdsTools(server);
   registerNodeTools(server);
+  registerPromptTools(server);
 
   return server;
 }
