@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commonPropertiesOf, GEN_FIELDS } from './common-properties';
+import { commonPropertiesOf, dynamicParamsOf, GEN_FIELDS } from './common-properties';
 
 const node = (type: string, data: Record<string, unknown>) => ({ type, data });
 
@@ -133,5 +133,31 @@ describe('un campo che il tipo prevede ma che nessuno ha ancora scelto resta mos
     const out = commonPropertiesOf([{ type: 'video', data: { prompt: '' } }]);
     expect(out.duration).toEqual({ kind: 'unset' });
     expect(out.audio).toEqual({ kind: 'unset' });
+  });
+});
+
+describe('dynamicParamsOf — i campi extra del modello scelto (ai_models.param_schema)', () => {
+  it('stesso valore su tutti i nodi: "same"', () => {
+    const nodes = [
+      { type: 'image', data: { params: { quality: 'low' } } },
+      { type: 'image', data: { params: { quality: 'low' } } }
+    ];
+
+    expect(dynamicParamsOf(nodes, ['quality'])).toEqual({ quality: { kind: 'same', value: 'low' } });
+  });
+
+  it('valori diversi: "mixed"', () => {
+    const nodes = [
+      { type: 'image', data: { params: { quality: 'low' } } },
+      { type: 'image', data: { params: { quality: 'high' } } }
+    ];
+
+    expect(dynamicParamsOf(nodes, ['quality'])).toEqual({ quality: { kind: 'mixed' } });
+  });
+
+  it('nessun nodo ha ancora scelto un valore: "unset"', () => {
+    const nodes = [{ type: 'image', data: { params: {} } }];
+
+    expect(dynamicParamsOf(nodes, ['quality'])).toEqual({ quality: { kind: 'unset' } });
   });
 });

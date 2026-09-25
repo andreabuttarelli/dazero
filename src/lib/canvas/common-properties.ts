@@ -95,6 +95,25 @@ function commonFieldOf<T>(field: GenField, type: string, nodes: NodeSummary[]): 
   return values.length ? commonOf(values) : { kind: 'unset' };
 }
 
+/**
+ * LO STESSO same/mixed/unset DI `GEN_FIELDS`, PER I CAMPI CHE IL MODELLO SCELTO DICHIARA
+ * (`ai_models.param_schema` → `ModelChoice.params`, `model-params.ts`) — quelli che nessuna riga
+ * di `GEN_FIELDS` conosce per nome, perché sono diversi per modello (`quality` su GPT Image,
+ * `output_compression` altrove). Legge `nodes.data.params.<name>`, lo stesso posto di
+ * `paramOf` sopra: un solo posto scrive quei valori (`onpropertychange`), uno solo li legge qui e
+ * nel toolbar.
+ */
+export function dynamicParamsOf(nodes: NodeSummary[], paramNames: string[]): Record<string, CommonValue<unknown>> {
+  const out: Record<string, CommonValue<unknown>> = {};
+
+  for (const name of paramNames) {
+    const values = nodes.map((n) => paramOf(n, name)).filter((v) => v !== undefined);
+    out[name] = values.length ? commonOf(values) : { kind: 'unset' };
+  }
+
+  return out;
+}
+
 export function commonPropertiesOf(nodes: NodeSummary[]): CommonProperties {
   const empty: CommonProperties = {
     type: null,

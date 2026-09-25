@@ -1143,7 +1143,17 @@
    */
   async function commonChange(
     ids: string[],
-    patch: { model?: string | null; aspectRatio?: string; duration?: number; resolution?: string; audio?: boolean; repeat?: number }
+    patch: {
+      model?: string | null;
+      aspectRatio?: string;
+      duration?: number;
+      resolution?: string;
+      audio?: boolean;
+      repeat?: number;
+      /** I campi dichiarati da `ai_models.param_schema` che il toolbar generico scrive — un solo
+       *  bucket dinamico, invece di un campo esplicito per ogni nome di parametro possibile. */
+      dynamicParams?: Record<string, unknown>;
+    }
   ) {
     const chosen = nodes.filter((n) => ids.includes(n.id));
     if (!chosen.length) { return; }
@@ -1170,10 +1180,10 @@
       }
     }
 
-    const { model, ...params } = patch;
-    const hasParams = Object.values(params).some((v) => v !== undefined);
+    const { model, dynamicParams, ...params } = patch;
+    const hasParams = Object.values(params).some((v) => v !== undefined) || !!dynamicParams;
     const items = chosen.map((n) => {
-      const nextParams = { ...(n.data.params as Record<string, unknown>), ...params };
+      const nextParams = { ...(n.data.params as Record<string, unknown>), ...params, ...dynamicParams };
 
       // Un modello nuovo può non fare più il gradino di durata o la risoluzione salvati: si
       // scivola al più vicino fra quelli che offre — mai una durata o un token di risoluzione che

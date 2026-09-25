@@ -25,7 +25,7 @@
   import { SELECTION_ACTIONS, enabledFor, type SelectionActionId } from '$lib/canvas/selection-actions';
   import type { WorkflowEdge } from '$lib/canvas/workflow-plan';
   import { SELECTION_ACTION_ICON } from '$lib/canvas/selection-action-icons';
-  import { commonPropertiesOf, type CommonValue } from '$lib/canvas/common-properties';
+  import { commonPropertiesOf, dynamicParamsOf, type CommonValue } from '$lib/canvas/common-properties';
   import { nearestVideoDuration } from '$lib/video-models';
   import { effectiveModel } from '$lib/canvas/default-models';
   import { TOOLBAR_HIDE_BELOW_ZOOM, toolbarScale } from '$lib/canvas/toolbar-scale';
@@ -66,7 +66,17 @@
     catalogueSynced?: boolean;
     onaction?: (id: SelectionActionId) => void;
     /** Un campo cambiato dalla barra, applicato a ogni nodo selezionato — uno o molti. */
-    onpropertychange?: (patch: { model?: string | null; aspectRatio?: string; duration?: number; resolution?: string; audio?: boolean; repeat?: number }) => void;
+    onpropertychange?: (
+      patch: {
+        model?: string | null;
+        aspectRatio?: string;
+        duration?: number;
+        resolution?: string;
+        audio?: boolean;
+        repeat?: number;
+        dynamicParams?: Record<string, unknown>;
+      }
+    ) => void;
   } = $props();
 
   const visible = $derived(box !== null && zoom >= TOOLBAR_HIDE_BELOW_ZOOM);
@@ -87,6 +97,20 @@
       : null
   );
   const choice = $derived(modelValue ? choices.find((c) => c.id === modelValue) : null);
+
+  /**
+   * I CAMPI CHE `choice.params` DICHIARA (`ai_models.param_schema`, `model-params.ts`) — UN SOLO
+   * RENDERER per tutti: enum → select, boolean → toggle, number → input con `min`/`max`. Nessun
+   * codice per parametro: un modello nuovo con un campo mai visto prima (`output_compression`,
+   * `seed`…) appare qui senza toccare questo file.
+   */
+  const dynamicParams = $derived(choice?.params ?? []);
+  const dynamicValues = $derived(dynamicParamsOf(nodeSummaries, dynamicParams.map((p) => p.name)));
+
+  function dynamicValueOr(name: string, fallback: unknown): unknown {
+    const v = dynamicValues[name];
+    return v?.kind === 'same' ? v.value : fallback;
+  }
 
   let modelQuery = $state('');
   const filteredGroups = $derived(groupByProvider(filterChoices(choices, modelQuery)));
@@ -222,6 +246,46 @@
             audio
           </label>
         {/if}
+
+        {#each dynamicParams as param (param.name)}
+          {@const value = dynamicValues[param.name]}
+          {#if param.kind === 'enum'}
+            <select
+              class="field"
+              value={dynamicValueOr(param.name, param.values[0]) ?? ''}
+              onchange={(e) => onpropertychange?.({ dynamicParams: { [param.name]: e.currentTarget.value } })}
+              aria-label={param.label}
+            >
+              {#if value?.kind === 'mixed'}
+                <option value="" disabled selected>Mixed</option>
+              {/if}
+              {#each param.values as v (v)}
+                <option value={v}>{v}</option>
+              {/each}
+            </select>
+          {:else if param.kind === 'boolean'}
+            <label class="toggle">
+              <input
+                type="checkbox"
+                checked={Boolean(dynamicValueOr(param.name, false))}
+                indeterminate={value?.kind === 'mixed'}
+                onchange={(e) => onpropertychange?.({ dynamicParams: { [param.name]: e.currentTarget.checked } })}
+              />
+              {param.label}
+            </label>
+          {:else}
+            <input
+              type="number"
+              class="field number"
+              min={param.min}
+              max={param.max}
+              value={String(dynamicValueOr(param.name, param.min ?? '') ?? '')}
+              placeholder={value?.kind === 'mixed' ? 'Mixed' : undefined}
+              onchange={(e) => onpropertychange?.({ dynamicParams: { [param.name]: Number(e.currentTarget.value) } })}
+              aria-label={param.label}
+            />
+          {/if}
+        {/each}
       </div>
       <span class="sep"></span>
     {/if}

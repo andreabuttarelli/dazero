@@ -199,7 +199,15 @@
      *  concorrenza ottimistica di `write`, N scritture indipendenti per una barra sola. */
     onPropertyChange?: (
       ids: string[],
-      patch: { model?: string | null; aspectRatio?: string; duration?: number; audio?: boolean; repeat?: number }
+      patch: {
+        model?: string | null;
+        aspectRatio?: string;
+        duration?: number;
+        resolution?: string;
+        audio?: boolean;
+        repeat?: number;
+        dynamicParams?: Record<string, unknown>;
+      }
     ) => void;
     /** Un nodo ha finito di essere ridimensionato dai suoi angoli/lati — `w`/`h` già in unità di
      *  tela. Assente = nessuna tile è ridimensionabile a mano (il resizer non compare). */
