@@ -1,6 +1,7 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
   import '$lib/styles/settings-shell.css';
+  import CreditAmount from '$lib/components/CreditAmount.svelte';
 
   let { data, form } = $props();
 </script>
@@ -31,11 +32,11 @@
     <div class="field">
       <div class="ftxt">
         <div class="fh">{$_('app.settings.usage.creditsUsed')}</div>
-        <div class="fs">{data.credits.balance}</div>
+        <div class="fs"><CreditAmount amount={data.credits.balance} /></div>
         {#if data.credits.atRisk.length}
           <div class="fs">
             {#each data.credits.atRisk as risk (risk.expiresAt)}
-              {risk.amount} credits expire {new Date(risk.expiresAt).toLocaleDateString()}
+              <CreditAmount amount={risk.amount} /> expire {new Date(risk.expiresAt).toLocaleDateString()}
             {/each}
           </div>
         {/if}
@@ -65,13 +66,13 @@
                 <td>
                   <form method="POST" action={`?/upgrade`}>
                     <input type="hidden" name="usd" value={rung.price} />
-                    <button class="bbtn primary" type="submit">{rung.creditsSubscription} — /mo</button>
+                    <button class="bbtn primary" type="submit"><CreditAmount amount={rung.creditsSubscription} /> — /mo</button>
                   </form>
                 </td>
                 <td>
                   <form method="POST" action={`?/buyOneTime`}>
                     <input type="hidden" name="usd" value={rung.price} />
-                    <button class="bbtn" type="submit">{rung.creditsOneTime} — {$_('app.account.billing.neverExpires')}</button>
+                    <button class="bbtn" type="submit"><CreditAmount amount={rung.creditsOneTime} /> — {$_('app.account.billing.neverExpires')}</button>
                   </form>
                 </td>
               </tr>
@@ -107,7 +108,7 @@
         {#each data.brands as b (b.id)}
           <tr>
             <td>{b.name}</td>
-            <td class="num">{b.credits}</td>
+            <td class="num"><CreditAmount amount={b.credits} /></td>
           </tr>
         {/each}
       </tbody>

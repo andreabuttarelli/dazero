@@ -17,6 +17,7 @@
   import { effectiveModel } from '$lib/canvas/default-models';
   import { scrollGuard } from '$lib/canvas/scroll-guard';
   import { creditsForRun, creditsForLoop } from '$lib/canvas/gen-cost';
+  import CreditAmount from '$lib/components/CreditAmount.svelte';
 
   let {
     node,
@@ -255,11 +256,11 @@
         </button>
       {:else if onrunloop && loopVisible}
         <button type="button" class="gen-loop" onclick={() => onrunloop?.()} disabled={!canRun}>
-          Loop ×{loopCombinationCount}{#if loopCredits !== null} · ~{loopCredits} cr{/if}
+          Loop ×{loopCombinationCount}{#if loopCredits !== null} · <CreditAmount amount={loopCredits} approx />{/if}
         </button>
       {/if}
       <button type="button" onclick={() => onrun?.()} disabled={!canRun}>
-        {state === 'done' ? 'Rifai' : 'Genera'}{#if runCredits !== null} · ~{runCredits} cr{/if}
+        {state === 'done' ? 'Rifai' : 'Genera'}{#if runCredits !== null} · <CreditAmount amount={runCredits} approx />{/if}
       </button>
     </div>
   </footer>

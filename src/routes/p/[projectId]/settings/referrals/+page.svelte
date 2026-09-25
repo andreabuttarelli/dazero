@@ -1,5 +1,6 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
+  import CreditAmount from '$lib/components/CreditAmount.svelte';
 
   let { data } = $props();
 
@@ -87,7 +88,7 @@
     {#each data.recent as row (row.id)}
       <div class="acct">
         <div class="nm">
-          <div class="h">+{fmt(row.credits_each)} {$_('app.settings.referrals.credits')}</div>
+          <div class="h">+<CreditAmount amount={row.credits_each} /></div>
           <div class="s">
             {row.status === 'credited'
               ? $_('app.settings.referrals.statusCredited')

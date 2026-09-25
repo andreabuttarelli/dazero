@@ -6,6 +6,7 @@
   import Check from '@lucide/svelte/icons/check';
   import MessageSquare from '@lucide/svelte/icons/message-square';
   import Plus from '@lucide/svelte/icons/plus';
+  import CreditAmount from '$lib/components/CreditAmount.svelte';
 
   type ProjectRow = { id: string; name: string; href: string };
   type CanvasRow = { id: string; name: string; href: string };
@@ -103,7 +104,7 @@
   </div>
 
   <a href="/app/billing" class="credits">
-    {$_('app.shell.credits', { values: { count: creditBalance.toLocaleString() } })}
+    <CreditAmount amount={creditBalance} />
   </a>
 </header>
 
