@@ -202,3 +202,14 @@ describe('il registro è una tabella sola', () => {
     }
   });
 });
+
+describe('canConnect — una lista riceve immagini o testo, mai video', () => {
+  it('un\'immagine e un testo alimentano una lista', () => {
+    expect(canConnect(node('i', 'image'), node('l', 'list')).ok).toBe(true);
+    expect(canConnect(node('t', 'text'), node('l', 'list')).ok).toBe(true);
+  });
+
+  it('un video non alimenta una lista', () => {
+    expect(canConnect(node('v', 'video'), node('l', 'list')).ok).toBe(false);
+  });
+});

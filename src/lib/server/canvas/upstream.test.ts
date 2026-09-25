@@ -509,6 +509,62 @@ describe('upstreamInputsFor — list: fisso, porta ogni item risolto ad asset re
   });
 });
 
+describe('upstreamInputsFor — list con nodi collegati: i fili portano l\'output vivo della sorgente', () => {
+  const WIRED_A = 'f1f1f1f1-f1f1-f1f1-f1f1-f1f1f1f1f1f1';
+  const WIRED_B = 'f2f2f2f2-f2f2-f2f2-f2f2-f2f2f2f2f2f2';
+  const WIRED_EMPTY = 'f3f3f3f3-f3f3-f3f3-f3f3-f3f3f3f3f3f3';
+  const asset = (id: string, url: string) => ({ id, project_id: 'p1', type: 'image', url, content: null, mime_type: 'image/png', bytes: null, width: null, height: null, duration_s: null, source: 'generated', source_node_id: null, created_at: 'now' });
+  const edge = (id: string, source: string, target: string) => ({ id, canvas_id: CANVAS, source_node_id: source, target_node_id: target, source_handle: null, target_handle: null });
+
+  it('una lista riempita da due immagini collegate alimenta i loro asset, dopo gli item manuali', async () => {
+    const { db } = fakeDb({
+      nodes: [
+        nodeRow(LIST_NODE, 'list', { item_kind: 'image', items: [{ label: 'a', asset_id: ASSET }] }),
+        nodeRow(WIRED_A, 'image', { prompt: 'uno', refId: IMAGE_ASSET_1 }),
+        nodeRow(WIRED_B, 'image', { prompt: 'due', refId: IMAGE_ASSET_2 }),
+        nodeRow(WIRED_EMPTY, 'image', { prompt: 'mai girato', refId: null }),
+        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: 'qwen3-pro' })
+      ],
+      nodes_connections: [
+        edge('e1', WIRED_A, LIST_NODE),
+        edge('e2', WIRED_EMPTY, LIST_NODE),
+        edge('e3', WIRED_B, LIST_NODE),
+        edge('e4', LIST_NODE, IMAGE_NODE)
+      ],
+      assets: [asset(ASSET, 'canvas-assets/manual.png'), asset(IMAGE_ASSET_1, 'canvas-assets/a.png'), asset(IMAGE_ASSET_2, 'canvas-assets/b.png')]
+    });
+
+    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE, model: 'qwen3-pro', medium: 'image' });
+
+    expect(out.referenceImageUrls).toEqual(['canvas-assets/manual.png', 'canvas-assets/a.png', 'canvas-assets/b.png']);
+  });
+
+  it('un\'iterazione di loop su un item collegato vede l\'asset della sorgente', async () => {
+    const { db } = fakeDb({
+      nodes: [
+        nodeRow(LIST_NODE, 'list', { item_kind: 'image', items: [] }),
+        nodeRow(WIRED_A, 'image', { prompt: 'uno', refId: IMAGE_ASSET_1 }),
+        nodeRow(WIRED_B, 'image', { prompt: 'due', refId: IMAGE_ASSET_2 }),
+        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: 'qwen3-pro' })
+      ],
+      nodes_connections: [edge('e1', WIRED_A, LIST_NODE), edge('e2', WIRED_B, LIST_NODE), edge('e3', LIST_NODE, IMAGE_NODE)],
+      assets: [asset(IMAGE_ASSET_1, 'canvas-assets/a.png'), asset(IMAGE_ASSET_2, 'canvas-assets/b.png')]
+    });
+
+    const out = await upstreamInputsFor(db, {
+      orgId: ORG,
+      canvasId: CANVAS,
+      nodeId: IMAGE_NODE,
+      model: 'qwen3-pro',
+      medium: 'image',
+      iterateSelection: { [LIST_NODE]: 2 }
+    });
+
+    expect(out.referenceImageUrls.concat(out.referenceImageUrl ? [out.referenceImageUrl] : [])).toContain('canvas-assets/b.png');
+    expect(out.referenceImageUrls).not.toContain('canvas-assets/a.png');
+  });
+});
+
 describe('upstreamInputsFor — select: risolve ESATTAMENTE l\'item scelto dalla lista a monte', () => {
   it('un select su una lista immagini porta solo l\'item all\'indice scelto (1-based)', async () => {
     const { db } = fakeDb({

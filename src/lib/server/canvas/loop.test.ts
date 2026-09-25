@@ -121,6 +121,37 @@ describe('planLoop — il preventivo, senza girare niente', () => {
   });
 });
 
+describe('planLoop — una list riempita da fili conta i valori collegati', () => {
+  it('una list senza item manuali, alimentata da due immagini collegate: 2 combinazioni', async () => {
+    const WIRED_A = '77777777-7777-7777-7777-777777777777';
+    const WIRED_B = '88888888-8888-8888-8888-888888888888';
+    const edge = (id: string, source: string, target: string, mode: 'fixed' | 'iterate') => ({
+      id, org_id: ORG, canvas_id: CANVAS, source_node_id: source, target_node_id: target, source_handle: null, target_handle: null, mode, deleted_at: null
+    });
+    const { db } = fakeDb({
+      nodes: [
+        nodeRow(GEN_NODE, 'image', { prompt: 'un gatto', model: 'qwen3-pro' }),
+        nodeRow(LIST_NODE_A, 'list', { item_kind: 'image', items: [] }),
+        nodeRow(WIRED_A, 'image', { prompt: 'uno', refId: 'asset-a' }),
+        nodeRow(WIRED_B, 'image', { prompt: 'due', refId: 'asset-b' })
+      ],
+      nodes_connections: [
+        edge('e1', WIRED_A, LIST_NODE_A, 'fixed'),
+        edge('e2', WIRED_B, LIST_NODE_A, 'fixed'),
+        edge('e3', LIST_NODE_A, GEN_NODE, 'iterate')
+      ],
+      assets: [
+        { id: 'asset-a', org_id: ORG, project_id: PROJECT, type: 'image', url: 'a.png', content: null },
+        { id: 'asset-b', org_id: ORG, project_id: PROJECT, type: 'image', url: 'b.png', content: null }
+      ]
+    }, { filter: true });
+
+    const out = await planLoop(db, { orgId: ORG, canvasId: CANVAS, nodeId: GEN_NODE });
+
+    expect(out.combinations).toHaveLength(2);
+  });
+});
+
 describe('enqueueLoop — valida, controlla i crediti del TOTALE, mette in coda, e ritorna — mai gira niente', () => {
   it('sopra 1000 varianti (repeat) rifiuta senza mettere in coda nulla, anche con confirmed:true', async () => {
     const { db, calls } = fakeDb({

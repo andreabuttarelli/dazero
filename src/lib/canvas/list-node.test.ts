@@ -3,12 +3,17 @@ import {
   addImageItem,
   addTextLines,
   canAcceptItemKind,
+  listConnectors,
+  listKindOf,
+  listValues,
+  wiresInto,
   listLabel,
   listNodeSize,
   newListNodeAt,
   reorderItem,
   removeItemAt,
-  type ListNode
+  type ListNode,
+  type WiredListSource
 } from './list-node';
 
 const emptyList = (kind: ListNode['itemKind'] = 'image'): ListNode => ({ id: 'l1', itemKind: kind, items: [] });
@@ -103,5 +108,78 @@ describe('l\'etichetta di un item', () => {
   it('altrimenti la posizione, 1-based', () => {
     expect(listLabel({}, 0)).toBe('1');
     expect(listLabel({}, 4)).toBe('5');
+  });
+});
+
+const wired = (nodeId: string, kind: WiredListSource['kind'], item: WiredListSource['item']): WiredListSource => ({ nodeId, kind, item });
+
+describe('listValues — i valori di una lista: prima i manuali, poi i collegati', () => {
+  it('solo manuali: gli item così come sono, nessun filo', () => {
+    const list: ListNode = { id: 'l1', itemKind: 'image', items: [{ asset_id: 'a1', url: 'u1' }] };
+    const out = listValues(list, []);
+    expect(out.itemKind).toBe('image');
+    expect(out.values).toEqual([{ item: { asset_id: 'a1', url: 'u1' }, wiredFrom: null }]);
+    expect(out.pending).toEqual([]);
+  });
+
+  it('solo collegati: un valore per filo, nell ordine dei fili', () => {
+    const out = listValues(emptyList(), [
+      wired('n1', 'image', { asset_id: 'r1', url: 'u1' }),
+      wired('n2', 'image', { asset_id: 'r2', url: 'u2' })
+    ]);
+    expect(out.values.map((v) => v.wiredFrom)).toEqual(['n1', 'n2']);
+    expect(out.values.map((v) => v.item.asset_id)).toEqual(['r1', 'r2']);
+  });
+
+  it('entrambi: i collegati DOPO i manuali', () => {
+    const list: ListNode = { id: 'l1', itemKind: 'text', items: [{ text: 'a mano' }] };
+    const out = listValues(list, [wired('n1', 'text', { text: 'dal filo' })]);
+    expect(out.values.map((v) => v.item.text)).toEqual(['a mano', 'dal filo']);
+    expect(out.values.map((v) => v.wiredFrom)).toEqual([null, 'n1']);
+  });
+
+  it('una sorgente senza output non aggiunge niente, ma resta in attesa', () => {
+    const out = listValues(emptyList(), [wired('n1', 'image', null), wired('n2', 'image', { asset_id: 'r2' })]);
+    expect(out.values).toHaveLength(1);
+    expect(out.pending).toEqual(['n1']);
+  });
+
+  it('una lista vuota prende il medium del primo filo', () => {
+    const out = listValues(emptyList('image'), [wired('n1', 'text', { text: 'ciao' })]);
+    expect(out.itemKind).toBe('text');
+    expect(out.values.map((v) => v.item.text)).toEqual(['ciao']);
+  });
+
+  it('un filo di medium diverso da una lista già popolata non entra', () => {
+    const list: ListNode = { id: 'l1', itemKind: 'image', items: [{ asset_id: 'a1' }] };
+    const out = listValues(list, [wired('n1', 'text', { text: 'no' })]);
+    expect(out.values).toHaveLength(1);
+    expect(out.pending).toEqual([]);
+  });
+});
+
+describe('listKindOf / listConnectors — la porta di ingresso di una lista', () => {
+  it('una lista vuota senza fili non ha ancora un medium: accetta entrambe le porte', () => {
+    expect(listKindOf(emptyList(), [])).toBeNull();
+    expect(listConnectors(null)).toEqual(['text', 'images']);
+  });
+
+  it('una lista di immagini apre solo la porta images', () => {
+    expect(listConnectors(listKindOf({ id: 'l1', itemKind: 'image', items: [{ asset_id: 'a' }] }, []))).toEqual(['images']);
+  });
+
+  it('una lista vuota col primo filo testo apre solo la porta text', () => {
+    expect(listConnectors(listKindOf(emptyList(), [wired('n1', 'text', null)]))).toEqual(['text']);
+  });
+});
+
+describe('wiresInto — i fili di una lista, in ordine deterministico', () => {
+  it('solo quelli che entrano nella lista, ordinati per id', () => {
+    const edges = [
+      { id: 'e2', sourceNodeId: 'b', targetNodeId: 'l1' },
+      { id: 'e9', sourceNodeId: 'x', targetNodeId: 'other' },
+      { id: 'e1', sourceNodeId: 'a', targetNodeId: 'l1' }
+    ];
+    expect(wiresInto('l1', edges).map((e) => e.sourceNodeId)).toEqual(['a', 'b']);
   });
 });

@@ -6,6 +6,8 @@ import {
   CONNECTOR_STYLE,
   connectorsForNode,
   portAccepts,
+  anyPortAccepts,
+  portListValued,
   portActive,
   outputConnectorOf,
   modalityBadges,
@@ -283,5 +285,23 @@ describe('una linea lasciata sul nodo atterra sulla porta del suo tipo', () => {
   it('senza una porta compatibile resta quella su cui è stata lasciata', async () => {
     const { landingPort } = await import('./connectors');
     expect(landingPort('text', 'videos', ['text'])).toBe('text');
+  });
+});
+
+describe('le porte di una lista: tipizzate, a più fili', () => {
+  it('una lista di immagini accetta un filo images, rifiuta un filo text', () => {
+    expect(anyPortAccepts(['images'], 'images')).toBe(true);
+    expect(anyPortAccepts(['images'], 'text')).toBe(false);
+  });
+
+  it('una lista vuota accetta entrambi', () => {
+    expect(anyPortAccepts(['text', 'images'], 'text')).toBe(true);
+    expect(anyPortAccepts(['text', 'images'], 'images')).toBe(true);
+  });
+
+  it('la porta text di una lista prende più fili; quella di un nodo testo no', () => {
+    expect(portListValued('list', 'text')).toBe(true);
+    expect(portListValued('text', 'text')).toBe(false);
+    expect(portListValued('image', 'images')).toBe(true);
   });
 });
