@@ -136,7 +136,7 @@ describe('POST /api/v1/brands/:slug/social/connect', () => {
   });
 
   it('risponde esattamente quello che il contratto dichiara, niente di più', async () => {
-    const { SOCIAL_CONNECT_LINK } = await import('@dazero/api-contracts');
+    const { SOCIAL_CONNECT_LINK } = await import('@feega/api-contracts');
     const { body } = await mint({ platform: 'linkedin' });
 
     expect(SOCIAL_CONNECT_LINK.output.strict().safeParse(body).success).toBe(true);

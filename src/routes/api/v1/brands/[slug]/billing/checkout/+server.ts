@@ -6,7 +6,7 @@ import { isOrgOwner, orgBillingForBrand } from '$lib/server/org-billing';
 import { billingGrantsReady } from '$lib/server/billing-readiness';
 import { CREDIT_LADDER } from '$lib/server/credit-ladder';
 import { appOrigin } from '$lib/server/app-url';
-import { CHECKOUT_LINK, statusForFailure } from '@dazero/api-contracts';
+import { CHECKOUT_LINK, statusForFailure } from '@feega/api-contracts';
 
 const SUBSCRIPTION_RUNGS = CREDIT_LADDER.map((rung) => ({
   usd: rung.price,

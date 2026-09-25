@@ -2,7 +2,7 @@
  * Brand Analysis — la LETTURA di un sito.
  *
  * La raccolta (fetch, guardia SSRF, browser reale, pagine interne, Shopify/Woo, parsing di
- * metadati, loghi, colori, font, social) è uscita in `@dazero/site-analysis/crawl`: è la stessa
+ * metadati, loghi, colori, font, social) è uscita in `@feega/site-analysis/crawl`: è la stessa
  * per chiunque legga un sito. Qui resta ciò che è nostro — quali domande porre al materiale, con
  * quale schema, e come comporne un `BrandProfile`.
  *
@@ -50,7 +50,7 @@ import {
   type HTMLMetadata,
   type ProgressCallback,
   type SiteType
-} from '@dazero/site-analysis/crawl';
+} from '@feega/site-analysis/crawl';
 
 export {
   blockPageReason,

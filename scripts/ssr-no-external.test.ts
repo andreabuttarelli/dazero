@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ssrNoExternalForDeploy } from './ssr-no-external';
 
 describe('ssrNoExternalForDeploy', () => {
-  it('bundles @dazero/* for node, whose Docker final stage installs without packages/', () => {
+  it('bundles @feega/* for node, whose Docker final stage installs without packages/', () => {
     expect(ssrNoExternalForDeploy('node')).toContainEqual(/^@dazero\//);
   });
 
@@ -14,7 +14,7 @@ describe('ssrNoExternalForDeploy', () => {
     expect(ssrNoExternalForDeploy('')).toContain('simple-icons');
   });
 
-  it('does not bundle @dazero/* for Vercel, which installs packages/ workspaces normally', () => {
+  it('does not bundle @feega/* for Vercel, which installs packages/ workspaces normally', () => {
     expect(ssrNoExternalForDeploy('')).not.toContainEqual(/^@dazero\//);
   });
 });

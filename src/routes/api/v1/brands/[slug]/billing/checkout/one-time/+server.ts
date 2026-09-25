@@ -5,7 +5,7 @@ import { isOrgOwner, orgBillingForBrand } from '$lib/server/org-billing';
 import { billingGrantsReady } from '$lib/server/billing-readiness';
 import { CREDIT_LADDER } from '$lib/server/credit-ladder';
 import { appOrigin } from '$lib/server/app-url';
-import { ONE_TIME_CHECKOUT_LINK, statusForFailure } from '@dazero/api-contracts';
+import { ONE_TIME_CHECKOUT_LINK, statusForFailure } from '@feega/api-contracts';
 
 /**
  * The one-time side of CREDIT_LADDER: a fixed batch of credits bought once, at the 70:1 rate

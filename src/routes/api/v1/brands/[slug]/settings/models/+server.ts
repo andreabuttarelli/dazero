@@ -6,7 +6,7 @@ import {
   MEDIA_MODEL_SLOT_IDS,
   SET_MEDIA_MODEL,
   statusForFailure
-} from '@dazero/api-contracts';
+} from '@feega/api-contracts';
 import { mediaModelSlot, slotAccepts } from '$lib/media-model-slots';
 import { chooseMediaModel } from '$lib/server/media-model-prefs';
 import { offerableSlotChoices } from '$lib/server/offerable-models';

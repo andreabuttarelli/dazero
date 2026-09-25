@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
-import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from '@dazero/api-contracts';
+import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from '@feega/api-contracts';
 import { createWriteTools } from '$lib/server/brand-data/write-tool';
 
 /**

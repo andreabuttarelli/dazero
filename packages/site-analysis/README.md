@@ -1,4 +1,4 @@
-# @dazero/site-analysis
+# @feega/site-analysis
 
 Leggere un sito. Non interpretarlo.
 
@@ -23,7 +23,7 @@ Due lettori, un raccoglitore. Chi legge decide lo schema e paga il modello.
 ## Uso
 
 ```ts
-import { crawlSite } from '@dazero/site-analysis/crawl';
+import { crawlSite } from '@feega/site-analysis/crawl';
 
 const site = await crawlSite('esempio.com', {
   renderer,              // opzionale: un browser vero per i siti che il fetch non basta a leggere

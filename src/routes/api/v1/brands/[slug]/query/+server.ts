@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
-import { QUERY_DATABASE } from '@dazero/api-contracts';
+import { QUERY_DATABASE } from '@feega/api-contracts';
 import { createQueryTool } from '$lib/server/brand-data/query-tool';
 
 /**

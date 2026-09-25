@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
 import { listBrandMedia } from '$lib/server/brand-media';
 import { importBrandMediaFromUrl } from '$lib/server/media-import';
-import { IMPORT_MEDIA_URL, LIST_MEDIA_READ, statusForFailure } from '@dazero/api-contracts';
+import { IMPORT_MEDIA_URL, LIST_MEDIA_READ, statusForFailure } from '@feega/api-contracts';
 import { mediaUrl } from '$lib/media-url';
 
 export const GET: RequestHandler = async ({ request, params, url }) => {

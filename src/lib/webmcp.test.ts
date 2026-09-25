@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
-import { BRAND_ENDPOINTS, MEDIA_MODEL_SLOT_IDS, type BrandEndpoint } from '@dazero/api-contracts';
+import { BRAND_ENDPOINTS, MEDIA_MODEL_SLOT_IDS, type BrandEndpoint } from '@feega/api-contracts';
 import { annotationsFor, brandWebMcpTools, callApi, inputSchemaFor, modelContext, registerBrandWebMcp } from './webmcp';
 
 const TOKEN = 'eyJ-fake-session-token';

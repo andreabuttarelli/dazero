@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { resolveOrgCaller } from '$lib/server/org-data/auth';
 import { createOrgWriteTools } from '$lib/server/org-data/write-tool';
 import { agentActor } from '$lib/server/repos/actor';
-import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from '@dazero/api-contracts';
+import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from '@feega/api-contracts';
 
 /**
  * `insert_row`/`update_row`/`delete_row` sul nuovo schema. Come `/org/query`, monta lo stesso

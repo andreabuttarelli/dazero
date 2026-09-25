@@ -4,7 +4,7 @@ import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
 import { appOrigin } from '$lib/server/app-url';
 import { managePath, socialConnections } from '$lib/server/social-connections';
 import { projectIdOfBrand } from '$lib/server/tenancy/brand-slug';
-import { TARGET_PLATFORMS } from '@dazero/api-contracts';
+import { TARGET_PLATFORMS } from '@feega/api-contracts';
 
 /**
  * Su cosa questo brand pubblica davvero. `get_brand_settings` porta lo stesso elenco di

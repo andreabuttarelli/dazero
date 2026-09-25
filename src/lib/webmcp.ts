@@ -29,7 +29,7 @@
  * Quando la specifica cambia, cambia questo file: e' l'unico che la conosce.
  */
 
-import { BRAND_ENDPOINTS, RESOURCE_SEGMENT, pathFor, type BrandEndpoint } from '@dazero/api-contracts';
+import { BRAND_ENDPOINTS, RESOURCE_SEGMENT, pathFor, type BrandEndpoint } from '@feega/api-contracts';
 import { z } from 'zod';
 
 /** La forma che la specifica chiama `ModelContextTool`. */

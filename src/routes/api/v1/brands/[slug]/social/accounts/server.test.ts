@@ -129,7 +129,7 @@ describe('GET /api/v1/brands/:slug/social/accounts', () => {
   });
 
   it('risponde esattamente quello che il contratto dichiara, niente di più', async () => {
-    const { LIST_SOCIAL_ACCOUNTS_READ } = await import('@dazero/api-contracts');
+    const { LIST_SOCIAL_ACCOUNTS_READ } = await import('@feega/api-contracts');
     const { body } = await read();
 
     expect(LIST_SOCIAL_ACCOUNTS_READ.output.strict().safeParse(body).success).toBe(true);

@@ -7,7 +7,7 @@ import { createUserDb, type Db } from '$lib/server/db/client';
 import { env as publicEnv } from '$env/dynamic/public';
 import type { Handle } from '@sveltejs/kit';
 import { withBrandContext, withToolContext } from '$lib/server/ai-log';
-import { TOOL_HEADER, toolFromHeader } from '@dazero/api-contracts';
+import { TOOL_HEADER, toolFromHeader } from '@feega/api-contracts';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { captureReferralCookie } from '$lib/server/referrals';
 import { isCsrfForbidden } from '$lib/server/csrf';

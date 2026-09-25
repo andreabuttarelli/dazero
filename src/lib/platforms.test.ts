@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PLATFORM_IDS } from './platforms';
 import { PLATFORM_KEYS } from './components/platform-meta';
-import { TARGET_PLATFORMS } from '@dazero/api-contracts';
+import { TARGET_PLATFORMS } from '@feega/api-contracts';
 
 const VOCAB: readonly string[] = Object.values(PLATFORM_IDS);
 

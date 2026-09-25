@@ -35,8 +35,8 @@
  *    per colonna (e le elenca) dalla RLS (che è una riga di un altro, e non si aggira). Vincoli e
  *    grant vengono da `write-rules.ts`, generato dalle migrazioni.
  */
-import { QUERY_TABLES, UPDATE_MAX_ROWS, DELETE_MAX_ROWS } from '@dazero/api-contracts';
-import { TABLE_CHECKS, WRITABLE_COLUMNS } from '@dazero/api-contracts';
+import { QUERY_TABLES, UPDATE_MAX_ROWS, DELETE_MAX_ROWS } from '@feega/api-contracts';
+import { TABLE_CHECKS, WRITABLE_COLUMNS } from '@feega/api-contracts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isRlsScoped } from '$lib/server/rls-client';
 import { logAiCall } from '$lib/server/ai-log';

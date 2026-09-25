@@ -4,7 +4,7 @@ import { authenticate, checkApiKeyWriteAccess, loadBrandForUser } from '$lib/ser
 import { appOrigin } from '$lib/server/app-url';
 import { connectPath, managePath, socialConnections } from '$lib/server/social-connections';
 import { projectIdOfBrand } from '$lib/server/tenancy/brand-slug';
-import { SOCIAL_CONNECT_LINK, TARGET_PLATFORMS, statusForFailure } from '@dazero/api-contracts';
+import { SOCIAL_CONNECT_LINK, TARGET_PLATFORMS, statusForFailure } from '@feega/api-contracts';
 
 /**
  * Conia la porta, non la attraversa.

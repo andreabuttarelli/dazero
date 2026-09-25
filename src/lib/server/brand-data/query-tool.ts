@@ -30,7 +30,7 @@
  */
 import { tool } from 'ai';
 import { POST_STATUS_VOCABULARY } from '$lib/server/brand-data/post-status';
-import { QUERY_TABLES } from '@dazero/api-contracts';
+import { QUERY_TABLES } from '@feega/api-contracts';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isRlsScoped } from '$lib/server/rls-client';

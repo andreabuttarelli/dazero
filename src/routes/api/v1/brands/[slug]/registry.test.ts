@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { BRAND_ENDPOINTS, pathFor, pathWithoutBrand, type BrandEndpoint } from '@dazero/api-contracts';
+import { BRAND_ENDPOINTS, pathFor, pathWithoutBrand, type BrandEndpoint } from '@feega/api-contracts';
 
 /**
  * IL REGISTRY PROMETTE, LE ROTTE MANTENGONO. Ogni entry di BRAND_ENDPOINTS diventa da sola un
