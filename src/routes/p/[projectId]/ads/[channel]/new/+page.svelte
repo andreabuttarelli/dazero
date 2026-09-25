@@ -4,6 +4,7 @@
   import PageHead from '$lib/components/PageHead.svelte';
   import { Sparkles } from '@lucide/svelte';
   import { adsErrorMessage, creditsForSpend } from '$lib/ads-fee';
+  import { formatCredits } from '$lib/components/credit-amount-format';
   import CountryPicker from '$lib/components/CountryPicker.svelte';
   import { page } from '$app/stores';
 
@@ -396,7 +397,7 @@
         <div class="form-foot">
           <p class="note">
             {$_('app.ads.createHint')}
-            <b>{$_('app.ads.launchCost', { values: { credits: launchCredits } })}</b>
+            <b>{$_('app.ads.launchCost', { values: { credits: formatCredits(launchCredits) } })}</b>
             {#if !data.readiness.adAccounts.length}
               <br />{$_('app.ads.new.noAccountYet')}
             {/if}

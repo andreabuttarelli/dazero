@@ -21,6 +21,7 @@
   import { createSupabaseBrowserClient } from '$lib/supabase/client';
   import { deserialize } from '$app/forms';
   import { invalidate } from '$app/navigation';
+  import { formatCredits } from '$lib/components/credit-amount-format';
   import CanvasFlow from '$lib/components/canvas/CanvasFlow.svelte';
   import GenNode from '$lib/components/canvas/GenNode.svelte';
   import IframeNode from '$lib/components/canvas/IframeNode.svelte';
@@ -49,6 +50,7 @@
   import { genNodeSize, startRun, unlockRun, type GenNode as GenNodeState, type GenMedium, type ModelChoice } from '$lib/canvas/gen-node';
   import { hasUpstreamText } from '$lib/canvas/upstream-inputs';
   import { effectiveModel } from '$lib/canvas/default-models';
+  import { nearestVideoDuration } from '$lib/video-models';
   import { type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
   import { shareUrlOf } from '$lib/canvas/doc-node';
   import { nodeSize } from '$lib/canvas/node-size';
@@ -727,7 +729,7 @@
     if (safety.verdict === 'confirm') {
       const cost = plan.cost as { total: number } | undefined;
       const ok = confirm(
-        `Genera ${safety.count} combinazioni (${cost?.total ?? '?'} crediti)? Verranno prodotte nei prossimi minuti, non subito.`
+        `Genera ${safety.count} combinazioni (${cost ? formatCredits(cost.total) : '?'} crediti)? Verranno prodotte nei prossimi minuti, non subito.`
       );
       if (!ok) return;
     }
@@ -758,7 +760,7 @@
     if (!plan) return;
 
     const ok = confirm(
-      `${(plan.steps as unknown[]).length} passi, circa ${plan.estimatedCredits} crediti. Avviare il flusso?`
+      `${(plan.steps as unknown[]).length} passi, circa ${formatCredits(plan.estimatedCredits as number)} crediti. Avviare il flusso?`
     );
     if (!ok) return;
 
@@ -1092,7 +1094,7 @@
    */
   async function commonChange(
     ids: string[],
-    patch: { model?: string | null; aspectRatio?: string; duration?: number; audio?: boolean; repeat?: number }
+    patch: { model?: string | null; aspectRatio?: string; duration?: number; resolution?: string; audio?: boolean; repeat?: number }
   ) {
     const chosen = nodes.filter((n) => ids.includes(n.id));
     if (!chosen.length) { return; }
@@ -1121,13 +1123,28 @@
 
     const { model, ...params } = patch;
     const hasParams = Object.values(params).some((v) => v !== undefined);
-    const items = chosen.map((n) => ({
-      node_id: n.id,
-      version: n.version,
-      patch: hasParams
-        ? { ...(model !== undefined ? { model } : {}), params: { ...(n.data.params as object), ...params } }
-        : patch
-    }));
+    const items = chosen.map((n) => {
+      const nextParams = { ...(n.data.params as Record<string, unknown>), ...params };
+
+      // Un modello nuovo può non fare più il gradino di durata salvato: si scivola al più vicino
+      // fra quelli che offre, invece di mandare al server una durata che quel modello rifiuta.
+      if (model !== undefined && n.type === 'video') {
+        const nextModel = catalogue.video?.find((c) => c.id === model);
+        const options = nextModel?.durationOptions;
+        const savedDuration = (n.data.params as Record<string, unknown> | undefined)?.duration;
+        if (options?.length && typeof savedDuration === 'number') {
+          nextParams.duration = nearestVideoDuration(options, savedDuration);
+        }
+      }
+
+      return {
+        node_id: n.id,
+        version: n.version,
+        patch: hasParams || model !== undefined
+          ? { ...(model !== undefined ? { model } : {}), params: nextParams }
+          : patch
+      };
+    });
 
     const result = await post('batchWrite', { items: JSON.stringify(items) });
     const results = (result?.results ?? []) as { nodeId: string; outcome: string; node?: CanvasNodeRecord }[];

@@ -3,6 +3,7 @@
   import Check from '@lucide/svelte/icons/check';
   import AlertTriangle from '@lucide/svelte/icons/triangle-alert';
   import Minus from '@lucide/svelte/icons/minus';
+  import { formatCredits } from '$lib/components/credit-amount-format';
 
   // Mirrors AdsCheck in src/lib/server/ads.ts — kept local so this stays a client-safe import.
   type CheckRow = { key: string; ok: boolean; blocking: boolean; fix?: string; detail?: string };
@@ -59,7 +60,10 @@
               {c.ok && c.detail
                 ? c.detail
                 : $_(`app.ads.readiness.checks.${c.key}.${c.ok ? 'ok' : 'todo'}`, {
-                    values: { channel: $_(`app.ads.channel.${channel}`), detail: c.detail ?? '' }
+                    values: {
+                      channel: $_(`app.ads.channel.${channel}`),
+                      detail: c.key === 'credits' && c.detail ? formatCredits(Number(c.detail)) : (c.detail ?? '')
+                    }
                   })}
             </span>
           </span>

@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { _, locale } from 'svelte-i18n';
+  import { _ } from 'svelte-i18n';
   import { toc } from '$lib/stores/toc';
   import {
     FREE_CREDITS,
     PLANS,
     type Plan
   } from '$lib/plans';
-  const loc = $derived($locale ?? 'en');
+  import { formatCredits } from '$lib/components/credit-amount-format';
 
   type CreditRow = {
     name: string;
@@ -45,7 +45,7 @@
   ];
 
   function n(v: number): string {
-    return v.toLocaleString(loc);
+    return formatCredits(v);
   }
 
   $effect(() => {

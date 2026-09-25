@@ -1,6 +1,7 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
   import CreditAmount from '$lib/components/CreditAmount.svelte';
+  import { formatCredits } from '$lib/components/credit-amount-format';
 
   let { data } = $props();
 
@@ -30,8 +31,8 @@
 
   <div class="field">
     <div class="ftxt">
-      <div class="fh">{$_('app.settings.referrals.headline', { values: { credits: fmt(data.creditsEach) } })}</div>
-      <div class="fs">{$_('app.settings.referrals.subtitle', { values: { credits: fmt(data.creditsEach) } })}</div>
+      <div class="fh">{$_('app.settings.referrals.headline', { values: { credits: formatCredits(data.creditsEach) } })}</div>
+      <div class="fs">{$_('app.settings.referrals.subtitle', { values: { credits: formatCredits(data.creditsEach) } })}</div>
     </div>
   </div>
 
@@ -78,7 +79,7 @@
       <div class="stat-l">{$_('app.settings.referrals.statCredited')}</div>
     </div>
     <div class="stat">
-      <div class="stat-n">{fmt(data.stats.creditsEarned)}</div>
+      <div class="stat-n">{formatCredits(data.stats.creditsEarned)}</div>
       <div class="stat-l">{$_('app.settings.referrals.statCredits')}</div>
     </div>
   </div>

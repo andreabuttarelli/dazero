@@ -4,6 +4,7 @@ import { senderEmailDomain } from './support-config';
 import type { Locale } from '$lib/i18n/locale';
 import { siteUrl } from '$lib/seo';
 import { joinAppPath } from '$lib/server/tenancy/brand-slug';
+import { formatCredits } from '$lib/components/credit-amount-format';
 
 // Sender address. The domain must be verified in Resend, otherwise Resend rejects delivery to
 // anyone but the account owner. Override EMAIL_FROM entirely, or just EMAIL_DOMAIN to change only
@@ -664,8 +665,8 @@ export function creditWarningEmailHtml(locale: Locale, opts: {
     <p style="font-size:15px;line-height:1.5;color:#1d1d1f;margin:0 0 16px;">
       ${tEmail(locale, 'credit_warning.intro', {
         brand: esc(opts.brandName),
-        used: opts.used.toLocaleString(),
-        quota: opts.quota.toLocaleString(),
+        used: formatCredits(opts.used),
+        quota: formatCredits(opts.quota),
         percent: opts.percent,
         resetDate: resetStr
       })}
@@ -673,7 +674,7 @@ export function creditWarningEmailHtml(locale: Locale, opts: {
     <div style="background:#f5f5f7;border-radius:10px;padding:16px;margin:0 0 16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:13px;color:#86868b;">${tEmail(locale, 'credit_warning.heading')}</span>
-        <span style="font-size:14px;font-weight:600;">${opts.used.toLocaleString()} / ${opts.quota.toLocaleString()}</span>
+        <span style="font-size:14px;font-weight:600;">${formatCredits(opts.used)} / ${formatCredits(opts.quota)}</span>
       </div>
       <div style="background:#e5e5ea;border-radius:4px;height:8px;overflow:hidden;">
         <div style="background:${opts.percent >= 80 ? '#dc2626' : opts.percent >= 60 ? '#f59e0b' : '#16a34a'};height:100%;width:${Math.min(100, opts.percent)}%;border-radius:4px;"></div>
@@ -694,13 +695,13 @@ export function creditWarningEmailText(locale: Locale, opts: {
     '',
     tEmail(locale, 'credit_warning.intro', {
       brand: opts.brandName,
-      used: opts.used.toLocaleString(),
-      quota: opts.quota.toLocaleString(),
+      used: formatCredits(opts.used),
+      quota: formatCredits(opts.quota),
       percent: opts.percent,
       resetDate: resetStr
     }),
     '',
-    `${opts.used.toLocaleString()} / ${opts.quota.toLocaleString()} (${opts.percent}%)`,
+    `${formatCredits(opts.used)} / ${formatCredits(opts.quota)} (${opts.percent}%)`,
     '',
     `${tEmail(locale, 'credit_warning.cta')} ${opts.dashboardUrl}`,
     '',

@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import { _ } from 'svelte-i18n';
   import { creditsForSpend } from '$lib/ads-fee';
+  import { formatCredits } from '$lib/components/credit-amount-format';
   import PlatformGlyph from '$lib/components/PlatformGlyph.svelte';
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -117,7 +118,7 @@
         </form>
         <!-- Priced off the number in the box, not the stored one: the field is editable, so a
              cost pinned to the saved budget quoted a price the user was not about to pay. -->
-        <div class="cost">{$_('app.ads.launchCost', { values: { credits: creditsForSpend(budgetOf(c)) } })}</div>
+        <div class="cost">{$_('app.ads.launchCost', { values: { credits: formatCredits(creditsForSpend(budgetOf(c))) } })}</div>
         <form method="POST" action="?/reject" use:enhance>
           <input type="hidden" name="campaignId" value={c.id} />
           <button class="mini edit" type="submit">{$_('app.ads.reject')}</button>

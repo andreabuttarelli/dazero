@@ -1,13 +1,15 @@
 <script lang="ts">
   import CreditIcon from './CreditIcon.svelte';
+  import { formatCredits } from './credit-amount-format';
 
   let { amount, approx = false }: { amount: number; approx?: boolean } = $props();
 
-  const label = $derived(`${amount.toLocaleString()} crediti`);
+  const displayed = $derived(formatCredits(amount, { approx }));
+  const label = $derived(`${formatCredits(amount)} crediti`);
 </script>
 
 <span class="credit-amount" aria-label={label}>
-  <span aria-hidden="true">{approx ? '~' : ''}{amount.toLocaleString()}</span>
+  <span aria-hidden="true">{displayed}</span>
   <CreditIcon />
 </span>
 

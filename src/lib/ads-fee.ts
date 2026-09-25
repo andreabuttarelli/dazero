@@ -1,4 +1,5 @@
 import { billedCreditsFor } from '$lib/server/credit-ladder';
+import { formatCredits } from '$lib/components/credit-amount-format';
 
 /** feega management fee on top of platform ad spend (model A: pass-through + markup). */
 export const AD_MANAGEMENT_FEE_RATE = 0.12;
@@ -57,7 +58,10 @@ export function normalizeUrl(raw: string | null | undefined): string {
 export function adsErrorMessage(error: string): { key: string; values: Record<string, string> } {
   const [code, needed, left] = error.split(':');
   if (code === 'credits_exhausted') {
-    return { key: 'app.ads.err.credits_exhausted', values: { needed: needed ?? '', left: left ?? '0' } };
+    return {
+      key: 'app.ads.err.credits_exhausted',
+      values: { needed: needed ? formatCredits(Number(needed)) : '', left: formatCredits(Number(left ?? '0')) }
+    };
   }
   // Codes may carry a payload after a colon (`goal_not_supported:conversions`,
   // `invalid_status:active`). Key off the code alone, or the whole string became the key, no

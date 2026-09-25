@@ -1,30 +1,25 @@
 import { describe, expect, it } from 'vitest';
+import { formatCredits } from './credit-amount-format';
 
-/**
- * `CreditAmount.svelte` fa questi due calcoli nel markup, non in una funzione esportata: il test
- * li isola qui perché il componente non ha un pattern di render in questo repo (nessun test usa
- * @testing-library/svelte). Se la formattazione cambia nel componente, questo test va aggiornato
- * insieme — è la stessa cifra, non due listini che divergono.
- */
-function formatCreditText(amount: number, approx: boolean): string {
-  return `${approx ? '~' : ''}${amount.toLocaleString()}`;
-}
-
-function creditAriaLabel(amount: number): string {
-  return `${amount.toLocaleString()} crediti`;
-}
-
-describe('formattazione dei crediti', () => {
-  it('mostra la tilde solo quando il costo è approssimato', () => {
-    expect(formatCreditText(12, true)).toBe('~12');
-    expect(formatCreditText(12, false)).toBe('12');
+describe('formatCredits', () => {
+  it('divides units by 100 with two decimals', () => {
+    expect(formatCredits(14)).toBe('0.14');
+    expect(formatCredits(5)).toBe('0.05');
   });
 
-  it('separa le migliaia', () => {
-    expect(formatCreditText(52000, false)).toBe('52,000');
+  it('groups thousands on the divided value', () => {
+    expect(formatCredits(997951)).toBe('9,979.51');
   });
 
-  it("l'etichetta per lo screen reader porta la parola intera", () => {
-    expect(creditAriaLabel(12)).toBe('12 crediti');
+  it('floors very small costs to "<0.01" instead of "0.00"', () => {
+    expect(formatCredits(0.4)).toBe('<0.01');
+  });
+
+  it('prefixes an approximate amount with a tilde', () => {
+    expect(formatCredits(14, { approx: true })).toBe('~0.14');
+  });
+
+  it('does not show "<0.01" for zero', () => {
+    expect(formatCredits(0)).toBe('0.00');
   });
 });
