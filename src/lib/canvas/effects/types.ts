@@ -23,6 +23,7 @@ export type EffectParam =
 export type EffectStep = {
 	id: EffectId;
 	params: Record<string, number | string>;
+	enabled: boolean;
 };
 
 export type Pixels = {

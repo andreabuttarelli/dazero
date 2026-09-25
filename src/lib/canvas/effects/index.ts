@@ -186,7 +186,7 @@ export function applyStack(pixels: Pixels, steps: EffectStep[]): Pixels {
 
 	for (const step of steps) {
 		const definition = EFFECTS[step.id];
-		if (!definition) {
+		if (!definition || !step.enabled) {
 			continue;
 		}
 

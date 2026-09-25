@@ -206,7 +206,7 @@ function effectStepOf(v: unknown): EffectStep | null {
   if (typeof id !== 'string' || !(id in EFFECTS)) {
     return null;
   }
-  return { id: id as EffectStep['id'], params: record(step.params) as EffectStep['params'] };
+  return { id: id as EffectStep['id'], params: record(step.params) as EffectStep['params'], enabled: step.enabled !== false };
 }
 
 /** Il nodo `effects` dietro una riga, o null quando quella riga è un'altra cosa. */

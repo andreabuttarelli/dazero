@@ -7,13 +7,13 @@ describe('applyStack', () => {
 		const source = makePixels(4, 4, (x, y) => [(x + y) * 32, (x + y) * 32, (x + y) * 32, 255]);
 
 		const pixelateThenPosterize = applyStack(source, [
-			{ id: 'pixelate', params: { blockSize: 2 } },
-			{ id: 'posterize', params: { levels: 2 } }
+			{ id: 'pixelate', params: { blockSize: 2 }, enabled: true },
+			{ id: 'posterize', params: { levels: 2 }, enabled: true }
 		]);
 
 		const posterizeThenPixelate = applyStack(source, [
-			{ id: 'posterize', params: { levels: 2 } },
-			{ id: 'pixelate', params: { blockSize: 2 } }
+			{ id: 'posterize', params: { levels: 2 }, enabled: true },
+			{ id: 'pixelate', params: { blockSize: 2 }, enabled: true }
 		]);
 
 		expect(Array.from(pixelateThenPosterize.data)).not.toEqual(Array.from(posterizeThenPixelate.data));
@@ -22,7 +22,7 @@ describe('applyStack', () => {
 	it('skips unknown effect ids', () => {
 		const source = makePixels(2, 2, () => [10, 20, 30, 255]);
 
-		const result = applyStack(source, [{ id: 'not-a-real-effect' as never, params: {} }]);
+		const result = applyStack(source, [{ id: 'not-a-real-effect' as never, params: {}, enabled: true }]);
 
 		expect(Array.from(result.data)).toEqual(Array.from(source.data));
 	});
@@ -30,8 +30,8 @@ describe('applyStack', () => {
 	it('clamps params to their declared ranges before applying', () => {
 		const source = makePixels(4, 4, () => [10, 20, 30, 255]);
 
-		const clamped = applyStack(source, [{ id: 'pixelate', params: { blockSize: 999 } }]);
-		const atMax = applyStack(source, [{ id: 'pixelate', params: { blockSize: EFFECTS.pixelate.params[0].kind === 'range' ? EFFECTS.pixelate.params[0].max : 0 } }]);
+		const clamped = applyStack(source, [{ id: 'pixelate', params: { blockSize: 999 }, enabled: true }]);
+		const atMax = applyStack(source, [{ id: 'pixelate', params: { blockSize: EFFECTS.pixelate.params[0].kind === 'range' ? EFFECTS.pixelate.params[0].max : 0 }, enabled: true }]);
 
 		expect(Array.from(clamped.data)).toEqual(Array.from(atMax.data));
 	});

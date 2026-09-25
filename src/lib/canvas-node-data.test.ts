@@ -380,10 +380,19 @@ describe('un nodo effects, letto dalla riga', () => {
       })
     ).toEqual({
       id: 'n1',
-      effects: [{ id: 'pixelate', params: { blockSize: 8 } }],
+      effects: [{ id: 'pixelate', params: { blockSize: 8 }, enabled: true }],
       refId: 'a1',
       sourceRefId: 'a0'
     });
+  });
+
+  it('un passo spento resta spento', () => {
+    const node = effectsOf({
+      id: 'n1',
+      type: 'effects',
+      data: { effects: [{ id: 'pixelate', params: {}, enabled: false }] }
+    });
+    expect(node?.effects[0].enabled).toBe(false);
   });
 
   it('un effetto sconosciuto sparisce dalla pila invece di rompere il disegno', () => {
@@ -392,7 +401,7 @@ describe('un nodo effects, letto dalla riga', () => {
       type: 'effects',
       data: { effects: [{ id: 'pixelate', params: {} }, { id: 'not-a-real-effect', params: {} }] }
     })!;
-    expect(node.effects).toEqual([{ id: 'pixelate', params: {} }]);
+    expect(node.effects).toEqual([{ id: 'pixelate', params: {}, enabled: true }]);
   });
 
   it('un nodo che non è effects non si legge come tale', () => {
