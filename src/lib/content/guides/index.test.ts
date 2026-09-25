@@ -3,8 +3,8 @@ import { guideEntries, guideBySlug } from './index';
 import { renderDocHtml } from '$lib/canvas/doc-render';
 
 describe('guide della tela', () => {
-  test('ci sono sei guide, ognuna con titolo e contenuto', () => {
-    expect(guideEntries.length).toBe(6);
+  test('ci sono sette guide, ognuna con titolo e contenuto', () => {
+    expect(guideEntries.length).toBe(7);
     for (const guide of guideEntries) {
       expect(guide.title.trim().length).toBeGreaterThan(0);
       expect(guide.content.trim().length).toBeGreaterThan(0);
