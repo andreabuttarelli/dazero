@@ -35,6 +35,7 @@ import type { MediaModelSlot } from '$lib/media-model-slots';
 import { wireModelId } from '$lib/server/ai-models-sync';
 import { providerOf } from '$lib/canvas/model-provider';
 import { IMAGE_CREDITS, videoCredits } from '$lib/server/content-cost';
+import { videoDurationOptions, VIDEO_RESOLUTIONS } from '$lib/server/video';
 
 const VIDEO_SPEC_IDS = [
   'bytedance/seedance-2-5',
@@ -84,8 +85,13 @@ function videoChoice(spec: VideoModelSpec, wireId: string, inputModalities: stri
     aspectRatios: [...spec.ratios],
     minDuration: spec.minDuration,
     maxDuration: spec.maxDuration,
+    durationOptions: videoDurationOptions(spec.id),
     maxPromptChars: spec.maxPromptChars,
     generateAudio: spec.generateAudio,
+    // Il rendering shippa a 480p/720p per OGNI modello video, dallo stesso motore
+    // (`runVideoJob` → `video.ts`): non è un fatto per-spec come le durate, è il tetto del
+    // trasporto che serve tutti.
+    resolutions: [...VIDEO_RESOLUTIONS],
     ...providerOf(wireId),
     inputModalities,
     unitCredits: videoCredits(spec.id)

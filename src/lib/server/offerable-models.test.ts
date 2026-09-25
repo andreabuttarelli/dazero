@@ -161,3 +161,27 @@ describe('offerableSlotChoices — i sei mestieri delle settings, filtrati sui m
     expect(out.choices.map((c) => c.id)).not.toContain(SEEDANCE_25_MODEL);
   });
 });
+
+describe('offerableModels video — durata e risoluzione', () => {
+  it('un video offerto porta i gradini di durata del proprio modello', async () => {
+    const admin = fakeAdmin([
+      { id: 'bytedance/seedance-2.5', catalogue: 'video', input_modalities: ['text', 'image'], output_modalities: ['video'] }
+    ]);
+
+    const out = await offerableModels(admin, 'video');
+
+    const choice = out.choices.find((c) => c.id === SEEDANCE_25_MODEL);
+    expect(choice?.durationOptions).toEqual([10, 13, 15, 20, 30]);
+  });
+
+  it('un video offerto porta le risoluzioni 480p/720p', async () => {
+    const admin = fakeAdmin([
+      { id: 'bytedance/seedance-2.5', catalogue: 'video', input_modalities: ['text', 'image'], output_modalities: ['video'] }
+    ]);
+
+    const out = await offerableModels(admin, 'video');
+
+    const choice = out.choices.find((c) => c.id === SEEDANCE_25_MODEL);
+    expect(choice?.resolutions).toEqual(['480p', '720p']);
+  });
+});

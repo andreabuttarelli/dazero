@@ -35,8 +35,13 @@ export type ModelChoice = {
   maxRefs?: number;
   minDuration?: number;
   maxDuration?: number;
+  /** I gradini che il selettore di durata offre — assente per l'immagine, che non ha durata. */
+  durationOptions?: number[];
   maxPromptChars?: number;
   generateAudio?: boolean;
+  /** Le risoluzioni che il modello sa produrre, quando ne dichiara più di una. Assente = una
+   *  sola resa, e la barra non mostra il selettore. */
+  resolutions?: string[];
   /** `ai_models.input_modalities` sincronizzate per questo modello — quel che `connectorsFor`
    *  (`canvas/connectors.ts`) traduce nelle porte del nodo. Assente per il testo, che non passa
    *  da `offerable-models.ts` e non ha porte oltre a quella fissa. */
@@ -52,6 +57,8 @@ export type ModelChoice = {
 export type GenParams = {
   aspectRatio?: string;
   duration?: number;
+  /** Assente = la resa di default del modello. Solo per i modelli con più di una risoluzione. */
+  resolution?: string;
   audio?: boolean;
   /** Quante varianti semplici in loop, quando il nodo non ha archi `iterate` (`loop-plan.ts`,
    *  CLAUDE.md — "repeat N"). Con degli assi collegati non conta: le combinazioni le dettano i
