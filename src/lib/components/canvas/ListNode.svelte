@@ -6,6 +6,9 @@
    * (`loop.ts::createOutputList`): in quel caso ogni item porta uno `status` che questo componente
    * mostra, e la realtime su `nodes` lo tiene fresco da sola (`onChange` → `refresh()` nella
    * pagina, nessun codice in più qui).
+   *
+   * I NODI COLLEGATI arrivano già risolti in `values` (`list-node.ts::listValues`, calcolato dalla
+   * pagina): qui si mostrano, con un segno di catena, e non si tolgono — si toglie il filo.
    */
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import Plus from '@lucide/svelte/icons/plus';
@@ -15,14 +18,15 @@
   import Clock from '@lucide/svelte/icons/clock';
   import RotateCw from '@lucide/svelte/icons/rotate-cw';
   import HelpCircle from '@lucide/svelte/icons/help-circle';
+  import Link from '@lucide/svelte/icons/link';
   import {
     addImageItem,
     addTextLines,
     listLabel,
     removeItemAt,
     reorderItem,
-    type ListItem,
-    type ListNode
+    type ListNode,
+    type ListValues
   } from '$lib/canvas/list-node';
   import { CANVAS_DRAG_FILLED_NODE, parseFilledNodeDrag } from '$lib/canvas/drag-payload';
   import { scrollGuard } from '$lib/canvas/scroll-guard';
@@ -30,10 +34,12 @@
 
   let {
     node,
+    values,
     onchange,
     onretry
   }: {
     node: ListNode;
+    values?: ListValues;
     onchange?: (patch: Partial<ListNode>) => void;
     /** Ritenta UN item fallito, subito — `loop.ts::retryLoopCombination`, non in coda: assente
      *  finché non c'è una scrittura server da chiamare (la pagina lo passa solo per liste che
@@ -106,6 +112,12 @@
     dragFrom = null;
   }
 
+  const itemKind = $derived(values?.itemKind ?? node.itemKind);
+  const wired = $derived((values?.values ?? []).filter((v) => v.wiredFrom));
+  const pending = $derived(values?.pending ?? []);
+  const count = $derived(values?.values.length ?? node.items.length);
+  const empty = $derived(!node.items.length && !wired.length && !pending.length);
+
   const STATUS_ICON = { queued: Clock, running: Loader, done: Check, failed: X } as const;
 </script>
 
@@ -118,9 +130,9 @@
   role="list"
 >
   <header class="list-head">
-    <span class="list-kind">{node.itemKind === 'text' ? 'Testo' : 'Immagini'}</span>
+    <span class="list-kind">{itemKind === 'text' ? 'Testo' : 'Immagini'}</span>
     <span class="list-head-right">
-      <span class="list-count">{node.items.length}</span>
+      <span class="list-count">{count}</span>
       <button type="button" class="list-help" onclick={() => requestGuide('loop')} aria-label="Guida">
         <HelpCircle size={13} strokeWidth={2} />
       </button>
@@ -128,11 +140,11 @@
   </header>
 
   <div class="list-body" use:scrollGuard>
-    {#if !node.items.length}
+    {#if empty}
       <p class="list-empty">
         {dragOver
           ? 'Rilascia per aggiungere'
-          : 'Trascina qui immagini o scrivi una riga per elemento: ogni elemento è un giro del Loop'}
+          : 'Trascina qui immagini, scrivi una riga per elemento o collega dei nodi alla porta: ogni elemento è un giro del Loop'}
       </p>
     {:else}
       <ol class="list-items">
@@ -170,11 +182,34 @@
             </button>
           </li>
         {/each}
+        {#each wired as value, i (value.wiredFrom)}
+          {@const index = node.items.length + i}
+          <li class="list-item list-item-wired">
+            <span class="list-item-index">{index + 1}</span>
+            {#if itemKind === 'image' && value.item.url}
+              <img class="list-item-thumb" src={value.item.url} alt={listLabel(value.item, index)} loading="lazy" />
+            {:else}
+              <span class="list-item-text">{value.item.text ?? listLabel(value.item, index)}</span>
+            {/if}
+            <span class="list-item-link" title="Collegato: si toglie togliendo il filo">
+              <Link size={12} strokeWidth={2} />
+            </span>
+          </li>
+        {/each}
+        {#each pending as nodeId (nodeId)}
+          <li class="list-item list-item-wired list-item-pending">
+            <span class="list-item-index">·</span>
+            <span class="list-item-text">In attesa del nodo collegato</span>
+            <span class="list-item-link" title="Collegato: non ha ancora un risultato">
+              <Link size={12} strokeWidth={2} />
+            </span>
+          </li>
+        {/each}
       </ol>
     {/if}
   </div>
 
-  {#if node.itemKind !== 'image' || !node.items.length}
+  {#if itemKind !== 'image' || empty}
     <form class="list-add" onsubmit={(e) => { e.preventDefault(); addTextDraft(); }}>
       <input
         class="list-add-input"
@@ -318,6 +353,20 @@
     white-space: nowrap;
   }
 
+  .list-item-link {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-left: auto;
+    color: var(--ink-soft, #6e6e73);
+  }
+  .list-item-pending .list-item-text {
+    color: var(--ink-soft, #6e6e73);
+    font-style: italic;
+  }
   .list-item-status {
     display: inline-flex;
     flex: none;

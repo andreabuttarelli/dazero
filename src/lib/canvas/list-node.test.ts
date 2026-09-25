@@ -165,7 +165,8 @@ describe('listKindOf / listConnectors — la porta di ingresso di una lista', ()
   });
 
   it('una lista di immagini apre solo la porta images', () => {
-    expect(listConnectors(listKindOf({ id: 'l1', itemKind: 'image', items: [{ asset_id: 'a' }] }, []))).toEqual(['images']);
+    const list: ListNode = { id: 'l1', itemKind: 'image', items: [{ asset_id: 'a' }] };
+    expect(listConnectors(listKindOf(list, []))).toEqual(['images']);
   });
 
   it('una lista vuota col primo filo testo apre solo la porta text', () => {

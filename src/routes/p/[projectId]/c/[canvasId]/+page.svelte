@@ -32,7 +32,18 @@
   import ListNode from '$lib/components/canvas/ListNode.svelte';
   import SelectNode from '$lib/components/canvas/SelectNode.svelte';
   import { listFeedingSelect } from '$lib/canvas/select-node';
-  import type { ListNode as ListNodeState } from '$lib/canvas/list-node';
+  import {
+    listConnectors,
+    listKindOf,
+    listValues,
+    wiredKindOf,
+    wiresInto,
+    type ListItem,
+    type ListItemKind,
+    type ListNode as ListNodeState,
+    type ListValues,
+    type WiredListSource
+  } from '$lib/canvas/list-node';
   import { verdictForUpload, canvasUploadPrefix } from '$lib/canvas/upload-kind';
   import { isUploadedNodeRow, uploadedNodeOf } from '$lib/canvas/uploaded-node';
   import { genNodeSize, startRun, unlockRun, type GenNode as GenNodeState, type GenMedium, type ModelChoice } from '$lib/canvas/gen-node';
@@ -250,6 +261,46 @@
     )
   );
 
+  /** L'output di ora di un nodo collegato a una lista, nella forma di un item — la stessa lettura
+   *  che il server fa in `upstream.ts::wiredItem`: l'asset dell'ultimo giro, o `sourceTextOf`. */
+  function wiredItemOf(n: Tile, kind: ListItemKind): ListItem | null {
+    if (kind === 'text') {
+      const text = sourceTextOf(n);
+      return text ? { text } : null;
+    }
+    const refId = typeof n.data.refId === 'string' ? n.data.refId : null;
+    return refId ? { asset_id: refId, url: `/p/${data.projectId}/c/${data.canvas.id}/assets/${refId}` } : null;
+  }
+
+  function wiredSourcesOf(listId: string): WiredListSource[] {
+    const listEdges = edges.map((e) => ({ id: e.id, sourceNodeId: e.source, targetNodeId: e.target }));
+    return wiresInto(listId, listEdges).flatMap((e) => {
+      const source = nodes.find((n) => n.id === e.sourceNodeId);
+      const kind = source ? wiredKindOf(source.type) : null;
+      return source && kind ? [{ nodeId: source.id, kind, item: wiredItemOf(source, kind) }] : [];
+    });
+  }
+
+  /** I valori di ogni `list`, via `listValues` — la stessa funzione del server: la tile, il loop e
+   *  il `select` leggono questa mappa, mai `items` da soli. */
+  const listValuesByNode = $derived(
+    Object.fromEntries(
+      nodes.flatMap((n) => {
+        const list = listOf(n);
+        return list ? [[n.id, listValues(list, wiredSourcesOf(n.id))]] : [];
+      })
+    ) as Record<string, ListValues>
+  );
+
+  const listPortsByNode = $derived(
+    Object.fromEntries(
+      nodes.flatMap((n) => {
+        const list = listOf(n);
+        return list ? [[n.id, listConnectors(listKindOf(list, wiredSourcesOf(n.id)))]] : [];
+      })
+    ) as Record<string, ConnectorType[]>
+  );
+
   /** Ogni nodo, per id — la stessa lettura che `listFeedingSelect` chiede, minima apposta. */
   const nodesById = $derived(new Map(nodes.map((n) => [n.id, { id: n.id, type: n.type }])));
 
@@ -257,7 +308,7 @@
    *  chiede per contare gli assi di un loop. */
   const loopSourceNodesById = $derived(
     new Map<string, LoopSourceNode>(
-      nodes.map((n) => [n.id, { id: n.id, type: n.type, itemCount: n.type === 'list' ? (listOf(n)?.items.length ?? 0) : 0 }])
+      nodes.map((n) => [n.id, { id: n.id, type: n.type, itemCount: listValuesByNode[n.id]?.values.length ?? 0 }])
     )
   );
 
@@ -282,8 +333,8 @@
     const upstreamEdges = edges.map((e) => ({ sourceNodeId: e.source, targetNodeId: e.target }));
     const source = listFeedingSelect(selectId, upstreamEdges, nodesById);
     if (!source) return null;
-    const row = nodes.find((n) => n.id === source.id);
-    return row ? listOf(row) : null;
+    const values = listValuesByNode[source.id];
+    return values ? { id: source.id, itemKind: values.itemKind, items: values.values.map((v) => v.item) } : null;
   }
 
   /** Da un nodo `list` al nodo che GENERA che lo tiene come proprio output di loop
@@ -329,6 +380,7 @@
    * ZERO porte piuttosto che indovinare: `choice` è `undefined` e la funzione torna `[]`.
    */
   function connectorsOfNode(n: Tile): ConnectorType[] | undefined {
+    if (n.type === 'list') { return listPortsByNode[n.id]; }
     if (n.type !== 'text' && n.type !== 'image' && n.type !== 'video') { return undefined; }
     const model = typeof n.data.model === 'string' ? n.data.model : null;
     return connectorsForNode(n.type, model, catalogue[n.type] ?? []);
@@ -342,7 +394,10 @@
    * valore SINGOLO sullo stesso connettore, mai `images` list-valued.
    */
   function outputConnectorOfTile(n: Tile): ConnectorType | null {
-    if (n.type === 'list' || n.type === 'select') {
+    if (n.type === 'list') {
+      return listValuesByNode[n.id]?.itemKind === 'text' ? 'text' : 'images';
+    }
+    if (n.type === 'select') {
       return n.data.item_kind === 'text' ? 'text' : 'images';
     }
     return outputConnectorOf(n.type);
@@ -1512,6 +1567,7 @@
         {:else if list}
           <ListNode
             node={list}
+            values={listValuesByNode[id]}
             onchange={(patch) => write(id, listData({ ...list, ...patch }))}
             onretry={loopOutputByNode[id] ? (index) => retryLoopItem(id, list, loopOutputByNode[id]!, index) : undefined}
           />
