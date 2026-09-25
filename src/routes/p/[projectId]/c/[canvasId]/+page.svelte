@@ -57,6 +57,7 @@
   import { effectiveModel } from '$lib/canvas/default-models';
   import { nearestVideoDuration } from '$lib/video-models';
   import { snapResolution } from '$lib/canvas/gen-node';
+  import { snapDynamicParams } from '$lib/canvas/model-params';
   import { type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
   import { shareUrlOf } from '$lib/canvas/doc-node';
   import { nodeSize } from '$lib/canvas/node-size';
@@ -1222,6 +1223,24 @@
             nextParams.resolution = resolution;
           } else {
             delete nextParams.resolution;
+          }
+        }
+      }
+
+      // I campi dinamici (`quality`, `output_compression`…) seguono lo stesso scivolamento della
+      // risoluzione, sul modello che dichiara loro: un nome che il modello nuovo non conosce più
+      // sparisce, un valore fuori dal suo elenco scivola al primo valido — mai un token che il
+      // provider appena scelto rifiuta.
+      if (model !== undefined && (n.type === 'image' || n.type === 'video')) {
+        const nextModel = catalogue[n.type]?.find((c) => c.id === model);
+        const savedParams = (n.data.params as Record<string, unknown> | undefined) ?? {};
+        const dynamic = nextParams as unknown as Record<string, unknown>;
+        const snapped = snapDynamicParams(nextModel?.params ?? [], { ...savedParams, ...dynamic });
+        for (const declared of nextModel?.params ?? []) {
+          if (declared.name in snapped) {
+            dynamic[declared.name] = snapped[declared.name];
+          } else {
+            delete dynamic[declared.name];
           }
         }
       }

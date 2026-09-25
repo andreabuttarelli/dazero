@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { modelParamsOf, extraParamsOf } from './model-params';
+import { modelParamsOf, extraParamsOf, snapDynamicParams } from './model-params';
 
 describe('modelParamsOf', () => {
   it('GPT Image 2.5: quality, background, output_compression diventano campi, aspect_ratio e resolution no', () => {
@@ -67,5 +67,31 @@ describe('extraParamsOf — cosa spedire al provider oltre ai campi con controll
 
   it('nessun params extra dichiarato: oggetto vuoto, non undefined', () => {
     expect(extraParamsOf({ aspectRatio: '1:1' }, [])).toEqual({});
+  });
+});
+
+describe('snapDynamicParams — un cambio modello non deve mai lasciare un token che il nuovo rifiuta', () => {
+  const QUALITY = { name: 'quality', label: 'Qualità', kind: 'enum' as const, values: ['low', 'high'] };
+  const SEED = { name: 'seed', label: 'Seed', kind: 'number' as const, min: 0, max: 100 };
+  const AUDIO = { name: 'transparent', label: 'Transparent', kind: 'boolean' as const };
+
+  it('un valore ancora offerto dal nuovo modello resta com\'è', () => {
+    expect(snapDynamicParams([QUALITY], { quality: 'high' })).toEqual({ quality: 'high' });
+  });
+
+  it('un valore enum che il nuovo modello non offre più scivola al primo dei suoi', () => {
+    expect(snapDynamicParams([QUALITY], { quality: 'xhigh' })).toEqual({ quality: 'low' });
+  });
+
+  it('un nome che il nuovo modello non dichiara più sparisce', () => {
+    expect(snapDynamicParams([QUALITY], { quality: 'low', background: 'transparent' })).toEqual({ quality: 'low' });
+  });
+
+  it('numero e booleano passano invariati: non hanno un elenco chiuso da cui scivolare', () => {
+    expect(snapDynamicParams([SEED, AUDIO], { seed: 42, transparent: true })).toEqual({ seed: 42, transparent: true });
+  });
+
+  it('un campo dichiarato ma mai scelto resta assente, mai un default inventato', () => {
+    expect(snapDynamicParams([QUALITY], {})).toEqual({});
   });
 });

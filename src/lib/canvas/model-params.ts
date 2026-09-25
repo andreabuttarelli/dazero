@@ -66,6 +66,29 @@ export function extraParamsOf(params: Record<string, unknown>, declared: ModelPa
   return extra;
 }
 
+/**
+ * UN CAMBIO DI MODELLO NON DEVE MAI LASCIARE UN TOKEN CHE IL NUOVO RIFIUTA — lo stesso principio
+ * di `snapResolution` (`gen-node.ts`), esteso ai campi dinamici: un nome che il nuovo modello non
+ * dichiara più sparisce, un valore enum fuori dal suo elenco scivola al primo valido. Numero e
+ * booleano non hanno un elenco chiuso, quindi passano invariati — solo il NOME li può escludere.
+ */
+export function snapDynamicParams(declared: ModelParam[], saved: Record<string, unknown>): Record<string, unknown> {
+  const next: Record<string, unknown> = {};
+
+  for (const param of declared) {
+    if (!(param.name in saved)) continue;
+    const value = saved[param.name];
+
+    if (param.kind === 'enum') {
+      next[param.name] = param.values.includes(value as string) ? value : param.values[0];
+    } else {
+      next[param.name] = value;
+    }
+  }
+
+  return next;
+}
+
 export function modelParamsOf(schema: Record<string, unknown>): ModelParam[] {
   const params: ModelParam[] = [];
 
