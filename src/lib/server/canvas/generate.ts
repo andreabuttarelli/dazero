@@ -320,6 +320,7 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
         model: input.model ?? undefined,
         count: ONE_RENDER,
         aspectRatio: input.params.aspectRatio as never,
+        resolution: input.params.resolution,
         // Un solo riferimento: `ImageJob.baseMediaId` è un campo, non una lista — anche quando il
         // modello ne accetterebbe di più (`upstream.referenceImageUrls`, dal catalogo in
         // `graph.ts`). Il tetto vero sta lì; qui si spedisce solo quel che il trasporto sa portare.

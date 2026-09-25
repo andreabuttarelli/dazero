@@ -353,6 +353,9 @@ export type ImageJob = {
   prompt: string;
   count?: number;
   aspectRatio?: AspectRatio;
+  /** '1K' | '2K' | '4K' — solo i modelli che lo dichiarano (`ModelChoice.resolutions`).
+   *  Assente = la resa di default del modello. */
+  resolution?: string;
   title?: string;
   /** Vale per QUESTA chiamata: non tocca `content_prefs`, che è il mestiere di set_media_model. */
   model?: string;
@@ -490,7 +493,8 @@ async function runImageJob(
     model: refining ? imageModelFor(prefs) : (job.model ?? imageModelFor(prefs)),
     refineModel: refining ? (job.model ?? imageRefineModelFor(prefs)) : imageRefineModelFor(prefs),
     baseImage,
-    aspectRatio: job.aspectRatio
+    aspectRatio: job.aspectRatio,
+    resolution: job.resolution
   };
 
   // Il modello riportato viene dalla STESSA funzione che costruisce la richiesta, non da una copia

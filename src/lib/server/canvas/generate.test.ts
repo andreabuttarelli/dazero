@@ -350,6 +350,41 @@ describe('un nodo senza prompt proprio ma con un testo a monte collegato gira lo
       expect.objectContaining({ resolution: '720p' })
     );
   });
+
+  it('params.resolution scelto nella barra raggiunge generateImagesWithoutBrand', async () => {
+    generateImagesWithoutBrand.mockReset();
+    generateImagesWithoutBrand.mockResolvedValue({
+      ok: true,
+      media: [{ id: null, kind: 'image', mime: 'image/png', width: 1024, height: 1024, url: 'https://x/y.png' }],
+      model: 'bytedance-seed/seedream-4.5',
+      renders: 1,
+      costUsd: 0.05
+    });
+
+    const imageNodeRow = { ...freshNodeRow, type: 'image' };
+    const { db } = fakeDb(
+      { nodes: [imageNodeRow], assets: [] },
+      { updateRows: { nodes: [{ ...imageNodeRow, version: 2 }] } }
+    );
+
+    await runGenNode(db, {
+      orgId: ORG,
+      projectId: PROJECT,
+      canvasId: CANVAS,
+      nodeId: NODE,
+      userId: USER,
+      medium: 'image',
+      prompt: 'a cat wearing a hat',
+      model: 'bytedance-seed/seedream-4.5',
+      params: { resolution: '2K' },
+      expectedVersion: 1
+    });
+
+    expect(generateImagesWithoutBrand).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ resolution: '2K' })
+    );
+  });
 });
 
 /**

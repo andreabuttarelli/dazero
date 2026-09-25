@@ -14,5 +14,7 @@ export type GeminiImageRequest = {
       inlineData?: { mimeType: string; data: string };
     }>;
   }>;
-  config?: { imageConfig?: { aspectRatio?: string } };
+  /** '1K' | '2K' | '4K' — solo `/api/v1/images`, solo i modelli che lo dichiarano fra i
+   *  `supported_parameters`. Assente = la resa di default del modello. */
+  config?: { imageConfig?: { aspectRatio?: string; resolution?: string } };
 };

@@ -54,7 +54,12 @@ const VIDEO_SPEC_IDS = [
 
 type SyncedCatalogue = 'image' | 'video';
 
-type SyncedRow = { id: string; label: string | null; input_modalities: string[] | null };
+type SyncedRow = {
+  id: string;
+  label: string | null;
+  input_modalities: string[] | null;
+  supported_parameters: string[] | null;
+};
 
 async function syncedRows(
   admin: SupabaseClient,
@@ -62,7 +67,7 @@ async function syncedRows(
 ): Promise<{ rows: Map<string, SyncedRow>; synced: boolean }> {
   const { data } = await admin
     .from('ai_models')
-    .select('id, label, input_modalities')
+    .select('id, label, input_modalities, supported_parameters')
     .eq('catalogue', catalogue);
 
   const rows = (data ?? []) as SyncedRow[];
@@ -80,6 +85,20 @@ async function syncedRows(
  */
 const GENERIC_IMAGE_ASPECTS = ['1:1'];
 
+/**
+ * I tre gradini che l'API immagini di OpenRouter pubblica per `resolution` — misurato contro
+ * `/api/v1/images/models`: ogni riga che dichiara `resolution` nei suoi `supported_parameters`
+ * usa lo stesso `enum` a tre valori (Seedream 4.5/5, Gemini 3, Qwen Image 3, Riverflow, Grok
+ * Imagine — v. sync 2026-09-25). Non un tetto in pixel: il nome che l'endpoint accetta è QUESTO,
+ * mandare "1024x1024" torna un 400.
+ */
+const IMAGE_RESOLUTION_TIERS = ['1K', '2K', '4K'];
+
+/** Assente = una sola resa, e la barra non mostra il selettore (`ModelChoice.resolutions`). */
+function imageResolutionsFor(supportedParameters: string[] | null): string[] | undefined {
+  return supportedParameters?.includes('resolution') ? IMAGE_RESOLUTION_TIERS : undefined;
+}
+
 function genericImageChoice(row: SyncedRow): ModelChoice {
   return {
     id: row.id,
@@ -88,6 +107,7 @@ function genericImageChoice(row: SyncedRow): ModelChoice {
     maxRefs: IMAGE_REFS_BUDGET,
     ...providerOf(row.id),
     inputModalities: row.input_modalities ?? [],
+    resolutions: imageResolutionsFor(row.supported_parameters),
     unitCredits: undefined
   };
 }
@@ -112,7 +132,12 @@ function genericVideoChoice(row: SyncedRow): ModelChoice {
   };
 }
 
-function imageChoice(spec: ImageModelSpec, wireId: string, inputModalities: string[]): ModelChoice {
+function imageChoice(
+  spec: ImageModelSpec,
+  wireId: string,
+  inputModalities: string[],
+  supportedParameters: string[] | null
+): ModelChoice {
   return {
     id: spec.id,
     label: spec.label,
@@ -120,6 +145,7 @@ function imageChoice(spec: ImageModelSpec, wireId: string, inputModalities: stri
     maxRefs: spec.maxRefs,
     ...providerOf(wireId),
     inputModalities,
+    resolutions: imageResolutionsFor(supportedParameters),
     unitCredits: IMAGE_CREDITS
   };
 }
@@ -157,7 +183,14 @@ async function offerableImages(admin: SupabaseClient): Promise<OfferableModels> 
     const wireId = wireIds[i];
     if (!wireId || !rows.has(wireId)) return;
     specced.add(wireId);
-    choices.push(imageChoice(spec, wireId, rows.get(wireId)?.input_modalities ?? []));
+    choices.push(
+      imageChoice(
+        spec,
+        wireId,
+        rows.get(wireId)?.input_modalities ?? [],
+        rows.get(wireId)?.supported_parameters ?? null
+      )
+    );
   });
 
   // OGNI riga sincronizzata che nessuno spec ha già arricchito: offerta con la resa prudente,

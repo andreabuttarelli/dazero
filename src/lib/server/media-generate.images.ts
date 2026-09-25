@@ -173,6 +173,9 @@ export type RenderImageOpts = {
   /** Il modello con cui il brand MODIFICA. Vale solo con `baseImage`: senza, non c'e' nulla da modificare. */
   refineModel?: string;
   aspectRatio?: AspectRatio;
+  /** '1K' | '2K' | '4K' — solo i modelli che lo dichiarano (`ModelChoice.resolutions`,
+   *  `offerable-models.ts`). Assente = la resa di default del modello. */
+  resolution?: string;
   model?: string;
   craftFloor?: string;
   brandRules?: string;
@@ -272,7 +275,7 @@ export function buildImageRequest(imagePrompt: string, opts: RenderImageOpts = {
     contents: [{ role: 'user' as const, parts }],
     // imageConfig.aspectRatio è il controllo autoritativo; l'etichetta nel prompt tiene solo la
     // composizione descritta coerente con esso.
-    config: { responseModalities: ['TEXT', 'IMAGE'], imageConfig: { aspectRatio } }
+    config: { responseModalities: ['TEXT', 'IMAGE'], imageConfig: { aspectRatio, resolution: opts.resolution } }
   };
 }
 

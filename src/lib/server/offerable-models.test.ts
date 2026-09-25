@@ -5,7 +5,15 @@ import { SEEDANCE_25_MODEL, OPENROUTER_UPSCALE_MODEL, KLING_3_VIDEO_MODEL } from
 import { mediaModelSlot } from '$lib/media-model-slots';
 import { offerableModels, offerableSlotChoices } from './offerable-models';
 
-function fakeAdmin(rows: { id: string; catalogue: string; input_modalities: string[]; output_modalities: string[] }[]) {
+function fakeAdmin(
+  rows: {
+    id: string;
+    catalogue: string;
+    input_modalities: string[];
+    output_modalities: string[];
+    supported_parameters?: string[];
+  }[]
+) {
   const admin = {
     from: () => ({
       select: () => ({
@@ -56,6 +64,40 @@ describe('offerableModels — cosa un nodo può davvero scegliere', () => {
     expect(choice).toBeDefined();
     expect(choice?.aspectRatios).toEqual(['1:1']);
     expect(choice?.unitCredits).toBeUndefined();
+  });
+
+  it('un modello immagine che dichiara "resolution" fra i supported_parameters offre 1K/2K/4K', async () => {
+    const admin = fakeAdmin([
+      {
+        id: 'bytedance-seed/seedream-4.5',
+        catalogue: 'image',
+        input_modalities: ['text', 'image'],
+        output_modalities: ['image'],
+        supported_parameters: ['resolution', 'aspect_ratio', 'n', 'input_references', 'seed']
+      }
+    ]);
+
+    const out = await offerableModels(admin, 'image');
+
+    const choice = out.choices.find((c) => c.id === 'bytedance-seed/seedream-4.5');
+    expect(choice?.resolutions).toEqual(['1K', '2K', '4K']);
+  });
+
+  it('un modello immagine SENZA "resolution" nei supported_parameters non offre il selettore', async () => {
+    const admin = fakeAdmin([
+      {
+        id: 'recraft/recraft-v4',
+        catalogue: 'image',
+        input_modalities: ['text'],
+        output_modalities: ['image'],
+        supported_parameters: ['aspect_ratio', 'n', 'input_references']
+      }
+    ]);
+
+    const out = await offerableModels(admin, 'image');
+
+    const choice = out.choices.find((c) => c.id === 'recraft/recraft-v4');
+    expect(choice?.resolutions).toBeUndefined();
   });
 
   it('un fatto di integrazione nostro SENZA una riga sincronizzata non è offerto', async () => {

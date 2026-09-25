@@ -87,6 +87,25 @@ describe('il render sull’API immagini di OpenRouter', () => {
     expect(body.size).toBeUndefined();
   });
 
+  it('la risoluzione scelta viaggia come "resolution", il tetto che l’endpoint accetta', async () => {
+    const f = reply(ok());
+    vi.stubGlobal('fetch', f);
+    const { generateImageOnOpenrouterImages } = await import('./openrouter-images-api');
+    await generateImageOnOpenrouterImages({
+      ...REQ,
+      config: { imageConfig: { aspectRatio: '9:16', resolution: '2K' } }
+    });
+    expect(sentBody(f).resolution).toBe('2K');
+  });
+
+  it('senza risoluzione scelta, il campo non compare: la resa di default del modello', async () => {
+    const f = reply(ok());
+    vi.stubGlobal('fetch', f);
+    const { generateImageOnOpenrouterImages } = await import('./openrouter-images-api');
+    await generateImageOnOpenrouterImages(REQ);
+    expect(sentBody(f).resolution).toBeUndefined();
+  });
+
   it('i riferimenti viaggiano nella forma che l’endpoint accetta davvero', async () => {
     const f = reply(ok());
     vi.stubGlobal('fetch', f);
