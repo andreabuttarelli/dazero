@@ -11,6 +11,7 @@ import {
   videoModelCaps,
   videoModelForRole,
   videoModelSpec,
+  videoDurationOptions as sharedVideoDurationOptions,
   type VideoRole
 } from '$lib/video-models';
 import {
@@ -109,15 +110,9 @@ export const MIN_DURATION = 10;
 // Ultima spiaggia, quando non si sa nient'altro. NON è il default di prodotto: si preferisce
 // sempre `suggestVideoDuration` o una durata esplicita.
 export const DEFAULT_VIDEO_DURATION = 13;
-/** I gradini offerti in Settings, filtrati su ciò che `model` sa davvero produrre. */
+/** I gradini offerti in Settings e nella barra della tela — stessa fonte, `video-models.ts`. */
 export function videoDurationOptions(model?: string | null): number[] {
-  const caps = videoModelCaps(model?.trim() || envModelI2V());
-  const floor = caps.minDuration;
-  const candidates = [10, 13, 15, 20, 30];
-  const opts = candidates.filter((s) => s >= floor && s <= caps.maxDuration);
-  // Il tetto del modello resta sempre scegliibile, anche se non è uno dei gradini.
-  if (!opts.includes(caps.maxDuration) && caps.maxDuration >= floor) opts.push(caps.maxDuration);
-  return opts.sort((a, b) => a - b);
+  return sharedVideoDurationOptions(model?.trim() || envModelI2V());
 }
 
 /**

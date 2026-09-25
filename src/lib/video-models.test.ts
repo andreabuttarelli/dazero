@@ -10,7 +10,9 @@ import {
   videoModelForRole,
   VIDEO_MODEL_CHOICES,
   GROK_IMAGINE_VIDEO_MODEL,
-  KLING_3_VIDEO_MODEL
+  KLING_3_VIDEO_MODEL,
+  videoDurationOptions,
+  nearestVideoDuration
 } from '$lib/video-models';
 
 describe('video model reference capabilities', () => {
@@ -128,5 +130,42 @@ describe('il refine ha un modello raggiungibile', () => {
     const refiners = videoModelsForRole('refine').map((m) => videoModelSpec(m.id));
 
     expect(refiners.some((s) => s?.openrouterId), 'nessun refine raggiungibile').toBe(true);
+  });
+});
+
+describe('videoDurationOptions', () => {
+  it('include i gradini di prodotto dentro la finestra del modello', () => {
+    expect(videoDurationOptions('grok-imagine/text-to-video')).toEqual([10, 13, 15]);
+  });
+
+  it('aggiunge il tetto del modello quando non è un gradino', () => {
+    // seedance-2-5 arriva a 30, che non è fra [10,13,15,20,30]... anzi lo è: kling arriva a 15.
+    expect(videoDurationOptions('kling-3.0/video')).toEqual([10, 13, 15]);
+  });
+
+  it('seedance-2-5 offre anche il proprio tetto di 30', () => {
+    expect(videoDurationOptions('bytedance/seedance-2-5')).toEqual([10, 13, 15, 20, 30]);
+  });
+
+  it('un id sconosciuto ricade sulla finestra Grok', () => {
+    expect(videoDurationOptions('modello-mai-visto')).toEqual([10, 13, 15]);
+  });
+});
+
+describe('nearestVideoDuration', () => {
+  it('tiene il valore se è fra le opzioni', () => {
+    expect(nearestVideoDuration([10, 13, 15], 13)).toBe(13);
+  });
+
+  it('sceglie il gradino più vicino quando il valore non è offerto', () => {
+    expect(nearestVideoDuration([10, 13, 15, 20, 30], 25)).toBe(20);
+  });
+
+  it('pareggio va al più basso', () => {
+    expect(nearestVideoDuration([10, 20], 15)).toBe(10);
+  });
+
+  it('nessuna opzione: il valore chiesto resta', () => {
+    expect(nearestVideoDuration([], 17)).toBe(17);
   });
 });

@@ -350,6 +350,39 @@ export function videoModelCaps(model: string): VideoModelCaps {
 }
 
 /**
+ * I GRADINI CHE UN SELETTORE OFFRE, non un numero libero fra `minDuration` e `maxDuration`.
+ *
+ * Nessuno spec dichiara un elenco discreto proprio (`durations`) o uno step: i provider integrati
+ * qui (Grok, Seedance, Kling) pubblicano solo un minimo e un tetto in secondi. I candidati sotto
+ * sono i gradini di prodotto già in uso in Settings (`video.ts`, prima di questo file), filtrati
+ * sulla finestra del modello scelto — mai un numero fuori da `[minDuration, maxDuration]`. Il
+ * tetto del modello resta sempre scegliibile anche quando non è uno dei gradini, o un modello con
+ * `maxDuration: 30` (Seedance 2.5) offrirebbe solo fino a 20.
+ */
+const DURATION_STEPS: readonly number[] = [10, 13, 15, 20, 30];
+
+export function videoDurationOptions(model?: string | null): number[] {
+  const caps = videoModelCaps(String(model ?? '').trim());
+  const floor = caps.minDuration;
+  const opts = DURATION_STEPS.filter((s) => s >= floor && s <= caps.maxDuration);
+  if (!opts.includes(caps.maxDuration) && caps.maxDuration >= floor) opts.push(caps.maxDuration);
+  return opts.sort((a, b) => a - b);
+}
+
+/**
+ * La durata salvata, se ancora valida per il modello appena scelto; altrimenti il gradino più
+ * vicino — mai un valore fuori dai gradini offerti, o il campo mostrerebbe un numero che il menu
+ * non elenca.
+ */
+export function nearestVideoDuration(options: readonly number[], wanted: number): number {
+  if (!options.length) return wanted;
+  if (options.includes(wanted)) return wanted;
+  return options.reduce((best, candidate) =>
+    Math.abs(candidate - wanted) < Math.abs(best - wanted) ? candidate : best
+  );
+}
+
+/**
  * QUANTI RIFERIMENTI REGGE UN MODELLO, in un posto solo.
  *
  * I numeri sono quelli che `video.ts` applica davvero quando compone il job: 30 immagini, 10 video
