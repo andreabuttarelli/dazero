@@ -213,3 +213,22 @@ describe('canConnect — una lista riceve immagini o testo, mai video', () => {
     expect(canConnect(node('v', 'video'), node('l', 'list')).ok).toBe(false);
   });
 });
+
+describe('canConnect — un nodo effects prende solo un\'immagine, mai testo o video', () => {
+  it('un\'immagine alimenta un effects', () => {
+    expect(canConnect(node('i', 'image'), node('e', 'effects')).ok).toBe(true);
+  });
+
+  it('un testo non alimenta un effects', () => {
+    expect(canConnect(node('t', 'text'), node('e', 'effects')).ok).toBe(false);
+  });
+
+  it('un video non alimenta un effects', () => {
+    expect(canConnect(node('v', 'video'), node('e', 'effects')).ok).toBe(false);
+  });
+
+  it('un effects richiede un\'immagine per essere pronto', () => {
+    expect(missingInputs(node('e', 'effects'), [])).toEqual(['image']);
+    expect(missingInputs(node('e', 'effects'), [node('i', 'image')])).toEqual([]);
+  });
+});

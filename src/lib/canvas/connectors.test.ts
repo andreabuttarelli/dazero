@@ -141,6 +141,10 @@ describe('porte visibili: colore ed etichetta per ogni tipo', () => {
     expect(outputConnectorOf('video')).toBe('videos');
     expect(outputConnectorOf('iframe')).toBeNull();
   });
+
+  it("un nodo effects esce come un'immagine — la stessa porta di un nodo image", () => {
+    expect(outputConnectorOf('effects')).toBe('images');
+  });
 });
 
 describe('modalityBadges — le icone di un modello nel menù, una per modalità', () => {

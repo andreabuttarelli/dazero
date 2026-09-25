@@ -7,6 +7,7 @@ import { socialFeedNodeSize } from './social-feed-node';
 import { influencerNodeSize } from './influencer-node';
 import { listNodeSize } from './list-node';
 import { selectNodeSize } from './select-node';
+import { effectsNodeSize } from './effects-node';
 
 type Size = { w: number; h: number };
 
@@ -24,7 +25,8 @@ const NODE_SIZE: Record<NodeType, () => Size> = {
   ads: () => FALLBACK_SIZE,
   influencer: influencerNodeSize,
   list: listNodeSize,
-  select: selectNodeSize
+  select: selectNodeSize,
+  effects: effectsNodeSize
 };
 
 export function nodeSize(type: string): Size {

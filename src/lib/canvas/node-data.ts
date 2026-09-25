@@ -21,6 +21,7 @@
  */
 import { z } from 'zod';
 import { SOCIAL_PLATFORMS } from './social-platforms';
+import { EFFECTS } from './effects';
 
 /** Lo stato di una generazione lunga: gli stessi campi per i tre tipi che generano davvero. */
 const GEN_STATUS = ['idle', 'running', 'done', 'failed'] as const;
@@ -227,6 +228,24 @@ const selectSchema = z.object({
 });
 
 /**
+ * `effects`: una PILA di effetti sopra un'immagine a monte (`sourceRefId`), il risultato applicato
+ * in `refId` — lo stesso schema `refId`/`sourceRefId` di un nodo che genera, ma senza `genState`:
+ * non c'è un provider da aspettare, `applyStack` (`effects/index.ts`) gira nel browser. Ogni `id`
+ * di `EffectStep` deve esistere nella tabella `EFFECTS`: un id sconosciuto (un effetto tolto dal
+ * catalogo, un refuso scritto a mano) rifiuta il nodo invece di applicare silenziosamente niente.
+ */
+const effectStepSchema = z.object({
+  id: z.string().refine((id) => id in EFFECTS, { message: 'effetto sconosciuto' }),
+  params: z.record(z.string(), z.union([z.number(), z.string()]))
+});
+
+const effectsSchema = z.object({
+  effects: z.array(effectStepSchema).default([]),
+  refId: z.string().optional(),
+  sourceRefId: z.string().optional()
+});
+
+/**
  * LA TABELLA — un tipo nuovo è una riga qui, non un `if` in `write-tool.ts`. `nodes_type_check`
  * (vedi `org-data/checks.ts`) deve restare la stessa lista, e `node-data.test.ts` lo verifica.
  */
@@ -242,7 +261,8 @@ export const NODE_DATA_SCHEMAS = {
   ads: adsSchema,
   influencer: influencerSchema,
   list: listSchema,
-  select: selectSchema
+  select: selectSchema,
+  effects: effectsSchema
 } as const;
 
 export type NodeType = keyof typeof NODE_DATA_SCHEMAS;

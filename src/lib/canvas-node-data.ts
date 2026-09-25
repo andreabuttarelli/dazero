@@ -7,6 +7,8 @@ import { isSocialFeedPlatform, type SocialFeedNode } from '$lib/canvas/social-fe
 import { SYNC_STATUSES, type SyncStatus } from '$lib/canvas/sync-state';
 import { isListItemKind, type ListItem, type ListNode } from '$lib/canvas/list-node';
 import type { SelectNode } from '$lib/canvas/select-node';
+import { EFFECTS, type EffectStep } from '$lib/canvas/effects';
+import type { EffectsNode } from '$lib/canvas/effects-node';
 export { influencerNodeOf as influencerOf, type InfluencerNode } from '$lib/canvas/influencer-node';
 
 /**
@@ -37,7 +39,8 @@ export const NODE_TYPES = [
   'social_account_feed',
   'influencer',
   'list',
-  'select'
+  'select',
+  'effects'
 ] as const;
 
 function syncStatusOf(v: unknown): SyncStatus {
@@ -194,6 +197,36 @@ export function selectOf(row: NodeRow): SelectNode | null {
   return { id: row.id, index: num(row.data.index, 1) };
 }
 
+/** Un item della pila di `effects.data.effects`, con la stessa riserva per campo di ogni lettura
+ *  da un jsonb — un id sconosciuto (un effetto tolto dal catalogo) sparisce dalla pila invece di
+ *  rompere il disegno: `applyStack` lo ignora già allo stesso modo. */
+function effectStepOf(v: unknown): EffectStep | null {
+  const step = record(v);
+  const id = step.id;
+  if (typeof id !== 'string' || !(id in EFFECTS)) {
+    return null;
+  }
+  return { id: id as EffectStep['id'], params: record(step.params) as EffectStep['params'] };
+}
+
+/** Il nodo `effects` dietro una riga, o null quando quella riga è un'altra cosa. */
+export function effectsOf(row: NodeRow): EffectsNode | null {
+  if (row.type !== 'effects') {
+    return null;
+  }
+
+  const effects = Array.isArray(row.data.effects)
+    ? row.data.effects.map(effectStepOf).filter((s): s is EffectStep => s !== null)
+    : [];
+
+  return {
+    id: row.id,
+    effects,
+    refId: nullableStr(row.data.refId),
+    sourceRefId: nullableStr(row.data.sourceRefId)
+  };
+}
+
 /**
  * Con che contenuto una riga nasce. Vuoto in entrambi i casi, e per lo stesso motivo: scegliere
  * un modello o un indirizzo al posto di chi aggiunge il nodo è una decisione presa per lui — e
@@ -222,6 +255,10 @@ export function newNodeRow(what: Addable): Record<string, unknown> {
 
   if (what === 'select') {
     return { index: 1 };
+  }
+
+  if (what === 'effects') {
+    return { effects: [], refId: null, sourceRefId: null };
   }
 
   return { prompt: '', model: null, params: {}, refId: null };
@@ -285,4 +322,8 @@ export function listData(node: ListNode): Record<string, unknown> {
 
 export function selectData(node: SelectNode): Record<string, unknown> {
   return { index: node.index };
+}
+
+export function effectsData(node: EffectsNode): Record<string, unknown> {
+  return { effects: node.effects, refId: node.refId, sourceRefId: node.sourceRefId };
 }

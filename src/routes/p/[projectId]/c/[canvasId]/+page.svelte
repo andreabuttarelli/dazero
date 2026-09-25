@@ -32,6 +32,7 @@
   import UploadedNode from '$lib/components/canvas/UploadedNode.svelte';
   import ListNode from '$lib/components/canvas/ListNode.svelte';
   import SelectNode from '$lib/components/canvas/SelectNode.svelte';
+  import EffectsNode from '$lib/components/canvas/EffectsNode.svelte';
   import { listFeedingSelect } from '$lib/canvas/select-node';
   import {
     listConnectors,
@@ -81,6 +82,7 @@
     productsOf,
     selectData,
     selectOf,
+    effectsOf,
     socialFeedData,
     socialFeedOf
   } from '$lib/canvas-node-data';
@@ -339,6 +341,22 @@
     return values ? { id: source.id, itemKind: values.itemKind, items: values.values.map((v) => v.item) } : null;
   }
 
+  /** L'immagine collegata a un `effects`, per l'anteprima "Non applicato" — il primo arco entrante
+   *  che porta a un nodo con un `refId`, la stessa disciplina deterministica di `listFeedingSelect`. */
+  function upstreamImageRefOf(effectsId: string): string | null {
+    for (const edge of edges) {
+      if (edge.target !== effectsId) continue;
+      const source = nodesById.get(edge.source);
+      const refId = source?.data.refId;
+      if (typeof refId === 'string' && refId) return refId;
+    }
+    return null;
+  }
+
+  function assetUrl(refId: string | null): string | null {
+    return refId ? `/p/${data.projectId}/c/${data.canvas.id}/assets/${refId}` : null;
+  }
+
   /** Da un nodo `list` al nodo che GENERA che lo tiene come proprio output di loop
    *  (`data.outputListNodeId`, `loop.ts::createOutputList`) — assente quando la lista non è mai
    *  stata l'output di un loop, e in quel caso non c'è "ritenta" da offrire: ritentare un item
@@ -383,6 +401,7 @@
    */
   function connectorsOfNode(n: Tile): ConnectorType[] | undefined {
     if (n.type === 'list') { return listPortsByNode[n.id]; }
+    if (n.type === 'effects') { return ['images']; }
     if (n.type !== 'text' && n.type !== 'image' && n.type !== 'video') { return undefined; }
     const model = typeof n.data.model === 'string' ? n.data.model : null;
     return connectorsForNode(n.type, model, catalogue[n.type] ?? []);
@@ -1502,6 +1521,7 @@
         {@const influencer = influencerOf(row)}
         {@const list = listOf(row)}
         {@const select = selectOf(row)}
+        {@const effects = effectsOf(row)}
         {@const uploaded = isUploadedNodeRow(row) ? uploadedNodeOf(row) : null}
         {#if uploaded}
           <UploadedNode node={uploaded} medium={row.type === 'video' ? 'video' : 'image'} />
@@ -1597,6 +1617,12 @@
             node={select}
             list={upstreamListOf(id)}
             onchange={(patch) => write(id, selectData({ ...select, ...patch }))}
+          />
+        {:else if effects}
+          <EffectsNode
+            node={effects}
+            imageUrl={assetUrl(effects.refId)}
+            sourceImageUrl={assetUrl(effects.sourceRefId ?? upstreamImageRefOf(id))}
           />
         {/if}
       {/if}

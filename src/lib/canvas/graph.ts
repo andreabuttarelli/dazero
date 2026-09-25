@@ -47,7 +47,8 @@ export const NODE_KINDS = [
   'document',
   'memory',
   'iframe',
-  'list'
+  'list',
+  'effects'
 ] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
@@ -102,7 +103,10 @@ export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
   iframe: { medium: 'text', generated: false, accepts: [], requires: [] },
   // Una lista raccoglie immagini o testo dai nodi collegati. Quale dei due lo decide la sua porta
   // (`list-node.ts::listConnectors`), non questa riga: qui non si sa ancora cosa contiene.
-  list: { medium: null, generated: true, accepts: ['text', 'image'], requires: [] }
+  list: { medium: null, generated: true, accepts: ['text', 'image'], requires: [] },
+  // Un nodo `effects` applica una pila di filtri a UN'immagine a monte: produce un'immagine, ne
+  // richiede una — non un prompt, la pila di effetti non è testo da scrivere qui.
+  effects: { medium: 'image', generated: true, accepts: ['image'], requires: ['image'] }
 };
 
 /** Da `posts.content_type` al medium: è il ruolo che porta dentro il medium, e qui si separano. */

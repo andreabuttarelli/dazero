@@ -698,3 +698,48 @@ describe('upstreamInputsFor — iterateSelection: UNA iterazione di un loop vede
     expect(out.referenceImageUrls).toEqual(['canvas-assets/a.png', 'canvas-assets/b.png']);
   });
 });
+
+describe('upstreamInputsFor — effects: alimenta a valle col suo refId, come ogni nodo che produce un\'immagine', () => {
+  const EFFECTS_NODE = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
+
+  it('un effects già applicato alimenta col suo refId, non col sourceRefId che l\'ha alimentato', async () => {
+    const { db } = fakeDb({
+      nodes: [
+        nodeRow(EFFECTS_NODE, 'effects', {
+          effects: [{ id: 'pixelate', params: { blockSize: 8 } }],
+          refId: IMAGE_ASSET_1,
+          sourceRefId: IMAGE_ASSET_2
+        }),
+        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: MODEL })
+      ],
+      nodes_connections: [
+        { id: 'e1', canvas_id: CANVAS, source_node_id: EFFECTS_NODE, target_node_id: IMAGE_NODE, source_handle: null, target_handle: null }
+      ],
+      assets: [
+        { id: IMAGE_ASSET_1, project_id: 'p1', type: 'image', url: 'canvas-assets/applied.png', content: null, mime_type: 'image/png', bytes: null, width: null, height: null, duration_s: null, source: 'generated', source_node_id: EFFECTS_NODE, created_at: 'now' },
+        { id: IMAGE_ASSET_2, project_id: 'p1', type: 'image', url: 'canvas-assets/source.png', content: null, mime_type: 'image/png', bytes: null, width: null, height: null, duration_s: null, source: 'upload', source_node_id: null, created_at: 'now' }
+      ]
+    });
+
+    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE, model: MODEL, medium: 'image' });
+
+    expect(out.referenceImageUrls).toEqual(['canvas-assets/applied.png']);
+  });
+
+  it('un effects mai applicato (senza refId) non alimenta niente, mai un valore a caso', async () => {
+    const { db } = fakeDb({
+      nodes: [
+        nodeRow(EFFECTS_NODE, 'effects', { effects: [] }),
+        nodeRow(IMAGE_NODE, 'image', { prompt: '', model: MODEL })
+      ],
+      nodes_connections: [
+        { id: 'e1', canvas_id: CANVAS, source_node_id: EFFECTS_NODE, target_node_id: IMAGE_NODE, source_handle: null, target_handle: null }
+      ],
+      assets: []
+    });
+
+    const out = await upstreamInputsFor(db, { orgId: ORG, canvasId: CANVAS, nodeId: IMAGE_NODE, model: MODEL, medium: 'image' });
+
+    expect(out.referenceImageUrls).toEqual([]);
+  });
+});

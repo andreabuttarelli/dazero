@@ -20,7 +20,16 @@ import { GEN_MEDIUMS, type GenMedium } from './gen-node';
 /** L'elenco che il menù e la barra mostrano, nell'ordine in cui si vedono. `list`/`select` nascono
  *  anche da un loop (`loop.ts::createOutputList`), ma sono aggiungibili anche a mano: una lista
  *  vuota da riempire trascinando, o un select su una lista già collegata. */
-export const CANVAS_ADDABLE = [...GEN_MEDIUMS, 'iframe', 'doc', 'products', 'social_account_feed', 'list', 'select'] as const;
+export const CANVAS_ADDABLE = [
+  ...GEN_MEDIUMS,
+  'iframe',
+  'doc',
+  'products',
+  'social_account_feed',
+  'list',
+  'select',
+  'effects'
+] as const;
 
 export type Addable = (typeof CANVAS_ADDABLE)[number];
 
@@ -51,5 +60,6 @@ export const ADDABLE_LABEL: Record<Addable, string> = {
   products: 'Prodotti',
   social_account_feed: 'Feed social',
   list: 'Lista',
-  select: 'Selezione'
+  select: 'Selezione',
+  effects: 'Effetti'
 };

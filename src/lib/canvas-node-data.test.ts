@@ -14,6 +14,8 @@ import {
   productsOf,
   selectData,
   selectOf,
+  effectsData,
+  effectsOf,
   socialFeedData,
   socialFeedOf
 } from '$lib/canvas-node-data';
@@ -30,7 +32,8 @@ describe('cosa una riga di `nodes` può essere', () => {
       'social_account_feed',
       'influencer',
       'list',
-      'select'
+      'select',
+      'effects'
     ]);
   });
 
@@ -355,5 +358,54 @@ describe('un nodo select, letto dalla riga', () => {
     const node = selectOf({ id: 'n1', type: 'select', data: { index: 5 } })!;
     const written = selectData(node);
     expect(selectOf({ id: 'n1', type: 'select', data: written })).toEqual(node);
+  });
+});
+
+describe('un nodo effects, letto dalla riga', () => {
+  it('una riga appena nata non ha effetti: legge una pila vuota di riserva', () => {
+    expect(effectsOf({ id: 'n1', type: 'effects', data: {} })).toEqual({
+      id: 'n1',
+      effects: [],
+      refId: null,
+      sourceRefId: null
+    });
+  });
+
+  it('la pila, il refId e il sourceRefId arrivano da data', () => {
+    expect(
+      effectsOf({
+        id: 'n1',
+        type: 'effects',
+        data: { effects: [{ id: 'pixelate', params: { blockSize: 8 } }], refId: 'a1', sourceRefId: 'a0' }
+      })
+    ).toEqual({
+      id: 'n1',
+      effects: [{ id: 'pixelate', params: { blockSize: 8 } }],
+      refId: 'a1',
+      sourceRefId: 'a0'
+    });
+  });
+
+  it('un effetto sconosciuto sparisce dalla pila invece di rompere il disegno', () => {
+    const node = effectsOf({
+      id: 'n1',
+      type: 'effects',
+      data: { effects: [{ id: 'pixelate', params: {} }, { id: 'not-a-real-effect', params: {} }] }
+    })!;
+    expect(node.effects).toEqual([{ id: 'pixelate', params: {} }]);
+  });
+
+  it('un nodo che non è effects non si legge come tale', () => {
+    expect(effectsOf({ id: 'n1', type: 'image', data: {} })).toBeNull();
+  });
+
+  it('fa il giro di andata e ritorno', () => {
+    const node = effectsOf({
+      id: 'n1',
+      type: 'effects',
+      data: { effects: [{ id: 'posterize', params: { levels: 4 } }], refId: 'a1', sourceRefId: 'a0' }
+    })!;
+    const written = effectsData(node);
+    expect(effectsOf({ id: 'n1', type: 'effects', data: written })).toEqual(node);
   });
 });

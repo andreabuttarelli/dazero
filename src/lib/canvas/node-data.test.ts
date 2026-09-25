@@ -21,6 +21,7 @@ describe('NODE_DATA_SCHEMAS — una riga per tipo, tutti i 10 valori di nodes_ty
         'iframe',
         'image',
         'influencer',
+        'effects',
         'list',
         'products',
         'select',
@@ -305,6 +306,32 @@ describe('validateNodeData — select', () => {
 
     const negative = validateNodeData('select', { index: -1 });
     expect(negative.ok).toBe(false);
+  });
+});
+
+describe('validateNodeData — effects', () => {
+  it('accetta un nodo vuoto: nasce senza pila, come ogni altro tipo', () => {
+    const out = validateNodeData('effects', {});
+    expect(out.ok).toBe(true);
+  });
+
+  it('accetta una pila di effetti noti alla tabella EFFECTS', () => {
+    const out = validateNodeData('effects', {
+      effects: [{ id: 'pixelate', params: { blockSize: 8 } }]
+    });
+    expect(out.ok).toBe(true);
+  });
+
+  it('rifiuta un effetto sconosciuto', () => {
+    const out = validateNodeData('effects', {
+      effects: [{ id: 'not-a-real-effect', params: {} }]
+    });
+    expect(out.ok).toBe(false);
+  });
+
+  it('accetta refId e sourceRefId', () => {
+    const out = validateNodeData('effects', { effects: [], refId: 'asset-1', sourceRefId: 'asset-0' });
+    expect(out.ok).toBe(true);
   });
 });
 
