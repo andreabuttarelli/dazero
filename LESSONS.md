@@ -1918,3 +1918,17 @@ Segnale: `node_runs` in `running` con `external_job_id` valorizzato, `attempts =
 sotto `npm run dev` nessuno la chiamava. Mossa: il plugin `devCrons` (`scripts/dev-crons.ts`)
 chiama le cron al minuto di `vercel.json` in sviluppo (`cronAuthorized` le lascia passare in
 dev). Per forzarne una subito: `curl localhost:5173/api/v1/canvas/runs/tick`.
+
+### Edit non committati nel working tree condiviso finiscono nel commit di un altro agente
+Segnale: più agenti lavorano nello stesso checkout (non un worktree a testa), e `git status`
+mostra file di un altro agente accanto ai propri — nessuno stash coinvolto, basta che i tuoi
+edit restino non committati mentre lui fa `git add`/`commit` prima di te. Mossa: committare il
+proprio lavoro presto e per file espliciti (`git add <path...>`, mai `-A`/`.`), e prima di ogni
+commit lanciare `git diff --cached --name-only` come comando SEPARATO e leggerlo — se compare un
+file che non hai toccato, esce dallo staging prima del commit, non dopo.
+
+### Un pathspec con `[` o `]` (le rotte dinamiche di SvelteKit) puo' non far match, in silenzio
+Segnale: `git add src/routes/p/[projectId]/c/[canvasId]/+page.svelte` non da' errore ma il file
+resta fuori dallo staging — git tratta `[...]` come una character class glob, e `projectId` non
+la soddisfa mai. Mossa: `git add ':(literal)src/routes/p/[projectId]/c/[canvasId]/+page.svelte'`
+— il prefisso `:(literal)` disattiva il glob e fa matchare il percorso byte per byte.
