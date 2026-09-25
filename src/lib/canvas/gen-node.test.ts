@@ -6,6 +6,7 @@ import {
   isGenMedium,
   promptTooLong,
   runStateOf,
+  snapVideoResolution,
   startRun,
   unlockRun,
   type GenNode,
@@ -97,6 +98,32 @@ describe('i parametri che un modello accetta', () => {
 
   it('senza formati dichiarati non inventa un formato', () => {
     expect(defaultParamsFor(choice({ aspectRatios: [] })).aspectRatio).toBeUndefined();
+  });
+});
+
+describe('la risoluzione video dopo un cambio di modello', () => {
+  it('resta quella salvata se il nuovo modello la offre ancora', () => {
+    const m = choice({ resolutions: ['480p', '720p'] });
+
+    expect(snapVideoResolution(m, '720p')).toBe('720p');
+  });
+
+  it('scivola al default del modello se quella salvata non è più offerta — regressione cb1de6e2', () => {
+    // happyhorse-1.0 non offre 480p: un nodo passato da Seedance (480p salvato) a happyhorse deve
+    // scivolare a 720p, non spedire un token che il provider rifiuta.
+    const happyhorse = choice({ resolutions: ['720p', '1080p'] });
+
+    expect(snapVideoResolution(happyhorse, '480p')).toBe('720p');
+  });
+
+  it('senza una risoluzione salvata parte dal default del modello', () => {
+    const m = choice({ resolutions: ['720p', '1080p'] });
+
+    expect(snapVideoResolution(m, undefined)).toBe('720p');
+  });
+
+  it('un modello senza selettore non ha nessuna risoluzione da imporre', () => {
+    expect(snapVideoResolution(choice(), '480p')).toBeUndefined();
   });
 });
 

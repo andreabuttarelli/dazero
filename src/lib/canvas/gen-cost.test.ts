@@ -76,6 +76,11 @@ describe('creditsForRun — un giro solo', () => {
   it('nessun modello scelto: nessun numero', () => {
     expect(creditsForRun({ medium: 'image', model: null, params: {} })).toBeNull();
   });
+
+  it('una risoluzione senza moltiplicatore misurato (1080p) non inventa un numero — regressione cb1de6e2', () => {
+    const out = creditsForRun({ medium: 'video', model: videoChoice, params: { duration: 4, resolution: '1080p' } });
+    expect(out).toBeNull();
+  });
 });
 
 describe('creditsForLoop — N giri identici', () => {

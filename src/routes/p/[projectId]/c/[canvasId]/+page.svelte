@@ -56,6 +56,7 @@
   import { hasUpstreamText } from '$lib/canvas/upstream-inputs';
   import { effectiveModel } from '$lib/canvas/default-models';
   import { nearestVideoDuration } from '$lib/video-models';
+  import { snapVideoResolution } from '$lib/canvas/gen-node';
   import { type IframeNode as IframeNodeState } from '$lib/canvas/iframe-node';
   import { shareUrlOf } from '$lib/canvas/doc-node';
   import { nodeSize } from '$lib/canvas/node-size';
@@ -1174,14 +1175,26 @@
     const items = chosen.map((n) => {
       const nextParams = { ...(n.data.params as Record<string, unknown>), ...params };
 
-      // Un modello nuovo può non fare più il gradino di durata salvato: si scivola al più vicino
-      // fra quelli che offre, invece di mandare al server una durata che quel modello rifiuta.
+      // Un modello nuovo può non fare più il gradino di durata o la risoluzione salvati: si
+      // scivola al più vicino fra quelli che offre — mai una durata o un token di risoluzione che
+      // quel modello rifiuta (`happyhorse-1.0` non fa 480p, `video_renders` cb1de6e2).
       if (model !== undefined && n.type === 'video') {
         const nextModel = catalogue.video?.find((c) => c.id === model);
         const options = nextModel?.durationOptions;
         const savedDuration = (n.data.params as Record<string, unknown> | undefined)?.duration;
         if (options?.length && typeof savedDuration === 'number') {
           nextParams.duration = nearestVideoDuration(options, savedDuration);
+        }
+        if (nextModel) {
+          const savedResolution = (n.data.params as Record<string, unknown> | undefined)?.resolution as
+            | string
+            | undefined;
+          const resolution = snapVideoResolution(nextModel, savedResolution);
+          if (resolution) {
+            nextParams.resolution = resolution;
+          } else {
+            delete nextParams.resolution;
+          }
         }
       }
 

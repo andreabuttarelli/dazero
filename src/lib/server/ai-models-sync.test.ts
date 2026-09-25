@@ -45,6 +45,7 @@ const VIDEO_MODELS = {
       supported_durations: [4, 5, 30],
       supported_aspect_ratios: ['16:9', '9:16'],
       supported_frame_images: ['first_frame', 'last_frame'],
+      supported_resolutions: ['480p', '720p'],
       generate_audio: true,
       pricing_skus: { video_tokens: '0.0000107' }
     },
@@ -54,6 +55,16 @@ const VIDEO_MODELS = {
       supported_durations: [5, 15],
       supported_aspect_ratios: ['16:9'],
       supported_frame_images: ['first_frame'],
+      supported_resolutions: ['480p', '720p', '1080p'],
+      generate_audio: false
+    },
+    {
+      id: 'alibaba/happyhorse-1.0',
+      name: 'Alibaba: HappyHorse 1.0',
+      supported_durations: [3, 15],
+      supported_aspect_ratios: ['16:9'],
+      supported_frame_images: ['first_frame'],
+      supported_resolutions: ['720p', '1080p'],
       generate_audio: false
     }
   ]
@@ -113,7 +124,7 @@ describe('syncAiModels — dai tre listini del gateway alla tabella', () => {
 
     const out = await syncAiModels(admin, { fetchImpl: okAllThree(), baseUrl: 'https://openrouter.ai/api/v1' });
 
-    expect(out).toEqual({ ok: true, synced: 7 });
+    expect(out).toEqual({ ok: true, synced: 8 });
     expect(upserts).toContainEqual(
       expect.objectContaining({
         id: 'bytedance/seedance-2-5',
@@ -150,6 +161,22 @@ describe('syncAiModels — dai tre listini del gateway alla tabella', () => {
     // Solo first_frame, generate_audio: false → niente audio in ingresso.
     expect(grok.input_modalities).toEqual(expect.arrayContaining(['text', 'image']));
     expect(grok.input_modalities).not.toContain('audio');
+  });
+
+  it('un modello video sincronizzato porta le sue risoluzioni vere, non un elenco condiviso', async () => {
+    const { admin, upserts } = fakeAdmin();
+
+    await syncAiModels(admin, { fetchImpl: okAllThree(), baseUrl: 'https://openrouter.ai/api/v1' });
+
+    const happyhorse = upserts.find(
+      (r) => (r as Record<string, unknown>).id === 'alibaba/happyhorse-1.0' && (r as Record<string, unknown>).catalogue === 'video'
+    ) as Record<string, unknown>;
+    expect(happyhorse.supported_resolutions).toEqual(['720p', '1080p']);
+
+    const seedance = upserts.find(
+      (r) => (r as Record<string, unknown>).id === 'bytedance/seedance-2.5' && (r as Record<string, unknown>).catalogue === 'video'
+    ) as Record<string, unknown>;
+    expect(seedance.supported_resolutions).toEqual(['480p', '720p']);
   });
 
   it('lo stesso id su due listini resta due righe distinte, non una che sovrascrive l’altra', async () => {

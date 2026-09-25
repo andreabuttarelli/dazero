@@ -166,6 +166,19 @@ export function defaultParamsFor(choice: ModelChoice): GenParams {
   return params;
 }
 
+/**
+ * La risoluzione salvata, se ancora offerta dal modello appena scelto; altrimenti il default del
+ * modello — mai un valore fuori da `choice.resolutions`, o il campo mostrerebbe un token che il
+ * fornitore rifiuta (v. `video_renders` cb1de6e2, `happyhorse-1.0` senza 480p). Assente = nessun
+ * selettore per questo modello: il default e' quello del provider, non nostro.
+ */
+export function snapVideoResolution(choice: ModelChoice, saved: string | undefined): string | undefined {
+  const options = choice.resolutions;
+  if (!options?.length) return undefined;
+  if (saved && options.includes(saved)) return saved;
+  return options[0];
+}
+
 /** Il provider rifiuterebbe questo prompt? Si chiede prima di spendere il giro. */
 export function promptTooLong(prompt: string, choice: ModelChoice): boolean {
   const ceiling = choice.maxPromptChars;

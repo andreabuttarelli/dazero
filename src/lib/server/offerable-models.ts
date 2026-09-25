@@ -59,6 +59,7 @@ type SyncedRow = {
   label: string | null;
   input_modalities: string[] | null;
   supported_parameters: string[] | null;
+  supported_resolutions: string[] | null;
 };
 
 async function syncedRows(
@@ -67,7 +68,7 @@ async function syncedRows(
 ): Promise<{ rows: Map<string, SyncedRow>; synced: boolean }> {
   const { data } = await admin
     .from('ai_models')
-    .select('id, label, input_modalities, supported_parameters')
+    .select('id, label, input_modalities, supported_parameters, supported_resolutions')
     .eq('catalogue', catalogue);
 
   const rows = (data ?? []) as SyncedRow[];
@@ -113,6 +114,18 @@ function genericImageChoice(row: SyncedRow): ModelChoice {
 }
 
 /**
+ * LE RISOLUZIONI CHE QUESTO MODELLO ACCETTA DAVVERO — dalla riga sincronizzata
+ * (`ai_models.supported_resolutions`, `/videos/models`), mai un elenco condiviso: `happyhorse-1.0`
+ * dichiara `["720p", "1080p"]`, mai 480p, e offrirgli 480p è il rifiuto che ha aperto questo file
+ * (`video_renders` cb1de6e2). Vuoto (sync non ancora arrivato a quel campo, o riga anteriore alla
+ * migration) ripiega su `VIDEO_RESOLUTIONS`, il tetto misurato del nostro trasporto — mai un menu
+ * senza selettore, che spedirebbe la resa di default silenziosa.
+ */
+function videoResolutionsFor(row: SyncedRow): string[] {
+  return row.supported_resolutions?.length ? row.supported_resolutions : [...VIDEO_RESOLUTIONS];
+}
+
+/**
  * Idem per il video: un solo rapporto (verticale, il formato di ogni social feed che questo
  * prodotto pubblica) e una sola durata — `MIN_DURATION` del prodotto, non il minimo grezzo del
  * provider, che non conosciamo per un modello senza spec.
@@ -125,7 +138,7 @@ function genericVideoChoice(row: SyncedRow): ModelChoice {
     minDuration: MIN_DURATION,
     maxDuration: MIN_DURATION,
     durationOptions: [MIN_DURATION],
-    resolutions: [...VIDEO_RESOLUTIONS],
+    resolutions: videoResolutionsFor(row),
     ...providerOf(row.id),
     inputModalities: row.input_modalities ?? [],
     unitCredits: undefined
@@ -150,7 +163,7 @@ function imageChoice(
   };
 }
 
-function videoChoice(spec: VideoModelSpec, wireId: string, inputModalities: string[]): ModelChoice {
+function videoChoice(spec: VideoModelSpec, row: SyncedRow, inputModalities: string[]): ModelChoice {
   return {
     id: spec.id,
     label: spec.label,
@@ -160,11 +173,10 @@ function videoChoice(spec: VideoModelSpec, wireId: string, inputModalities: stri
     durationOptions: videoDurationOptions(spec.id),
     maxPromptChars: spec.maxPromptChars,
     generateAudio: spec.generateAudio,
-    // Il rendering shippa a 480p/720p per OGNI modello video, dallo stesso motore
-    // (`runVideoJob` → `video.ts`): non è un fatto per-spec come le durate, è il tetto del
-    // trasporto che serve tutti.
-    resolutions: [...VIDEO_RESOLUTIONS],
-    ...providerOf(wireId),
+    // Dalla riga sincronizzata: ogni modello dichiara le SUE risoluzioni su `/videos/models`, mai
+    // un tetto uguale per tutti — v. `videoResolutionsFor`.
+    resolutions: videoResolutionsFor(row),
+    ...providerOf(row.id),
     inputModalities,
     unitCredits: videoCredits(spec.id)
   };
@@ -214,9 +226,10 @@ async function offerableVideos(admin: SupabaseClient): Promise<OfferableModels> 
   const choices: ModelChoice[] = [];
   specs.forEach((spec, i) => {
     const wireId = wireIds[i];
-    if (!wireId || !rows.has(wireId)) return;
+    const row = wireId ? rows.get(wireId) : undefined;
+    if (!wireId || !row) return;
     specced.add(wireId);
-    choices.push(videoChoice(spec, wireId, rows.get(wireId)?.input_modalities ?? []));
+    choices.push(videoChoice(spec, row, row.input_modalities ?? []));
   });
 
   for (const [id, row] of rows) {

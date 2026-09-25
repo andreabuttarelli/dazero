@@ -50,13 +50,31 @@ function envModelT2V(): string {
 // 480p è il default perché il video si fattura al secondo e il 720p costa ESATTAMENTE il doppio
 // (misurato). Ogni bozza si paga, comprese quelle che nessuno approva, quindi il default sta sul
 // gradino economico: su un telefono la differenza si vede poco, sul conto no.
+//
+// I due che offriamo per default a un modello sincronizzato SENZA una riga di risoluzioni ancora
+// (`offerable-models.ts::genericVideoChoice`) — non il tetto del trasporto, che è più largo (v.
+// `OPENROUTER_RESOLUTION_TOKENS` sotto).
 export const VIDEO_RESOLUTIONS = ['480p', '720p'] as const;
 const DEFAULT_RESOLUTION = '480p';
+
+/**
+ * L'INTERO enum che `POST /videos` valida, per QUALUNQUE modello — verificato in diretta
+ * (2026-09-25, `resolution: 'nonsense'` contro `alibaba/happyhorse-1.0`): `ZodError` elenca
+ * esattamente questi otto token, minuscoli, mai un `1080P` con la maiuscola. Un modello preciso
+ * ne accetta un sottoinsieme (`ai_models.supported_resolutions`, letto da `offerable-models.ts`
+ * per COSA OFFRIRE); questo elenco è il tetto — l'ultima barriera prima del fornitore, quando
+ * qui non c'è una connessione al database da cui leggere il sottoinsieme del modello scelto.
+ */
+const OPENROUTER_RESOLUTION_TOKENS = ['360p', '480p', '720p', '768p', '1080p', '1k', '2k', '4k'] as const;
 
 /** Un valore stantio o scritto a mano non deve raggiungere il provider. */
 export function clampVideoResolution(value: unknown): string {
   const v = String(value ?? '').trim().toLowerCase();
-  return (VIDEO_RESOLUTIONS as readonly string[]).includes(v) ? v : DEFAULT_RESOLUTION;
+  if ((OPENROUTER_RESOLUTION_TOKENS as readonly string[]).includes(v)) {
+    // '1k'/'2k'/'4k' arrivano minuscoli dal trim sopra: il fornitore vuole la K maiuscola.
+    return v.endsWith('k') ? v.toUpperCase() : v;
+  }
+  return DEFAULT_RESOLUTION;
 }
 /** What an approved clip gets upscaled to. */
 export const UPSCALE_RESOLUTION = '720p';

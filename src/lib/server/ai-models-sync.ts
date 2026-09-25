@@ -39,6 +39,7 @@ type RawVideoModel = {
   name?: string;
   supported_frame_images?: unknown;
   generate_audio?: unknown;
+  supported_resolutions?: unknown;
   pricing_skus?: Record<string, unknown>;
 };
 
@@ -50,6 +51,10 @@ export type AiModelRow = {
   input_modalities: string[];
   output_modalities: string[];
   supported_parameters: string[];
+  /** Solo `video`: i token di `resolution` che QUESTO modello accetta (`/videos/models`,
+   *  `supported_resolutions`) — minuscoli, quelli che `POST /videos` valida davvero. Vuoto per
+   *  chat/image, dove il campo non esiste su quella rotta. */
+  supported_resolutions: string[];
   pricing: Record<string, unknown>;
   synced_at: string;
 };
@@ -70,6 +75,7 @@ function chatOrImageRow(m: RawChatOrImageModel, catalogue: 'chat' | 'image', syn
     input_modalities: m.architecture?.input_modalities ?? [],
     output_modalities: m.architecture?.output_modalities ?? [],
     supported_parameters: toArray(m.supported_parameters),
+    supported_resolutions: [],
     pricing: m.pricing ?? {},
     synced_at: syncedAt
   };
@@ -100,6 +106,7 @@ function videoRow(m: RawVideoModel, syncedAt: string): AiModelRow | null {
     input_modalities: input,
     output_modalities: output,
     supported_parameters: [],
+    supported_resolutions: toArray(m.supported_resolutions),
     pricing: m.pricing_skus ?? {},
     synced_at: syncedAt
   };

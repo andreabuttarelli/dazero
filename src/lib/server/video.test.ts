@@ -310,6 +310,27 @@ describe('resolveVideoModel / pairedTextToVideoModel', () => {
   });
 });
 
+describe('clampVideoResolution — il tetto di POST /videos, non un elenco a due gradini', () => {
+  it('accetta 1080p, il token che happyhorse-1.0 usa e 480p/720p non coprivano (regressione cb1de6e2)', () => {
+    expect(clampVideoResolution('1080p')).toBe('1080p');
+  });
+
+  it('normalizza la maiuscola/minuscola del token, mai "1080P" verso il fornitore', () => {
+    expect(clampVideoResolution('1080P')).toBe('1080p');
+    expect(clampVideoResolution('720P')).toBe('720p');
+  });
+
+  it('1K/2K/4K arrivano con la K maiuscola, come il fornitore li documenta', () => {
+    expect(clampVideoResolution('1k')).toBe('1K');
+    expect(clampVideoResolution('4K')).toBe('4K');
+  });
+
+  it('un token che il fornitore non conosce non passa: ripiega sul default economico', () => {
+    expect(clampVideoResolution('8000p')).toBe('480p');
+    expect(clampVideoResolution(undefined)).toBe('480p');
+  });
+});
+
 describe('clampVideoAspectRatio', () => {
   it('Seedance keeps ratios Grok would rewrite to 9:16', () => {
     expect(clampVideoAspectRatio('21:9', 'bytedance/seedance-2-5')).toBe('21:9');

@@ -19,8 +19,13 @@ export type RunCostInput = { medium: GenMedium; model: ModelChoice | null; param
 
 /**
  * 720p costa ESATTAMENTE il doppio di 480p (misurato, v. `video.ts`). `unitCredits` è prezzato a
- * 480p — la risoluzione a cui nasce un nodo — quindi 480p resta 1× e ogni altro gradino scala da
- * qui, non da un numero a parte per ciascuno.
+ * 480p — la risoluzione a cui nasce un nodo — quindi 480p resta 1× e 720p scala da qui.
+ *
+ * OGNI ALTRO TOKEN (1080p, 4K, 360p, 768p, 1K…) NON HA UN MOLTIPLICATORE MISURATO: la riga
+ * sincronizzata (`ai_models.pricing`) non porta ancora un prezzo per risoluzione che
+ * `ModelChoice` esponga, e inventare un rapporto — anche "il doppio ancora" — sarebbe lo stesso
+ * numero sbagliato che ha aperto questo file, solo spostato di un gradino. Un token assente da
+ * questa tabella fa tornare `null` da `creditsForRun`, mai un 1× silenzioso.
  */
 const RESOLUTION_MULTIPLIERS: Record<string, number> = {
   '480p': 1,
@@ -28,7 +33,8 @@ const RESOLUTION_MULTIPLIERS: Record<string, number> = {
 };
 
 /**
- * I crediti per UN giro di questo medium/modello/parametri, o `null` quando il prezzo non si sa.
+ * I crediti per UN giro di questo medium/modello/parametri, o `null` quando il prezzo non si sa —
+ * compreso il caso in cui SI SA il prezzo base ma non il moltiplicatore della risoluzione scelta.
  */
 export function creditsForRun(input: RunCostInput): number | null {
   const unit = input.model?.unitCredits;
@@ -36,7 +42,9 @@ export function creditsForRun(input: RunCostInput): number | null {
 
   if (input.medium !== 'video') return unit;
 
-  const resolutionMultiplier = RESOLUTION_MULTIPLIERS[input.params.resolution ?? ''] ?? 1;
+  const resolution = input.params.resolution;
+  const resolutionMultiplier = resolution ? RESOLUTION_MULTIPLIERS[resolution] : 1;
+  if (resolutionMultiplier === undefined) return null;
 
   const base = input.model?.minDuration;
   const duration = input.params.duration;

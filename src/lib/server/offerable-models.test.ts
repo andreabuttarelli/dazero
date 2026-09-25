@@ -12,6 +12,7 @@ function fakeAdmin(
     input_modalities: string[];
     output_modalities: string[];
     supported_parameters?: string[];
+    supported_resolutions?: string[];
   }[]
 ) {
   const admin = {
@@ -220,9 +221,50 @@ describe('offerableModels video — durata e risoluzione', () => {
     expect(choice?.durationOptions).toEqual(Array.from({ length: 27 }, (_, i) => i + 4));
   });
 
-  it('un video offerto porta le risoluzioni 480p/720p', async () => {
+  it('un video offerto porta le SUE risoluzioni sincronizzate, non un elenco condiviso', async () => {
     const admin = fakeAdmin([
-      { id: 'bytedance/seedance-2.5', catalogue: 'video', input_modalities: ['text', 'image'], output_modalities: ['video'] }
+      {
+        id: 'bytedance/seedance-2.5',
+        catalogue: 'video',
+        input_modalities: ['text', 'image'],
+        output_modalities: ['video'],
+        supported_resolutions: ['480p', '720p']
+      }
+    ]);
+
+    const out = await offerableModels(admin, 'video');
+
+    const choice = out.choices.find((c) => c.id === SEEDANCE_25_MODEL);
+    expect(choice?.resolutions).toEqual(['480p', '720p']);
+  });
+
+  it('happyhorse non offre 480p: la riga sincronizzata dichiara solo 720p/1080p (regressione cb1de6e2)', async () => {
+    const admin = fakeAdmin([
+      {
+        id: 'alibaba/happyhorse-1.0',
+        catalogue: 'video',
+        input_modalities: ['text', 'image'],
+        output_modalities: ['video'],
+        supported_resolutions: ['720p', '1080p']
+      }
+    ]);
+
+    const out = await offerableModels(admin, 'video');
+
+    const choice = out.choices.find((c) => c.id === 'alibaba/happyhorse-1.0');
+    expect(choice?.resolutions).toEqual(['720p', '1080p']);
+    expect(choice?.resolutions).not.toContain('480p');
+  });
+
+  it('una riga sincronizzata senza supported_resolutions ripiega sul tetto misurato del trasporto', async () => {
+    const admin = fakeAdmin([
+      {
+        id: 'bytedance/seedance-2.5',
+        catalogue: 'video',
+        input_modalities: ['text', 'image'],
+        output_modalities: ['video'],
+        supported_resolutions: []
+      }
     ]);
 
     const out = await offerableModels(admin, 'video');
