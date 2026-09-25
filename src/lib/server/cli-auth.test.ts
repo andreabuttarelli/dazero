@@ -162,12 +162,27 @@ describe('una chiave emessa prima della rinomina', () => {
   }
 
   it('entra ancora, qualunque sia il prefisso di quando è stata emessa', async () => {
-    for (const rawKey of ['anomalia_live_chiavevecchia', '021_live_chiaveanticha', 'dazero_live_chiavenuova']) {
+    for (const rawKey of [
+      'anomalia_live_chiavevecchia',
+      '021_live_chiaveanticha',
+      'dazero_live_chiavenuova',
+      'feega_live_chiaveattuale'
+    ]) {
       const res = await callWithKey(rawKey);
 
       expect(res.error, rawKey).toBeUndefined();
       expect(res.apiKey?.id, rawKey).toBe('key-legacy');
     }
+  });
+});
+
+describe('una chiave nuova', () => {
+  it('generateApiKey emette il prefisso feega_', async () => {
+    const { generateApiKey } = await import('./cli-auth');
+    const { raw, prefix } = await generateApiKey();
+
+    expect(raw.startsWith('feega_live_')).toBe(true);
+    expect(prefix.startsWith('feega_live_')).toBe(true);
   });
 });
 

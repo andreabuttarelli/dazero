@@ -25,7 +25,7 @@ export interface ApiKeyInfo {
  * Authenticate a CLI/API request via Bearer token.
  * Supports two token types:
  *   1. Supabase JWT (standard session token)
- *   2. API Key (starts with "dazero_", long-lived, hashed in DB)
+ *   2. API Key (starts with "feega_", long-lived, hashed in DB)
  *
  * Returns the Supabase client scoped to the user, or an error Response.
  */
@@ -45,8 +45,9 @@ async function resolveCaller(request: Request): Promise<Caller> {
   const token = auth.slice(7);
 
   // ── API Key path ──────────────────────────────────────────────
-  // legacy 021_live_* and anomalia_* prefixes migrated from the pre-renaming eras
+  // legacy 021_live_*, anomalia_* and dazero_* prefixes migrated from the pre-renaming eras
   if (
+    token.startsWith('feega_') ||
     token.startsWith('dazero_') ||
     token.startsWith('anomalia_') ||
     token.startsWith('021_live_')
@@ -182,9 +183,9 @@ export async function generateApiKey(): Promise<{ raw: string; hash: string; pre
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
   const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
-  const raw = `dazero_live_${hex}`;
+  const raw = `feega_live_${hex}`;
   const hash = await hashApiKey(raw);
-  const prefix = raw.slice(0, 16); // "dazero_live_<first 8 hex>"
+  const prefix = raw.slice(0, 16); // "feega_live_<first 5 hex>"
   return { raw, hash, prefix };
 }
 
