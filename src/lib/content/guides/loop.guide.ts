@@ -16,6 +16,14 @@ giro) o **itera** (un valore diverso per ogni giro, uno per ogni elemento della 
 filo in modalità itera con sorgente una lista conta come asse — un filo itera collegato a un nodo
 che non è una lista non produce un asse.
 
+## Riempire una lista
+
+Una lista si riempie trascinandoci sopra immagini, scrivendo una riga per elemento, o
+**collegando dei nodi** alla sua porta d'ingresso: ogni nodo immagine o testo collegato aggiunge
+il suo ultimo risultato, dopo gli elementi scritti a mano, e resta aggiornato quando il nodo
+rigenera. Un nodo collegato che non ha ancora un risultato compare in attesa e non conta come
+giro. Un elemento collegato si toglie togliendo il filo.
+
 ## Combinazione fra più assi
 
 Con più assi collegati in modalità itera, per default il loop fa il prodotto **cartesiano**: ogni
