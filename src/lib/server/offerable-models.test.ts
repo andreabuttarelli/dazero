@@ -42,16 +42,20 @@ describe('offerableModels — cosa un nodo può davvero scegliere', () => {
     expect(choice?.unitCredits).toBeGreaterThan(0);
   });
 
-  it('un modello sincronizzato SENZA una riga di integrazione nostra non è offerto', async () => {
+  it('un modello sincronizzato SENZA una riga di integrazione nostra è offerto comunque, con la resa prudente', async () => {
     // Un id che l'API immagini pubblica ma che non abbiamo mai integrato (nessuno spec in
-    // image-models.ts lo referenzia): sappiamo cosa accetta, non sappiamo come chiamarlo.
+    // image-models.ts lo referenzia): l'app segue OpenRouter (CLAUDE.md), non lo scarta perché
+    // non l'abbiamo scritto a mano — 1:1 soltanto e nessun prezzo finché non lo misuriamo.
     const admin = fakeAdmin([
       { id: 'meta/muse-image', catalogue: 'image', input_modalities: ['text'], output_modalities: ['image'] }
     ]);
 
     const out = await offerableModels(admin, 'image');
 
-    expect(out.choices.map((c) => c.id)).not.toContain('meta/muse-image');
+    const choice = out.choices.find((c) => c.id === 'meta/muse-image');
+    expect(choice).toBeDefined();
+    expect(choice?.aspectRatios).toEqual(['1:1']);
+    expect(choice?.unitCredits).toBeUndefined();
   });
 
   it('un fatto di integrazione nostro SENZA una riga sincronizzata non è offerto', async () => {
@@ -183,5 +187,31 @@ describe('offerableModels video — durata e risoluzione', () => {
 
     const choice = out.choices.find((c) => c.id === SEEDANCE_25_MODEL);
     expect(choice?.resolutions).toEqual(['480p', '720p']);
+  });
+});
+
+describe('offerableModels video — un id senza spec è offerto con la resa prudente', () => {
+  it('non sparisce dal menu: 9:16 soltanto, nessun prezzo', async () => {
+    const admin = fakeAdmin([
+      { id: 'wan/wan-3.0', catalogue: 'video', input_modalities: ['text'], output_modalities: ['video'] }
+    ]);
+
+    const out = await offerableModels(admin, 'video');
+
+    const choice = out.choices.find((c) => c.id === 'wan/wan-3.0');
+    expect(choice).toBeDefined();
+    expect(choice?.aspectRatios).toEqual(['9:16']);
+    expect(choice?.unitCredits).toBeUndefined();
+  });
+
+  it('non entra in nessuno slot delle Settings: il ruolo che sa fare resta ignoto', async () => {
+    const admin = fakeAdmin([
+      { id: 'wan/wan-3.0', catalogue: 'video', input_modalities: ['text'], output_modalities: ['video'] }
+    ]);
+
+    const slot = mediaModelSlot('videoModel')!;
+    const out = await offerableSlotChoices(admin, slot);
+
+    expect(out.choices.map((c) => c.id)).not.toContain('wan/wan-3.0');
   });
 });

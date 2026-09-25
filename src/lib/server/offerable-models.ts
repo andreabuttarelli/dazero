@@ -13,12 +13,16 @@
  *   risposte vere di `/images/models` e `/videos/models`: `input_references` è un tetto numerico,
  *   non il nome del campo; nessun payload nomina `image_urls` o `input_urls`. Restano nostri.
  *
- * LA REGOLA DEL PRODOTTO: un modello è offerto SOLO quando ha ENTRAMBI. Sincronizzato senza un
- * nostro spec — OpenRouter lo sa fare, ma noi non sappiamo chiamarlo — resta fuori. Un nostro
- * spec senza una riga sincronizzata — l'avevamo integrato, il sync di oggi non lo conferma più —
- * resta fuori anche lui, con la stessa disciplina di `upstream.ts::modalitiesFor`: un `null` dal
- * sync non è "non lo so", è "non offribile", perché altrimenti un provider lo rifiuterebbe dopo
- * aver speso il giro invece che prima.
+ * LA REGOLA DEL PRODOTTO: OGNI riga sincronizzata è offerta — "l'app comanda" (CLAUDE.md) vuol
+ * dire seguire OpenRouter, non un elenco scritto a mano che lo filtra silenziosamente a una
+ * manciata di famiglie. Uno spec nostro (`image-models.ts`, `video-models.ts`) ARRICCHISCE la
+ * riga quando esiste — il campo dei riferimenti, i rapporti misurati, il prezzo — non la gate: un
+ * modello sincronizzato SENZA spec passa con la resa più prudente (`GENERIC_IMAGE_ASPECTS`, nessun
+ * `unitCredits` finché non lo misuriamo) invece di sparire dal menu. Un nostro spec senza una riga
+ * sincronizzata — l'avevamo integrato, il sync di oggi non lo conferma più — resta fuori, con la
+ * stessa disciplina di `upstream.ts::modalitiesFor`: un `null` dal sync non è "non lo so", è "non
+ * offribile", perché altrimenti un provider lo rifiuterebbe dopo aver speso il giro invece che
+ * prima.
  *
  * `synced: false` DICE PERCHÉ IL MENU È VUOTO. Una tabella `ai_models` vuota — primo avvio, DB di
  * branch, sync mai girato — produce zero scelte per ogni medium: è la conseguenza accettata della
@@ -28,14 +32,14 @@
  * diversi, con due messaggi diversi, perché la causa è diversa.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { IMAGE_MODEL_CHOICES, imageModelSpec, type ImageModelSpec } from '$lib/image-models';
+import { IMAGE_MODEL_CHOICES, imageModelSpec, IMAGE_REFS_BUDGET, type ImageModelSpec } from '$lib/image-models';
 import { videoModelSpec, type VideoModelSpec } from '$lib/video-models';
 import type { GenMedium, ModelChoice } from '$lib/canvas/gen-node';
 import type { MediaModelSlot } from '$lib/media-model-slots';
 import { wireModelId } from '$lib/server/ai-models-sync';
 import { providerOf } from '$lib/canvas/model-provider';
 import { IMAGE_CREDITS, videoCredits } from '$lib/server/content-cost';
-import { videoDurationOptions, VIDEO_RESOLUTIONS } from '$lib/server/video';
+import { videoDurationOptions, VIDEO_RESOLUTIONS, MIN_DURATION } from '$lib/server/video';
 
 const VIDEO_SPEC_IDS = [
   'bytedance/seedance-2-5',
@@ -50,19 +54,61 @@ const VIDEO_SPEC_IDS = [
 
 type SyncedCatalogue = 'image' | 'video';
 
+type SyncedRow = { id: string; label: string | null; input_modalities: string[] | null };
+
 async function syncedRows(
   admin: SupabaseClient,
   catalogue: SyncedCatalogue
-): Promise<{ inputModalities: Map<string, string[]>; synced: boolean }> {
+): Promise<{ rows: Map<string, SyncedRow>; synced: boolean }> {
   const { data } = await admin
     .from('ai_models')
-    .select('id, input_modalities')
+    .select('id, label, input_modalities')
     .eq('catalogue', catalogue);
 
-  const rows = (data ?? []) as { id: string; input_modalities: string[] | null }[];
+  const rows = (data ?? []) as SyncedRow[];
   return {
-    inputModalities: new Map(rows.map((r) => [r.id, r.input_modalities ?? []])),
+    rows: new Map(rows.map((r) => [r.id, r])),
     synced: rows.length > 0
+  };
+}
+
+/**
+ * LA RESA PIÙ PRUDENTE, per un modello sincronizzato che non ha uno spec nostro a dirci cosa
+ * accetta davvero. `1:1` è nell'elenco di OGNI famiglia integrata qui (Nano Banana, Seedream, GPT
+ * Image, Qwen — vedi `image-models.ts`): non un valore inventato, il minimo comune che ogni
+ * provider immagine visto finora pubblica.
+ */
+const GENERIC_IMAGE_ASPECTS = ['1:1'];
+
+function genericImageChoice(row: SyncedRow): ModelChoice {
+  return {
+    id: row.id,
+    label: row.label ?? row.id,
+    aspectRatios: GENERIC_IMAGE_ASPECTS,
+    maxRefs: IMAGE_REFS_BUDGET,
+    ...providerOf(row.id),
+    inputModalities: row.input_modalities ?? [],
+    unitCredits: undefined
+  };
+}
+
+/**
+ * Idem per il video: un solo rapporto (verticale, il formato di ogni social feed che questo
+ * prodotto pubblica) e una sola durata — `MIN_DURATION` del prodotto, non il minimo grezzo del
+ * provider, che non conosciamo per un modello senza spec.
+ */
+function genericVideoChoice(row: SyncedRow): ModelChoice {
+  return {
+    id: row.id,
+    label: row.label ?? row.id,
+    aspectRatios: ['9:16'],
+    minDuration: MIN_DURATION,
+    maxDuration: MIN_DURATION,
+    durationOptions: [MIN_DURATION],
+    resolutions: [...VIDEO_RESOLUTIONS],
+    ...providerOf(row.id),
+    inputModalities: row.input_modalities ?? [],
+    unitCredits: undefined
   };
 }
 
@@ -99,35 +145,50 @@ function videoChoice(spec: VideoModelSpec, wireId: string, inputModalities: stri
 }
 
 async function offerableImages(admin: SupabaseClient): Promise<OfferableModels> {
-  const { inputModalities, synced } = await syncedRows(admin, 'image');
+  const { rows, synced } = await syncedRows(admin, 'image');
 
   const specs = IMAGE_MODEL_CHOICES.map((c) => imageModelSpec(c.id)).filter(
     (spec): spec is ImageModelSpec => !!spec
   );
   const wireIds = await Promise.all(specs.map((spec) => wireModelId(spec.id, 'image')));
+  const specced = new Set<string>();
   const choices: ModelChoice[] = [];
   specs.forEach((spec, i) => {
     const wireId = wireIds[i];
-    if (!wireId || !inputModalities.has(wireId)) return;
-    choices.push(imageChoice(spec, wireId, inputModalities.get(wireId) ?? []));
+    if (!wireId || !rows.has(wireId)) return;
+    specced.add(wireId);
+    choices.push(imageChoice(spec, wireId, rows.get(wireId)?.input_modalities ?? []));
   });
+
+  // OGNI riga sincronizzata che nessuno spec ha già arricchito: offerta con la resa prudente,
+  // non nascosta. Questo è il cambio che fa passare il menu da "le famiglie che abbiamo scritto a
+  // mano" a "quello che OpenRouter pubblica davvero" (CLAUDE.md — l'app segue il catalogo).
+  for (const [id, row] of rows) {
+    if (!specced.has(id)) choices.push(genericImageChoice(row));
+  }
 
   return { synced, choices };
 }
 
 async function offerableVideos(admin: SupabaseClient): Promise<OfferableModels> {
-  const { inputModalities, synced } = await syncedRows(admin, 'video');
+  const { rows, synced } = await syncedRows(admin, 'video');
 
   const specs = VIDEO_SPEC_IDS.map((id) => videoModelSpec(id)).filter(
     (spec): spec is VideoModelSpec => !!spec
   );
   const wireIds = await Promise.all(specs.map((spec) => wireModelId(spec.id, 'video')));
+  const specced = new Set<string>();
   const choices: ModelChoice[] = [];
   specs.forEach((spec, i) => {
     const wireId = wireIds[i];
-    if (!wireId || !inputModalities.has(wireId)) return;
-    choices.push(videoChoice(spec, wireId, inputModalities.get(wireId) ?? []));
+    if (!wireId || !rows.has(wireId)) return;
+    specced.add(wireId);
+    choices.push(videoChoice(spec, wireId, rows.get(wireId)?.input_modalities ?? []));
   });
+
+  for (const [id, row] of rows) {
+    if (!specced.has(id)) choices.push(genericVideoChoice(row));
+  }
 
   return { synced, choices };
 }

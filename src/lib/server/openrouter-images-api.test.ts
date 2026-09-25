@@ -134,6 +134,21 @@ describe('il render sull’API immagini di OpenRouter', () => {
     expect(M.logged.at(-1)).toMatchObject({ ok: false });
   });
 
+  it('un id senza spec nostro passa così com\'è: è già l\'id sul filo', async () => {
+    // Un modello sincronizzato da OpenRouter ma senza una riga in image-models.ts (nessuna
+    // famiglia integrata a mano): non è nostro da chiamare in un altro modo, quindi si manda
+    // l'id esatto che offerableModels ha già risolto sul filo.
+    const f = reply(ok());
+    vi.stubGlobal('fetch', f);
+    const { generateImageOnOpenrouterImages } = await import('./openrouter-images-api');
+    await generateImageOnOpenrouterImages({
+      ...REQ,
+      model: 'meta/muse-image',
+      config: { imageConfig: { aspectRatio: '1:1' } }
+    });
+    expect(sentBody(f).model).toBe('meta/muse-image');
+  });
+
   it('senza chiave non ci prova nemmeno', async () => {
     delete M.env.OPENROUTER_API_KEY;
     vi.stubGlobal('fetch', reply(ok()));
