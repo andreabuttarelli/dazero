@@ -13,13 +13,13 @@ const EMAIL: Record<Locale, Dict> = {
     // Notifica scritta da un agente della chat (notify_user): il testo è suo, la cornice è nostra.
     'agent.subject': '{brand}: {subject}',
     'agent.eyebrow': 'From your {brand} AI agent',
-    'agent.cta': 'Open dazero →',
+    'agent.cta': 'Open feega →',
     'agent.footer':
-      'You’re getting this because you’re part of the {brand} project on dazero. Manage email and push notifications in Settings.',
+      'You’re getting this because you’re part of the {brand} project on feega. Manage email and push notifications in Settings.',
     'approval.subject': '{brand}: {count, plural, one {# post} other {# posts}} ready to approve',
     'approval.heading': '{brand}: {count, plural, one {# post} other {# posts}} ready',
     'approval.intro':
-      'dazero planned this week. Approve and it’ll post on schedule — no login needed.',
+      'feega planned this week. Approve and it’ll post on schedule — no login needed.',
     'approval.cta': 'Approve all & schedule →',
     'approval.footer': 'If you didn’t expect this, just ignore it. Link expires in 3 days.',
     'scheduler.subject':
@@ -29,7 +29,7 @@ const EMAIL: Record<Locale, Dict> = {
       'Your recurring planner just put together {count, plural, one {# on-brand post} other {# on-brand posts}}. Approve and they’ll post on schedule — no login needed.',
     'scheduler.cta': 'Approve all & schedule →',
     'scheduler.footer':
-      'dazero runs your planner automatically. Manage or pause it in Settings. Link expires in 3 days.',
+      'feega runs your planner automatically. Manage or pause it in Settings. Link expires in 3 days.',
     'conflict.subject': '{brand}: {count, plural, one {# time slot is} other {# time slots are}} double-booked',
     'conflict.heading': '{brand}: {count, plural, one {# calendar clash} other {# calendar clashes}}',
     'conflict.intro':
@@ -39,21 +39,21 @@ const EMAIL: Record<Locale, Dict> = {
     'recap.subject': '{brand}: your social strategy is ready',
     'recap.heading': '{brand} is ready to launch',
     'recap.intro':
-      'dazero finished building your strategy: {competitors, plural, one {# competitor} other {# competitors}} analysed, buyer personas, a {weeks}-week editorial plan and a full strategy report. Review everything and start whenever you are ready.',
+      'feega finished building your strategy: {competitors, plural, one {# competitor} other {# competitors}} analysed, buyer personas, a {weeks}-week editorial plan and a full strategy report. Review everything and start whenever you are ready.',
     'recap.cta': 'Review & start →',
     'recap.footer':
       'Everything is saved to your workspace — nothing was published. You decide what goes live.',
     'strategy_plan.subject': '{brand}: strategy and editorial plan ready',
     'strategy_plan.heading': 'Strategy and editorial plan ready',
     'strategy_plan.intro':
-      'dazero finished studying your market. Your strategy report and {weeks}-week editorial plan for {brand} are ready to review.',
+      'feega finished studying your market. Your strategy report and {weeks}-week editorial plan for {brand} are ready to review.',
     'strategy_plan.cta': 'Review strategy & plan →',
     'strategy_plan.footer':
       'Nothing was published — open the link to review and continue onboarding whenever you like.',
-    'auth.reset.subject': 'Reset your dazero password',
+    'auth.reset.subject': 'Reset your feega password',
     'auth.reset.heading': 'Reset your password',
     'auth.reset.intro':
-      'We got a request to reset the password for your dazero account. Tap the button below to choose a new one. The link expires in 1 hour.',
+      'We got a request to reset the password for your feega account. Tap the button below to choose a new one. The link expires in 1 hour.',
     'auth.reset.cta': 'Set a new password →',
     'auth.reset.footer': 'If you didn’t request this, you can safely ignore this email — your password won’t change.',
     'recap_weekly.subject': '{brand} — your weekly recap ({week})',
@@ -91,21 +91,21 @@ const EMAIL: Record<Locale, Dict> = {
     'recap_weekly.connected_accounts': 'Connected accounts',
     'recap_weekly.accounts_note': 'Data collected from these platforms.',
     'recap_weekly.no_accounts_title': 'No social accounts connected',
-    'recap_weekly.no_accounts_desc': 'Connect your social accounts so dazero can publish posts, track engagement, and give you better suggestions.',
+    'recap_weekly.no_accounts_desc': 'Connect your social accounts so feega can publish posts, track engagement, and give you better suggestions.',
     'recap_weekly.cta': 'Open dashboard \u2192',
-    'recap_weekly.footer': 'Sent every Monday by dazero. Manage your preferences in Settings.',
+    'recap_weekly.footer': 'Sent every Monday by feega. Manage your preferences in Settings.',
     'digest.subject': 'Yesterday on {brand}: {count, plural, one {# post} other {# posts}}',
     'digest.heading': '{brand}: {count, plural, one {# post} other {# posts}} published yesterday',
     'digest.intro':
       'Here’s what went live for {brand} yesterday — tap a post to see it live.',
-    'digest.footer': 'Sent daily by dazero. Manage your preferences in Settings.',
-    'invite.subject': '{inviter} invited you to {brand} on dazero',
-    'invite.heading': 'Join {brand} on dazero',
+    'digest.footer': 'Sent daily by feega. Manage your preferences in Settings.',
+    'invite.subject': '{inviter} invited you to {brand} on feega',
+    'invite.heading': 'Join {brand} on feega',
     'invite.intro':
       '{inviter} invited you to collaborate on {brand}. Accept the invite to plan, review and manage its content together.',
     'invite.cta': 'Accept invite \u2192',
     'invite.footer':
-      'The invite expires in 7 days. If you don\u2019t have an dazero account yet, sign up with this email address ({email}) to see it.',
+      'The invite expires in 7 days. If you don\u2019t have an feega account yet, sign up with this email address ({email}) to see it.',
     'credit_warning.subject': '{brand}: {percent}% of AI credits used',
     'credit_warning.heading': 'AI credits alert',
     'credit_warning.intro':
@@ -114,8 +114,8 @@ const EMAIL: Record<Locale, Dict> = {
     'credit_warning.footer':
       'Upgrade your plan for more credits, or wait for the reset. This is a one-time alert per billing period.',
     // ── Lifecycle drip (welcome + day-1 call + day-2/3 next-step) ────────────────────────────
-    'welcome.subject': 'Welcome to dazero 👋 let’s set up {brand}',
-    'welcome.heading': 'Welcome to dazero, {name} 👋',
+    'welcome.subject': 'Welcome to feega 👋 let’s set up {brand}',
+    'welcome.heading': 'Welcome to feega, {name} 👋',
     'welcome.intro':
       'From here, AI plans, writes and designs your social content in {brand}’s voice. You just approve — the rest runs on autopilot.',
     'welcome.call_lead':
@@ -131,7 +131,7 @@ const EMAIL: Record<Locale, Dict> = {
     'lifecycle.day1.subject': '{name}, 15 minutes to get {brand} live?',
     'lifecycle.day1.heading': 'Let’s set up {brand} together',
     'lifecycle.day1.intro':
-      'Yesterday you created {brand} on dazero — don’t leave it half-done. The “wow” moment (a full week of on-brand posts) is just a couple of steps away.',
+      'Yesterday you created {brand} on feega — don’t leave it half-done. The “wow” moment (a full week of on-brand posts) is just a couple of steps away.',
     'lifecycle.day1.body':
       'Easiest way is to do it together: 15 minutes, we set it all up and you leave with your first week ready.',
     'lifecycle.cta_call': 'Book your call →',
@@ -149,7 +149,7 @@ const EMAIL: Record<Locale, Dict> = {
     'lifecycle.step.title.approve': 'Approve your posts',
     'lifecycle.step.title.connect': 'Connect your socials',
     'lifecycle.step.title.publish': 'Go live',
-    'lifecycle.step.line.studio': 'Give dazero a little more about {brand} so it can write just like you.',
+    'lifecycle.step.line.studio': 'Give feega a little more about {brand} so it can write just like you.',
     'lifecycle.step.line.strategy': 'Your Brand Studio is set 👏 Now generate your strategy — it guides every post.',
     'lifecycle.step.line.plan': 'Your strategy is ready 👏 Next, generate your editorial plan.',
     'lifecycle.step.line.generate': 'Your editorial plan is ready 👏 Time for the fun part: generate your first week of posts.',
@@ -161,7 +161,7 @@ const EMAIL: Record<Locale, Dict> = {
     'prepublish.heading':
       '{brand}: {count, plural, one {a post did not go live} other {# posts did not go live}}',
     'prepublish.intro':
-      'dazero stopped this from publishing because it looked broken or empty. It is back in your drafts — fix it and approve again.',
+      'feega stopped this from publishing because it looked broken or empty. It is back in your drafts — fix it and approve again.',
     'prepublish.reason': 'Why: {reason}',
     'prepublish.cta': 'Open drafts →',
     'prepublish.footer': 'This last-minute check runs just before publish so empty or broken posts never go out.'

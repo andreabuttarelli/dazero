@@ -9,7 +9,7 @@ import { joinAppPath } from '$lib/server/tenancy/brand-slug';
 // anyone but the account owner. Override EMAIL_FROM entirely, or just EMAIL_DOMAIN to change only
 // the domain while keeping the default local-part and display name.
 const EMAIL_DOMAIN = env.EMAIL_DOMAIN || senderEmailDomain();
-const FROM = env.EMAIL_FROM || `dazero <noreply@${EMAIL_DOMAIN}>`;
+const FROM = env.EMAIL_FROM || `feega <noreply@${EMAIL_DOMAIN}>`;
 
 // Brand accent (matches --accent in app.css). Used for the wordmark's "2" in email headers.
 const ACCENT = '#7c5cff';
@@ -42,11 +42,11 @@ function esc(s: string | null | undefined): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Header: the real dazero mark (hosted PNG, reliable across clients) + the wordmark in the
+// Header: the real feega mark (hosted PNG, reliable across clients) + the wordmark in the
 // current brand accent. If the image is blocked, the wordmark still reads as the brand.
 function header(origin?: string): string {
   const logo = `${siteUrl(origin)}/icon-192.png`;
-  return `<div style="font-size:20px;font-weight:600;line-height:24px;margin-bottom:6px;"><img src="${logo}" width="22" height="22" alt="" style="vertical-align:-5px;border-radius:6px;margin-right:8px;" />dazero</div>`;
+  return `<div style="font-size:20px;font-weight:600;line-height:24px;margin-bottom:6px;"><img src="${logo}" width="22" height="22" alt="" style="vertical-align:-5px;border-radius:6px;margin-right:8px;" />feega</div>`;
 }
 
 function shell(origin: string | undefined, inner: string): string {
@@ -102,7 +102,7 @@ export function passwordResetEmailText(locale: Locale, resetUrl: string): string
 
 // ── Onboarding recap ───────────────────────────────────────────────────────────────────────────
 // Sent once, when the background onboarding generation finishes. Unlike the approval emails this is
-// NOT a one-tap action — there's nothing to approve yet — it just announces what dazero generated
+// NOT a one-tap action — there's nothing to approve yet — it just announces what feega generated
 // (posts, competitors analysed, a multi-week editorial plan + strategy) and links to the proof page
 // where the user reviews everything and continues to activation. No token: the proof page is behind
 // the user's normal login (they created the account during onboarding).
@@ -213,7 +213,7 @@ export function calendarConflictEmailText(locale: Locale, brandName: string, cou
 
 // ── Weekly recap email ──────────────────────────────────────────────────────
 // Sent every Monday morning with the brand's weekly performance snapshot: post activity,
-// engagement metrics, trends, AI suggestions, and action items. The richest email dazero sends.
+// engagement metrics, trends, AI suggestions, and action items. The richest email feega sends.
 
 export type RecapData = {
   brandName: string;

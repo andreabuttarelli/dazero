@@ -10,7 +10,7 @@ describe('sendEmail sotto test', () => {
 		const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
 		await expect(
-			sendEmail({ to: 'ops@dazero.co', subject: 'prova', html: '<p>prova</p>' })
+			sendEmail({ to: 'ops@feega.app', subject: 'prova', html: '<p>prova</p>' })
 		).resolves.toBeUndefined();
 
 		expect(fetchSpy).not.toHaveBeenCalled();
