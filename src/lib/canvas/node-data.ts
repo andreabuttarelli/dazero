@@ -236,13 +236,14 @@ const selectSchema = z.object({
  */
 const effectStepSchema = z.object({
   id: z.string().refine((id) => id in EFFECTS, { message: 'effetto sconosciuto' }),
-  params: z.record(z.string(), z.union([z.number(), z.string()]))
+  params: z.record(z.string(), z.union([z.number(), z.string()])),
+  enabled: z.boolean().default(true)
 });
 
 const effectsSchema = z.object({
   effects: z.array(effectStepSchema).default([]),
-  refId: z.string().optional(),
-  sourceRefId: z.string().optional()
+  refId: z.string().nullish(),
+  sourceRefId: z.string().nullish()
 });
 
 /**

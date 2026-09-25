@@ -329,6 +329,16 @@ describe('validateNodeData — effects', () => {
     expect(out.ok).toBe(false);
   });
 
+  it('accetta il nodo appena creato, senza risultato né sorgente', () => {
+    const out = validateNodeData('effects', { effects: [], refId: null, sourceRefId: null });
+    expect(out.ok).toBe(true);
+  });
+
+  it('conserva un passo spento', () => {
+    const out = validateNodeData('effects', { effects: [{ id: 'pixelate', params: {}, enabled: false }] });
+    expect(out).toMatchObject({ ok: true, data: { effects: [{ enabled: false }] } });
+  });
+
   it('accetta refId e sourceRefId', () => {
     const out = validateNodeData('effects', { effects: [], refId: 'asset-1', sourceRefId: 'asset-0' });
     expect(out.ok).toBe(true);
