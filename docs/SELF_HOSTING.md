@@ -1,6 +1,6 @@
 # Self-hosting
 
-Run dazero against your own Supabase instance instead of ours. This covers the app + database;
+Run feega against your own Supabase instance instead of ours. This covers the app + database;
 read it alongside [`infra/compose/docker-compose.yml`](../infra/compose/docker-compose.yml)
 (the Supabase stack) and the two root env files, [`.env.example`](../.env.example) (the app) and
 [`infra/compose/.env.example`](../infra/compose/.env.example) (the stack).
@@ -60,7 +60,7 @@ return true` in 48 of them), so read the security note below before putting a pr
 
 ## One brand or many
 
-dazero is built multi-tenant: a brand is the tenant, every table is scoped to one, and an agency
+feega is built multi-tenant: a brand is the tenant, every table is scoped to one, and an agency
 runs several side by side. Self-hosting for yourself, that shell is furniture you never use — a
 switcher with one entry, a brands grid with one card, an invite screen for a team of one.
 
@@ -204,7 +204,7 @@ stops at the hosted product's credit ceiling.
   machine — it stops being safe the moment you put a reverse proxy in front of it. Expose the app
   only from a real build.
 - **No telemetry defaults to us.** PostHog, Sentry, Clarity, Seline and the Meta Pixel / CAPI all
-  read a key from your own env and no-op without one; none of them ship with an dazero project
+  read a key from your own env and no-op without one; none of them ship with an feega project
   id, token or DSN baked in as a default. (Seline and the Meta Pixel did until this was fixed — a
   self-hosted instance served from a real hostname was loading our pixel and identifying its own
   logged-in users, email included, into our Seline project. If you forked before that, update.)

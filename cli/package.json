@@ -6,12 +6,12 @@
   "author": "Andrea Buttarelli",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/andreabuttarelli/dazero.git",
+    "url": "git+https://github.com/andreabuttarelli/feega.git",
     "directory": "cli"
   },
   "homepage": "https://feega.app",
   "bugs": {
-    "url": "https://github.com/andreabuttarelli/dazero/issues"
+    "url": "https://github.com/andreabuttarelli/feega/issues"
   },
   "type": "module",
   "bin": {

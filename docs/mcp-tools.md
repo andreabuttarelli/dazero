@@ -1,4 +1,4 @@
-# I tool MCP di dazero
+# I tool MCP di feega
 
 > Generato da `node scripts/mcp-inventory.mjs --write`, leggendo `tools/list` dal server vero.
 > Non si modifica a mano: il prossimo che rigenera cancella le correzioni.
@@ -89,7 +89,7 @@ Change columns on rows that already exist in your org. Only the columns you send
 
 *Approve an ad campaign*
 
-Let a drafted campaign spend. REFUSED over an API key on purpose: an agent cannot approve its own spend — this only works from a signed-in person's own session (the app, or `dazero login`). If you are an agent and this fails, tell the person to approve it themselves.
+Let a drafted campaign spend. REFUSED over an API key on purpose: an agent cannot approve its own spend — this only works from a signed-in person's own session (the app, or `feega login`). If you are an agent and this fails, tell the person to approve it themselves.
 
 | campo | tipo | |
 |---|---|---|

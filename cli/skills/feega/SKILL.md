@@ -13,7 +13,7 @@ metadata:
   author: andreabuttarelli
   version: "2.0.0"
   homepage: https://feega.app
-  repository: https://github.com/andreabuttarelli/dazero
+  repository: https://github.com/andreabuttarelli/feega
   mcp: https://mcp.feega.app/mcp
 ---
 
@@ -155,18 +155,18 @@ is the only door that lets it spend, and it only opens for a signed-in person's 
 ## Install this skill
 
 ```bash
-npx skills add andreabuttarelli/dazero --skill feega
+npx skills add andreabuttarelli/feega --skill feega
 ```
 
 Or install the marketplace plugin (skill + remote MCP):
 
 ```bash
 # Claude Code
-/plugin marketplace add andreabuttarelli/dazero
-/plugin install feega@dazero
+/plugin marketplace add andreabuttarelli/feega
+/plugin install feega@feega
 
 # Codex
-codex plugin marketplace add andreabuttarelli/dazero
+codex plugin marketplace add andreabuttarelli/feega
 ```
 
 Or copy this folder into `.cursor/skills/feega/` / `~/.claude/skills/feega/`.  

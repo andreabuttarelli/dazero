@@ -7,7 +7,7 @@ deterministic by construction: it boots `vite dev` with **placeholder** Supabase
 
 ## I file `@real`
 
-`onboarding.real.spec.ts` vuole un database vero, con l'utente `test@dazero.co` e il brand `demo`
+`onboarding.real.spec.ts` vuole un database vero, con l'utente `test@feega.app` e il brand `demo`
 già seminati. `canvas.spec.ts` e `settings-brand.spec.ts` sono `@real` di un altro tipo: non
 seminano niente a mano, si costruiscono ognuno la propria org/progetto/tela usa-e-getta con
 `tests/e2e/fixtures/session.ts` (stesso pattern di `scripts/eval/canvas.ts` e

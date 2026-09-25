@@ -1777,7 +1777,7 @@ da una scrittura dell'agente; dal codice è più preciso ma va ricordato a ogni 
 
 ## 8bis. MCP e CLI scrivono sullo stesso canvas — e la collab vale anche per loro
 
-Un agente esterno via MCP e un `dazero` da terminale **non sono un caso a parte**: sono altri due
+Un agente esterno via MCP e un `feega` da terminale **non sono un caso a parte**: sono altri due
 scrittori sulle stesse tabelle. Questo funziona *gratis* per la propagazione — se scrivono su
 Postgres, `postgres_changes` porta il cambiamento a chiunque abbia il canvas aperto — ma tre cose
 vanno decise adesso, o si scoprono come difetti.
@@ -1810,7 +1810,7 @@ ne regge una sola. Serve una coppia, ripetuta identica su ogni tabella che regis
 actor_kind   text not null default 'user'
              check (actor_kind in ('user','agent','system'))
 actor_id     uuid references profiles(id)   -- null quando non è una persona
-actor_label  text                           -- 'Claude via MCP', 'dazero CLI', 'cron:publish'
+actor_label  text                           -- 'Claude via MCP', 'feega CLI', 'cron:publish'
 agent_key    text                           -- quale agente: 'mcp:claude', 'sidebar', 'cli'
 ```
 

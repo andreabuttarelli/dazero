@@ -161,7 +161,7 @@ async function main() {
     (k) => !process.env[k]
   );
   if (missing.length) {
-    console.error(`Missing required env: ${missing.join(', ')}. Never defaults to dazero's own project.`);
+    console.error(`Missing required env: ${missing.join(', ')}. Never defaults to feega's own project.`);
     process.exit(1);
   }
 

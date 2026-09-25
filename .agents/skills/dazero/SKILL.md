@@ -1,48 +1,48 @@
 ---
-name: dazero
+name: feega
 description: >-
-  Operate dazero (social media AI autopilot) via MCP tools or the dazero CLI:
+  Operate feega (social media AI autopilot) via MCP tools or the feega CLI:
   brands, posts, plans, studio, SEO/GEO, blog, and AI chat. Use when the user
-  mentions dazero, dazero.co, approving social posts, editorial plans,
+  mentions feega, feega.app, approving social posts, editorial plans,
   SEO/GEO audits, or managing brand content from an agent.
 license: Apache-2.0
 compatibility: >-
-  Requires network access to dazero.co (or PUBLIC_APP_URL). Prefer dazero MCP
-  when connected; otherwise the dazero CLI (Bun or installed binary) after OAuth login.
+  Requires network access to feega.app (or PUBLIC_APP_URL). Prefer feega MCP
+  when connected; otherwise the feega CLI (Bun or installed binary) after OAuth login.
 metadata:
   author: andreabuttarelli
   version: "1.0.0"
-  homepage: https://dazero.co
-  repository: https://github.com/andreabuttarelli/dazero
-  mcp: https://mcp.dazero.co/mcp
+  homepage: https://feega.app
+  repository: https://github.com/andreabuttarelli/feega
+  mcp: https://mcp.feega.app/mcp
 ---
 
-# dazero
+# feega
 
-Drive [dazero](https://dazero.co) — social media AI autopilot — through **MCP tools**
-(preferred) or the **`dazero` CLI**. Same OAuth identity. **No static API tokens.**
+Drive [feega](https://feega.app) — social media AI autopilot — through **MCP tools**
+(preferred) or the **`feega` CLI**. Same OAuth identity. **No static API tokens.**
 
 ## Choose interface
 
 | Situation | Action |
 |-----------|--------|
-| dazero MCP is connected | Call MCP tools (`list_brands`, `list_posts`, …) |
-| MCP not available | Shell: `dazero …` after `dazero login` |
-| Vague / multi-step ask | MCP `chat` or `dazero ai <slug> --message "…" --pipe` |
+| feega MCP is connected | Call MCP tools (`list_brands`, `list_posts`, …) |
+| MCP not available | Shell: `feega …` after `feega login` |
+| Vague / multi-step ask | MCP `chat` or `feega ai <slug> --message "…" --pipe` |
 
 Never invent REST endpoints or API keys.
 
 ## Auth (always OAuth)
 
-1. **Local MCP / CLI:** shared session at `~/.config/dazero/session.json`. MCP tool `login` opens the browser, or run `dazero login`.
-2. **Remote MCP** (`https://mcp.dazero.co/mcp`): send `Authorization: Bearer <access_token>` (same JWT the CLI stores). Missing Bearer → 401.
-3. Verify with `whoami` / `list_brands` or `dazero brands`.
+1. **Local MCP / CLI:** shared session at `~/.config/feega/session.json`. MCP tool `login` opens the browser, or run `feega login`.
+2. **Remote MCP** (`https://mcp.feega.app/mcp`): send `Authorization: Bearer <access_token>` (same JWT the CLI stores). Missing Bearer → 401.
+3. Verify with `whoami` / `list_brands` or `feega brands`.
 
 Setup details: [references/mcp.md](references/mcp.md).
 
 ## Operating rules
 
-1. Start with `list_brands` (or `dazero brands`) to learn **slugs**.
+1. Start with `list_brands` (or `feega brands`) to learn **slugs**.
 2. Pass `slug` on every brand-scoped call.
 3. Post/article ids accept **short unambiguous prefixes** from list output — never guess if ambiguous.
 4. Prefer specific tools (`approve_posts`, `edit_post`, …) over `chat` for precise edits.
@@ -65,7 +65,7 @@ Setup details: [references/mcp.md](references/mcp.md).
 ## Install this skill
 
 ```bash
-npx skills add andreabuttarelli/dazero --skill dazero
+npx skills add andreabuttarelli/feega --skill feega
 ```
 
-Or copy `skills/dazero/` into `.cursor/skills/dazero/` / `~/.claude/skills/dazero/`.
+Or copy `skills/feega/` into `.cursor/skills/feega/` / `~/.claude/skills/feega/`.

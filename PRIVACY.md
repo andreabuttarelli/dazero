@@ -7,13 +7,13 @@ before the product collects personal data again.
 
 Last updated: 19 August 2026
 
-This Privacy Policy explains how dazero collects, uses, shares and protects your personal data when you use our website and service. We process personal data in accordance with the EU General Data Protection Regulation (Regulation (EU) 2016/679, "GDPR") and Italian Legislative Decree 196/2003 as amended.
+This Privacy Policy explains how feega collects, uses, shares and protects your personal data when you use our website and service. We process personal data in accordance with the EU General Data Protection Regulation (Regulation (EU) 2016/679, "GDPR") and Italian Legislative Decree 196/2003 as amended.
 
 ## 1. Who is responsible for your data (Data Controller)
 
 The data controller is **Marco Di Franco**, a sole proprietorship (*ditta individuale*) established in Italy, VAT no. (P.IVA) **IT18500501004**.
 
-For any question about this policy or to exercise your rights, you can reach us at [privacy@dazero.co](mailto:privacy@dazero.co).
+For any question about this policy or to exercise your rights, you can reach us at [privacy@feega.app](mailto:privacy@feega.app).
 
 ## 2. What data we collect
 
@@ -22,7 +22,7 @@ We collect only what we need to run the service:
 ### Data you give us
 
 - **Account data** — name, email address and the password (stored hashed) you use to sign in.
-- **Brand & content data** — the brand information, notes, documents, images, products and instructions you add so dazero can plan and create posts for you.
+- **Brand & content data** — the brand information, notes, documents, images, products and instructions you add so feega can plan and create posts for you.
 - **Billing data** — when you subscribe, payment is handled by our payment processor; we receive your plan, billing status and invoice details, but **we never see or store your full card number**.
 - **Communications** — messages you send us by email or through the product.
 
@@ -52,7 +52,7 @@ We use the content and public post history you provide to generate posts with AI
 
 ## 4. AI-generated content
 
-dazero uses third-party AI services to draft captions and create images and videos based on the brand information and instructions you give us. Your prompts and brand context are sent to these providers only to produce your content. AI output can be inaccurate — you stay in control and nothing is published without your approval.
+feega uses third-party AI services to draft captions and create images and videos based on the brand information and instructions you give us. Your prompts and brand context are sent to these providers only to produce your content. AI output can be inaccurate — you stay in control and nothing is published without your approval.
 
 ## 5. AI transparency, automated decisions and human oversight
 
@@ -112,11 +112,11 @@ Under the GDPR you have the right to:
 - receive your data in a portable format;
 - withdraw consent at any time, without affecting prior processing.
 
-To exercise any of these rights, email [privacy@dazero.co](mailto:privacy@dazero.co). You also have the right to lodge a complaint with the Italian Data Protection Authority (*Garante per la protezione dei dati personali*).
+To exercise any of these rights, email [privacy@feega.app](mailto:privacy@feega.app). You also have the right to lodge a complaint with the Italian Data Protection Authority (*Garante per la protezione dei dati personali*).
 
 ## 11. Children
 
-dazero is not directed to children under 16 and we do not knowingly collect their personal data. If you believe a child has provided us data, contact us and we will delete it.
+feega is not directed to children under 16 and we do not knowingly collect their personal data. If you believe a child has provided us data, contact us and we will delete it.
 
 ## 12. Security
 
@@ -128,4 +128,4 @@ We may update this Privacy Policy from time to time. When we do, we will revise 
 
 ---
 
-Questions about your privacy? Write to [privacy@dazero.co](mailto:privacy@dazero.co).
+Questions about your privacy? Write to [privacy@feega.app](mailto:privacy@feega.app).

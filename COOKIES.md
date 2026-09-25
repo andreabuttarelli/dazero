@@ -7,7 +7,7 @@ before the product collects personal data again.
 
 Last updated: 19 August 2026
 
-This Cookie Policy explains how dazero uses cookies and similar technologies when you visit our website. By continuing to use our site you agree to the use of cookies as described here.
+This Cookie Policy explains how feega uses cookies and similar technologies when you visit our website. By continuing to use our site you agree to the use of cookies as described here.
 
 ## 1. What are cookies?
 
@@ -53,4 +53,4 @@ We may update this Cookie Policy from time to time. When we do, we will revise t
 
 ---
 
-Questions about cookies? Write to [privacy@dazero.co](mailto:privacy@dazero.co).
+Questions about cookies? Write to [privacy@feega.app](mailto:privacy@feega.app).

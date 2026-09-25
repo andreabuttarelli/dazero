@@ -32,7 +32,7 @@ warn()    { echo -e "${YELLOW}⚠${NC} $1"; }
 
 read_skill_content() {
   # Try to download from GitHub, fallback to embedded
-  local url="https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/skills/feega-cli.md"
+  local url="https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/skills/feega-cli.md"
   local content
   content=$(curl -sSL "$url" 2>/dev/null) || true
 
@@ -79,7 +79,7 @@ SKILL_EOF
 install_cursor_skill() {
   local dest_dir="$1"
   local label="$2"
-  local base="https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/skills/feega"
+  local base="https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/skills/feega"
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   local local_skill=""
@@ -135,7 +135,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --project   Install in current project (all tools)"
       echo ""
       echo "Publishable skill (skills.sh / npx skills):"
-      echo "  npx skills add andreabuttarelli/dazero --skill feega"
+      echo "  npx skills add andreabuttarelli/feega --skill feega"
       echo ""
       echo "Supported tools:"
       echo "  Claude Code, Cursor, GitHub Copilot, Windsurf, Cline,"
@@ -261,7 +261,7 @@ AIDER_EOF
 
   # llms.txt (universal standard)
   if [[ ! -f "llms.txt" ]]; then
-    curl -sSL "https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/llms.txt" -o "llms.txt" 2>/dev/null && \
+    curl -sSL "https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/llms.txt" -o "llms.txt" 2>/dev/null && \
       success "llms.txt creato" || true
   else
     info "llms.txt già esistente"
@@ -293,6 +293,6 @@ echo "  Ora puoi dire alla tua AI:"
 echo -e "  ${BOLD}\"Usa feega MCP (o la CLI) per elencare i brand\"${NC}"
 echo ""
 echo "  Cursor Agent Skill: skills/feega/SKILL.md"
-echo "  Directory install:  npx skills add andreabuttarelli/dazero --skill feega"
-echo "  Docs MCP: https://github.com/andreabuttarelli/dazero/blob/main/cli/docs/mcp.md"
+echo "  Directory install:  npx skills add andreabuttarelli/feega --skill feega"
+echo "  Docs MCP: https://github.com/andreabuttarelli/feega/blob/main/cli/docs/mcp.md"
 echo ""

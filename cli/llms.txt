@@ -7,7 +7,7 @@ org-scoped, richer surface for agents (see docs/mcp.md and skills/feega/referenc
 ## Installation
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash
 ```
 
 ## Commands

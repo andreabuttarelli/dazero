@@ -3,7 +3,7 @@ import { ssrNoExternalForDeploy } from './ssr-no-external';
 
 describe('ssrNoExternalForDeploy', () => {
   it('bundles @feega/* for node, whose Docker final stage installs without packages/', () => {
-    expect(ssrNoExternalForDeploy('node')).toContainEqual(/^@dazero\//);
+    expect(ssrNoExternalForDeploy('node')).toContainEqual(/^@feega\//);
   });
 
   it('leaves simple-icons external for node, which ships full node_modules and needs no dead copy inlined', () => {
@@ -15,6 +15,6 @@ describe('ssrNoExternalForDeploy', () => {
   });
 
   it('does not bundle @feega/* for Vercel, which installs packages/ workspaces normally', () => {
-    expect(ssrNoExternalForDeploy('')).not.toContainEqual(/^@dazero\//);
+    expect(ssrNoExternalForDeploy('')).not.toContainEqual(/^@feega\//);
   });
 });

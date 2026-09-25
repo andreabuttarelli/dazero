@@ -6,7 +6,7 @@
 |---------|---------|
 | **npm** | `npm install -g feega-cli` |
 | **Homebrew** | `brew tap andreabuttarelli/tap https://github.com/andreabuttarelli/homebrew-tap && brew install feega` (tap repo created once, see below) |
-| **curl** | `curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh \| bash` |
+| **curl** | `curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh \| bash` |
 | **From source** | `bun install && bun run cli.ts` |
 
 ## npm
@@ -29,7 +29,7 @@ One-time npm setup:
 4. Push a tag: `git tag cli-v0.1.0 && git push origin cli-v0.1.0`.
 
 Optional: configure [Trusted Publishing](https://docs.npmjs.com/trusted-publishers) for
-`andreabuttarelli/dazero` → workflow `cli-release.yml` and drop the token later.
+`andreabuttarelli/feega` → workflow `cli-release.yml` and drop the token later.
 
 ## Homebrew
 
@@ -43,7 +43,7 @@ brew install feega
 feega --version
 ```
 
-On each `cli-v*` release, CI on `andreabuttarelli/dazero`:
+On each `cli-v*` release, CI on `andreabuttarelli/feega`:
 
 1. Builds `feega-<platform>` binaries and `.tar.gz` archives
 2. Attaches them to the GitHub Release (raw binaries keep `install.sh` working)

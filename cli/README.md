@@ -67,7 +67,7 @@ feega login
 **Installer (standalone binary)** — macOS arm64/x64 and Linux arm64/x64, no Node/Bun required:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash
 feega login
 ```
 
@@ -104,7 +104,7 @@ Full command dump: [`llms.txt`](llms.txt) · more docs: [`docs/`](docs/)
 Requires [Bun](https://bun.sh).
 
 ```bash
-git clone https://github.com/andreabuttarelli/dazero.git
+git clone https://github.com/andreabuttarelli/feega.git
 cd feega-cli
 bun install
 bun run cli.ts --help
@@ -161,7 +161,7 @@ using the custom-scheme OAuth callback — use **stdio** above, update Cursor (l
 Publishable [Agent Skill](https://agentskills.io) for Cursor, Claude, skills.sh, and friends:
 
 ```bash
-npx skills add andreabuttarelli/dazero --skill feega
+npx skills add andreabuttarelli/feega --skill feega
 # or
 bash scripts/install-skill.sh --project
 ```
@@ -176,11 +176,11 @@ Same skill + remote MCP, packaged for plugin install and directory submit:
 
 ```bash
 # Claude Code
-/plugin marketplace add andreabuttarelli/dazero
+/plugin marketplace add andreabuttarelli/feega
 /plugin install feega@feega
 
 # Codex
-codex plugin marketplace add andreabuttarelli/dazero
+codex plugin marketplace add andreabuttarelli/feega
 ```
 
 Submit checklist (Claude community directory + OpenAI Plugins Directory): **[`docs/plugins.md`](docs/plugins.md)**.

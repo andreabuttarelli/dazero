@@ -1,14 +1,14 @@
 {
-  "name": "dazero",
+  "name": "feega",
   "interface": {
-    "displayName": "dazero"
+    "displayName": "feega"
   },
   "plugins": [
     {
-      "name": "dazero",
+      "name": "feega",
       "source": {
         "source": "local",
-        "path": "./cli/plugins/dazero"
+        "path": "./cli/plugins/feega"
       },
       "policy": {
         "installation": "AVAILABLE",

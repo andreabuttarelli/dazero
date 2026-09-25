@@ -104,7 +104,7 @@ the CLI).
 Publishable Agent Skill (agentskills.io):
 
 ```bash
-npx skills add andreabuttarelli/dazero --skill feega
+npx skills add andreabuttarelli/feega --skill feega
 ```
 
 Sources: [`skills/feega/`](../skills/feega/) (`SKILL.md` + `references/`).  

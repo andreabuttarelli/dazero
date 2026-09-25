@@ -52,7 +52,7 @@ Riepilogo campagne paid (campagne, totali, serie storica), candidati al boost (p
           "period_end": "2026-08-13",
           "synced_at": "2026-08-13T08:00:00Z"
         },
-        "source": "dazero"
+        "source": "feega"
       }
     ],
     "totals": { "spend": 4.2, "impressions": 2100, "clicks": 88, "reach": 1900, "conversions": 2, "active": 1, "proposed": 2 },
@@ -92,7 +92,7 @@ Riepilogo campagne paid (campagne, totali, serie storica), candidati al boost (p
 **Esempio**:
 
 ```bash
-curl -s "https://dazero.co/api/v1/brands/mio-brand/ads?sync=1" \
+curl -s "https://feega.app/api/v1/brands/mio-brand/ads?sync=1" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -150,7 +150,7 @@ Esegue un'azione sulle campagne ads, selezionata dal campo `action` del body.
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/ads" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/ads" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"action":"approve","campaignId":"0f3d...","budgetAmount":15,"goal":"engagement"}'
 ```
@@ -194,7 +194,7 @@ Elenco dei remix brief attuali del brand, ordinati per rank.
 **Esempio**:
 
 ```bash
-curl -s "https://dazero.co/api/v1/brands/mio-brand/ads/remix" \
+curl -s "https://feega.app/api/v1/brands/mio-brand/ads/remix" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -252,7 +252,7 @@ Analizza gli ad dei competitor con la visione AI e sostituisce i remix brief pre
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/ads/remix" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/ads/remix" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"ads":[{"adArchiveId":"1012345678","pageName":"Competitor X","body":"...","cta":"Shop Now"}]}'
 ```
@@ -283,7 +283,7 @@ Elenca tutti i prodotti del catalogo (ordinati per data di creazione).
 **Esempio**:
 
 ```bash
-curl -s "https://dazero.co/api/v1/brands/mio-brand/products" -H "Authorization: Bearer $TOKEN"
+curl -s "https://feega.app/api/v1/brands/mio-brand/products" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -312,7 +312,7 @@ Ri-sincronizza l'intero catalogo dal sito e-commerce del brand (Shopify / WooCom
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/products" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/products" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -350,7 +350,7 @@ Aggiorna i campi di un singolo prodotto. Solo i campi presenti nel body cambiano
 **Esempio**:
 
 ```bash
-curl -s -X PUT "https://dazero.co/api/v1/brands/mio-brand/products/PRODUCT_ID" \
+curl -s -X PUT "https://feega.app/api/v1/brands/mio-brand/products/PRODUCT_ID" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"featured":true,"pricing":"€99"}'
 ```
@@ -377,7 +377,7 @@ Elimina un prodotto del brand. Tool MCP: `delete_product`.
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/products/PRODUCT_ID" \
+curl -s -X DELETE "https://feega.app/api/v1/brands/mio-brand/products/PRODUCT_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -395,7 +395,7 @@ Elenca le API key dell'utente che hanno accesso a questo brand (mai le chiavi ra
     {
       "id": "uuid",
       "name": "CI deploy",
-      "key_prefix": "dazero_live_a1",
+      "key_prefix": "feega_live_a1",
       "permissions": { "brand_ids": ["BRAND_ID"], "scopes": ["read", "write"] },
       "created_at": "2026-06-01T10:00:00Z",
       "last_used_at": "2026-08-12T09:00:00Z"
@@ -414,7 +414,7 @@ Elenca le API key dell'utente che hanno accesso a questo brand (mai le chiavi ra
 **Esempio**:
 
 ```bash
-curl -s "https://dazero.co/api/v1/brands/mio-brand/api-keys" -H "Authorization: Bearer $TOKEN"
+curl -s "https://feega.app/api/v1/brands/mio-brand/api-keys" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -438,10 +438,10 @@ Crea una nuova API key. Richiede JWT (le API key non possono crearne altre). La 
   "key": {
     "id": "uuid",
     "name": "CI deploy",
-    "key_prefix": "dazero_live_a1",
+    "key_prefix": "feega_live_a1",
     "permissions": { "brand_ids": ["BRAND_ID"], "scopes": ["read", "write"] },
     "created_at": "2026-08-13T10:00:00Z",
-    "raw": "dazero_live_<48 hex>"
+    "raw": "feega_live_<48 hex>"
   },
   "message": "Copy this key now — you will not be able to see it again."
 }
@@ -457,7 +457,7 @@ Crea una nuova API key. Richiede JWT (le API key non possono crearne altre). La 
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/api-keys" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/api-keys" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"name":"CI deploy","scopes":["read","write"]}'
 ```
@@ -484,6 +484,6 @@ Revoca una API key. La key deve appartenere all'utente autenticato ed essere sco
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/api-keys/KEY_ID" \
+curl -s -X DELETE "https://feega.app/api/v1/brands/mio-brand/api-keys/KEY_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```

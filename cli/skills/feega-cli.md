@@ -4,7 +4,7 @@ Flat copy for Claude Code / multi-tool installers.
 **Canonical publishable skill:** [`feega/SKILL.md`](./feega/SKILL.md) (Agent Skills / skills.sh).
 
 ```bash
-npx skills add andreabuttarelli/dazero --skill feega
+npx skills add andreabuttarelli/feega --skill feega
 bash scripts/install-skill.sh --project
 ```
 
@@ -43,7 +43,7 @@ Details: [feega/references/mcp.md](./feega/references/mcp.md) · [tools.md](./fe
 ## CLI fallback
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash
 feega login
 feega brands
 feega content <slug> --status pending_user

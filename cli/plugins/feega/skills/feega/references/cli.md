@@ -6,14 +6,14 @@ Every command is brand-scoped (`feega <command> <slug>`).
 ## Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash
 feega login
 ```
 
 From source (Bun):
 
 ```bash
-git clone https://github.com/andreabuttarelli/dazero.git
+git clone https://github.com/andreabuttarelli/feega.git
 cd feega/cli && bun install
 bun run cli.ts --help
 ```

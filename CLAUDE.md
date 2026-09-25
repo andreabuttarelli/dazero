@@ -1,27 +1,27 @@
-# dazero — Social Media AI Autopilot
+# feega — Social Media AI Autopilot
 
 ## CLI
 
-The `dazero` CLI lives in this repo at **`cli/`** (Apache-2.0, source of CLI + MCP server +
+The `feega` CLI lives in this repo at **`cli/`** (Apache-2.0, source of CLI + MCP server +
 agent skills + Claude/Codex plugins). It is a thin HTTP client — it never touches the database,
 it only calls the API in `src/routes/api/v1/`. CLI, endpoints and MCP tools change in the same
 PRs here; releases are `cli-v*` tags (workflow `cli-release.yml`).
 
 ```bash
 # Install (standalone binary, no runtime needed)
-curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash
-dazero login
+curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash
+feega login
 
 # Quick commands
-dazero brands                                    # List brands
-dazero dashboard <slug>                          # Brand overview
-dazero content <slug> --status pending_user      # Pending posts
-dazero approve <slug> --all                      # Approve all pending
-dazero post <slug> <id> edit --caption "..."     # Edit post
-dazero calendar <slug>                           # Monthly scheduled posts
-dazero products <slug> sync                      # Re-import catalog from the connected store
-dazero ads <slug> --propose                      # Propose ad boosts from top organic posts
-dazero upgrade <slug>                            # Open billing checkout
+feega brands                                    # List brands
+feega dashboard <slug>                          # Brand overview
+feega content <slug> --status pending_user      # Pending posts
+feega approve <slug> --all                      # Approve all pending
+feega post <slug> <id> edit --caption "..."     # Edit post
+feega calendar <slug>                           # Monthly scheduled posts
+feega products <slug> sync                      # Re-import catalog from the connected store
+feega ads <slug> --propose                      # Propose ad boosts from top organic posts
+feega upgrade <slug>                            # Open billing checkout
 ```
 
 ## Lo schema del database (26 tabelle, progetto `klnswzhhgrqvbfjzioul`)
@@ -104,7 +104,7 @@ mano: sono ciò che trasforma una colonna sbagliata in un errore di compilazione
 - **API** (`src/routes/api/v1/`) — REST endpoints the CLI calls. Adding a CLI command usually
   starts with an endpoint here.
 - **Shared queries** (`src/lib/server/cli-queries.ts`) — reusable read functions
-- **Auth** (`src/lib/server/cli-auth.ts`) — Bearer auth (Supabase JWT or `dazero_` API key),
+- **Auth** (`src/lib/server/cli-auth.ts`) — Bearer auth (Supabase JWT or `feega_` API key),
   `loadBrandForUser`, and `gateAiAction` (paid plan + credits) for endpoints that spend AI
 - **Login callback** (`src/routes/cli/callback/`) — the page the browser login flow posts back to
 
@@ -336,7 +336,7 @@ leaving it to lie in a report later.
   brands doesn't take them away.
 - Cost is read from `ai_calls` **while the brand exists**: after teardown the cascade takes it.
 - An eval run from a worktree measures a **hybrid**: `$lib` points at your copy, but
-  `@dazero/*` resolves from the main checkout's `node_modules`. If you touched `packages/`,
+  `@feega/*` resolves from the main checkout's `node_modules`. If you touched `packages/`,
   your eval doesn't see it.
 
 The criterion of a good scenario is one only: **if you re-ran the real failures already seen,
@@ -444,7 +444,7 @@ request; the others you load yourself when the task matches.
 
 ### Issue tracker
 
-Issues live in GitHub Issues (andreabuttarelli/dazero), via the `gh` CLI. See
+Issues live in GitHub Issues (andreabuttarelli/feega), via the `gh` CLI. See
 `docs/agents/issue-tracker.md`.
 
 ### Triage labels
@@ -456,8 +456,8 @@ wontfix). See `docs/agents/triage-labels.md`.
 
 Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
 
-## Tasks = Notion "dazero > Tasks"
+## Tasks = Notion "feega > Tasks"
 
-When "the tasks" are mentioned, the **dazero > Tasks** database is meant (page "Tasks",
+When "the tasks" are mentioned, the **feega > Tasks** database is meant (page "Tasks",
 inline database "✅ Team Tasks", data source `collection://d5551c37-1a6f-4bf2-89c8-af84a1d5dcec`).
 Don't look for other task databases.

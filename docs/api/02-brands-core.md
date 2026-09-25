@@ -31,7 +31,7 @@ Elenco di tutti i brand accessibili all'utente autenticato (per API key: limitat
 **Esempio**:
 
 ```bash
-curl -s "https://dazero.co/api/v1/brands" -H "Authorization: Bearer $TOKEN"
+curl -s "https://feega.app/api/v1/brands" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -87,7 +87,7 @@ Note: `plan` è `null` senza piano attivo; `kit` è `null` senza riga `brand_kit
 **Esempio**:
 
 ```bash
-curl -s "https://dazero.co/api/v1/brands/mio-brand" -H "Authorization: Bearer $TOKEN"
+curl -s "https://feega.app/api/v1/brands/mio-brand" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -140,7 +140,7 @@ Note: `monthLabel` segue la lingua del brand (`content_prefs.language`, fallback
 **Esempio**:
 
 ```bash
-curl -s "https://dazero.co/api/v1/brands/mio-brand/calendar?month=2026-08" -H "Authorization: Bearer $TOKEN"
+curl -s "https://feega.app/api/v1/brands/mio-brand/calendar?month=2026-08" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -163,7 +163,7 @@ Livello di pubblicazione corrente (`brands.content_prefs.publishing.mode`) e acc
 **Esempio**:
 
 ```bash
-curl -s "https://dazero.co/api/v1/brands/mio-brand/publishing" -H "Authorization: Bearer $TOKEN"
+curl -s "https://feega.app/api/v1/brands/mio-brand/publishing" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -195,7 +195,7 @@ Imposta il livello di pubblicazione: `manual` (solo account auto-publish immedia
 **Esempio**:
 
 ```bash
-curl -s -X PUT "https://dazero.co/api/v1/brands/mio-brand/publishing" \
+curl -s -X PUT "https://feega.app/api/v1/brands/mio-brand/publishing" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"mode":"auto_curated"}'
@@ -228,7 +228,7 @@ Gli id restituiti sono quelli che `POST /posts` accetta in `media_ids`.
       "title": "Foto prodotto",
       "description": "…",
       "tags": ["prodotto"],
-      "url": "https://dazero.co/a/K7BX2MQ4",
+      "url": "https://feega.app/a/K7BX2MQ4",
       "created_at": "2026-08-13T10:00:00.000Z"
     }
   ]
@@ -238,7 +238,7 @@ Gli id restituiti sono quelli che `POST /posts` accetta in `media_ids`.
 **Esempio**:
 
 ```bash
-curl -s "https://dazero.co/api/v1/brands/mio-brand/media?query=logo&limit=20" \
+curl -s "https://feega.app/api/v1/brands/mio-brand/media?query=logo&limit=20" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -281,7 +281,7 @@ viene speso: il file viene copiato, non generato.
   "width": 1080,
   "height": 1350,
   "source_url": "https://cdn.example.com/render/final.png",
-  "url": "https://dazero.co/a/K7BX2MQ4"
+  "url": "https://feega.app/a/K7BX2MQ4"
 }
 ```
 
@@ -291,7 +291,7 @@ ed è il valore conservato come provenienza sulla riga di libreria.
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/media" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/media" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"url":"https://cdn.example.com/render/final.png","title":"Chiusura campagna"}'

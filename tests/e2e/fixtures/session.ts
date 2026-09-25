@@ -51,7 +51,7 @@ async function checked<T>(result: PromiseLike<{ data: T; error: { message: strin
  */
 export async function createE2eSession(opts: { withCredits?: boolean } = {}): Promise<E2eSession> {
   const db = adminClient();
-  const email = `e2e-shell-${randomUUID()}@dazero.co`;
+  const email = `e2e-shell-${randomUUID()}@feega.app`;
   const password = randomUUID();
 
   const created = await checked(db.auth.admin.createUser({ email, password, email_confirm: true }));

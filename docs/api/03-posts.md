@@ -42,7 +42,7 @@ Elenca i post del brand (max 50, ordinati per `created_at` decrescente), con fil
 **Esempio**:
 
 ```bash
-curl -s "https://dazero.co/api/v1/brands/mio-brand/posts?status=pending_user" \
+curl -s "https://feega.app/api/v1/brands/mio-brand/posts?status=pending_user" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -83,7 +83,7 @@ Senza media valgono solo le piattaforme che reggono il testo da solo: `facebook`
   "scheduled_for": "2030-05-16T07:00:00.000Z",
   "scheduled_for_local": "2030-05-16 09:00 (Europe/Rome)",
   "slot": "Thu 09:00",
-  "review_url": "https://dazero.co/app/mio-brand/posts/a1b2c3d4-…"
+  "review_url": "https://feega.app/app/mio-brand/posts/a1b2c3d4-…"
 }
 ```
 
@@ -110,7 +110,7 @@ post resta una bozza senza data, fuori dal calendario ma elencata da `GET /posts
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/posts" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{
@@ -148,7 +148,7 @@ Elimina in blocco i post di uno status (default `pending_user`). Rifiuta `publis
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/posts?status=pending_user" \
+curl -s -X DELETE "https://feega.app/api/v1/brands/mio-brand/posts?status=pending_user" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -197,7 +197,7 @@ che non riconosce non ci finisce dentro. È una conferma, non l'eco della richie
 **Esempio**:
 
 ```bash
-curl -s -X PUT "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID" \
+curl -s -X PUT "https://feega.app/api/v1/brands/mio-brand/posts/POST_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{"caption":"Nuovo caption","platforms":["instagram","x"]}'
@@ -226,7 +226,7 @@ Elimina un singolo post. Solo post in status `pending_user`.
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID" \
+curl -s -X DELETE "https://feega.app/api/v1/brands/mio-brand/posts/POST_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -261,7 +261,7 @@ Senza account collegati per la piattaforma:
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/approve" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/posts/POST_ID/approve" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -289,7 +289,7 @@ Pubblica immediatamente un post già approvato tramite Zernio.
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/publish" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/posts/POST_ID/publish" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -328,7 +328,7 @@ Ri-programma un post: annulla la copia esistente su Zernio, riporta lo status ad
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/reschedule" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/posts/POST_ID/reschedule" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{"scheduled_for":"2026-08-20T18:00"}'
@@ -371,7 +371,7 @@ Post che ha già un'immagine (nessuna azione):
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/render" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/posts/POST_ID/render" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -415,7 +415,7 @@ Con eliminazioni fallite:
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/POST_ID/revoke" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/posts/POST_ID/revoke" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data-raw '{"reason":"Contenuto non conforme"}'
@@ -452,6 +452,6 @@ Note: i fallimenti per singolo post finiscono in `results`, non nello status HTT
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://dazero.co/api/v1/brands/mio-brand/posts/approve-all" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/posts/approve-all" \
   -H "Authorization: Bearer $TOKEN"
 ```

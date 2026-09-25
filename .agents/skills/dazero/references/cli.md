@@ -1,42 +1,42 @@
-# dazero CLI (fallback)
+# feega CLI (fallback)
 
-Use when MCP is not connected. Same OAuth session as MCP (`~/.config/dazero/session.json`).
+Use when MCP is not connected. Same OAuth session as MCP (`~/.config/feega/session.json`).
 
 ## Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash
-dazero login
+curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash
+feega login
 ```
 
 From source (Bun):
 
 ```bash
-git clone https://github.com/andreabuttarelli/dazero.git
-cd dazero-cli && bun install
+git clone https://github.com/andreabuttarelli/feega.git
+cd feega-cli && bun install
 bun run cli.ts --help
 ```
 
 ## Common commands
 
 ```bash
-dazero brands
-dazero dashboard <slug>
-dazero content <slug> --status pending_user
-dazero approve <slug> --all
-dazero post <slug> <id> edit --caption "..."
-dazero post <slug> <id> regenerate --instruction "..."
-dazero post <slug> <id> slide --index 1 --instruction "..."
-dazero post <slug> <id> approve|publish|reject
-dazero plan <slug> propose
-dazero weekly-plan <slug> plan --week 0
-dazero weekly-plan <slug> produce --week 0
-dazero studio <slug> add-note --text "..."
-dazero seo <slug>
-dazero geo <slug>
-dazero web <slug> generate --topic "..."
-dazero ai <slug> --message "..." --pipe
+feega brands
+feega dashboard <slug>
+feega content <slug> --status pending_user
+feega approve <slug> --all
+feega post <slug> <id> edit --caption "..."
+feega post <slug> <id> regenerate --instruction "..."
+feega post <slug> <id> slide --index 1 --instruction "..."
+feega post <slug> <id> approve|publish|reject
+feega plan <slug> propose
+feega weekly-plan <slug> plan --week 0
+feega weekly-plan <slug> produce --week 0
+feega studio <slug> add-note --text "..."
+feega seo <slug>
+feega geo <slug>
+feega web <slug> generate --topic "..."
+feega ai <slug> --message "..." --pipe
 ```
 
-Full dump: repo root [`llms.txt`](https://github.com/andreabuttarelli/dazero/blob/main/cli/llms.txt).
+Full dump: repo root [`llms.txt`](https://github.com/andreabuttarelli/feega/blob/main/cli/llms.txt).
 Tool mapping: [tools.md](tools.md).

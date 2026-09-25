@@ -7,7 +7,7 @@
  * stops before touching the next, naming the file and (when Postgres reports a character
  * position) the line inside it.
  *
- * DATABASE_URL is required and NEVER defaults to dazero's own database — this script is meant
+ * DATABASE_URL is required and NEVER defaults to feega's own database — this script is meant
  * to run against a self-hoster's own Postgres.
  *
  *   DATABASE_URL=postgres://... node --env-file-if-exists=.env scripts/db-migrate.mjs

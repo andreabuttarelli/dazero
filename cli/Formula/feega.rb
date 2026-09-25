@@ -16,29 +16,29 @@ class Feega < Formula
   license "Apache-2.0"
 
   livecheck do
-    url "https://github.com/andreabuttarelli/dazero/releases/latest"
+    url "https://github.com/andreabuttarelli/feega/releases/latest"
     regex(%r{/tag/cli-v?(\d+(?:\.\d+)+)"}i)
     strategy :github_latest
   end
 
   on_macos do
     on_arm do
-      url "https://github.com/andreabuttarelli/dazero/releases/download/cli-v#{version}/feega-macos-arm64.tar.gz"
+      url "https://github.com/andreabuttarelli/feega/releases/download/cli-v#{version}/feega-macos-arm64.tar.gz"
       sha256 "REPLACE_SHA256_MACOS_ARM64"
     end
     on_intel do
-      url "https://github.com/andreabuttarelli/dazero/releases/download/cli-v#{version}/feega-macos-x64.tar.gz"
+      url "https://github.com/andreabuttarelli/feega/releases/download/cli-v#{version}/feega-macos-x64.tar.gz"
       sha256 "REPLACE_SHA256_MACOS_X64"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/andreabuttarelli/dazero/releases/download/cli-v#{version}/feega-linux-arm64.tar.gz"
+      url "https://github.com/andreabuttarelli/feega/releases/download/cli-v#{version}/feega-linux-arm64.tar.gz"
       sha256 "REPLACE_SHA256_LINUX_ARM64"
     end
     on_intel do
-      url "https://github.com/andreabuttarelli/dazero/releases/download/cli-v#{version}/feega-linux-x64.tar.gz"
+      url "https://github.com/andreabuttarelli/feega/releases/download/cli-v#{version}/feega-linux-x64.tar.gz"
       sha256 "REPLACE_SHA256_LINUX_X64"
     end
   end

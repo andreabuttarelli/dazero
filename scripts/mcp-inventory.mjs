@@ -76,7 +76,7 @@ function render(result) {
   }
 
   const out = [];
-  out.push('# I tool MCP di dazero');
+  out.push('# I tool MCP di feega');
   out.push('');
   out.push('> Generato da `node scripts/mcp-inventory.mjs --write`, leggendo `tools/list` dal server vero.');
   out.push('> Non si modifica a mano: il prossimo che rigenera cancella le correzioni.');

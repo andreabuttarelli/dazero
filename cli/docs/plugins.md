@@ -10,8 +10,8 @@ Repo marketplaces (self-host / team install):
 
 | Agent | Marketplace file | Add / install |
 |-------|------------------|---------------|
-| Claude Code | [`.claude-plugin/marketplace.json`](../.claude-plugin/marketplace.json) | `/plugin marketplace add andreabuttarelli/dazero` then `/plugin install feega@dazero` |
-| Codex / ChatGPT | [`.agents/plugins/marketplace.json`](../.agents/plugins/marketplace.json) | `codex plugin marketplace add andreabuttarelli/dazero` |
+| Claude Code | [`.claude-plugin/marketplace.json`](../.claude-plugin/marketplace.json) | `/plugin marketplace add andreabuttarelli/feega` then `/plugin install feega@feega` |
+| Codex / ChatGPT | [`.agents/plugins/marketplace.json`](../.agents/plugins/marketplace.json) | `codex plugin marketplace add andreabuttarelli/feega` |
 
 Local test (Claude):
 

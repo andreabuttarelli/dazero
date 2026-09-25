@@ -6,8 +6,8 @@ Package: [`skills/feega/`](./feega/) — follows [agentskills.io](https://agents
 Canonical for `npx skills` / skills.sh. The Claude/Codex plugin mirrors the same tree at [`plugins/feega/skills/feega/`](../plugins/feega/skills/feega/) — run `bash scripts/sync-plugin-skill.sh` after skill edits.
 
 ```bash
-npx skills add andreabuttarelli/dazero --skill feega
-npx skills add andreabuttarelli/dazero --skill feega -g   # global
+npx skills add andreabuttarelli/feega --skill feega
+npx skills add andreabuttarelli/feega --skill feega -g   # global
 ```
 
 Appears on directories that index public GitHub skills (e.g. skills.sh) via install telemetry — no separate submission.
@@ -26,11 +26,11 @@ Full submit checklist: [`docs/plugins.md`](../docs/plugins.md).
 
 ```bash
 # Claude Code — add this repo as a marketplace, then install
-/plugin marketplace add andreabuttarelli/dazero
-/plugin install feega@dazero
+/plugin marketplace add andreabuttarelli/feega
+/plugin install feega@feega
 
 # Codex — add marketplace from the repo
-codex plugin marketplace add andreabuttarelli/dazero
+codex plugin marketplace add andreabuttarelli/feega
 ```
 
 Public directory submit forms:

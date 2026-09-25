@@ -7,22 +7,22 @@ before the product collects personal data again.
 
 Last updated: 19 August 2026
 
-These Terms of Service ("Terms") govern your access to and use of dazero (the "Service"). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.
+These Terms of Service ("Terms") govern your access to and use of feega (the "Service"). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.
 
 ## 1. Who we are
 
-The Service is operated by **Marco Di Franco**, a sole proprietorship (*ditta individuale*) established in Italy, VAT no. (P.IVA) **IT18500501004** ("we", "us", "our"). You can contact us at [privacy@dazero.co](mailto:privacy@dazero.co).
+The Service is operated by **Marco Di Franco**, a sole proprietorship (*ditta individuale*) established in Italy, VAT no. (P.IVA) **IT18500501004** ("we", "us", "our"). You can contact us at [privacy@feega.app](mailto:privacy@feega.app).
 
 ## 2. The Service
 
-dazero is an AI assistant that helps you plan, create and publish social-media content. It drafts a content calendar, writes captions, generates images and videos, and — once you approve — can publish to the social accounts you connect. The Service is provided for business and professional use.
+feega is an AI assistant that helps you plan, create and publish social-media content. It drafts a content calendar, writes captions, generates images and videos, and — once you approve — can publish to the social accounts you connect. The Service is provided for business and professional use.
 
 ## 3. Eligibility & accounts
 
 - You must be at least 18 years old and able to enter into a binding contract.
 - You are responsible for the accuracy of your account information and for keeping your credentials secure.
 - You are responsible for all activity that happens under your account.
-- Notify us promptly at [privacy@dazero.co](mailto:privacy@dazero.co) if you suspect unauthorised use.
+- Notify us promptly at [privacy@feega.app](mailto:privacy@feega.app) if you suspect unauthorised use.
 
 ## 4. Connected social accounts
 
@@ -102,7 +102,7 @@ We may suspend or terminate accounts that breach these rules.
 
 ## 12. Intellectual property
 
-The Service itself — including its software, design, branding and the dazero name — belongs to us and is protected by intellectual-property laws. These Terms do not grant you any right to our branding except as needed to use the Service. Subject to your compliance with these Terms and applicable third-party rights, you may use the content you generate for your own business purposes.
+The Service itself — including its software, design, branding and the feega name — belongs to us and is protected by intellectual-property laws. These Terms do not grant you any right to our branding except as needed to use the Service. Subject to your compliance with these Terms and applicable third-party rights, you may use the content you generate for your own business purposes.
 
 ## 13. Third-party services
 
@@ -142,4 +142,4 @@ We may update these Terms from time to time. When we make material changes we wi
 
 ---
 
-Questions about these Terms? Write to [privacy@dazero.co](mailto:privacy@dazero.co).
+Questions about these Terms? Write to [privacy@feega.app](mailto:privacy@feega.app).

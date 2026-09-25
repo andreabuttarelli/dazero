@@ -71,7 +71,7 @@ The host must send OAuth Bearer. If it cannot yet, use [mcp-remote](https://www.
 ### From source (dev)
 
 ```bash
-git clone https://github.com/andreabuttarelli/dazero.git
+git clone https://github.com/andreabuttarelli/feega.git
 cd feega/cli
 bun install
 bun run mcp          # stdio
@@ -97,7 +97,7 @@ Claude Code, Claude.ai and Cursor already know how to walk.
 2. Send on every request: `Authorization: Bearer <access_token>`.
 3. Without it you get JSON-RPC **401** — that is expected, not a server crash.
 
-There is **no** `DAZERO_TOKEN` / API-key path by design.
+There is **no** `FEEGA_TOKEN` / API-key path by design.
 
 ## 4. First calls
 
@@ -124,4 +124,4 @@ Ids from list-derived reads accept short unambiguous prefixes (same rule as the 
 
 - Full tool list: [tools.md](tools.md)
 - CLI fallback: [cli.md](cli.md)
-- Product: https://feega.app · Repo: https://github.com/andreabuttarelli/dazero
+- Product: https://feega.app · Repo: https://github.com/andreabuttarelli/feega

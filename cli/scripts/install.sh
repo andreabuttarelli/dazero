@@ -3,8 +3,8 @@
 # feega CLI Installer
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash              # Install
-#   curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash -s -- --update  # Update
+#   curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash              # Install
+#   curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash -s -- --update  # Update
 #
 # Options:
 #   --version <ver>   Install a specific version (default: latest)
@@ -17,7 +17,7 @@ set -euo pipefail
 
 # ── Configuration ──────────────────────────────────────────────────────
 
-REPO="andreabuttarelli/dazero"  # GitHub org/repo
+REPO="andreabuttarelli/feega"  # GitHub org/repo
 BINARY_NAME="feega"
 DEFAULT_DIR="/usr/local/bin"
 FALLBACK_DIR="$HOME/.local/bin"
@@ -75,7 +75,7 @@ while [[ $# -gt 0 ]]; do
     --no-sudo)  NO_SUDO=true; shift ;;
     --update)   UPDATE=true; shift ;;
     -h|--help)
-      echo "Usage: curl -sSL https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/scripts/install.sh | bash"
+      echo "Usage: curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash"
       echo ""
       echo "Options:"
       echo "  --version <ver>   Install a specific version"
@@ -227,7 +227,7 @@ if [[ "$TTY_OK" == true && "$install_skill" != "n" && "$install_skill" != "N" ]]
   read -r -u 3 -p "  Scelta [1/2]: " skill_choice || true
   echo ""
 
-  SKILL_URL="https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/skills/feega-cli.md"
+  SKILL_URL="https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/skills/feega-cli.md"
 
   if [[ "$skill_choice" == "2" ]]; then
     # Global install
@@ -250,7 +250,7 @@ if [[ "$TTY_OK" == true && "$install_skill" != "n" && "$install_skill" != "N" ]]
     fi
 
     # Also install llms.txt
-    fetch "llms.txt" "https://raw.githubusercontent.com/andreabuttarelli/dazero/main/cli/llms.txt" 2>/dev/null && \
+    fetch "llms.txt" "https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/llms.txt" 2>/dev/null && \
       success "llms.txt installato" || true
   fi
 fi
