@@ -167,7 +167,7 @@
   }
 </script>
 
-<div class="gen" class:is-running={state === 'running'} use:measureHeight>
+<div class="gen" class:is-running={state === 'running' || loopQueued > 0} use:measureHeight>
   <!-- Il risultato, quando c'è. Il testo lo mostra qui perché è esso stesso il prodotto; immagine
        e video li disegna chi usa il nodo, che sa da dove viene l'URL firmato.
 
@@ -292,10 +292,46 @@
       0 12px 32px -14px rgb(0 0 0 / 0.26);
   }
   .gen.is-running {
-    border-color: var(--accent, #c485fe);
+    border-color: transparent;
+  }
+  .gen.is-running::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    padding: 2px;
+    pointer-events: none;
+    background: conic-gradient(
+      from var(--gen-running-angle),
+      transparent 0deg,
+      var(--accent, #c485fe) 70deg,
+      transparent 140deg,
+      transparent 360deg
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: gen-running-spin 1.6s linear infinite;
+  }
+
+  @property --gen-running-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+  }
+
+  @keyframes gen-running-spin {
+    to {
+      --gen-running-angle: 360deg;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .gen.is-running::after {
+      animation: none;
+      background: var(--accent, #c485fe);
+    }
     .gen {
       transition: none;
     }
