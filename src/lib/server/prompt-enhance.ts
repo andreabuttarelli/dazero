@@ -32,8 +32,8 @@
  * MAI UN RIFIUTO SU UN MODELLO SCONOSCIUTO. Torna il prompt invariato con `changed: false` e il
  * motivo nelle note, come `imageCraftFor` torna '' invece di inventare.
  */
-import { generateText } from 'ai';
 import { env } from '$env/dynamic/private';
+import { llmText } from '$lib/server/llm';
 import { craftAgentModel } from '$lib/server/craft-model';
 import { imageCraftFor } from '$lib/design/image-craft';
 import { videoCraftFor } from '$lib/design/video-craft';
@@ -115,10 +115,11 @@ const DECLARES_FRAME = /\b\d{1,2}\s*:\s*\d{1,2}\b|\b(?:portrait|landscape|square
 
 const runWithModel: EnhanceRunner = async ({ system, prompt }) => {
   // Il tier pro come gli altri mestieri, con la sua scappatoia: riscrivere un brief è un lavoro di
-  // forma, e un modello veloce restituisce una parafrasi. Bassa temperatura perché qui fantasia
-  // significa inventare soggetti — esattamente ciò che `checkRewrite` scarta.
-  const { model } = craftAgentModel({ envModel: env.ENHANCE_PROMPT_MODEL });
-  const { text } = await generateText({ model, system, prompt, temperature: 0.3 });
+  // forma, e un modello veloce restituisce una parafrasi. `llmText` fattura la chiamata come ogni
+  // altra sul tubo centrale (`logAiCall`, label `prompt.enhance`) — un `generateText` nudo qui
+  // pagava il provider senza scrivere la riga in `ai_calls`.
+  const { modelId } = craftAgentModel({ envModel: env.ENHANCE_PROMPT_MODEL });
+  const { text } = await llmText({ system, prompt, model: modelId, label: 'prompt.enhance' });
   return text ?? '';
 };
 
