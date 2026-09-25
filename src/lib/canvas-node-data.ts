@@ -43,7 +43,8 @@ export const NODE_TYPES = [
   'influencer',
   'list',
   'select',
-  'effects'
+  'effects',
+  'composition'
 ] as const;
 
 function syncStatusOf(v: unknown): SyncStatus {
