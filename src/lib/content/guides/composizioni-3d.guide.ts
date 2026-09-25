@@ -6,13 +6,15 @@ export default {
   content: `# Composizioni 3D
 
 Il nodo **Composizione** dispone più immagini in una scena 3D animata — griglia obliqua,
-carosello — con una camera che si muove nel tempo.
+carosello, nube spaziale, anello, spirale, flusso verticale o coverflow — con una camera che si
+muove nel tempo.
 
 ## Collegare le immagini
 
 Aggiungi un nodo **Composizione**, poi collega una o più immagini alla sua porta d'ingresso,
 direttamente o attraverso un nodo **Lista**. Il nodo mostra quante immagini sono collegate finché
-non apri l'editor.
+non apri l'editor. Se un layout richiede più elementi, le immagini collegate vengono ripetute in
+sequenza fino a completare la figura.
 
 ## Aprire l'editor
 
@@ -21,9 +23,15 @@ barra di riproduzione; a destra le impostazioni: layout, camera, sfondo, durata 
 
 ## Layout e camera
 
-Ogni layout ha i suoi parametri — colonne, spaziatura, inclinazione — regolabili a destra. La
-camera segue un percorso scelto fra i preset (fisso, orbita lenta, avvicinamento, carrello), con
-i propri parametri.
+Ogni layout ha i suoi parametri — colonne, spaziatura, profondità, moto e distribuzione — e ogni
+modifica appare subito nell'anteprima. La camera segue un percorso scelto fra i preset (fisso,
+orbita lenta, avvicinamento, carrello), con i propri parametri.
+
+Il movimento percorre sempre un loop chiuso con easing expo: il fotogramma finale coincide con
+quello iniziale e la durata scelta governa l'intero ciclo.
+
+**Ripristina** riporta il layout e la camera selezionati ai loro valori progettati, insieme a
+sfondo, durata e formato.
 
 ## Salvare
 

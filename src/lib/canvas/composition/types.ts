@@ -4,9 +4,17 @@ export type Transform = {
 	position: Vec3;
 	rotation: Vec3;
 	scale: Vec3;
+	opacity?: number;
 };
 
-export type LayoutId = 'tilted-grid' | 'carousel-3d';
+export type LayoutId =
+	| 'tilted-grid'
+	| 'carousel-3d'
+	| 'media-cloud'
+	| 'media-ring'
+	| 'helix'
+	| 'vertical-flow'
+	| 'coverflow';
 
 export type LayoutParam =
 	| { name: string; label: string; kind: 'range'; min: number; max: number; step: number; default: number }

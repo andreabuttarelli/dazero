@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { clampDuration, controlFor, defaultParamsFor, setLayoutParam } from './composition-editor';
+import {
+  clampDuration,
+  controlFor,
+  defaultParamsFor,
+  knobAngle,
+  knobValueFromDrag,
+  setLayoutParam,
+  stepKnob
+} from './composition-editor';
 import type { LayoutParam } from './composition/types';
 
 describe('controlFor', () => {
@@ -49,5 +57,25 @@ describe('clampDuration', () => {
     expect(clampDuration(0)).toBe(0.5);
     expect(clampDuration(-5)).toBe(0.5);
     expect(clampDuration(6)).toBe(6);
+  });
+});
+
+describe('knob interaction', () => {
+  it('maps the full range to a 270 degree dial', () => {
+    expect(knobAngle(0, 0, 10)).toBe(-135);
+    expect(knobAngle(5, 0, 10)).toBe(0);
+    expect(knobAngle(10, 0, 10)).toBe(135);
+  });
+
+  it('drags right or up and snaps to the declared step', () => {
+    expect(knobValueFromDrag(5, 90, 0, 0, 10, 1)).toBe(10);
+    expect(knobValueFromDrag(5, 0, -45, 0, 10, 0.5)).toBe(7.5);
+    expect(knobValueFromDrag(5, 0, 200, 0, 10, 1)).toBe(0);
+  });
+
+  it('supports keyboard stepping without crossing limits', () => {
+    expect(stepKnob(5, 1, 0, 10, 0.5)).toBe(5.5);
+    expect(stepKnob(10, 1, 0, 10, 0.5)).toBe(10);
+    expect(stepKnob(0, -1, 0, 10, 0.5)).toBe(0);
   });
 });

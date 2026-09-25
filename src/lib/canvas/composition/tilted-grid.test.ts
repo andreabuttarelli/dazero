@@ -18,7 +18,7 @@ describe('tilted-grid transforms', () => {
 	});
 
 	it('tilt rotates every item the same way', () => {
-		const result = transforms(3, { ...DEFAULTS, tiltX: 15, tiltY: 10, tiltZ: 5 }, 0);
+		const result = transforms(3, { ...DEFAULTS, tiltX: 15, tiltY: 10, tiltZ: 5, waveDepth: 0 }, 0);
 
 		for (const transform of result) {
 			expect(transform.rotation.x).toBeCloseTo((15 * Math.PI) / 180);
@@ -32,6 +32,13 @@ describe('tilted-grid transforms', () => {
 		const at1 = transforms(4, { ...DEFAULTS, scrollSpeed: 1, scrollDirection: 'vertical' }, 1);
 
 		expect(at0[0].position.y).not.toBeCloseTo(at1[0].position.y);
+	});
+
+	it('creates a travelling depth wave across the grid', () => {
+		const result = transforms(6, { ...DEFAULTS, columns: 3, waveDepth: 2, waveSpeed: 1 }, 0.4);
+		const depths = new Set(result.map((item) => item.position.z.toFixed(3)));
+
+		expect(depths.size).toBeGreaterThan(2);
 	});
 
 	it('is deterministic for the same inputs', () => {

@@ -4,6 +4,7 @@
   import { LAYOUTS } from '$lib/canvas/composition/index';
   import type { LayoutId, LayoutParams } from '$lib/canvas/composition/types';
   import type { CompositionMedia, CompositionScene } from '$lib/canvas/composition/scene';
+  import CompositionParamControl from '$lib/components/canvas/CompositionParamControl.svelte';
 
   const PLACEHOLDER_COLORS = ['#e4572e', '#29335c', '#f3a712', '#669900', '#a288e3', '#2ec4b6'];
   const PLACEHOLDER_SIZE = 512;
@@ -59,6 +60,7 @@
       camera: cameraId,
       cameraParams,
       background: '#000000',
+      duration: 8,
       onTextureReady: () => scene?.renderAt(time)
     });
     scene.resize(canvas.clientWidth, canvas.clientHeight);
@@ -88,22 +90,40 @@
   function onLayoutChange(next: LayoutId) {
     layoutId = next;
     layoutParams = defaultParams(LAYOUTS[next].params);
-    rebuildScene();
+    if (LAYOUTS[next].camera === 'fixed') {
+      cameraId = 'static';
+      cameraParams = defaultParams(CAMERA_PRESETS.static.params);
+    }
+    updateScene();
   }
 
   function onCameraChange(next: CameraPresetId) {
     cameraId = next;
     cameraParams = defaultParams(CAMERA_PRESETS[next].params);
-    rebuildScene();
+    updateScene();
   }
 
   function onLayoutParamChange(name: string, value: number | string) {
     layoutParams = { ...layoutParams, [name]: value };
+    updateScene();
     scene?.renderAt(time);
   }
 
   function onCameraParamChange(name: string, value: number | string) {
     cameraParams = { ...cameraParams, [name]: value };
+    updateScene();
+    scene?.renderAt(time);
+  }
+
+  function updateScene() {
+    scene?.update({
+      layout: layoutId,
+      layoutParams,
+      camera: cameraId,
+      cameraParams,
+      background: '#000000',
+      duration: 8
+    });
     scene?.renderAt(time);
   }
 
@@ -128,55 +148,38 @@
       </select>
     </label>
 
-    {#each LAYOUTS[layoutId].params as param (param.name)}
-      <label>
-        {param.label}
-        {#if param.kind === 'range'}
-          <input
-            type="range"
-            min={param.min}
-            max={param.max}
-            step={param.step}
-            value={layoutParams[param.name]}
-            oninput={(e) => onLayoutParamChange(param.name, Number(e.currentTarget.value))}
-          />
-          <span>{layoutParams[param.name]}</span>
-        {:else if param.kind === 'select'}
-          <select
-            value={layoutParams[param.name]}
-            onchange={(e) => onLayoutParamChange(param.name, e.currentTarget.value)}
-          >
-            {#each param.options as option (option.value)}
-              <option value={option.value}>{option.label}</option>
-            {/each}
-          </select>
-        {/if}
-      </label>
-    {/each}
+    <div class="param-grid">
+      {#each LAYOUTS[layoutId].params as param (param.name)}
+        <CompositionParamControl
+          {param}
+          value={layoutParams[param.name]}
+          onchange={(value) => onLayoutParamChange(param.name, value)}
+        />
+      {/each}
+    </div>
 
     <label>
       Camera
-      <select value={cameraId} onchange={(e) => onCameraChange(e.currentTarget.value as CameraPresetId)}>
+      <select
+        value={cameraId}
+        disabled={LAYOUTS[layoutId].camera === 'fixed'}
+        onchange={(e) => onCameraChange(e.currentTarget.value as CameraPresetId)}
+      >
         {#each Object.entries(CAMERA_PRESETS) as [id, def] (id)}
           <option value={id}>{def.label}</option>
         {/each}
       </select>
     </label>
 
-    {#each CAMERA_PRESETS[cameraId].params as param (param.name)}
-      <label>
-        {param.label}
-        <input
-          type="range"
-          min={param.min}
-          max={param.max}
-          step={param.step}
+    <div class="param-grid">
+      {#each CAMERA_PRESETS[cameraId].params as param (param.name)}
+        <CompositionParamControl
+          {param}
           value={cameraParams[param.name]}
-          oninput={(e) => onCameraParamChange(param.name, Number(e.currentTarget.value))}
+          onchange={(value) => onCameraParamChange(param.name, value)}
         />
-        <span>{cameraParams[param.name]}</span>
-      </label>
-    {/each}
+      {/each}
+    </div>
 
     <label>
       Tempo
@@ -213,6 +216,21 @@
     gap: 12px;
     background: #111;
     color: #eee;
+    --ink: #f7f7f8;
+    --ink-soft: #a7a7ad;
+    --line: #34353a;
+    --paper: #18191c;
+    --paper-2: #202125;
+  }
+
+  .param-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px 8px;
+    padding: 12px 6px;
+    border: 1px solid #2d2e33;
+    border-radius: 10px;
+    background: #16171a;
   }
 
   label {

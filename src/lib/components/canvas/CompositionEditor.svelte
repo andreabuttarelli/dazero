@@ -2,6 +2,7 @@
   import X from '@lucide/svelte/icons/x';
   import Play from '@lucide/svelte/icons/play';
   import Pause from '@lucide/svelte/icons/pause';
+  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
   import { LAYOUTS } from '$lib/canvas/composition/index';
   import { CAMERA_PRESETS, type CameraPresetId } from '$lib/canvas/composition/camera';
@@ -13,6 +14,9 @@
 
   const UNSAVED_PROMPT = 'Chiudere senza salvare? Le modifiche andranno perse.';
   const ASPECT_RATIOS: CompositionAspect[] = ['9:16', '1:1', '16:9'];
+  const DEFAULT_BACKGROUND = '#000000';
+  const DEFAULT_DURATION = 6;
+  const DEFAULT_ASPECT: CompositionAspect = '9:16';
 
   let {
     initial,
@@ -28,8 +32,12 @@
 
   let layout = $state<LayoutId>(initial.layout);
   let layoutParams = $state<LayoutParams>({ ...initial.layoutParams });
-  let cameraPreset = $state<CameraPresetId>(initial.camera.preset);
-  let cameraParams = $state<LayoutParams>({ ...initial.camera.params });
+  let cameraPreset = $state<CameraPresetId>(LAYOUTS[initial.layout].camera === 'fixed' ? 'static' : initial.camera.preset);
+  let cameraParams = $state<LayoutParams>(
+    LAYOUTS[initial.layout].camera === 'fixed'
+      ? defaultParamsFor(CAMERA_PRESETS.static.params)
+      : { ...initial.camera.params }
+  );
   let backgroundColor = $state(initial.background.color);
   let duration = $state(initial.duration);
   let aspect = $state<CompositionAspect>(initial.aspect);
@@ -69,6 +77,7 @@
       camera: cameraPreset,
       cameraParams,
       background: backgroundColor,
+      duration,
       onTextureReady: () => scene?.renderAt(time)
     });
     scene.resize(canvas.clientWidth, canvas.clientHeight);
@@ -83,14 +92,31 @@
   $effect(() => {
     void layout;
     void cameraPreset;
-    rebuildScene();
-  });
-
-  $effect(() => {
     JSON.stringify(layoutParams);
     JSON.stringify(cameraParams);
     void backgroundColor;
+    void duration;
+    scene?.update({
+      layout,
+      layoutParams,
+      camera: cameraPreset,
+      cameraParams,
+      background: backgroundColor,
+      duration
+    });
     scene?.renderAt(time);
+  });
+
+  $effect(() => {
+    void aspect;
+    const resize = requestAnimationFrame(() => {
+      if (canvas) {
+        scene?.resize(canvas.clientWidth, canvas.clientHeight);
+        scene?.renderAt(time);
+      }
+    });
+
+    return () => cancelAnimationFrame(resize);
   });
 
   let raf = 0;
@@ -117,6 +143,10 @@
   function onLayoutChange(next: LayoutId) {
     layout = next;
     layoutParams = defaultParamsFor(LAYOUTS[next].params);
+    if (LAYOUTS[next].camera === 'fixed') {
+      cameraPreset = 'static';
+      cameraParams = defaultParamsFor(CAMERA_PRESETS.static.params);
+    }
   }
 
   function onCameraChange(next: CameraPresetId) {
@@ -126,6 +156,16 @@
 
   function onScrub(value: number) {
     time = value;
+    scene?.renderAt(time);
+  }
+
+  function reset() {
+    layoutParams = defaultParamsFor(LAYOUTS[layout].params);
+    cameraParams = defaultParamsFor(CAMERA_PRESETS[cameraPreset].params);
+    backgroundColor = DEFAULT_BACKGROUND;
+    duration = DEFAULT_DURATION;
+    aspect = DEFAULT_ASPECT;
+    time = 0;
     scene?.renderAt(time);
   }
 
@@ -181,7 +221,13 @@
 <section class="cx-editor" role="dialog" aria-label="Editor composizione" tabindex="-1" {onkeydown}>
   <header class="cx-head">
     <h2>Composizione</h2>
-    <button type="button" class="cx-icon" aria-label="Chiudi" onclick={close}><X size={16} /></button>
+    <div class="cx-head-actions">
+      <button type="button" class="cx-reset" onclick={reset} disabled={busy}>
+        <RotateCcw size={14} />
+        Ripristina
+      </button>
+      <button type="button" class="cx-icon" aria-label="Chiudi" onclick={close}><X size={16} /></button>
+    </div>
   </header>
 
   <div class="cx-body">
@@ -216,30 +262,38 @@
         </select>
       </label>
 
-      {#each LAYOUTS[layout].params as param (param.name)}
-        <CompositionParamControl
-          {param}
-          value={layoutParams[param.name]}
-          onchange={(value) => (layoutParams = setLayoutParam(layoutParams, param.name, value))}
-        />
-      {/each}
+      <div class="cx-param-grid">
+        {#each LAYOUTS[layout].params as param (param.name)}
+          <CompositionParamControl
+            {param}
+            value={layoutParams[param.name]}
+            onchange={(value) => (layoutParams = setLayoutParam(layoutParams, param.name, value))}
+          />
+        {/each}
+      </div>
 
       <label class="cx-field">
         Camera
-        <select value={cameraPreset} onchange={(e) => onCameraChange(e.currentTarget.value as CameraPresetId)}>
+        <select
+          value={cameraPreset}
+          disabled={LAYOUTS[layout].camera === 'fixed'}
+          onchange={(e) => onCameraChange(e.currentTarget.value as CameraPresetId)}
+        >
           {#each Object.entries(CAMERA_PRESETS) as [id, def] (id)}
             <option value={id}>{def.label}</option>
           {/each}
         </select>
       </label>
 
-      {#each CAMERA_PRESETS[cameraPreset].params as param (param.name)}
-        <CompositionParamControl
-          {param}
-          value={cameraParams[param.name]}
-          onchange={(value) => (cameraParams = setLayoutParam(cameraParams, param.name, value))}
-        />
-      {/each}
+      <div class="cx-param-grid">
+        {#each CAMERA_PRESETS[cameraPreset].params as param (param.name)}
+          <CompositionParamControl
+            {param}
+            value={cameraParams[param.name]}
+            onchange={(value) => (cameraParams = setLayoutParam(cameraParams, param.name, value))}
+          />
+        {/each}
+      </div>
 
       <label class="cx-field">
         Sfondo
@@ -329,6 +383,30 @@
     font-weight: 600;
   }
 
+  .cx-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .cx-reset {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--ink-soft, #6e6e73);
+    border: 1px solid var(--line, #ededef);
+    background: var(--paper, #fff);
+    cursor: pointer;
+  }
+
+  .cx-reset:hover {
+    color: var(--ink, #1d1d1f);
+    background: var(--paper-2, #f9f9f9);
+  }
+
   .cx-body {
     display: flex;
     flex: 1;
@@ -388,6 +466,16 @@
     padding: 12px;
     overflow-y: auto;
     border-left: 1px solid var(--line, #ededef);
+  }
+
+  .cx-param-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px 8px;
+    padding: 10px 8px 12px;
+    border: 1px solid var(--line, #ededef);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--paper-2, #f9f9f9) 72%, transparent);
   }
 
   .cx-field {

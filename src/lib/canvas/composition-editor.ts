@@ -51,7 +51,45 @@ export function defaultParamsFor(defs: readonly { name: string; default: number 
 }
 
 const MIN_DURATION_SECONDS = 0.5;
+const KNOB_SWEEP_DEGREES = 270;
+const KNOB_DRAG_PIXELS = 180;
 
 export function clampDuration(value: number): number {
 	return Math.max(MIN_DURATION_SECONDS, value);
+}
+
+export function knobAngle(value: number, min: number, max: number): number {
+	const progress = max === min ? 0 : (clamp(value, min, max) - min) / (max - min);
+	return progress * KNOB_SWEEP_DEGREES - KNOB_SWEEP_DEGREES / 2;
+}
+
+export function knobValueFromDrag(
+	start: number,
+	deltaX: number,
+	deltaY: number,
+	min: number,
+	max: number,
+	step: number
+): number {
+	const delta = (deltaX - deltaY) / KNOB_DRAG_PIXELS * (max - min);
+	return snapKnob(start + delta, min, max, step);
+}
+
+export function stepKnob(value: number, direction: -1 | 1, min: number, max: number, step: number): number {
+	return snapKnob(value + direction * step, min, max, step);
+}
+
+function snapKnob(value: number, min: number, max: number, step: number): number {
+	const snapped = min + Math.round((clamp(value, min, max) - min) / step) * step;
+	const decimals = Math.max(0, decimalPlaces(step));
+	return Number(clamp(snapped, min, max).toFixed(decimals));
+}
+
+function clamp(value: number, min: number, max: number): number {
+	return Math.min(max, Math.max(min, value));
+}
+
+function decimalPlaces(value: number): number {
+	const text = String(value);
+	return text.includes('.') ? text.length - text.indexOf('.') - 1 : 0;
 }
