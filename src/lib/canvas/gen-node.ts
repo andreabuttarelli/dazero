@@ -13,6 +13,7 @@
  * nodo nasce senza formato — il vuoto è onesto, un «1:1» inventato no.
  */
 import { MEDIUMS, type Medium } from './graph';
+import type { ModelParam } from './model-params';
 
 /** I tre medium che un nodo può produrre: gli stessi della tela, non un secondo elenco. */
 export const GEN_MEDIUMS = MEDIUMS;
@@ -51,6 +52,10 @@ export type ModelChoice = {
    *  spedito qui perché il client non ha (e non deve avere) le tariffe. Assente = prezzo ignoto:
    *  `gen-cost.ts::creditsForRun` torna `null`, mai un numero inventato. */
   unitCredits?: number;
+  /** I campi extra dichiarati da `ai_models.param_schema` per questo modello, oltre a quelli con
+   *  un controllo già dedicato (`aspectRatio`, `resolution`…) — v. `model-params.ts`. Assente per
+   *  un modello che non passa da `offerable-models.ts` (il testo) o dichiara zero campi extra. */
+  params?: ModelParam[];
 };
 
 /** Quel che l'utente ha scelto nell'overlay. Non è il catalogo: è la scelta dentro al catalogo. */

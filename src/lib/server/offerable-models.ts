@@ -40,6 +40,7 @@ import { wireModelId } from '$lib/server/ai-models-sync';
 import { providerOf } from '$lib/canvas/model-provider';
 import { IMAGE_CREDITS, videoCredits } from '$lib/server/content-cost';
 import { videoDurationOptions, VIDEO_RESOLUTIONS, MIN_DURATION } from '$lib/server/video';
+import { modelParamsOf } from '$lib/canvas/model-params';
 
 const VIDEO_SPEC_IDS = [
   'bytedance/seedance-2-5',
@@ -60,6 +61,7 @@ type SyncedRow = {
   input_modalities: string[] | null;
   supported_parameters: string[] | null;
   supported_resolutions: string[] | null;
+  param_schema: Record<string, unknown> | null;
 };
 
 async function syncedRows(
@@ -68,7 +70,7 @@ async function syncedRows(
 ): Promise<{ rows: Map<string, SyncedRow>; synced: boolean }> {
   const { data } = await admin
     .from('ai_models')
-    .select('id, label, input_modalities, supported_parameters, supported_resolutions')
+    .select('id, label, input_modalities, supported_parameters, supported_resolutions, param_schema')
     .eq('catalogue', catalogue);
 
   const rows = (data ?? []) as SyncedRow[];
@@ -107,7 +109,8 @@ function genericImageChoice(row: SyncedRow): ModelChoice {
     ...providerOf(row.id),
     inputModalities: row.input_modalities ?? [],
     resolutions: imageResolutionsFor(row.supported_resolutions),
-    unitCredits: undefined
+    unitCredits: undefined,
+    params: modelParamsOf(row.param_schema ?? {})
   };
 }
 
@@ -139,7 +142,8 @@ function genericVideoChoice(row: SyncedRow): ModelChoice {
     resolutions: videoResolutionsFor(row),
     ...providerOf(row.id),
     inputModalities: row.input_modalities ?? [],
-    unitCredits: undefined
+    unitCredits: undefined,
+    params: modelParamsOf(row.param_schema ?? {})
   };
 }
 
@@ -147,7 +151,8 @@ function imageChoice(
   spec: ImageModelSpec,
   wireId: string,
   inputModalities: string[],
-  supportedResolutions: string[] | null
+  supportedResolutions: string[] | null,
+  paramSchema: Record<string, unknown> | null
 ): ModelChoice {
   return {
     id: spec.id,
@@ -157,7 +162,8 @@ function imageChoice(
     ...providerOf(wireId),
     inputModalities,
     resolutions: imageResolutionsFor(supportedResolutions),
-    unitCredits: IMAGE_CREDITS
+    unitCredits: IMAGE_CREDITS,
+    params: modelParamsOf(paramSchema ?? {})
   };
 }
 
@@ -176,7 +182,8 @@ function videoChoice(spec: VideoModelSpec, row: SyncedRow, inputModalities: stri
     resolutions: videoResolutionsFor(row),
     ...providerOf(row.id),
     inputModalities,
-    unitCredits: videoCredits(spec.id)
+    unitCredits: videoCredits(spec.id),
+    params: modelParamsOf(row.param_schema ?? {})
   };
 }
 
@@ -198,7 +205,8 @@ async function offerableImages(admin: SupabaseClient): Promise<OfferableModels> 
         spec,
         wireId,
         rows.get(wireId)?.input_modalities ?? [],
-        rows.get(wireId)?.supported_resolutions ?? null
+        rows.get(wireId)?.supported_resolutions ?? null,
+        rows.get(wireId)?.param_schema ?? null
       )
     );
   });

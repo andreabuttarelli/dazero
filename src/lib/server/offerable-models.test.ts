@@ -13,6 +13,7 @@ function fakeAdmin(
     output_modalities: string[];
     supported_parameters?: string[];
     supported_resolutions?: string[];
+    param_schema?: Record<string, unknown>;
   }[]
 ) {
   const admin = {
@@ -324,5 +325,57 @@ describe('offerableModels video — un id senza spec è offerto con la resa prud
     const out = await offerableSlotChoices(admin, slot);
 
     expect(out.choices.map((c) => c.id)).not.toContain('wan/wan-3.0');
+  });
+});
+
+describe('offerableModels — params dal param_schema sincronizzato', () => {
+  it('un GPT Image con quality/background nello schema li porta come params, non aspect_ratio', async () => {
+    const admin = fakeAdmin([
+      {
+        id: 'openai/gpt-image-2',
+        catalogue: 'image',
+        input_modalities: ['text', 'image'],
+        output_modalities: ['image'],
+        param_schema: {
+          aspect_ratio: { type: 'enum', values: ['1:1', '16:9'] },
+          quality: { type: 'enum', values: ['auto', 'low', 'medium', 'high'] }
+        }
+      }
+    ]);
+
+    const out = await offerableModels(admin, 'image');
+
+    const choice = out.choices.find((c) => c.id === GPT_IMAGE_2_MODEL);
+    expect(choice?.params).toEqual([
+      { name: 'quality', label: 'Qualità', kind: 'enum', values: ['auto', 'low', 'medium', 'high'] }
+    ]);
+  });
+
+  it('un modello senza param_schema porta params vuoti', async () => {
+    const admin = fakeAdmin([
+      { id: 'openai/gpt-image-2', catalogue: 'image', input_modalities: ['text', 'image'], output_modalities: ['image'] }
+    ]);
+
+    const out = await offerableModels(admin, 'image');
+
+    const choice = out.choices.find((c) => c.id === GPT_IMAGE_2_MODEL);
+    expect(choice?.params).toEqual([]);
+  });
+
+  it('un video con generate_audio nello schema lo porta come param', async () => {
+    const admin = fakeAdmin([
+      {
+        id: 'bytedance/seedance-2.5',
+        catalogue: 'video',
+        input_modalities: ['text'],
+        output_modalities: ['video'],
+        param_schema: { generate_audio: { type: 'boolean' } }
+      }
+    ]);
+
+    const out = await offerableModels(admin, 'video');
+
+    const choice = out.choices.find((c) => c.id === SEEDANCE_25_MODEL);
+    expect(choice?.params).toEqual([{ name: 'generate_audio', label: 'Audio', kind: 'boolean' }]);
   });
 });
