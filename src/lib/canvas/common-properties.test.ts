@@ -119,3 +119,16 @@ describe('GEN_FIELDS — una tabella sola, letta sia da un nodo solo che da una 
     expect(byId.audio.appliesTo('video')).toBe(true);
   });
 });
+
+describe('un campo che il tipo prevede ma che nessuno ha ancora scelto resta mostrato', () => {
+  it('un\'immagine nuova, senza params, ha il formato "unset", non "absent"', () => {
+    const out = commonPropertiesOf([{ type: 'image', data: { prompt: '', params: {} } }]);
+    expect(out.aspectRatio).toEqual({ kind: 'unset' });
+  });
+
+  it('un video nuovo ha durata e audio "unset"', () => {
+    const out = commonPropertiesOf([{ type: 'video', data: { prompt: '' } }]);
+    expect(out.duration).toEqual({ kind: 'unset' });
+    expect(out.audio).toEqual({ kind: 'unset' });
+  });
+});

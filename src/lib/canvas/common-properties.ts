@@ -19,7 +19,7 @@
 
 export type GenFieldId = 'model' | 'aspectRatio' | 'duration' | 'audio' | 'repeat';
 
-export type CommonValue<T> = { kind: 'same'; value: T } | { kind: 'mixed' } | { kind: 'absent' };
+export type CommonValue<T> = { kind: 'same'; value: T } | { kind: 'mixed' } | { kind: 'unset' } | { kind: 'absent' };
 
 type NodeSummary = { type: string; data: Record<string, unknown> };
 
@@ -86,7 +86,7 @@ function commonOf<T>(values: T[]): CommonValue<T> {
 function commonFieldOf<T>(field: GenField, type: string, nodes: NodeSummary[]): CommonValue<T> {
   if (!field.appliesTo(type)) return { kind: 'absent' };
   const values = nodes.map((n) => field.read(n)).filter((v): v is T => v !== undefined);
-  return commonOf(values);
+  return values.length ? commonOf(values) : { kind: 'unset' };
 }
 
 export function commonPropertiesOf(nodes: NodeSummary[]): CommonProperties {
