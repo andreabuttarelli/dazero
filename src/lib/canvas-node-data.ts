@@ -9,6 +9,9 @@ import { isListItemKind, type ListItem, type ListNode } from '$lib/canvas/list-n
 import type { SelectNode } from '$lib/canvas/select-node';
 import { EFFECTS, type EffectStep } from '$lib/canvas/effects';
 import type { EffectsNode } from '$lib/canvas/effects-node';
+import { LAYOUTS } from '$lib/canvas/composition/index';
+import { CAMERA_PRESETS } from '$lib/canvas/composition/camera';
+import type { CompositionNode } from '$lib/canvas/composition-node';
 export { influencerNodeOf as influencerOf, type InfluencerNode } from '$lib/canvas/influencer-node';
 
 /**
@@ -224,6 +227,54 @@ export function effectsOf(row: NodeRow): EffectsNode | null {
     effects,
     refId: nullableStr(row.data.refId),
     sourceRefId: nullableStr(row.data.sourceRefId)
+  };
+}
+
+const DEFAULT_COMPOSITION_LAYOUT = Object.keys(LAYOUTS)[0] as keyof typeof LAYOUTS;
+const DEFAULT_COMPOSITION_CAMERA = Object.keys(CAMERA_PRESETS)[0] as keyof typeof CAMERA_PRESETS;
+const DEFAULT_COMPOSITION_DURATION = 6;
+const DEFAULT_COMPOSITION_ASPECT: CompositionNode['aspect'] = '9:16';
+
+/** Il nodo `composition` dietro una riga, o null quando quella riga è un'altra cosa. */
+export function compositionOf(row: NodeRow): CompositionNode | null {
+  if (row.type !== 'composition') {
+    return null;
+  }
+
+  const camera = record(row.data.camera);
+  const background = record(row.data.background);
+  const layout = row.data.layout;
+  const cameraPreset = camera.preset;
+
+  return {
+    id: row.id,
+    layout: typeof layout === 'string' && layout in LAYOUTS ? (layout as CompositionNode['layout']) : DEFAULT_COMPOSITION_LAYOUT,
+    layoutParams: record(row.data.layoutParams) as CompositionNode['layoutParams'],
+    camera: {
+      preset:
+        typeof cameraPreset === 'string' && cameraPreset in CAMERA_PRESETS
+          ? (cameraPreset as CompositionNode['camera']['preset'])
+          : DEFAULT_COMPOSITION_CAMERA,
+      params: record(camera.params) as CompositionNode['camera']['params']
+    },
+    background: { color: typeof background.color === 'string' ? background.color : '#000000' },
+    duration: num(row.data.duration, DEFAULT_COMPOSITION_DURATION),
+    aspect: (['9:16', '1:1', '16:9'] as const).includes(row.data.aspect as never)
+      ? (row.data.aspect as CompositionNode['aspect'])
+      : DEFAULT_COMPOSITION_ASPECT,
+    refId: nullableStr(row.data.refId)
+  };
+}
+
+export function compositionData(node: CompositionNode): Record<string, unknown> {
+  return {
+    layout: node.layout,
+    layoutParams: node.layoutParams,
+    camera: node.camera,
+    background: node.background,
+    duration: node.duration,
+    aspect: node.aspect,
+    refId: node.refId
   };
 }
 

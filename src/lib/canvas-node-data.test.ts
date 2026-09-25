@@ -16,6 +16,8 @@ import {
   selectOf,
   effectsData,
   effectsOf,
+  compositionData,
+  compositionOf,
   socialFeedData,
   socialFeedOf
 } from '$lib/canvas-node-data';
@@ -416,5 +418,52 @@ describe('un nodo effects, letto dalla riga', () => {
     })!;
     const written = effectsData(node);
     expect(effectsOf({ id: 'n1', type: 'effects', data: written })).toEqual(node);
+  });
+});
+
+describe('un nodo composition, letto dalla riga', () => {
+  it('una riga appena nata prende i default: primo layout, prima camera, sfondo nero', () => {
+    expect(compositionOf({ id: 'n1', type: 'composition', data: {} })).toEqual({
+      id: 'n1',
+      layout: 'tilted-grid',
+      layoutParams: {},
+      camera: { preset: 'static', params: {} },
+      background: { color: '#000000' },
+      duration: 6,
+      aspect: '9:16',
+      refId: null
+    });
+  });
+
+  it('un layout o preset sconosciuto in data torna al default invece di rompere il disegno', () => {
+    const node = compositionOf({
+      id: 'n1',
+      type: 'composition',
+      data: { layout: 'not-a-layout', camera: { preset: 'not-a-preset' } }
+    })!;
+    expect(node.layout).toBe('tilted-grid');
+    expect(node.camera.preset).toBe('static');
+  });
+
+  it('un nodo che non è composition non si legge come tale', () => {
+    expect(compositionOf({ id: 'n1', type: 'image', data: {} })).toBeNull();
+  });
+
+  it('fa il giro di andata e ritorno', () => {
+    const node = compositionOf({
+      id: 'n1',
+      type: 'composition',
+      data: {
+        layout: 'carousel-3d',
+        layoutParams: { count: 5 },
+        camera: { preset: 'slow-orbit', params: { radius: 10 } },
+        background: { color: '#112233' },
+        duration: 8,
+        aspect: '1:1',
+        refId: 'a1'
+      }
+    })!;
+    const written = compositionData(node);
+    expect(compositionOf({ id: 'n1', type: 'composition', data: written })).toEqual(node);
   });
 });
