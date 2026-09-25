@@ -33,6 +33,10 @@
   import ListNode from '$lib/components/canvas/ListNode.svelte';
   import SelectNode from '$lib/components/canvas/SelectNode.svelte';
   import EffectsNode from '$lib/components/canvas/EffectsNode.svelte';
+  import EffectsEditor from '$lib/components/canvas/EffectsEditor.svelte';
+  import { inputChanged } from '$lib/canvas/effects/editor';
+  import { upstreamImageRef } from '$lib/canvas/effects-node';
+  import type { EffectStep } from '$lib/canvas/effects';
   import { listFeedingSelect } from '$lib/canvas/select-node';
   import {
     listConnectors,
@@ -83,6 +87,7 @@
     selectData,
     selectOf,
     effectsOf,
+    effectsData,
     socialFeedData,
     socialFeedOf
   } from '$lib/canvas-node-data';
@@ -341,16 +346,8 @@
     return values ? { id: source.id, itemKind: values.itemKind, items: values.values.map((v) => v.item) } : null;
   }
 
-  /** L'immagine collegata a un `effects`, per l'anteprima "Non applicato" — il primo arco entrante
-   *  che porta a un nodo con un `refId`, la stessa disciplina deterministica di `listFeedingSelect`. */
   function upstreamImageRefOf(effectsId: string): string | null {
-    for (const edge of edges) {
-      if (edge.target !== effectsId) continue;
-      const source = nodesById.get(edge.source);
-      const refId = source?.data.refId;
-      if (typeof refId === 'string' && refId) return refId;
-    }
-    return null;
+    return upstreamImageRef(effectsId, edges, nodes);
   }
 
   function assetUrl(refId: string | null): string | null {
@@ -608,6 +605,38 @@
     });
     const created = result?.node as CanvasNodeRecord | undefined;
     if (created) { nodes = [...nodes.filter((node) => node.id !== created.id), toTile(created, { select: true })]; }
+  }
+
+  async function uploadToLibrary(file: File): Promise<string | null> {
+    const path = `${canvasUploadPrefix(data.orgId, data.projectId)}${crypto.randomUUID()}-${file.name}`;
+    const up = await supabase.storage.from('canvas-assets').upload(path, file, { contentType: file.type, upsert: false });
+    if (up.error) {
+      failed = up.error.message;
+      return null;
+    }
+
+    const result = await post('upload', {
+      path, file_name: file.name, mime_type: file.type, bytes: file.size, into: 'library'
+    });
+    const asset = result?.asset as { id?: string } | undefined;
+    return asset?.id ?? null;
+  }
+
+  let effectsEditorId = $state<string | null>(null);
+  const effectsEditing = $derived.by(() => {
+    const row = effectsEditorId ? nodes.find((n) => n.id === effectsEditorId) : null;
+    return row ? effectsOf(row) : null;
+  });
+
+  async function applyEffects(id: string, steps: EffectStep[], output: Blob): Promise<boolean> {
+    const sourceRefId = upstreamImageRefOf(id);
+    const refId = await uploadToLibrary(new File([output], `effetti-${id}.png`, { type: 'image/png' }));
+    if (!refId) {
+      return false;
+    }
+
+    write(id, effectsData({ id, effects: steps, refId, sourceRefId }));
+    return true;
   }
 
   function sizeForAddable(what: Addable): { w: number; h: number } {
@@ -1623,11 +1652,25 @@
             node={effects}
             imageUrl={assetUrl(effects.refId)}
             sourceImageUrl={assetUrl(effects.sourceRefId ?? upstreamImageRefOf(id))}
+            inputChanged={inputChanged(effects.sourceRefId, upstreamImageRefOf(id))}
+            onopeneditor={() => (effectsEditorId = id)}
           />
         {/if}
       {/if}
     {/snippet}
   </CanvasFlow>
+
+  {#if effectsEditing}
+    {@const editingId = effectsEditing.id}
+    {#key editingId}
+      <EffectsEditor
+        initialSteps={effectsEditing.effects}
+        inputUrl={assetUrl(upstreamImageRefOf(editingId))}
+        onapply={(steps, output) => applyEffects(editingId, steps, output)}
+        onclose={() => (effectsEditorId = null)}
+      />
+    {/key}
+  {/if}
 </div>
 
 <style>

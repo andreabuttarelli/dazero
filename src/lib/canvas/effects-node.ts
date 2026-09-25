@@ -45,3 +45,24 @@ export function newEffectsNodeAt(at: { x: number; y: number }): NewEffectsTile {
     connectable: true
   };
 }
+
+const IMAGE_REF_FIELDS = ['refId', 'assetId'] as const;
+
+export function upstreamImageRef(
+  targetId: string,
+  edges: { source: string; target: string }[],
+  nodes: { id: string; data: Record<string, unknown> }[]
+): string | null {
+  for (const edge of edges) {
+    if (edge.target !== targetId) {
+      continue;
+    }
+
+    const source = nodes.find((node) => node.id === edge.source);
+    const ref = IMAGE_REF_FIELDS.map((field) => source?.data[field]).find((v) => typeof v === 'string' && v);
+    if (typeof ref === 'string') {
+      return ref;
+    }
+  }
+  return null;
+}

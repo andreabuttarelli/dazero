@@ -1,14 +1,4 @@
 <script lang="ts">
-  /**
-   * IL NODO `effects`: mostra il RISULTATO (`refId`) quando la pila è già stata applicata,
-   * altrimenti l'immagine a monte con un'etichetta "Non applicato", altrimenti l'invito a
-   * collegarne una. `imageUrl`/`sourceImageUrl` arrivano già firmati dalla pagina — la stessa
-   * disciplina di `GenNode`, che non firma niente qui dentro.
-   *
-   * `onopeneditor` non ha ancora un bottone visibile: la fase 3 costruisce l'editor della pila, e
-   * un bottone che apre il nulla è un controllo morto — CLAUDE.md lo vieta. Resta una prop pronta
-   * perché la pagina non debba cambiare firma quando l'editor arriva.
-   */
   import ImageIcon from '@lucide/svelte/icons/image';
   import type { EffectsNode } from '$lib/canvas/effects-node';
 
@@ -16,18 +6,19 @@
     node,
     imageUrl = null,
     sourceImageUrl = null,
+    inputChanged = false,
     onopeneditor
   }: {
     node: EffectsNode;
     imageUrl?: string | null;
     sourceImageUrl?: string | null;
-    onopeneditor?: () => void;
+    inputChanged?: boolean;
+    onopeneditor: () => void;
   } = $props();
-
-  void onopeneditor;
 </script>
 
-<div class="effects">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="effects" ondblclick={onopeneditor}>
   {#if node.refId && imageUrl}
     <img class="effects-photo" src={imageUrl} alt="Risultato" loading="lazy" />
   {:else if node.sourceRefId && sourceImageUrl}
@@ -41,6 +32,13 @@
       <p>Collega un'immagine</p>
     </div>
   {/if}
+
+  <div class="effects-actions">
+    {#if inputChanged}
+      <button type="button" class="effects-action is-warn nodrag" onclick={onopeneditor}>Input cambiato · Riapplica</button>
+    {/if}
+    <button type="button" class="effects-action nodrag" onclick={onopeneditor}>Apri editor</button>
+  </div>
 </div>
 
 <style>
@@ -91,6 +89,28 @@
     font-size: 10.5px;
     color: var(--paper, #fff);
     background: rgb(0 0 0 / 0.6);
+  }
+
+  .effects-actions {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    display: flex;
+    gap: 4px;
+  }
+
+  .effects-action {
+    padding: 3px 8px;
+    font: inherit;
+    font-size: 11px;
+    border: 1px solid var(--line, #e5e5e5);
+    background: var(--paper, #fff);
+    color: var(--ink, #1d1d1f);
+    cursor: pointer;
+  }
+  .effects-action.is-warn {
+    border-color: #d97706;
+    color: #b45309;
   }
 
   .effects-empty {

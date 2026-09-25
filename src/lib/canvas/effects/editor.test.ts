@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyStack } from './index';
-import { addStep, controlFor, inputChanged, moveStep, removeStep, setParam, toggleStep } from './editor';
+import { addStep, controlFor, fitWithin, inputChanged, moveStep, removeStep, setParam, toggleStep } from './editor';
 import { makePixels } from './test-helpers';
 import type { EffectStep } from './types';
 
@@ -94,5 +94,16 @@ describe('inputChanged', () => {
 
 	it('is false when nothing is connected anymore', () => {
 		expect(inputChanged('a1', null)).toBe(false);
+	});
+});
+
+describe('fitWithin', () => {
+	it('keeps an image already inside the bound', () => {
+		expect(fitWithin(800, 600, 900)).toEqual({ width: 800, height: 600 });
+	});
+
+	it('scales the longer side down to the bound, keeping the ratio', () => {
+		expect(fitWithin(1800, 1200, 900)).toEqual({ width: 900, height: 600 });
+		expect(fitWithin(1000, 2000, 900)).toEqual({ width: 450, height: 900 });
 	});
 });

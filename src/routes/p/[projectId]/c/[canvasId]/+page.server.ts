@@ -1,4 +1,4 @@
-import { registerCanvasUpload, UploadError } from '$lib/server/canvas/upload';
+import { registerCanvasUpload, registerUploadedAsset, UploadError } from '$lib/server/canvas/upload';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import type { Db } from '$lib/server/db/client';
@@ -318,6 +318,13 @@ export const actions: Actions = {
     }
 
     try {
+      if (fd.get('into') === 'library') {
+        const { asset } = await registerUploadedAsset(scope.db, {
+          orgId: scope.orgId, projectId: scope.canvas.projectId, path, fileName, mimeType, bytes
+        });
+        return { asset };
+      }
+
       return await registerCanvasUpload(scope.db, {
         orgId: scope.orgId, projectId: scope.canvas.projectId, canvasId: scope.canvasId,
         path, fileName, mimeType, bytes,
