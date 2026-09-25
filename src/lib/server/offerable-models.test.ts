@@ -362,20 +362,20 @@ describe('offerableModels — params dal param_schema sincronizzato', () => {
     expect(choice?.params).toEqual([]);
   });
 
-  it('un video con generate_audio nello schema lo porta come param', async () => {
+  it('generate_audio non entra nei params: ha già il campo "audio" dedicato', async () => {
     const admin = fakeAdmin([
       {
         id: 'bytedance/seedance-2.5',
         catalogue: 'video',
         input_modalities: ['text'],
         output_modalities: ['video'],
-        param_schema: { generate_audio: { type: 'boolean' } }
+        param_schema: { generate_audio: { type: 'boolean' }, seed: { type: 'boolean' } }
       }
     ]);
 
     const out = await offerableModels(admin, 'video');
 
     const choice = out.choices.find((c) => c.id === SEEDANCE_25_MODEL);
-    expect(choice?.params).toEqual([{ name: 'generate_audio', label: 'Audio', kind: 'boolean' }]);
+    expect(choice?.params).toEqual([{ name: 'seed', label: 'Seed', kind: 'boolean' }]);
   });
 });

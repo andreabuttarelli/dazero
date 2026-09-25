@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { modelParamsOf } from './model-params';
+import { modelParamsOf, extraParamsOf } from './model-params';
 
 describe('modelParamsOf', () => {
   it('GPT Image 2.5: quality, background, output_compression diventano campi, aspect_ratio e resolution no', () => {
@@ -27,16 +27,13 @@ describe('modelParamsOf', () => {
     expect(params).toEqual([]);
   });
 
-  it('un video con generate_audio e seed booleani diventa Audio e Seed', () => {
+  it('generate_audio ha già un controllo dedicato (il campo "audio"): non diventa un campo extra', () => {
     const params = modelParamsOf({
       generate_audio: { type: 'boolean' },
       seed: { type: 'boolean' }
     });
 
-    expect(params).toEqual([
-      { name: 'generate_audio', label: 'Audio', kind: 'boolean' },
-      { name: 'seed', label: 'Seed', kind: 'boolean' }
-    ]);
+    expect(params).toEqual([{ name: 'seed', label: 'Seed', kind: 'boolean' }]);
   });
 
   it('un param_schema vuoto non produce campi', () => {
@@ -47,5 +44,28 @@ describe('modelParamsOf', () => {
     const params = modelParamsOf({ style_strength: { type: 'range', min: 0, max: 1 } });
 
     expect(params).toEqual([{ name: 'style_strength', label: 'Style strength', kind: 'number', min: 0, max: 1 }]);
+  });
+});
+
+describe('extraParamsOf — cosa spedire al provider oltre ai campi con controllo dedicato', () => {
+  it('un modello che dichiara "quality" lo manda, invariati aspectRatio/duration/resolution/audio/repeat', () => {
+    const declared = [{ name: 'quality', label: 'Qualità', kind: 'enum' as const, values: ['low', 'high'] }];
+
+    const extra = extraParamsOf(
+      { aspectRatio: '1:1', duration: 5, resolution: '2K', audio: true, repeat: 2, quality: 'low' },
+      declared
+    );
+
+    expect(extra).toEqual({ quality: 'low' });
+  });
+
+  it('un nome che il modello NON dichiara non parte, anche se presente in nodes.data.params', () => {
+    const extra = extraParamsOf({ aspectRatio: '1:1', quality: 'low' }, []);
+
+    expect(extra).toEqual({});
+  });
+
+  it('nessun params extra dichiarato: oggetto vuoto, non undefined', () => {
+    expect(extraParamsOf({ aspectRatio: '1:1' }, [])).toEqual({});
   });
 });

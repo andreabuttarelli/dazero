@@ -15,7 +15,10 @@ import { fakeDb } from '$lib/server/db/fake-db';
  */
 
 const { modalitiesOf } = vi.hoisted(() => ({ modalitiesOf: vi.fn() }));
-vi.mock('$lib/server/ai-models-sync', () => ({ modalitiesOf }));
+vi.mock('$lib/server/ai-models-sync', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/server/ai-models-sync')>()),
+  modalitiesOf
+}));
 vi.mock('$lib/server/supabase-admin', () => ({ createAdminClient: () => ({}) }));
 
 const { generateImagesWithoutBrand } = vi.hoisted(() => ({ generateImagesWithoutBrand: vi.fn() }));

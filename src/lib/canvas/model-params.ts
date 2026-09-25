@@ -17,7 +17,8 @@ const EXCLUDED_PARAMS: Readonly<Record<string, string>> = {
   resolution: 'ha il suo controllo dedicato (ModelChoice.resolutions)',
   input_references: 'wiring — quanti riferimenti il nodo inoltra, non un\'impostazione utente',
   n: 'il prodotto ne rende sempre uno',
-  duration: 'ha il suo controllo dedicato (ModelChoice.durationOptions)'
+  duration: 'ha il suo controllo dedicato (ModelChoice.durationOptions)',
+  generate_audio: 'ha il suo controllo dedicato (ModelChoice.generateAudio, il campo "audio")'
 };
 
 const LABEL_OVERRIDES: Readonly<Record<string, string>> = {
@@ -45,6 +46,24 @@ function paramOf(name: string, entry: ParamSchemaEntry): ModelParam | null {
   if (entry.type === 'range') return { name, label, kind: 'number', min: entry.min, max: entry.max };
 
   return null;
+}
+
+/**
+ * COSA SPEDIRE AL PROVIDER, DAI PARAMETRI CHE IL NODO PORTA. `params` è `nodes.data.params`, lo
+ * stesso oggetto piatto che tiene sia i campi con un controllo suo (`aspectRatio`, `duration`…)
+ * sia quelli dinamici (`quality`, `output_compression`…) — nessuna distinzione a livello di
+ * schema. Qui si prendono SOLO i nomi che `declared` elenca (`ModelChoice.params`, quello che il
+ * modello SCELTO dichiara ORA): un nome rimasto da un modello precedente, o mai dichiarato da
+ * nessuno, non parte — mai un token che quel provider non si aspetta.
+ */
+export function extraParamsOf(params: Record<string, unknown>, declared: ModelParam[]): Record<string, unknown> {
+  const extra: Record<string, unknown> = {};
+
+  for (const param of declared) {
+    if (param.name in params) extra[param.name] = params[param.name];
+  }
+
+  return extra;
 }
 
 export function modelParamsOf(schema: Record<string, unknown>): ModelParam[] {

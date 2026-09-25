@@ -313,6 +313,11 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
 
     if (input.medium === 'image') {
       const { generateImagesWithoutBrand } = await import('$lib/server/media-generate');
+      const { offerableModels } = await import('$lib/server/offerable-models');
+      const { extraParamsOf } = await import('$lib/canvas/model-params');
+      const declared = input.model
+        ? (await offerableModels(db, 'image')).choices.find((c) => c.id === input.model)?.params ?? []
+        : [];
       const out = await generateImagesWithoutBrand(db as never, {
         orgId: input.orgId,
         userId: input.userId,
@@ -324,7 +329,8 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
         // Un solo riferimento: `ImageJob.baseMediaId` è un campo, non una lista — anche quando il
         // modello ne accetterebbe di più (`upstream.referenceImageUrls`, dal catalogo in
         // `graph.ts`). Il tetto vero sta lì; qui si spedisce solo quel che il trasporto sa portare.
-        baseMediaId: upstream.referenceImageUrl ?? undefined
+        baseMediaId: upstream.referenceImageUrl ?? undefined,
+        params: extraParamsOf(input.params as unknown as Record<string, unknown>, declared)
       });
       if (!out.ok) {
         const message = 'reason' in out && out.reason ? `${out.error}: ${out.reason}` : out.error;
@@ -345,11 +351,16 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
     }
 
     const { generateVideoWithoutBrand } = await import('$lib/server/media-generate');
-    const [referenceImageUrls, referenceVideoUrls, referenceAudioUrls, lastFrame] = await Promise.all([
+    const { offerableModels } = await import('$lib/server/offerable-models');
+    const { extraParamsOf } = await import('$lib/canvas/model-params');
+    const [referenceImageUrls, referenceVideoUrls, referenceAudioUrls, lastFrame, videoDeclared] = await Promise.all([
       signMediaPaths(db, upstream.referenceImageUrls),
       signMediaPaths(db, upstream.referenceVideoUrls),
       signMediaPaths(db, upstream.referenceAudioUrls),
-      signMediaPaths(db, upstream.endFrameUrl ? [upstream.endFrameUrl] : [])
+      signMediaPaths(db, upstream.endFrameUrl ? [upstream.endFrameUrl] : []),
+      input.model
+        ? offerableModels(db, 'video').then((m) => m.choices.find((c) => c.id === input.model)?.params ?? [])
+        : Promise.resolve([])
     ]);
     const out = await generateVideoWithoutBrand({
       orgId: input.orgId,
@@ -361,6 +372,13 @@ export async function runGenNode(db: Db, input: StartRun): Promise<RunOutcome> {
       resolution: input.params.resolution,
       baseMediaId: upstream.startFrameUrl ?? undefined,
       lastFrameUrl: lastFrame[0],
+      // `audio` è il campo che il toolbar scrive (ModelChoice.generateAudio, il suo controllo
+      // dedicato — mai in `modelParamsOf`, v. l'esclusione in `model-params.ts`): il nome sul
+      // filo che OpenRouter dichiara è `generate_audio`, non lo stesso token.
+      params: {
+        ...extraParamsOf(input.params as unknown as Record<string, unknown>, videoDeclared),
+        ...(typeof input.params.audio === 'boolean' ? { generate_audio: input.params.audio } : {})
+      },
       referenceImageUrls,
       referenceVideoUrls,
       referenceAudioUrls

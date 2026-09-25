@@ -168,6 +168,29 @@ describe('il render sull’API immagini di OpenRouter', () => {
     expect(sentBody(f).model).toBe('meta/muse-image');
   });
 
+  it('manda i params dichiarati dal modello (quality, background…) col loro nome esatto', async () => {
+    const f = reply(ok());
+    vi.stubGlobal('fetch', f);
+    const { generateImageOnOpenrouterImages } = await import('./openrouter-images-api');
+    await generateImageOnOpenrouterImages({
+      ...REQ,
+      config: { imageConfig: { aspectRatio: '1:1', params: { quality: 'low', background: 'transparent' } } }
+    });
+    const body = sentBody(f);
+    expect(body.quality).toBe('low');
+    expect(body.background).toBe('transparent');
+  });
+
+  it('senza params dichiarati, il corpo non porta nessuna chiave extra', async () => {
+    const f = reply(ok());
+    vi.stubGlobal('fetch', f);
+    const { generateImageOnOpenrouterImages } = await import('./openrouter-images-api');
+    await generateImageOnOpenrouterImages(REQ);
+    const body = sentBody(f);
+    expect(body.quality).toBeUndefined();
+    expect(body.background).toBeUndefined();
+  });
+
   it('senza chiave non ci prova nemmeno', async () => {
     delete M.env.OPENROUTER_API_KEY;
     vi.stubGlobal('fetch', reply(ok()));

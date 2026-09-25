@@ -181,6 +181,9 @@ export type RenderImageOpts = {
   brandRules?: string;
   /** La modalità di scatto, quando il brief ne ha una. Senza, il prompt non dice niente in merito. */
   shotMode?: PhotoModeId;
+  /** I campi extra dichiarati dal modello (`ai_models.param_schema`) — passati fino al trasporto
+   *  senza essere letti qui: questo file non sa quali nomi un provider accetta. */
+  params?: Record<string, unknown>;
 };
 
 /**
@@ -275,7 +278,10 @@ export function buildImageRequest(imagePrompt: string, opts: RenderImageOpts = {
     contents: [{ role: 'user' as const, parts }],
     // imageConfig.aspectRatio è il controllo autoritativo; l'etichetta nel prompt tiene solo la
     // composizione descritta coerente con esso.
-    config: { responseModalities: ['TEXT', 'IMAGE'], imageConfig: { aspectRatio, resolution: opts.resolution } }
+    config: {
+      responseModalities: ['TEXT', 'IMAGE'],
+      imageConfig: { aspectRatio, resolution: opts.resolution, params: opts.params }
+    }
   };
 }
 

@@ -287,6 +287,9 @@ export type RenderVideoOpts = {
    * clip never had.
    */
   burnCaptions?: boolean;
+  /** I campi extra dichiarati dal modello scelto (`ai_models.param_schema`) — `generate_audio`,
+   *  `seed`… Già filtrati a monte (`model-params.ts::extraParamsOf`). */
+  params?: Record<string, unknown>;
 };
 
 // Ritmo veloce da short form: a 2.0 parole/s la recitazione esce lenta e strascicata, che nessuno
@@ -568,6 +571,7 @@ type PreparedRender = {
   referenceAudioUrls: string[];
   referenceImageUrls: string[];
   persistOpts: VideoPersistOpts;
+  params?: Record<string, unknown>;
 };
 
 /** What persistMp4 needs, kept whole because the request that computed it will not exist later. */
@@ -646,6 +650,7 @@ export async function prepareVideoRender(
     referenceVideoUrls,
     referenceAudioUrls,
     referenceImageUrls,
+    params: opts.params,
     persistOpts: {
       captions: opts.burnCaptions !== undefined ? !!opts.burnCaptions && !!script : !!script,
       fontName: opts.captionFont,
@@ -807,7 +812,8 @@ export async function submitVideoRender(
         // riferimenti e nessuno se ne accorge finché non la guarda.
         referenceImageUrls: p.referenceImageUrls,
         referenceAudioUrls: p.referenceAudioUrls,
-        referenceVideoUrls: p.referenceVideoUrls
+        referenceVideoUrls: p.referenceVideoUrls,
+        params: p.params
       },
       opts.abortSignal
     );

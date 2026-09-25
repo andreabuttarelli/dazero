@@ -75,6 +75,10 @@ export type GenerateMediaOpts = {
   referenceImageUrls?: string[];
   referenceAudioUrls?: string[];
   referenceVideoUrls?: string[];
+  /** I campi extra dichiarati dal modello scelto (`ai_models.param_schema`) — `generate_audio`,
+   *  `seed`… Solo video: `runImageJob` non li legge ancora, un'immagine non ne dichiara oltre
+   *  quelli con controllo dedicato al momento di scrivere questo. */
+  params?: Record<string, unknown>;
 };
 
 export type GenerateMediaResult =
@@ -380,6 +384,9 @@ export type ImageJob = {
   /** L'immagine della libreria da cui partire. Presente → è una modifica. */
   baseMediaId?: string;
   brandStyle?: BrandStyleUse;
+  /** I campi extra che il modello scelto dichiara (`ai_models.param_schema`), già filtrati e
+   *  col loro nome esatto — `model-params.ts` decide cosa entra, questo file lo porta soltanto. */
+  params?: Record<string, unknown>;
 };
 
 export type BrandStyleUse = 'apply' | 'ignore';
@@ -525,7 +532,8 @@ async function runImageJob(
     refineModel: refining ? (job.model ?? imageRefineModelFor(prefs)) : imageRefineModelFor(prefs),
     baseImage,
     aspectRatio: job.aspectRatio,
-    resolution: job.resolution
+    resolution: job.resolution,
+    params: job.params
   };
 
   // Il modello riportato viene dalla STESSA funzione che costruisce la richiesta, non da una copia
@@ -761,7 +769,8 @@ async function startVideo(opts: GenerateMediaOpts): Promise<VideoJobResult> {
       resolution: opts.resolution ?? (prefs.videoResolution as string | null | undefined),
       model:
         opts.model ??
-        ((opts.baseMediaId ? prefs.videoImageModel : prefs.videoModel) as string | null | undefined)
+        ((opts.baseMediaId ? prefs.videoImageModel : prefs.videoModel) as string | null | undefined),
+      params: opts.params
     }
   });
   if (!submitted) return { ok: false, error: 'render_failed', ...(submitReason ? { reason: submitReason } : {}) };

@@ -98,6 +98,7 @@ export async function generateImageOnOpenrouterImages(
   const parts = req.contents?.[0]?.parts ?? [];
   const aspectRatio = req.config?.imageConfig?.aspectRatio;
   const resolution = req.config?.imageConfig?.resolution;
+  const params = req.config?.imageConfig?.params ?? {};
   const references = referencesOf(parts, spec?.maxRefs ?? IMAGE_REFS_BUDGET);
   const t0 = Date.now();
 
@@ -113,7 +114,8 @@ export async function generateImageOnOpenrouterImages(
     ...(byName ? { aspect_ratio: byName } : {}),
     ...(bySize ? { size: bySize } : {}),
     ...(resolution ? { resolution } : {}),
-    ...(references.length ? { input_references: references } : {})
+    ...(references.length ? { input_references: references } : {}),
+    ...params
   };
 
   const fail = (error: string): never => {

@@ -81,7 +81,10 @@ vi.mock('$lib/server/video', () => ({ finishVideoRender }));
 // questo mock il test colpirebbe il vero gateway (assente in test) e il modello risulterebbe
 // "sparito", bloccando ogni giro per una ragione estranea al test.
 const { modalitiesOf } = vi.hoisted(() => ({ modalitiesOf: vi.fn() }));
-vi.mock('$lib/server/ai-models-sync', () => ({ modalitiesOf }));
+vi.mock('$lib/server/ai-models-sync', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/server/ai-models-sync')>()),
+  modalitiesOf
+}));
 vi.mock('$lib/server/supabase-admin', () => ({ createAdminClient: () => ({}) }));
 
 const SYNCED_MODALITIES = { input: ['text', 'image'], output: ['image'], synced_at: 'now' };
@@ -718,6 +721,13 @@ function statefulNodesDb(initial: { id: string; orgId: string; data: Record<stri
             })
           })
         };
+      }
+
+      // `runGenNode` legge il param_schema del modello scelto per filtrare cosa spedire al
+      // provider (`offerableModels`): questo scenario non ha righe sincronizzate, e un catalogo
+      // vuoto è un caso legittimo (`offerableModels` torna `synced: false`, non un errore).
+      if (table === 'ai_models') {
+        return { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) };
       }
 
       // `writeNodeData` scrive `canvas_events` a ogni scrittura riuscita: questo scenario non

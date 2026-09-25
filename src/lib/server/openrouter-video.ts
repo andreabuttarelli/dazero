@@ -44,6 +44,10 @@ export type OpenrouterVideoRender = {
   referenceImageUrls?: string[];
   referenceAudioUrls?: string[];
   referenceVideoUrls?: string[];
+  /** I campi extra dichiarati dal modello scelto (`ai_models.param_schema`) — `generate_audio`,
+   *  `seed`… Già filtrati a monte (`model-params.ts::extraParamsOf`), spediti col loro nome
+   *  esatto invece di un campo esplicito per ognuno qui. */
+  params?: Record<string, unknown>;
 };
 
 function apiKey(): string | undefined {
@@ -123,7 +127,8 @@ export function buildOpenrouterVideoInput(
     resolution: render.resolution,
     ...(frames.length ? { frame_images: frames } : { aspect_ratio: render.aspectRatio }),
     // Un elenco vuoto non si manda: è rumore nel payload, e un campo assente dice la stessa cosa.
-    ...(references.length ? { input_references: references } : {})
+    ...(references.length ? { input_references: references } : {}),
+    ...render.params
   };
 }
 
