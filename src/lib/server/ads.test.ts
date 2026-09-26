@@ -7,11 +7,32 @@ import {
   toAdsPlatform,
   toZernioPlatform,
   feeBreakdown,
-  AD_MANAGEMENT_FEE_RATE
+  AD_MANAGEMENT_FEE_RATE,
+  adsReadiness
 } from './ads';
 import { creditsForSpend } from '$lib/ads-fee';
 import { creditedSpend, creditsDue } from './ads-credits';
 import { buildCreatePayload } from './zernio-ads';
+
+function fakeSupabase() {
+  return {
+    from() {
+      return {
+        select() {
+          return this;
+        },
+        eq() {
+          return this;
+        },
+        maybeSingle: async () => ({ data: null, error: null }),
+        then(resolve: (v: { data: unknown[]; error: null }) => unknown) {
+          return resolve({ data: [], error: null });
+        }
+      };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
+}
 
 describe('ads helpers', () => {
   it('maps social platforms to Zernio ads keys', () => {
@@ -79,9 +100,10 @@ describe('ads helpers', () => {
     expect(feeBreakdown(25).fee).toBe(3);
   });
 
-  // Launching and keeping ads alive draws down AI credits — the fee is metered, not invoiced.
+  // Launching and keeping ads alive draws down AI credits — the fee is metered, not invoiced,
+  // at the SAME rate every other AI spend bills at (billedCreditsFor, credit-ladder.ts).
   it('bills the management fee in credits, only on new spend', () => {
-    expect(creditsForSpend(25)).toBe(300); // €25/day → €3 fee → 300 credits
+    expect(creditsForSpend(25)).toBe(600); // €25/day → €3 fee → 600 credits (200/$1)
 
     // A re-run of the same sync must charge nothing: the delta, not the total, is billed.
     expect(creditsDue(100, 100)).toBe(0);
@@ -167,5 +189,25 @@ describe('ads helpers', () => {
     );
     expect(hot.amount).toBeGreaterThanOrEqual(low.amount);
     expect(hot.amount).toBeLessThanOrEqual(50);
+  });
+
+  it('points readiness fixes at the project route, not the retired /app/<slug> one', async () => {
+    const readiness = await adsReadiness(
+      fakeSupabase(),
+      {
+        id: 'brand-ads-readiness-test',
+        slug: 'acme',
+        plan: null,
+        zernio_profile_id: null
+      },
+      'social',
+      '/p/proj-ads-readiness-test'
+    );
+
+    for (const check of readiness.checks) {
+      const isProjectLink = check.fix.startsWith('/p/proj-ads-readiness-test/');
+      const isTopLevelBilling = check.fix === '/app/billing';
+      expect(isProjectLink || isTopLevelBilling).toBe(true);
+    }
   });
 });

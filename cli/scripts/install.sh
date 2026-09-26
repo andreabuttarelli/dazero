@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Anomalia CLI Installer
+# feega CLI Installer
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/scripts/install.sh | bash              # Install
-#   curl -sSL https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/scripts/install.sh | bash -s -- --update  # Update
+#   curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash              # Install
+#   curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash -s -- --update  # Update
 #
 # Options:
 #   --version <ver>   Install a specific version (default: latest)
@@ -17,8 +17,8 @@ set -euo pipefail
 
 # ── Configuration ──────────────────────────────────────────────────────
 
-REPO="anomaliaso/anomalia"  # GitHub org/repo
-BINARY_NAME="anomalia"
+REPO="andreabuttarelli/feega"  # GitHub org/repo
+BINARY_NAME="feega"
 DEFAULT_DIR="/usr/local/bin"
 FALLBACK_DIR="$HOME/.local/bin"
 VERSION="latest"
@@ -75,7 +75,7 @@ while [[ $# -gt 0 ]]; do
     --no-sudo)  NO_SUDO=true; shift ;;
     --update)   UPDATE=true; shift ;;
     -h|--help)
-      echo "Usage: curl -sSL https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/scripts/install.sh | bash"
+      echo "Usage: curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash"
       echo ""
       echo "Options:"
       echo "  --version <ver>   Install a specific version"
@@ -91,7 +91,7 @@ done
 # ── Main ───────────────────────────────────────────────────────────────
 
 echo ""
-echo -e "${BOLD}Anomalia CLI Installer${NC}"
+echo -e "${BOLD}feega CLI Installer${NC}"
 echo ""
 
 # Detect platform
@@ -100,14 +100,14 @@ info "Platform: ${PLATFORM}"
 
 # Update mode — find existing installation
 if [[ "$UPDATE" == true ]]; then
-  EXISTING="$(which anomalia 2>/dev/null || true)"
+  EXISTING="$(which feega 2>/dev/null || true)"
   if [[ -n "$EXISTING" ]]; then
     INSTALL_DIR="$(dirname "$EXISTING")"
     CURRENT_VERSION="$($EXISTING --version 2>/dev/null || echo 'unknown')"
     info "Found existing installation: $EXISTING (v${CURRENT_VERSION})"
     info "Updating in $INSTALL_DIR..."
   else
-    warn "anomalia not found in PATH. Installing fresh."
+    warn "feega not found in PATH. Installing fresh."
     UPDATE=false
   fi
 fi
@@ -145,7 +145,7 @@ if [[ "$VERSION" == "latest" ]]; then
 else
   RELEASE_BASE="https://github.com/${REPO}/releases/download/${TAG_PREFIX}${VERSION#v}"
 fi
-DOWNLOAD_URL="${RELEASE_BASE}/anomalia-${PLATFORM}"
+DOWNLOAD_URL="${RELEASE_BASE}/feega-${PLATFORM}"
 CHECKSUMS_URL="${RELEASE_BASE}/${CHECKSUMS_FILE}"
 
 # ── Download helpers ───────────────────────────────────────────────────
@@ -166,7 +166,7 @@ else
   fatal "Neither sha256sum nor shasum found: cannot verify the download."
 fi
 
-info "Downloading Anomalia CLI..."
+info "Downloading feega CLI..."
 info "URL: ${DOWNLOAD_URL}"
 
 TEMP_FILE="$(mktemp)"
@@ -174,19 +174,19 @@ CHECKSUMS_FL="$(mktemp)"
 trap 'rm -f "$TEMP_FILE" "$CHECKSUMS_FL"' EXIT
 
 fetch "$TEMP_FILE" "$DOWNLOAD_URL" \
-  || fatal "Download failed. No release asset anomalia-${PLATFORM} at ${RELEASE_BASE}"
+  || fatal "Download failed. No release asset feega-${PLATFORM} at ${RELEASE_BASE}"
 
 # Verify the binary against the checksums published with the release. Refusing to
 # install an unverified executable is the whole point of shipping SHA256SUMS.txt.
 fetch "$CHECKSUMS_FL" "$CHECKSUMS_URL" \
   || fatal "Could not download ${CHECKSUMS_FILE} from ${RELEASE_BASE}: refusing to install unverified."
 
-EXPECTED="$(awk -v f="anomalia-${PLATFORM}" '$2 == f || $2 == "*" f {print $1}' "$CHECKSUMS_FL" | head -1)"
-[[ -n "$EXPECTED" ]] || fatal "${CHECKSUMS_FILE} has no entry for anomalia-${PLATFORM}: refusing to install unverified."
+EXPECTED="$(awk -v f="feega-${PLATFORM}" '$2 == f || $2 == "*" f {print $1}' "$CHECKSUMS_FL" | head -1)"
+[[ -n "$EXPECTED" ]] || fatal "${CHECKSUMS_FILE} has no entry for feega-${PLATFORM}: refusing to install unverified."
 
 ACTUAL="$(sha256 "$TEMP_FILE")"
 if [[ "$ACTUAL" != "$EXPECTED" ]]; then
-  error "Checksum mismatch for anomalia-${PLATFORM}"
+  error "Checksum mismatch for feega-${PLATFORM}"
   error "  expected: $EXPECTED"
   error "  actual:   $ACTUAL"
   fatal "Refusing to install a binary that does not match the published checksum."
@@ -200,7 +200,7 @@ info "Installing to ${INSTALL_DIR}/${BINARY_NAME}..."
 $SUDO mv "$TEMP_FILE" "${INSTALL_DIR}/${BINARY_NAME}" || fatal "Installation failed"
 trap 'rm -f "$CHECKSUMS_FL"' EXIT
 
-success "Anomalia CLI installed to ${INSTALL_DIR}/${BINARY_NAME}"
+success "feega CLI installed to ${INSTALL_DIR}/${BINARY_NAME}"
 
 # Install AI skill (ask user).
 #
@@ -227,20 +227,20 @@ if [[ "$TTY_OK" == true && "$install_skill" != "n" && "$install_skill" != "N" ]]
   read -r -u 3 -p "  Scelta [1/2]: " skill_choice || true
   echo ""
 
-  SKILL_URL="https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/skills/anomalia-cli.md"
+  SKILL_URL="https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/skills/feega-cli.md"
 
   if [[ "$skill_choice" == "2" ]]; then
     # Global install
     CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
     mkdir -p "$CLAUDE_SKILLS_DIR"
-    fetch "$CLAUDE_SKILLS_DIR/anomalia-cli.md" "$SKILL_URL" 2>/dev/null && \
-      success "Skill installata globalmente → $CLAUDE_SKILLS_DIR/anomalia-cli.md" || \
+    fetch "$CLAUDE_SKILLS_DIR/feega-cli.md" "$SKILL_URL" 2>/dev/null && \
+      success "Skill installata globalmente → $CLAUDE_SKILLS_DIR/feega-cli.md" || \
       warn "Could not install skill (non-critical)"
   else
     # Project install
     mkdir -p ".claude/skills"
-    fetch ".claude/skills/anomalia-cli.md" "$SKILL_URL" 2>/dev/null && \
-      success "Skill installata nel progetto → .claude/skills/anomalia-cli.md" || \
+    fetch ".claude/skills/feega-cli.md" "$SKILL_URL" 2>/dev/null && \
+      success "Skill installata nel progetto → .claude/skills/feega-cli.md" || \
       warn "Could not install skill (non-critical)"
 
     # Also install for Cursor if .cursor exists
@@ -250,7 +250,7 @@ if [[ "$TTY_OK" == true && "$install_skill" != "n" && "$install_skill" != "N" ]]
     fi
 
     # Also install llms.txt
-    fetch "llms.txt" "https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/llms.txt" 2>/dev/null && \
+    fetch "llms.txt" "https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/llms.txt" 2>/dev/null && \
       success "llms.txt installato" || true
   fi
 fi
@@ -275,20 +275,20 @@ fi
 
 # Verify installation
 echo ""
-if command -v anomalia &> /dev/null; then
-  NEW_VERSION="$(anomalia --version 2>/dev/null || echo 'unknown')"
+if command -v feega &> /dev/null; then
+  NEW_VERSION="$(feega --version 2>/dev/null || echo 'unknown')"
   if [[ "$UPDATE" == true ]]; then
-    success "Anomalia CLI updated! (v${CURRENT_VERSION} → v${NEW_VERSION})"
+    success "feega CLI updated! (v${CURRENT_VERSION} → v${NEW_VERSION})"
   else
-    success "Anomalia CLI installed! (v${NEW_VERSION})"
+    success "feega CLI installed! (v${NEW_VERSION})"
   fi
   echo ""
-  echo "  Run 'anomalia --help' to get started"
-  echo "  Run 'anomalia update' to update to the latest version"
+  echo "  Run 'feega --help' to get started"
+  echo "  Run 'feega update' to update to the latest version"
 else
   info "Installation complete! You may need to restart your terminal."
   echo ""
-  echo "  Run '${INSTALL_DIR}/anomalia --help' to get started"
+  echo "  Run '${INSTALL_DIR}/feega --help' to get started"
 fi
 
 echo ""

@@ -14,5 +14,19 @@ export type GeminiImageRequest = {
       inlineData?: { mimeType: string; data: string };
     }>;
   }>;
-  config?: { imageConfig?: { aspectRatio?: string } };
+  /** Il token esatto che il modello scelto dichiara (`ai_models.supported_resolutions`,
+   *  `ModelChoice.resolutions`) — `1K`/`2K`/`4K` per la maggior parte, `512` in più su Nano
+   *  Banana 2. Solo `/api/v1/images`, solo i modelli che dichiarano `resolution` fra i
+   *  `supported_parameters`. Assente = la resa di default del modello. */
+  config?: {
+    imageConfig?: {
+      aspectRatio?: string;
+      resolution?: string;
+      /** I campi che il modello scelto dichiara oltre a formato e risoluzione
+       *  (`ai_models.param_schema`, `ModelChoice.params`) — `quality`, `background`,
+       *  `output_compression`… Già filtrati a monte (`model-params.ts::modelParamsOf`
+       *  esclude quel che ha un controllo suo), spediti qui col loro nome esatto. */
+      params?: Record<string, unknown>;
+    };
+  };
 };

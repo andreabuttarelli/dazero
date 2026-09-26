@@ -1,15 +1,15 @@
-# Anomalia MCP — how to use it
+# feega MCP — how to use it
 
-Anomalia exposes a [Model Context Protocol](https://modelcontextprotocol.io) server so coding agents
-(Cursor, Claude, etc.) can manage brands, posts, plans, studio, SEO/GEO, and blog — with the **same
-OAuth login as the CLI**. There are **no static API tokens**.
+feega exposes a [Model Context Protocol](https://modelcontextprotocol.io) server so coding agents
+(Cursor, Claude, etc.) can read and write the canvas — projects, canvases, nodes, posts, ad
+campaigns — with the **same OAuth login as the CLI**. There are **no static API tokens**.
 
 ```
 Your agent
-   │  stdio (local)     →  bun run mcp  /  anomalia-mcp
-   │  HTTPS (remote)    →  https://mcp.anomalia.so/mcp  + Bearer
+   │  stdio (local)     →  bun run mcp  /  feega-mcp
+   │  HTTPS (remote)    →  https://mcp.feega.app/mcp  + Bearer
    ▼
-Anomalia API  (/api/v1/*)
+feega API  (/api/v1/*)
 ```
 
 ## Quick start
@@ -20,8 +20,7 @@ Anomalia API  (/api/v1/*)
 2. Authenticate once:
 
 ```bash
-anomalia login
-# or, after MCP is connected, call the `login` tool
+feega login
 ```
 
 3. Add to Cursor MCP config (absolute path required):
@@ -29,42 +28,42 @@ anomalia login
 ```json
 {
   "mcpServers": {
-    "anomalia": {
+    "feega": {
       "command": "bun",
-      "args": ["run", "/ABS/PATH/to/anomalia-cli/mcp/stdio.ts"]
+      "args": ["run", "/ABS/PATH/to/feega-cli/mcp/stdio.ts"]
     }
   }
 }
 ```
 
-4. Restart Cursor / reload MCP. Call `list_brands`, then work with a brand `slug`.
+4. Restart Cursor / reload MCP. Call `query` on `brands` to confirm auth and see what you can see.
 
-Session file (shared with the CLI): `~/.config/anomalia/session.json`.
+Session file (shared with the CLI): `~/.config/feega/session.json`.
 
-### Option B — Remote HTTP (`mcp.anomalia.so`)
+### Option B — Remote HTTP (`mcp.feega.app`)
 
 1. Confirm the server is up:
 
 ```bash
-curl -sS https://mcp.anomalia.so/health
+curl -sS https://mcp.feega.app/health
 ```
 
-Expect: `{"ok":true,"name":"anomalia-mcp","mcp":"/mcp",...}`.
+Expect: `{"ok":true,"name":"feega-mcp","mcp":"/mcp",...}`.
 
 2. Cursor MCP config:
 
 ```json
 {
   "mcpServers": {
-    "anomalia": {
-      "url": "https://mcp.anomalia.so/mcp"
+    "feega": {
+      "url": "https://mcp.feega.app/mcp"
     }
   }
 }
 ```
 
 3. The host must send **`Authorization: Bearer <access_token>`** on every request.  
-   Use the Supabase access token from Anomalia OAuth (same value the CLI stores after `anomalia login`).  
+   Use the Supabase access token from feega OAuth (same value the CLI stores after `feega login`).  
    Without Bearer you get **401** — that is correct, not a crash.
 
 If your client cannot attach Bearer yet, use [mcp-remote](https://www.npmjs.com/package/mcp-remote) or prefer **Option A**.
@@ -82,41 +81,40 @@ Auth: Bearer **or** the local session file.
 
 ## What to call first
 
-1. `list_brands` — discover slugs  
-2. `get_dashboard` — brand overview  
-3. `list_posts` with status `pending_user` — approval queue  
-4. Prefer specific tools (`approve_posts`, `edit_post`, …) over `chat` for precise actions  
+1. `query` on `brands` — confirm auth, see what you can see
+2. `query` on `posts`, filtered by `brand_id` and `status` — approval queue
+3. `list_posts` / `list_ad_campaigns` for the brand-scoped named reads
 
-Post and article ids accept **short unambiguous prefixes** from list results (same rule as the CLI).
+Post and ad campaign ids accept **short unambiguous prefixes** from list results (same rule as
+the CLI).
 
 ## Tool areas
 
-| Area | Examples |
-|------|----------|
-| Auth | `login`, `logout`, `whoami`, `list_brands` |
-| Posts | `list_posts`, `get_post`, `edit_post`, `approve_posts`, `regenerate_slide`, `make_video` |
-| Plans | `get_plan`, `propose_plan`, `plan_week`, `produce_week` |
-| Studio | `get_studio`, `add_note`, `research_competitors` |
-| Web | `get_seo`, `get_geo`, `generate_article`, `ads_remix`, `chat` |
+| Area | Tools |
+|------|-------|
+| Database (org-scoped) | `query`, `insert_row`, `update_row`, `delete_row`, `describe_node_types` |
+| Canvas generation | `run_node_generation` |
+| Posts | `list_posts`, `create_post`, `set_post_status` |
+| Ads | `list_ad_campaigns`, `create_ad_campaign`, `approve_ad_campaign` |
 
-Full map: [`skills/anomalia/references/tools.md`](../skills/anomalia/references/tools.md).
+12 tools total. Full map: [`skills/feega/references/tools.md`](../skills/feega/references/tools.md).
 
 ## Agent skill (directories / `npx skills`)
 
 Publishable Agent Skill (agentskills.io):
 
 ```bash
-npx skills add anomaliaso/anomalia --skill anomalia
+npx skills add andreabuttarelli/feega --skill feega
 ```
 
-Sources: [`skills/anomalia/`](../skills/anomalia/) (`SKILL.md` + `references/`).  
-Claude/Codex marketplace plugin (skill + remote MCP): [`plugins/anomalia/`](../plugins/anomalia/) — see [`plugins.md`](plugins.md).
+Sources: [`skills/feega/`](../skills/feega/) (`SKILL.md` + `references/`).  
+Claude/Codex marketplace plugin (skill + remote MCP): [`plugins/feega/`](../plugins/feega/) — see [`plugins.md`](plugins.md).
 
 ## Auth rules (summary)
 
 | Context | How you authenticate |
 |---------|----------------------|
-| Local stdio / local HTTP | Browser `login` tool or `anomalia login` → session file |
+| Local stdio / local HTTP | `feega login` in a terminal → session file, shared with MCP |
 | Remote HTTP | `Authorization: Bearer <jwt>` required |
 | Static API key | **Not supported** |
 
@@ -124,7 +122,7 @@ Protected resource metadata: `GET /.well-known/oauth-protected-resource`.
 
 ## Cursor + remote HTTP OAuth
 
-Cursor’s remote MCP connector discovers Anomalia’s authorization server and runs
+Cursor’s remote MCP connector discovers feega’s authorization server and runs
 [Dynamic Client Registration](https://datatracker.ietf.org/doc/html/rfc7591). Some Cursor
 builds still register the custom-scheme callback:
 
@@ -132,7 +130,7 @@ builds still register the custom-scheme callback:
 cursor://anysphere.cursor-mcp/oauth/callback
 ```
 
-Anomalia’s `/oauth/register` only accepts **https** or **loopback http** redirect URIs, so that
+feega’s `/oauth/register` only accepts **https** or **loopback http** redirect URIs, so that
 registration fails with:
 
 ```text
@@ -146,25 +144,25 @@ Not an https or loopback URI: cursor://anysphere.cursor-mcp/oauth/callback
 ```json
 {
   "mcpServers": {
-    "anomalia": {
+    "feega": {
       "command": "bun",
-      "args": ["run", "/ABS/PATH/to/anomalia-cli/mcp/stdio.ts"]
+      "args": ["run", "/ABS/PATH/to/feega-cli/mcp/stdio.ts"]
     }
   }
 }
 ```
 
-Then call the `login` tool (or run `anomalia login` first).
+Run `feega login` first — there is no sign-in tool.
 
 2. **Update Cursor** so MCP OAuth uses the loopback callback
-   `http://localhost:8787/callback` (RFC 8252). That URI **is** accepted by Anomalia DCR.
+   `http://localhost:8787/callback` (RFC 8252). That URI **is** accepted by feega DCR.
 
-3. **Bearer header** — after `anomalia login`, put the access token from
-   `~/.config/anomalia/session.json` in the MCP config `headers.Authorization` (if your Cursor
+3. **Bearer header** — after `feega login`, put the access token from
+   `~/.config/feega/session.json` in the MCP config `headers.Authorization` (if your Cursor
    build supports headers on URL servers), or bridge with
    [mcp-remote](https://www.npmjs.com/package/mcp-remote).
 
-**Permanent fix (Anomalia app, not this repo):** allowlist Cursor’s known redirect URIs in the
+**Permanent fix (feega app, not this repo):** allowlist Cursor’s known redirect URIs in the
 authorization server’s DCR validator (`/oauth/register`), including
 `cursor://anysphere.cursor-mcp/oauth/callback` and
 `https://www.cursor.com/agents/mcp/oauth/callback`, while keeping loopback `http://localhost`

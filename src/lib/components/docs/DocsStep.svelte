@@ -40,7 +40,6 @@
 <style>
   :global(.docs-step-box) {
     border: 1px solid var(--line);
-    border-radius: 12px;
     margin-bottom: 10px;
     background: var(--paper);
     transition: border-color 0.15s ease;
@@ -72,7 +71,6 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    border-radius: 50%;
     background: color-mix(in srgb, var(--accent) 10%, transparent);
     color: var(--accent);
     font-size: 13px;
@@ -115,7 +113,6 @@
     font-size: 13px;
     background: var(--paper-2);
     border: 1px solid var(--line);
-    border-radius: 6px;
     padding: 1px 6px;
   }
 </style>

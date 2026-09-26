@@ -19,12 +19,31 @@
    * E NON SU TUTTE. Chi mette la tile dice se si collega: un post produce, un pannello che
    * riassume il brand no. Due puntini su quest'ultimo inviterebbero a un gesto che poi fallisce.
    */
-  import { Handle, Position, type NodeProps } from '@xyflow/svelte';
+  import { Handle, NodeResizer, Position, useConnection, type NodeProps } from '@xyflow/svelte';
+  import { CONNECTOR_STYLE, portActive, type ConnectorType, type DragOrigin } from '$lib/canvas/connectors';
+  import { NODE_KIND_ICON, NODE_KIND_LABEL } from '$lib/canvas/node-label';
+  import { isNodeType } from '$lib/canvas/node-data';
+  import { getTileRender } from '$lib/canvas/tile-render-context';
+  import { getTileResize } from '$lib/canvas/tile-resize-context';
 
   type TileData = {
-    render?: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
     id: string;
     connectable?: boolean;
+    /** Le porte di QUESTO nodo, dal modello scelto (`connectorsFor`). Assente = un solo ingresso
+     *  generico — il caso di chi non ha ancora scelto un modello, o non produce affatto. */
+    connectors?: ConnectorType[];
+    output?: ConnectorType | null;
+    /** `nodes.type`: decide icona e nome di riserva della targhetta fuori dal corpo. Assente su
+     *  quel che non è un nodo del modello (il recap del brand) — niente targhetta in quel caso. */
+    kind?: string;
+    /** `nodes.display_name`, quando chi ha nominato il nodo l'ha scritto. Vince sul nome del tipo. */
+    displayName?: string | null;
+    /** Questo nodo è sorgente di almeno un post (`post_sources`). */
+    inPost?: boolean;
+    /** La taglia minima del TIPO di questo nodo (`nodeSize`). Assente = non ridimensionabile a
+     *  mano — il recap del brand non ha una taglia minima propria da rispettare. */
+    minW?: number;
+    minH?: number;
   };
 
   // `selected` lo tiene SvelteFlow e lo passa a ogni nodo: è l'unico che sa davvero cosa è
@@ -33,27 +52,122 @@
   // recap no.
   let { data, selected }: NodeProps = $props();
   const tile = $derived(data as unknown as TileData);
+  const render = getTileRender();
+  const resize = getTileResize();
+
+  const connection = useConnection();
+  const origin = $derived.by((): DragOrigin => {
+    const c = connection.current;
+    if (!c.inProgress || !c.fromHandle) {
+      return null;
+    }
+    if (c.fromHandle.type === 'source') {
+      const output = (c.fromNode?.data as TileData | undefined)?.output ?? null;
+      return { side: 'source', type: output, nodeId: c.fromHandle.nodeId, handleId: c.fromHandle.id ?? null };
+    }
+    const port = c.fromHandle.id && c.fromHandle.id in CONNECTOR_STYLE ? (c.fromHandle.id as ConnectorType) : null;
+    return { side: 'target', type: port, nodeId: c.fromHandle.nodeId, handleId: c.fromHandle.id ?? null };
+  });
+
+  const kind = $derived(tile.kind && isNodeType(tile.kind) ? tile.kind : null);
+  const LabelIcon = $derived(kind ? NODE_KIND_ICON[kind] : null);
+  const label = $derived(tile.displayName?.trim() || (kind ? NODE_KIND_LABEL[kind] : null));
+
+  // IL COLORE DELLA SELEZIONE — quello che il nodo produrrebbe se avesse una porta d'uscita, lo
+  // stesso `CONNECTOR_STYLE` che colora la porta stessa: un nodo testo si seleziona blu, un'
+  // immagine verde, un nodo senza uscita (iframe, prodotti, un feed social) prende l'accento, non
+  // un colore che non gli appartiene.
+  const selectionColor = $derived(tile.output ? CONNECTOR_STYLE[tile.output].color : 'var(--accent, #7c5cff)');
 </script>
 
 {#if tile.connectable}
-  <Handle type="target" position={Position.Left} />
+  {#if tile.connectors?.length}
+    {#each tile.connectors as connector, i (connector)}
+      <Handle
+        type="target"
+        id={connector}
+        position={Position.Left}
+        class={`typed-port port-in${portActive(origin, 'target', connector, { nodeId: tile.id, handleId: connector }) ? '' : ' port-off'}`}
+        style={`top:${((i + 1) / (tile.connectors.length + 1)) * 100}%;--port:${CONNECTOR_STYLE[connector].color}`}
+        title={CONNECTOR_STYLE[connector].label}
+        aria-label={CONNECTOR_STYLE[connector].label}
+      >
+        <span class="port-name">{CONNECTOR_STYLE[connector].label}</span>
+      </Handle>
+    {/each}
+  {:else}
+    <Handle type="target" position={Position.Left} />
+  {/if}
 {/if}
 
-{#if tile.render}
-  {@render tile.render({ id: tile.id, selected })}
+{#if label && LabelIcon}
+  <div class="node-label" class:is-chosen={selected}>
+    <LabelIcon size={12} strokeWidth={1.8} />
+    <span>{label}</span>
+    {#if tile.inPost}
+      <span class="in-post-marker" title="Usato in un post">●</span>
+    {/if}
+  </div>
 {/if}
+
+{#if selected}
+  <div class="tile-selection" style={`outline-color:${selectionColor}`} aria-hidden="true"></div>
+{/if}
+
+{#if selected && resize() && tile.minW != null && tile.minH != null}
+  <NodeResizer
+    nodeId={tile.id}
+    minWidth={tile.minW}
+    minHeight={tile.minH}
+    color={selectionColor}
+    handleStyle="border-radius:0;width:8px;height:8px;"
+    lineStyle="border-radius:0;"
+    onResizeEnd={(_event, params) => resize()?.(tile.id, params.width, params.height)}
+  />
+{/if}
+
+{@render render()({ id: tile.id, selected })}
 
 {#if tile.connectable}
-  <Handle type="source" position={Position.Right} />
+  {#if tile.output}
+    <Handle
+      type="source"
+      position={Position.Right}
+      class={`typed-port port-out${portActive(origin, 'source', tile.output, { nodeId: tile.id, handleId: null }) ? '' : ' port-off'}`}
+      style={`--port:${CONNECTOR_STYLE[tile.output].color}`}
+      title={CONNECTOR_STYLE[tile.output].label}
+      aria-label={CONNECTOR_STYLE[tile.output].label}
+    >
+      <span class="port-name">{CONNECTOR_STYLE[tile.output].label}</span>
+    </Handle>
+  {:else}
+    <Handle type="source" position={Position.Right} />
+  {/if}
 {/if}
 
 <style>
-  /* Gli attacchi si vedono quando servono: fermi sono un puntino, col puntatore sopra la tile
-     diventano un bersaglio. `:global` perché il nodo è disegnato da SvelteFlow, non da qui. */
+  /*
+   * IL BORDO DI SELEZIONE, UNA VOLTA SOLA QUI — non nel corpo di ogni tipo di nodo. Copre l'intera
+   * tile con un `outline` (fuori dal box, non intacca il layout interno) invece di un `border` sul
+   * corpo: un componente che ha già un proprio bordo (GenNode, i pannelli) non lo vede toccato, e
+   * la selezione resta sempre visibile allo stesso spessore sopra qualunque contenuto.
+   *
+   * ANGOLI QUADRATI: nessun `border-radius`, la regola vale anche qui.
+   */
+  .tile-selection {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    outline: 2px solid;
+    outline-offset: 1px;
+  }
+
   :global(.svelte-flow__handle) {
     width: 9px;
     height: 9px;
     border: 2px solid var(--paper, #fff);
+    border-radius: 0;
     background: var(--ink-soft, #6e6e73);
     opacity: 0;
     transition: opacity 120ms ease;
@@ -63,6 +177,99 @@
   :global(.svelte-flow__handle.connecting) {
     opacity: 1;
   }
+  :global(.svelte-flow__handle.typed-port) {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    height: 22px;
+    min-width: 0;
+    padding: 0 8px;
+    border: 2px solid var(--port);
+    background: var(--paper, #fff);
+    opacity: 1;
+    cursor: crosshair;
+    transition: opacity 120ms ease;
+  }
+  :global(.svelte-flow__handle.typed-port::before) {
+    content: '';
+    flex: none;
+    width: 10px;
+    height: 10px;
+    background: var(--port);
+  }
+  :global(.svelte-flow__handle.port-in) {
+    left: 0;
+    flex-direction: row-reverse;
+    transform: translate(-100%, -50%);
+  }
+  :global(.svelte-flow__handle.port-out) {
+    right: 0;
+    transform: translate(100%, -50%);
+  }
+  :global(.svelte-flow__handle.port-off) {
+    opacity: 0.12;
+    pointer-events: none;
+  }
+  :global(.svelte-flow__handle.port-off .port-name) {
+    display: none;
+  }
+  .port-name {
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--port);
+    pointer-events: none;
+  }
+
+  /*
+   * LA TARGHETTA, FUORI DAL CORPO DEL NODO — come il nome di un frame in Figma.
+   *
+   * `bottom: 100%` e non `top` negativo: ancora il basso della targhetta al TOP del nodo, quindi
+   * cresce verso l'alto e non si sposta se il testo va a capo diversamente. Il piccolo margine
+   * (`margin-bottom`) è lo spazio fra targhetta e corpo, non un padding del corpo — il nodo non sa
+   * di avere una targhetta sopra.
+   *
+   * NESSUN `pointer-events: none`: trascinare la targhetta deve spostare il nodo, come un titolo
+   * di frame — è la stessa superficie di trascinamento del nodo, non un bersaglio a parte. Non
+   * intercetta un arco perché non è un `Handle`: SvelteFlow apre una connessione solo da lì.
+   */
+  .node-label {
+    position: absolute;
+    z-index: 3;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 100%;
+    padding: 2px 0;
+    font-size: 11px;
+    line-height: 1.3;
+    color: var(--ink-soft, #6e6e73);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .node-label :global(svg) {
+    flex: none;
+  }
+  .node-label span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .in-post-marker {
+    flex: none;
+    font-size: 8px;
+    line-height: 1;
+    color: var(--accent, #2563eb);
+  }
+  .node-label.is-chosen {
+    color: var(--ink, #1d1d1f);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     :global(.svelte-flow__handle) {
       transition: none;

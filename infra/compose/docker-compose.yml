@@ -1,4 +1,4 @@
-# Self-hosted Supabase stack for Anomalia — NOT the whole official supabase/supabase compose,
+# Self-hosted Supabase stack for feega — NOT the whole official supabase/supabase compose,
 # and not copied blind. Based on it (docker/docker-compose.yml, tag v1.26.08) with the services
 # this app actually needs, trimmed for something one person can read in one sitting:
 #
@@ -33,7 +33,7 @@
 #
 # See ../../docs/SELF_HOSTING.md for the full walkthrough.
 
-name: anomalia-selfhost
+name: feega-selfhost
 
 services:
   db:
@@ -301,7 +301,7 @@ services:
       HOSTNAME: '0.0.0.0'
       STUDIO_PG_META_URL: http://meta:8080
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION:-Anomalia self-host}
+      DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION:-feega self-host}
       DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT:-Default Project}
       SUPABASE_URL: http://kong:8000
       SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-http://localhost:8000}
@@ -315,7 +315,7 @@ services:
     build:
       context: ../..
       dockerfile: infra/app/Dockerfile
-    image: ${COMPOSE_PROJECT_NAME:-anomalia}-app
+    image: ${COMPOSE_PROJECT_NAME:-feega}-app
     restart: unless-stopped
     depends_on:
       kong:
@@ -370,7 +370,7 @@ services:
       ALLOW_INSECURE_CRON: ${ALLOW_INSECURE_CRON:-}
 
   worker:
-    image: ${COMPOSE_PROJECT_NAME:-anomalia}-app
+    image: ${COMPOSE_PROJECT_NAME:-feega}-app
     restart: unless-stopped
     depends_on:
       app:

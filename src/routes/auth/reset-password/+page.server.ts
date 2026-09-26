@@ -1,5 +1,4 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { canEnter } from '$lib/server/access';
 import type { Actions, PageServerLoad } from './$types';
 
 const MIN_PASSWORD = 6;
@@ -26,7 +25,6 @@ export const actions: Actions = {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) return fail(400, { error: error.message });
 
-    if (!(await canEnter(supabase))) throw redirect(303, '/waitlist');
     throw redirect(303, '/app');
   }
 };

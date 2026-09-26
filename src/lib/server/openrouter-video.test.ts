@@ -138,12 +138,24 @@ describe('il trasporto video su OpenRouter', () => {
     expect(M.logged.at(-1)!.flatCostUsd).toBeUndefined();
   });
 
-  it('gli id di kie diventano quelli di OpenRouter, e un modello che non c’è non è servito', async () => {
+  it('gli id di kie diventano quelli di OpenRouter, e un modello senza spec passa così com’è', async () => {
     const { openrouterVideoModel } = await import('./openrouter-video');
     expect(openrouterVideoModel('bytedance/seedance-2-5')).toBe('bytedance/seedance-2.5');
     expect(openrouterVideoModel('grok-imagine-video-1-5-preview')).toBe('x-ai/grok-imagine-video-1.5');
     expect(openrouterVideoModel('kling-3.0/video')).toBe('kwaivgi/kling-v3.0-pro');
-    expect(openrouterVideoModel('runway/aleph')).toBeUndefined();
+    expect(openrouterVideoModel('runway/aleph')).toBe('runway/aleph');
+  });
+
+  it('un modello sincronizzato ma senza spec nostro viaggia sul filo con l’id che arriva', async () => {
+    states = [DONE];
+    const f = stubFetch();
+    const { renderOpenrouterVideo } = await import('./openrouter-video');
+    await renderOpenrouterVideo({ ...RENDER, model: 'wan-ai/wan-3.0' }, { intervalMs: 1 });
+
+    const body = JSON.parse(String(f.mock.calls[0][1]!.body));
+    expect(body.model).toBe('wan-ai/wan-3.0');
+    expect(body.duration).toBe(8);
+    expect(body.resolution).toBe('480p');
   });
 
   it('la cover viaggia come frame_images, e il ratio sparisce quando c’è', async () => {

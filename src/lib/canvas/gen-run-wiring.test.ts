@@ -18,11 +18,11 @@ import { describe, expect, it } from 'vitest';
 const dir = dirname(fileURLToPath(import.meta.url));
 
 const page = readFileSync(
-  join(dir, '..', '..', 'routes', 'app', '[brand]', 'workbench', '+page.svelte'),
+  join(dir, '..', '..', 'routes', 'p', '[projectId]', 'c', '[canvasId]', '+page.svelte'),
   'utf8'
 );
 const server = readFileSync(
-  join(dir, '..', '..', 'routes', 'app', '[brand]', 'workbench', '+page.server.ts'),
+  join(dir, '..', '..', 'routes', 'p', '[projectId]', 'c', '[canvasId]', '+page.server.ts'),
   'utf8'
 );
 
@@ -48,7 +48,7 @@ describe('un giro non si paga due volte', () => {
     // Dopo la chiamata resterebbe aperta proprio la finestra in cui si clicca due volte, e due
     // render sono due addebiti veri di cui uno viene sovrascritto dall altro atterrando.
     const body = page.slice(page.indexOf('async function run('));
-    const raised = body.indexOf('running: true');
+    const raised = body.indexOf('startRun(');
     const called = body.indexOf("post('run'");
 
     expect(raised).toBeGreaterThan(-1);
@@ -64,10 +64,10 @@ describe('un giro non si paga due volte', () => {
 
 describe('spendere passa dal cancello dei crediti', () => {
   it('la action che genera lo chiede; le altre, che non spendono, no', () => {
-    expect(server).toMatch(/gateAiAction/);
+    expect(server).toMatch(/gateOrgAiAction|gateAiAction/);
 
     const run = server.slice(server.indexOf('run: async'), server.indexOf('restore: async'));
-    expect(run).toMatch(/creditsDenied|gateAiAction/);
+    expect(run).toMatch(/creditsDenied|gateOrgAiAction|gateAiAction/);
   });
 });
 
@@ -80,5 +80,21 @@ describe('la storia non si perde', () => {
   it('e si può tornare a una generazione di prima', () => {
     expect(page).toMatch(/onshow=\{/);
     expect(server).toMatch(/\brestore:\s*async/);
+  });
+});
+
+describe('un nodo bloccato si può sbloccare', () => {
+  it('la pagina offre unlock e il nodo mostra l errore', () => {
+    expect(page).toMatch(/onunlock=/);
+    expect(page).toMatch(/unlock\(/);
+  });
+
+  it('il server che fallisce abbassa running: senza, il nodo resta in corsa per sempre', () => {
+    const generate = readFileSync(
+      join(dir, '..', '..', 'lib', 'server', 'canvas', 'generate.ts'),
+      'utf8'
+    );
+    expect(generate).toMatch(/running: false/);
+    expect(generate).toMatch(/error:/);
   });
 });

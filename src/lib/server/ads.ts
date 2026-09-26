@@ -33,7 +33,8 @@ import {
   chargeAdsCredits,
   creditedSpend,
   creditsDue,
-  creditsForSpend
+  creditsForSpend,
+  feeUsdDue
 } from '$lib/server/ads-credits';
 
 export { AD_MANAGEMENT_FEE_RATE, feeBreakdown, creditsForSpend } from '$lib/ads-fee';
@@ -197,7 +198,7 @@ export async function rankBoostCandidates(
       .limit(80)
   ]);
 
-  // Index Anomalia posts by Zernio external id for caption/media join.
+  // Index feega posts by Zernio external id for caption/media join.
   const byExternal = new Map<string, (typeof posts extends (infer T)[] | null ? T : never)>();
   for (const p of posts ?? []) {
     if (p.external_post_id) byExternal.set(p.external_post_id, p);
@@ -213,7 +214,7 @@ export async function rankBoostCandidates(
 
   const out: BoostCandidate[] = [];
 
-  // Prefer Anomalia-published posts (have external_post_id we can boost).
+  // Prefer feega-published posts (have external_post_id we can boost).
   for (const p of posts ?? []) {
     const plat = (p.platform ?? '').toLowerCase();
     if (!BOOSTABLE_PLATFORMS.has(plat)) continue;
@@ -640,7 +641,7 @@ export async function approveCampaign(
   // Zernio replays a key verbatim and rejects the SAME key with a different body (422). Approving,
   // failing, editing the budget and approving again is a different body — so the key carries a
   // digest of what we are about to send. Same request retried = replayed; edited = fresh key.
-  const idempotencyKey = `anomalia-ad-${campaign.id}-${shortDigest({
+  const idempotencyKey = `feega-ad-${campaign.id}-${shortDigest({
     budgetAmount,
     budgetType,
     goal,
@@ -746,7 +747,7 @@ export async function approveCampaign(
     // reconciliation only charges spend beyond it.
     chargeAdsCredits({
       brandId: brand.id,
-      credits: launchCredits,
+      feeUsd: fee.fee,
       label: 'ads.launch',
       campaignId: campaign.id,
       platform: campaign.platform
@@ -1240,7 +1241,7 @@ export async function syncAdMetrics(
         if (!markErr) {
           chargeAdsCredits({
             brandId,
-            credits: due,
+            feeUsd: feeUsdDue(analytics.spend, creditedSpend(c.external_ids)),
             label: 'ads.spend',
             campaignId: c.id,
             platform: c.platform
@@ -1370,9 +1371,9 @@ export async function adsReadiness(
     status?: string;
     actorEmail?: string | null;
   },
-  channel: AdsChannel
+  channel: AdsChannel,
+  base: string
 ): Promise<{ checks: AdsCheck[]; ready: boolean; adAccounts: { id: string; platform: string; name: string | null; currency: string | null }[] }> {
-  const base = `/app/${brand.slug}`;
   const settings = parseAdsSettings(brand.ads_settings);
 
   const [{ data: allAccounts }, { data: socials }] = await Promise.all([
@@ -1443,7 +1444,7 @@ export async function adsReadiness(
       key: 'credits',
       ok: afford.ok,
       blocking: true,
-      fix: `${base}/credits`,
+      fix: '/app/billing',
       detail: String(minLaunch)
     },
     {
@@ -1598,7 +1599,7 @@ export async function getPaidSummary(
       ...c,
       metrics: latestByCampaign.get(c.id) ?? null,
       fatigue: diagnosisByCampaign.get(c.id) ?? null,
-      source: 'anomalia' as const
+      source: 'feega' as const
     })),
     totals: {
       spend: totalSpend,

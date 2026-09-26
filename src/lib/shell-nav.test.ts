@@ -1,91 +1,67 @@
 import { describe, expect, it } from 'vitest';
-import { appBrandSlug, isThreadPath, shellShimmerFor } from './shell-nav';
+import { NAV_ENTRIES, navEntriesByGroup, navHref, sheetEntryForPath, MOBILE_TABS, MOBILE_MORE_ENTRIES } from './shell-nav';
 
-const nav = (from: string | null, to: string | null, brand = 'acme') => ({
-  from,
-  to,
-  fromSearch: '',
-  toSearch: '',
-  brandSlug: brand
-});
-
-describe('appBrandSlug', () => {
-  it('il primo segmento di /app/… è il brand', () => {
-    expect(appBrandSlug('/app/acme/calendar')).toBe('acme');
-    expect(appBrandSlug('/app/acme')).toBe('acme');
+describe('la rail: due gruppi, un comportamento a testa', () => {
+  it('il gruppo "panel" è Assets, Brands e Influencers, in quest\'ordine', () => {
+    expect(navEntriesByGroup('panel').map((e) => e.id)).toEqual(['assets', 'brands', 'influencers']);
   });
 
-  it('le rotte sorelle di /app non sono brand', () => {
-    expect(appBrandSlug('/app/onboarding')).toBeNull();
-    expect(appBrandSlug('/login')).toBeNull();
-    expect(appBrandSlug(null)).toBeNull();
+  it('il gruppo "workbench" è Calendar, Ads, Settings, in quest\'ordine', () => {
+    expect(navEntriesByGroup('workbench').map((e) => e.id)).toEqual(['calendar', 'ads', 'settings']);
   });
-});
 
-describe('isThreadPath', () => {
-  it('un thread aperto sì, il composer vuoto no', () => {
-    expect(isThreadPath('/app/acme/chat/abc')).toBe(true);
-    expect(isThreadPath('/app/acme/chat/new')).toBe(false);
-    expect(isThreadPath('/app/acme')).toBe(false);
-    expect(isThreadPath(null)).toBe(false);
+  it('ogni voce del gruppo panel apre un pannello, ogni voce workbench un foglio', () => {
+    for (const entry of navEntriesByGroup('panel')) {
+      expect(entry.family).toBe('panel');
+    }
+    for (const entry of navEntriesByGroup('workbench')) {
+      expect(entry.family).toBe('sheet');
+    }
+  });
+
+  it('navHref antepone il progetto al path della voce', () => {
+    expect(navHref('proj1', NAV_ENTRIES[0])).toBe('/p/proj1/assets');
   });
 });
 
-describe('shellShimmerFor', () => {
-  it('ferma non è una navigazione', () => {
-    expect(shellShimmerFor(nav(null, null))).toBeNull();
+describe('sheetEntryForPath: quale voce apre il foglio', () => {
+  it('un path esatto apre il suo foglio', () => {
+    expect(sheetEntryForPath('/calendar')?.id).toBe('calendar');
+    expect(sheetEntryForPath('/ads/social')?.id).toBe('ads');
+    expect(sheetEntryForPath('/settings/connected-accounts')?.id).toBe('settings');
   });
 
-  /**
-   * La Panoramica È il composer: uno scheletro qui lo smonterebbe con l'invio in volo dentro, e
-   * il turno appena spedito sparirebbe. Si tiene la pagina viva fino a fine load.
-   */
-  it('Panoramica → thread: nessuno scheletro', () => {
-    expect(shellShimmerFor(nav('/app/acme', '/app/acme/chat/abc'))).toBeNull();
+  it('una sezione diversa dello stesso foglio apre comunque lo stesso foglio', () => {
+    expect(sheetEntryForPath('/settings/brand')?.id).toBe('settings');
+    expect(sheetEntryForPath('/settings/brand/logo')?.id).toBe('settings');
   });
 
-  /**
-   * Riportato il 2/9: due agenti «riportano gli stessi identici 3 messaggi». Passando da una chat
-   * all'altra la testata cambia al clic (viene dallo store) e il transcript solo a load finita
-   * (viene dal server): nel mezzo si legge la conversazione di PRIMA sotto il nome dell'agente
-   * NUOVO. Lo scheletro è ciò che impedisce di leggere una cosa falsa.
-   */
-  it('thread → un ALTRO thread: scheletro della chat', () => {
-    expect(shellShimmerFor(nav('/app/acme/chat/aaa', '/app/acme/chat/bbb'))).toBe('chat');
+  it('un path fuori famiglia sheet non apre niente', () => {
+    expect(sheetEntryForPath('/c/xyz')).toBeNull();
+    expect(sheetEntryForPath('/assets')).toBeNull();
   });
 
-  it('thread → LO STESSO thread: niente da ricaricare', () => {
-    expect(shellShimmerFor(nav('/app/acme/chat/aaa', '/app/acme/chat/aaa'))).toBeNull();
+  it('uno slash finale non cambia il verdetto', () => {
+    expect(sheetEntryForPath('/calendar/')?.id).toBe('calendar');
+  });
+});
+
+describe('la barra mobile', () => {
+  it('ha quattro voci fisse, Canvas · Chat · Calendar · More', () => {
+    expect(MOBILE_TABS.map((t) => t.id)).toEqual(['canvas', 'chat', 'calendar', 'more']);
   });
 
-  it('cambio di brand: scheletro anche verso un thread, o resterebbe la pagina del brand vecchio', () => {
-    expect(shellShimmerFor(nav('/app/acme/chat/aaa', '/app/altro/chat/bbb'))).toBe('chat');
-    expect(shellShimmerFor(nav('/app/acme/calendar', '/app/altro'))).toBe('overview');
+  it('"More" raccoglie tutto tranne Calendar, che ha già la sua voce', () => {
+    expect(MOBILE_MORE_ENTRIES.map((e) => e.id)).toEqual(['assets', 'brands', 'influencers', 'ads', 'settings']);
+  });
+});
+
+describe('un foglio si riconosce anche con parametri nell\'indirizzo', () => {
+  it('/create-post?nodeIds=… apre il foglio di creazione post', () => {
+    expect(sheetEntryForPath('/create-post?nodeIds=a,b')?.id).toBe('create-post');
   });
 
-  it('le pagine con uno scheletro loro', () => {
-    expect(shellShimmerFor(nav('/app/acme', '/app/acme/calendar'))).toBe('calendar');
-    expect(shellShimmerFor(nav('/app/acme', '/app/acme/motion-video'))).toBe('media');
-    expect(shellShimmerFor(nav('/app/acme/calendar', '/app/acme/seo'))).toBe('page');
-  });
-
-  it('il workbench ha il proprio, perché è una tela e non una colonna', () => {
-    // Con `page` lo scheletro si disegna incolonnato e la tela arriva a tutta larghezza: il
-    // contenuto salta di un padding alla fine di ogni navigazione verso il workbench.
-    expect(shellShimmerFor(nav('/app/acme/calendar', '/app/acme/workbench'))).toBe('workbench');
-  });
-
-  it('fuori dalla shell del brand non si disegna niente', () => {
-    expect(shellShimmerFor(nav('/app/acme', '/app/onboarding'))).toBeNull();
-    expect(shellShimmerFor(nav('/app/acme', '/app/acme/success'))).toBeNull();
-  });
-
-  it('stessa pagina e stessa query: nessuno scheletro', () => {
-    expect(
-      shellShimmerFor({ ...nav('/app/acme/calendar', '/app/acme/calendar'), fromSearch: '?w=1', toSearch: '?w=1' })
-    ).toBeNull();
-    expect(
-      shellShimmerFor({ ...nav('/app/acme/calendar', '/app/acme/calendar'), fromSearch: '?w=1', toSearch: '?w=2' })
-    ).toBe('calendar');
+  it('un frammento non cambia il foglio', () => {
+    expect(sheetEntryForPath('/calendar#oggi')?.id).toBe('calendar');
   });
 });

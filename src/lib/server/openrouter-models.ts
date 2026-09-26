@@ -114,7 +114,12 @@ export function gatewayRate(modelId: string | undefined): GatewayRate | null {
   return hit.rate.input || hit.rate.output ? hit.rate : null;
 }
 
-/** Tutti i modelli che il picker può offrire, ordinati per nome. */
+/** I modelli da agente: tool e immagini in ingresso, o il turno muore a metà. */
 export function usableGatewayModels(): GatewayModel[] {
   return [...models.values()].filter((m) => m.usable).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/** L'intero listino del gateway, ordinato per nome: per un nodo che scrive testo non serve saper chiamare tool. */
+export function gatewayModels(): GatewayModel[] {
+  return [...models.values()].sort((a, b) => a.label.localeCompare(b.label));
 }

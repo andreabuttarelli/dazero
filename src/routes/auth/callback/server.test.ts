@@ -3,7 +3,6 @@ import { isRedirect } from '@sveltejs/kit';
 
 const exchangeCodeForSession = vi.fn();
 
-vi.mock('$lib/server/access', () => ({ canEnter: vi.fn() }));
 vi.mock('$lib/server/feature-flags', () => ({ isPlanGoEnabled: () => true }));
 vi.mock('$lib/server/oauth', () => ({ takeOAuthReturn: () => null }));
 
@@ -11,7 +10,7 @@ const { GET } = await import('./+server');
 
 async function redirectFor(code: string) {
   const event = {
-    url: new URL(`https://anomalia.so/auth/callback?code=${code}`),
+    url: new URL(`https://feega.app/auth/callback?code=${code}`),
     cookies: {},
     locals: { supabase: { auth: { exchangeCodeForSession } } }
   };

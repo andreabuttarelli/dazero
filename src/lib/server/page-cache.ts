@@ -16,7 +16,7 @@
  * Correctness rules that keep it honest:
  *  - Keyed by user AND brand AND route AND a per-page variant (filters, pagination, week
  *    index …). Two users, two brands, or two filter states never share an entry.
- *  - TTL is seconds, not minutes, so anything written by a background job (scheduler, radar,
+ *  - TTL is seconds, not minutes, so anything written by a background job (scheduler,
  *    blog worker) surfaces on the next click but one.
  *  - Any mutating request for the brand drops the whole brand's entries — wired once in
  *    hooks.server.ts rather than per action, so a new form action cannot forget to do it.

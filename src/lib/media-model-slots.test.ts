@@ -11,7 +11,7 @@ import {
   KLING_3_VIDEO_MODEL,
   SEEDANCE_25_MODEL
 } from '$lib/video-models';
-import { MEDIA_MODEL_SLOT_IDS } from '@anomalia/api-contracts';
+import { MEDIA_MODEL_SLOT_IDS } from '@feega/api-contracts';
 
 describe('media model slots', () => {
   it('offers at least one model in every slot', () => {

@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => {
   const env: Record<string, string | undefined> = {};
   const flags = { dev: false };
   const requestWith = (headers: Record<string, string>) =>
-    new Request('https://anomalia.so/api/v1/tick', { headers });
+    new Request('https://feega.app/api/v1/tick', { headers });
   return { env, flags, requestWith };
 });
 

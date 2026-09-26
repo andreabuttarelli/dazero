@@ -132,15 +132,3 @@ describe('CreditsExhaustedError', () => {
   });
 });
 
-describe('quota with bonus', () => {
-  it('plan + bonus is what remaining is computed against', () => {
-    // Nessuna cifra fissa: il punto è che il bonus si SOMMA alla quota del piano e che quello che
-    // resta si conta su entrambi. Fissare 6000 legava il test al prezzo di Starter.
-    const plan = creditQuota('starter');
-    const bonus = 500;
-    const used = 1600;
-    const quota = plan + bonus;
-    expect(quota).toBe(plan + bonus);
-    expect(Math.max(0, quota - used)).toBe(plan + bonus - used);
-  });
-});

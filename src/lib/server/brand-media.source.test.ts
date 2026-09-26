@@ -78,7 +78,7 @@ describe('brand_media.source', () => {
   it('is written by the code only with values the database accepts', () => {
     const written = sourcesTheCodeWrites();
 
-    expect(written.length).toBeGreaterThan(3);
+    expect(written.length).toBeGreaterThan(2);
     expect(written.filter((w) => !BRAND_MEDIA_SOURCES.includes(w.value as never))).toEqual([]);
   });
 

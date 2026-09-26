@@ -1,138 +1,89 @@
-# Anomalia CLI
+# feega CLI
 
-CLI for managing Anomalia social media AI autopilot brands from the terminal.
+CLI for feega — an infinite canvas of typed nodes (text, image, video, doc, iframe, social
+feed, social post mockup, products, ads) — from the terminal. Brand-scoped; MCP is the
+org-scoped, richer surface for agents (see docs/mcp.md and skills/feega/references/tools.md).
 
 ## Installation
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash
 ```
 
 ## Commands
 
 ### Overview
-- `anomalia brands` — List all brands
-- `anomalia dashboard <slug>` — Full brand dashboard
-- `anomalia status <slug>` — Detailed status
+- `feega brands` — List all brands
+- `feega dashboard <slug>` — Full brand dashboard
+- `feega status <slug>` — Detailed status
+- `feega health` — Check Supabase / Gemini / Zernio API status
 
 ### Posts
-- `anomalia content <slug> [--status <status>]` — List/filter posts (status: pending_user, approved, scheduled, published, failed)
-- `anomalia approve <slug> [--all] [--dry]` — Approve pending posts
-- `anomalia post <slug> <id>` — Show post: text, media, carousel slides
-- `anomalia post <slug> <id> edit [--caption|--title|--link|--subreddit|--firstComment|--imagePrompt|--media|--format|--platforms|--platformCaption|--slot|--product]` — Edit fields (no render, no credits)
-- `anomalia post <slug> <id> regenerate --instruction "warmer background"` — Refine a single image (bills one render)
-- `anomalia post <slug> <id> slide --index 1 --instruction "..."` — Re-render ONE carousel slide (0 = cover)
-- `anomalia post <slug> <id> reorder --order "0,2,1"` — Reorder/drop slides (no render)
-- `anomalia post <slug> <id> video [--duration 6] [--script "..."] [--instruction "..."]` — Animate the cover into a clip; also retries a video that fell back to a photo
-- `anomalia post <slug> <id> render` — Generate the missing image from the prompt
-- `anomalia post <slug> <id> approve` — Approve single post
-- `anomalia post <slug> <id> publish` — Publish immediately
-- `anomalia post <slug> <id> reschedule --scheduledFor "2026-06-20T10:00"` — Reschedule
-- `anomalia post <slug> <id> reject` — Delete pending post
+- `feega content <slug> [--status <status>]` — List/filter posts (status: pending_user, approved, scheduled, published, failed)
+- `feega content <slug> --clear <status>` — Bulk-delete posts with that status
+- `feega approve <slug> [--all] [--dry]` — Approve pending posts
+- `feega post <slug> <id>` — Show post: text, media, platforms
+- `feega post <slug> <id> edit [--caption|--title|--link|--subreddit|--firstComment|--imagePrompt|--media|--format|--platforms|--platformCaption|--slot|--product]` — Edit fields (no render, no credits)
+- `feega post <slug> <id> render` — Generate the missing image from the prompt
+- `feega post <slug> <id> approve` — Approve single post
+- `feega post <slug> <id> publish` — Publish immediately
+- `feega post <slug> <id> reschedule --scheduledFor "2026-06-20T10:00"` — Reschedule
+- `feega post <slug> <id> reject` — Delete pending post
 
 Editing a SCHEDULED post re-syncs it to Zernio automatically, so what goes out is what you edited.
 
-### Editorial Plan
-- `anomalia plan <slug>` — View active plan + proposals
-- `anomalia plan <slug> propose` — Generate first editorial plan
-- `anomalia plan <slug> revise --feedback "..."` — Request revision
-- `anomalia plan <slug> approve` — Approve proposed plan
-- `anomalia plan <slug> discard` — Discard proposed plan
-- `anomalia plan <slug> save-brief --week 0 --brief "..."` — Save week brief
-- `anomalia plan <slug> replan --week 0 --brief "..."` — Regenerate week
+### Calendar
+- `feega calendar <slug> [--month YYYY-MM]` — Monthly scheduled posts
 
-### Weekly Plan
-- `anomalia weekly-plan <slug> [--week N]` — View weekly plan + seeds
-- `anomalia weekly-plan <slug> plan --week N` — Generate seeds for a week
-- `anomalia weekly-plan <slug> produce --week N` — Produce seeds into posts
-
-### Strategy
-- `anomalia gtm <slug>` — View GTM roadmap
-- `anomalia voice <slug>` — View voice rules
-
-### Studio
-- `anomalia studio <slug>` — View full studio
-- `anomalia studio <slug> kit-update --about "..." [--category "..."] [--audience "..."]` — Update brand kit
-- `anomalia studio <slug> colors --colors "#hex,#hex"` — Set brand colors
-- `anomalia studio <slug> add-note --title "..." --text "..."` — Add knowledge note
-- `anomalia studio <slug> delete-doc --id <uuid>` — Delete document
-- `anomalia studio <slug> people-add --name "..." --consent [--role "..."]` — Add real person (`--consent` attests you have their consent; without it the API refuses)
-- `anomalia studio <slug> people-generate --name "..." [--gender female] [--vibe professional]` — Generate AI person
-- `anomalia studio <slug> people-delete --id <uuid>` — Delete person
-- `anomalia studio <slug> add-competitor --name "..." [--website "..."]` — Add competitor
-- `anomalia studio <slug> delete-competitor --id <uuid>` — Delete competitor
-- `anomalia studio <slug> research` — AI competitor research
-- `anomalia studio <slug> sync-history` — Sync social post history
-
-### SEO
-- `anomalia seo <slug>` — Tech score, search performance, SEO grade + initiatives
-- `anomalia seo <slug> run` — Run the technical audit (also refreshes the plan)
-- `anomalia seo <slug> plan` — Generate the SEO growth plan
-- `anomalia seo <slug> more [--guidance "..."]` — Append more initiatives
-- `anomalia seo <slug> asset --id <initiativeId>` — Turn an initiative into a ready asset
-- `anomalia seo <slug> article --id <initiativeId>` — Turn an initiative into a full article draft
-
-### GEO (AI visibility)
-- `anomalia geo <slug>` — Share of voice, per-prompt citations, ready fixes
-- `anomalia geo <slug> run` — Run the citation audit
-- `anomalia geo <slug> fix` — Generate fix artifacts for the gaps found
-
-### Keywords
-- `anomalia keywords <slug>` — Keyword strategy: volume, difficulty, opportunity, action
-- `anomalia keywords <slug> refresh` — Regenerate the keyword research
-
-### Web / Blog
-- `anomalia web <slug> [--status draft|scheduled|published|all]` — List articles (drafts included)
-- `anomalia web <slug> generate --topic "..."` — Generate an article draft from a topic
-- `anomalia web <slug> optimize --id <id>` — Rewrite for SEO score (meta title/description included)
-- `anomalia web <slug> publish|unpublish|delete --id <id>` — Manage an article
-
-Note: `--id` accepts the short prefix printed in the tables.
+### Products
+- `feega products <slug> [list|sync]` — List catalog, or re-import from the connected store (Shopify/Woo)
 
 ### Ads
-- `anomalia ads <slug>` — Ad campaigns, spend, metrics + boost candidates
-- `anomalia ads <slug> --sync` — Sync ad accounts + metrics
-- `anomalia ads <slug> --propose` — Propose boosts from top organic posts
-- `anomalia ads <slug> --remix` — Remix competitor/trending ads into ranked creative briefs
-- `anomalia ads <slug> --create --name "..." --headline "..." [--platform metaads|googleads] [--budget N]` — Create a standalone proposal
-- `anomalia ads <slug> --approve <id> [--budget N] [--goal ...]` — Approve + launch on Zernio
-- `anomalia ads <slug> --pause <id>` — Pause a campaign (all its creatives)
-- `anomalia ads <slug> --resume <id>` — Resume a paused campaign
-- `anomalia ads <slug> --pause <id> --ad <adId>` — Pause one creative only (A/B)
-- `anomalia ads <slug> --resume <id> --ad <adId>` — Resume one creative only
-- `anomalia ads <slug> --duplicate <id>` — Duplicate a campaign (paused copy as new proposal)
-- `anomalia ads <slug> --delete <id>` — Delete a campaign on the platform (history kept)
-- `anomalia ads <slug> --reject <id>` — Reject a proposal
+- `feega ads <slug>` — Ad campaigns, spend, metrics + boost candidates
+- `feega ads <slug> --sync` — Sync ad accounts + metrics
+- `feega ads <slug> --propose` — Propose boosts from top organic posts
+- `feega ads <slug> --remix` — Remix competitor/trending ads into ranked creative briefs
+- `feega ads <slug> --create --name "..." --headline "..." [--platform metaads|googleads] [--budget N]` — Create a standalone proposal
+- `feega ads <slug> --approve <id> [--budget N] [--goal ...]` — Approve + launch on Zernio
+- `feega ads <slug> --pause <id>` — Pause a campaign (all its creatives)
+- `feega ads <slug> --resume <id>` — Resume a paused campaign
+- `feega ads <slug> --pause <id> --ad <adId>` — Pause one creative only (A/B)
+- `feega ads <slug> --resume <id> --ad <adId>` — Resume one creative only
+- `feega ads <slug> --duplicate <id>` — Duplicate a campaign (paused copy as new proposal)
+- `feega ads <slug> --delete <id>` — Delete a campaign on the platform (history kept)
+- `feega ads <slug> --reject <id>` — Reject a proposal
 
-### Analytics
-- `anomalia analytics <slug>` — View analytics
-- `anomalia calendar <slug> [--month YYYY-MM]` — View calendar
-
-### AI Chat
+### Account & billing
+- `feega upgrade <slug>` — Open plan upgrade page
 
 ### System
-- `anomalia update` — Update CLI to latest version
-- `anomalia upgrade <slug>` — Open plan upgrade page
-- `021 --help` — Show help
+- `feega login [--email --password | --password-stdin]` — Authenticate
+- `feega logout` — Clear the local session
+- `feega update` — Update CLI to latest version
+- `feega --help` — Show help
 
 ## Environment
 
-- `PUBLIC_APP_URL` — Backend URL (default: http://localhost:5173)
+- `PUBLIC_APP_URL` — Backend URL (default: http://localhost:5173, falls back to https://feega.app)
 
 ## Auth
 
-Run `anomalia login` once to authenticate via browser, or non-interactively with `anomalia login --email you@example.com --password …` (or `--password-stdin` to keep the password out of shell history and `ps`). Session is saved in `~/.config/anomalia/session.json`.
+Run `feega login` once to authenticate via browser, or non-interactively with `feega login --email you@example.com --password …` (or `--password-stdin` to keep the password out of shell history and `ps`). Session is saved in `~/.config/feega/session.json`.
 
 ## MCP
 
 MCP server in `mcp/` — stdio + Streamable HTTP. Same OAuth identity as the CLI (no static API tokens).
+Twelve tools, org-scoped: `query`, `insert_row`, `update_row`, `delete_row`, `describe_node_types`,
+`list_posts`, `create_post`, `set_post_status`, `list_ad_campaigns`, `create_ad_campaign`,
+`approve_ad_campaign`, `run_node_generation`.
 
 ```bash
 bun run mcp          # stdio
 bun run mcp:http     # http://localhost:8787/mcp
 ```
 
-Remote (Vercel / `mcp.anomalia.so`): `Authorization: Bearer <access_token>`. Full map: `docs/mcp.md`.
+Remote (Vercel / `mcp.feega.app`): `Authorization: Bearer <access_token>`. Full map: `docs/mcp.md`,
+`skills/feega/references/tools.md`.
 
 ## Observability (Sentry + Supabase)
 
@@ -143,5 +94,6 @@ MCP HTTP logs/errors → Vercel stderr, optional Sentry (`SENTRY_DSN`), optional
 The CLI is a thin HTTP client. All operations go through `/api/v1/*` endpoints. No direct database access. No secrets embedded.
 
 ```
-CLI / MCP → HTTP → /api/v1/* → Supabase → Database
+CLI  → HTTP → /api/v1/brands/:slug/*  → Supabase → Database
+MCP  → HTTP → /api/v1/org/*           → Supabase → Database
 ```

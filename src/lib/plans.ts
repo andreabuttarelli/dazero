@@ -3,8 +3,6 @@
 // price ids that back these live server-side in $lib/server/stripe (PRICES); this module
 // is display data only, so it's safe to import in the browser.
 
-import { PLATFORM_IDS } from './platforms';
-
 /**
  * Quante settimane dura un ciclo di piano editoriale.
  *
@@ -19,15 +17,6 @@ export type Cycle = 'month' | 'year';
 // Valuta di fatturazione. EUR di default; USD è la valuta parallela esplicita per chi sta fuori
 // dall'eurozona, con prezzi Stripe in USD dedicati invece dell'Adaptive Pricing su un importo EUR.
 export type Currency = 'eur' | 'usd';
-
-// Features shown on a plan card, grouped under short category headers for scannability.
-// Plain strings = included (check). `{ text, missing: true }` = not on this tier (minus).
-export type FeatItem = string | { text: string; missing: true };
-export type FeatGroup = { label: string; items: FeatItem[] };
-
-export function featText(f: FeatItem): string {
-  return typeof f === 'string' ? f : f.text;
-}
 
 // Stima marketing per "fino a ~N video HD" sulla card: 100 crediti = $1 di budget AI, e una clip
 // HD a $0,38 costa 38 crediti. L'output reale varia con durata, risoluzione e altra spesa AI.
@@ -80,11 +69,6 @@ export type Plan = {
    * `pricing.plans.{key}.highlights` (pipe-separated) — keep in sync with `en.json`.
    */
   highlights: string[];
-  /**
-   * Longer grouped feature catalog (English). Not rendered on pricing cards today;
-   * prefer i18n if/when surfaced in UI.
-   */
-  feats: FeatGroup[];
   /** Social channels offered — keys of PLATFORM_META. */
   platforms: string[];
   /**
@@ -94,29 +78,10 @@ export type Plan = {
   socialsIncluded: number;
   /** AI assistants / search engines the brand is measured in — keys of AI_SURFACE_META. */
   aiSurfaces: string[];
-  /**
-   * Lead-finding surfaces. Keys of PLATFORM_META or AI_SURFACE_META (`google` / `bing`).
-   * Go + Starter = Reddit + Google + Bing; Pro adds X/Threads/LinkedIn.
-   */
-  leadSources: string[];
-  /** Rough daily lead volume for marketing copy (display only — niche-dependent). */
-  leadsPerDay: { min: number; max: number };
   /** Monthly social-post quota (display) — must match `POST_QUOTAS` in `$lib/server/plans`. */
   postsPerMonth: number;
   /** Monthly blog-article hard ceiling — must match `BLOG_ARTICLES_PER_MONTH`. */
   articlesPerMonth: number;
-  /** Default blog cadence (articles/week) for pricing — must match `BLOG_ARTICLES_PER_WEEK`. */
-  articlesPerWeek: number;
-  /**
-   * Suggested comments + DMs per day (display only). A bit above leadsPerDay because some
-   * leads get both a comment and a DM.
-   */
-  repliesPerDay: number;
-  /**
-   * Max custom Radar sources (`brand_news_sources` rows) this tier may keep.
-   * Enforced server-side by `radarSourceLimit` — same numbers.
-   */
-  radarSources: number;
 };
 
 export const PLANS: Plan[] = [
@@ -140,65 +105,8 @@ export const PLANS: Plan[] = [
     platforms: ['instagram', 'tiktok', 'linkedin', 'x', 'facebook', 'threads', 'youtube', 'bluesky', 'reddit'],
     socialsIncluded: 0,
     aiSurfaces: ['chatgpt', 'claude', 'gemini', 'perplexity', 'copilot', 'grok', 'deepseek', 'google', 'bing'],
-    leadSources: ['reddit', 'google', 'bing'],
-    leadsPerDay: { min: 5, max: 10 },
     postsPerMonth: 15,
-    articlesPerMonth: 15,
-    articlesPerWeek: 3,
-    repliesPerDay: 10,
-    radarSources: 5,
-    feats: [
-      {
-        label: 'Strategy & voice',
-        items: [
-          'A growth strategy & editorial plan, built for your brand',
-          'Learns your voice, your offer and your brand',
-          'AI chat with 256k tokens of context per conversation',
-          { text: "Chat on the model's full context window (up to 1M tokens)", missing: true }
-        ]
-      },
-      {
-        label: 'Content',
-        items: [
-          'Plans posts for your socials — you copy & publish',
-          'Caption + image + video export, ready to post in one tap',
-          'Approve or tweak from your phone in seconds',
-          { text: 'Auto-publish to connected social accounts', missing: true }
-        ]
-      },
-      {
-        label: 'SEO & blog',
-        items: [
-          'Grows website traffic with SEO & GEO analysis',
-          'Blog hosting on Anomalia',
-          'Custom domain for your blog',
-          { text: 'CMS integrations (Webflow, Shopify, …)', missing: true },
-          { text: 'Backlink network across Anomalia brands', missing: true }
-        ]
-      },
-      {
-        label: 'Leads & engagement',
-        items: [
-          'Finds leads on Reddit, Google & Bing (~5–10/day)',
-          'Drafts comments & DMs — you review and send',
-          'Up to 5 custom Radar sources'
-        ]
-      },
-      {
-        label: 'Ads',
-        items: [
-          { text: 'Meta Ads & Google Ads', missing: true }
-        ]
-      },
-      {
-        label: 'Platforms & support',
-        items: [
-          { text: 'Connected social accounts', missing: true },
-          'Export-ready for Instagram, TikTok, LinkedIn, X & more',
-          'Email support'
-        ]
-      }
-    ]
+    articlesPerMonth: 15
   },
   {
     key: 'starter',
@@ -214,70 +122,14 @@ export const PLANS: Plan[] = [
       'Autopublish to 2 social accounts',
       'Editorial plan on autopilot',
       'Blog articles built to rank',
-      'Backlink network across Anomalia brands',
-      'Meta & Google Ads — you approve spend',
-      'Radar & leads (~10–20/day)'
+      'Backlink network across feega brands',
+      'Meta & Google Ads — you approve spend'
     ],
     platforms: ['instagram', 'tiktok', 'linkedin', 'x', 'facebook', 'threads', 'youtube', 'bluesky', 'reddit'],
     socialsIncluded: 2,
     aiSurfaces: ['chatgpt', 'claude', 'gemini', 'perplexity', 'copilot', 'grok', 'deepseek', 'google', 'bing'],
-    leadSources: ['reddit', 'google', 'bing'],
-    leadsPerDay: { min: 10, max: 20 },
     postsPerMonth: 30,
-    articlesPerMonth: 30,
-    articlesPerWeek: 7,
-    repliesPerDay: 20,
-    radarSources: 10,
-    feats: [
-      {
-        label: 'Strategy & voice',
-        items: [
-          'A growth strategy & editorial plan, built for your brand',
-          'Learns your voice, your offer and your brand',
-          "AI chat on the model's full context window (up to 1M tokens) — ~4x longer conversations before they compact"
-        ]
-      },
-      {
-        label: 'Content & posting',
-        items: [
-          'Plans and posts to your socials on autopilot',
-          'Posts at peak times, optimized for each platform',
-          'Approve or tweak from your phone in seconds',
-          'Turns real-time news into fresh posts & articles'
-        ]
-      },
-      {
-        label: 'SEO & blog',
-        items: [
-          'Grows website traffic with SEO & GEO analysis',
-          'Publishes blog articles built to rank on Google',
-          'Backlink network across Anomalia brands'
-        ]
-      },
-      {
-        label: 'Leads & engagement',
-        items: [
-          'Finds leads on Reddit, Google & Bing (~10–20/day)',
-          'Drafts comments & DMs — you review and send',
-          'Up to 10 custom Radar sources'
-        ]
-      },
-      {
-        label: 'Ads',
-        items: [
-          'Boost winning posts on Meta Ads (Facebook & Instagram)',
-          'Create Google Ads & Meta campaigns — you approve every euro of spend'
-        ]
-      },
-      {
-        label: 'Platforms & support',
-        items: [
-          '2 social channels of your choice — Instagram, TikTok, LinkedIn, X, Reddit & more',
-          '2 connected social accounts',
-          'Email support'
-        ]
-      }
-    ]
+    articlesPerMonth: 30
   },
   {
     key: 'pro',
@@ -292,7 +144,7 @@ export const PLANS: Plan[] = [
     highlights: [
       'Autopublish to 8 social accounts',
       'Higher capacity across posts, blog & leads',
-      'Backlink network across Anomalia brands',
+      'Backlink network across feega brands',
       'Up to 4K images / videos',
       'Leads on X, Threads & LinkedIn too (~30–60/day)',
       'Priority human support'
@@ -300,65 +152,8 @@ export const PLANS: Plan[] = [
     platforms: ['instagram', 'tiktok', 'linkedin', 'x', 'facebook', 'threads', 'youtube', 'bluesky', 'reddit'],
     socialsIncluded: 8,
     aiSurfaces: ['chatgpt', 'claude', 'gemini', 'perplexity', 'copilot', 'grok', 'deepseek', 'google', 'bing'],
-    leadSources: ['reddit', 'google', 'bing', 'x', 'threads', 'linkedin'],
-    leadsPerDay: { min: 30, max: 60 },
     postsPerMonth: 90,
-    articlesPerMonth: 90,
-    articlesPerWeek: 21,
-    repliesPerDay: 60,
-    radarSources: 30,
-    feats: [
-      {
-        label: 'Strategy & voice',
-        items: [
-          'A growth strategy & editorial plan, built for your brand',
-          'Learns your voice, your offer and your brand',
-          "AI chat on the model's full context window (up to 1M tokens) — ~4x longer conversations before they compact"
-        ]
-      },
-      {
-        label: 'Content & posting',
-        items: [
-          'Plans and posts to your socials on autopilot',
-          'Posts at peak times, optimized for each platform',
-          'Approve or tweak from your phone in seconds',
-          'Turns real-time news into fresh posts & articles'
-        ]
-      },
-      {
-        label: 'SEO & blog',
-        items: [
-          'Grows website traffic with SEO & GEO analysis',
-          'Publishes blog articles built to rank on Google',
-          'Backlink network across Anomalia brands'
-        ]
-      },
-      {
-        label: 'Leads & engagement',
-        items: [
-          'Finds leads on Reddit, Google, Bing, X, Threads & LinkedIn (~30–60/day)',
-          'Drafts comments & DMs — you review and send',
-          'Up to 30 custom Radar sources'
-        ]
-      },
-      {
-        label: 'Ads',
-        items: [
-          'Boost winning posts on Meta Ads (Facebook & Instagram)',
-          'Create Google Ads & Meta campaigns — you approve every euro of spend'
-        ]
-      },
-      {
-        label: 'Platforms & support',
-        items: [
-          '8 platforms — Instagram, TikTok, LinkedIn, X, Reddit & more',
-          '8 connected social accounts',
-          'Up to 4K images / videos',
-          'Real human support, not a chatbot',
-          'Priority support'
-        ]
-      }
-    ]
+    articlesPerMonth: 90
   }
 ];
 
@@ -438,31 +233,6 @@ export function hasSocialPublishing(plan: string | null | undefined): boolean {
   return plan === 'starter' || plan === 'pro' || plan === 'scale';
 }
 
-/** CMS blog sync (Webflow / Shopify / Wix) — not on Go/free (hosting only). */
-export function hasBlogIntegrations(plan: string | null | undefined): boolean {
-  return plan === 'starter' || plan === 'pro' || plan === 'scale';
-}
-
-/** Custom blog domain (e.g. blog.brand.com) — any paid plan; not free. */
-export function hasBlogCustomDomain(plan: string | null | undefined): boolean {
-  return isPaidPlan(plan);
-}
-
-/**
- * Web hub (SEO, GEO, keywords, blog hosting, library) + Radar.
- * Free matches Go — unlocked for every brand. Autopublish / social connects / CMS sync /
- * custom domain stay on paid tiers via hasSocialPublishing / hasBlogIntegrations /
- * hasBlogCustomDomain.
- */
-export function hasWebHub(_plan?: string | null): boolean {
-  return true;
-}
-
-/** Lead finding (Radar social hunt + comment/DM drafts). Free matches Go. */
-export function hasLeadFinding(_plan?: string | null): boolean {
-  return true;
-}
-
 // Free / trial / canceled / paused brands must not connect (or keep) Zernio socials.
 // Go is paid but deliberately has zero connected accounts (no Zernio spend).
 export function canConnectSocials(
@@ -472,43 +242,9 @@ export function canConnectSocials(
   return status === 'active' && hasSocialPublishing(plan);
 }
 
-// Radar / Leads source kinds. Free + Go + Starter: news + Reddit only. Pro (+ legacy scale): also
-// Threads, X Communities, and LinkedIn (dynamic search + configurable sources).
-export const RADAR_BASE_KINDS = ['gnews_query', 'rss', 'subreddit', 'reddit_query'] as const;
-export const RADAR_PRO_LEAD_KINDS = ['threads_query', 'x_community', 'linkedin_query'] as const;
-export type RadarSourceKind =
-  | (typeof RADAR_BASE_KINDS)[number]
-  | (typeof RADAR_PRO_LEAD_KINDS)[number];
-
-/** True when the plan may hunt leads on X / Threads / LinkedIn (not just Reddit + Google News). */
-export function hasProRadarLeads(plan: string | null | undefined): boolean {
-  return plan === 'pro' || plan === 'scale';
-}
-
 /** 4K Motion video MP4 encode — Pro (and legacy scale) only. */
 export function hasMotionVideo4k(plan: string | null | undefined): boolean {
   return plan === 'pro' || plan === 'scale';
-}
-
-/** Platforms the brand can toggle for Radar discovery (Settings → Radar). */
-export const RADAR_PLATFORM_KEYS = [
-  PLATFORM_IDS.gnews,
-  PLATFORM_IDS.reddit,
-  PLATFORM_IDS.threads,
-  PLATFORM_IDS.x,
-  PLATFORM_IDS.linkedin
-] as const;
-
-export type RadarPlatformKey = (typeof RADAR_PLATFORM_KEYS)[number];
-
-/**
- * Conversation platforms where Radar may draft comment/DM leads.
- * Plan entitlement only — no Zernio/social connect required (Anomalia drafts; the human pastes).
- * Free + Go + Starter: Reddit. Pro (+ legacy scale): Reddit + Threads + X + LinkedIn.
- */
-export function leadEngagePlatforms(plan: string | null | undefined): readonly string[] {
-  if (!hasLeadFinding(plan)) return [];
-  return hasProRadarLeads(plan) ? ['reddit', 'threads', 'x', 'linkedin'] : ['reddit'];
 }
 
 /** True when the plan may create/boost ads via Zernio (Starter and up; legacy Scale included). */
@@ -516,34 +252,3 @@ export function hasAds(plan: string | null | undefined): boolean {
   return plan === 'starter' || plan === 'pro' || plan === 'scale';
 }
 
-/**
- * Cross-brand Anomalia backlink network (+ external boost later).
- * Starter and up — not Free / Go (legacy Scale included).
- */
-export function hasBacklinkNetwork(plan: string | null | undefined): boolean {
-  return plan === 'starter' || plan === 'pro' || plan === 'scale';
-}
-
-export function radarAllowedKinds(plan: string | null | undefined): readonly RadarSourceKind[] {
-  return hasProRadarLeads(plan)
-    ? [...RADAR_BASE_KINDS, ...RADAR_PRO_LEAD_KINDS]
-    : [...RADAR_BASE_KINDS];
-}
-
-export function isRadarKindAllowed(kind: string, plan: string | null | undefined): boolean {
-  return (radarAllowedKinds(plan) as readonly string[]).includes(kind);
-}
-
-// Custom Radar sources (`brand_news_sources` rows) a brand may keep. Seeded onboarding inserts
-// up to ~10 (5 Google News + 3 subreddits + 2 Reddit queries), so Starter must clear that floor.
-// Derived from Plan.radarSources so pricing cards and the server gate cannot drift.
-export const RADAR_SOURCE_LIMITS: Record<string, number> = {
-  ...Object.fromEntries(PLANS.map((p) => [p.key, p.radarSources])),
-  // Legacy alias — same ceiling as Pro.
-  scale: 30
-};
-
-export function radarSourceLimit(plan: string | null | undefined): number {
-  // Free / unknown → Go ceiling (free matches Go).
-  return RADAR_SOURCE_LIMITS[plan ?? ''] ?? RADAR_SOURCE_LIMITS.go;
-}

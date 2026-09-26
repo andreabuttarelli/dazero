@@ -1,7 +1,7 @@
 /**
  * EVIDENCE QUALITY — the discipline that keeps every automated read of performance honest.
  *
- * WHY THIS MATTERS MORE HERE THAN IN A CONSULTANT'S DECK. Anomalia does not hand a human a chart to
+ * WHY THIS MATTERS MORE HERE THAN IN A CONSULTANT'S DECK. feega does not hand a human a chart to
  * interpret: `analytics-review-agent.ts` reads last week's numbers and then REWRITES next week's
  * editorial brief, edits pending captions and proposes GTM changes. An agent that acts on five
  * posts and calls the top one a winner has changed the brand's strategy on noise — and it will do

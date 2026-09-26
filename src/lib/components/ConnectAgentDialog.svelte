@@ -4,7 +4,7 @@
   let { open = $bindable(false) }: { open?: boolean } = $props();
 
   const TK = 'landing.hero.connect';
-  const MCP_URL = 'https://mcp.anomalia.so/mcp';
+  const MCP_URL = 'https://mcp.feega.app/mcp';
 
   /**
    * Tre strade, in ordine di quanto chiedono a chi legge — e la prima non chiede niente. Chi apre
@@ -25,14 +25,14 @@
    * macchina, e tradurlo e' un modo di romperlo. Nomina solo cose che esistono — l'indirizzo
    * risponde, e le prime due chiamate sono quelle che il server stesso suggerisce al handshake.
    */
-  const PROMPT = `Add Anomalia as an MCP server and start using it.
+  const PROMPT = `Add feega as an MCP server and start using it.
 
-Anomalia is a marketing control plane: it holds a brand's posts, editorial plan, media library,
+feega is a marketing control plane: it holds a brand's posts, editorial plan, media library,
 blog, SEO and ads, and you drive it with your own model.
 
 1. Add the server. It speaks streamable HTTP at ${MCP_URL} and signs in with OAuth —
    there are no API keys to paste. In Claude Code that is:
-   claude mcp add --transport http anomalia ${MCP_URL}
+   claude mcp add --transport http feega ${MCP_URL}
    In any other host: add a remote MCP server at that URL and finish the sign-in it opens.
 
 2. Once connected, call list_brands to see which brands I can work on, then ask me which one
@@ -50,7 +50,7 @@ blog, SEO and ads, and you drive it with your own model.
     {
       name: 'Claude Code',
       how: 'oneCommand',
-      snippet: `claude mcp add --transport http anomalia ${MCP_URL}`,
+      snippet: `claude mcp add --transport http feega ${MCP_URL}`,
       docs: 'https://docs.claude.com/en/docs/claude-code/mcp'
     },
     { name: 'Claude Desktop', how: 'connectors', docs: 'https://support.anthropic.com/en/articles/11175166' },
@@ -59,29 +59,29 @@ blog, SEO and ads, and you drive it with your own model.
       name: 'Codex',
       how: 'configFile',
       file: '~/.codex/config.toml',
-      snippet: `[mcp_servers.anomalia]\nurl = "${MCP_URL}"`,
+      snippet: `[mcp_servers.feega]\nurl = "${MCP_URL}"`,
       docs: 'https://developers.openai.com/codex/mcp'
     },
     {
       name: 'Cursor',
       how: 'configFile',
       file: '~/.cursor/mcp.json',
-      snippet: `{\n  "mcpServers": {\n    "anomalia": { "url": "${MCP_URL}" }\n  }\n}`,
+      snippet: `{\n  "mcpServers": {\n    "feega": { "url": "${MCP_URL}" }\n  }\n}`,
       docs: 'https://docs.cursor.com/context/mcp'
     },
     {
       name: 'OpenCode',
       how: 'configFile',
       file: 'opencode.json',
-      snippet: `{\n  "mcp": {\n    "anomalia": { "type": "remote", "url": "${MCP_URL}" }\n  }\n}`,
+      snippet: `{\n  "mcp": {\n    "feega": { "type": "remote", "url": "${MCP_URL}" }\n  }\n}`,
       docs: 'https://opencode.ai/docs/mcp-servers/'
     },
     { name: 'Grok', how: 'connectors', docs: 'https://docs.x.ai/docs/guides/mcp-integrations' }
   ];
 
-  const CLI = `curl -sSL https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/scripts/install.sh | bash
-anomalia login
-anomalia brands`;
+  const CLI = `curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash
+feega login
+feega brands`;
 </script>
 
 {#if open}
@@ -186,7 +186,7 @@ anomalia brands`;
     position: relative;
     width: min(560px, 100%); max-height: 88vh; overflow: auto;
     background: var(--paper); color: var(--ink);
-    border: 1px solid var(--line); border-radius: 24px;
+    border: 1px solid var(--line);
     padding: 34px 32px 30px;
     box-shadow: 0 40px 90px -50px rgba(0, 0, 0, 0.6);
     animation: rise 220ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -214,8 +214,7 @@ anomalia brands`;
   .cd-tab.active { color: var(--ink); border-bottom-color: var(--accent); }
   .cd-pill {
     font-size: 10px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
-    color: var(--accent); background: rgba(var(--accent-rgb), 0.12);
-    border-radius: 999px; padding: 2px 7px;
+    color: var(--accent); background: rgba(var(--accent-rgb), 0.12); padding: 2px 7px;
   }
 
   /* I tre passi prima del bottone: chi non sa cosa sia un MCP deve sapere cosa succedera' prima
@@ -224,7 +223,7 @@ anomalia brands`;
   .cd-steps li { display: flex; gap: 13px; align-items: flex-start; }
   .cd-steps p { margin: 0; font-size: 0.95rem; line-height: 1.5; color: var(--ink); padding-top: 2px; }
   .cd-n {
-    width: 25px; height: 25px; flex: none; border-radius: 50%;
+    width: 25px; height: 25px; flex: none;
     display: grid; place-items: center;
     background: rgba(var(--accent-rgb), 0.14); color: var(--accent);
     font-size: 12.5px; font-weight: 700;
@@ -232,8 +231,7 @@ anomalia brands`;
 
   .cd-big {
     width: 100%; border: none; cursor: pointer;
-    background: var(--ink); color: var(--paper);
-    border-radius: 14px; padding: 16px; font-size: 15px; font-weight: 650;
+    background: var(--ink); color: var(--paper); padding: 16px; font-size: 15px; font-weight: 650;
     transition: transform 140ms ease, opacity 140ms ease;
   }
   .cd-big:hover { transform: translateY(-1px); opacity: 0.92; }
@@ -249,7 +247,7 @@ anomalia brands`;
   .cd-peek[open] summary::before { content: '▾ '; }
   .cd-peek pre {
     margin: 8px 0 0; padding: 14px 16px;
-    background: var(--paper-2); border: 1px solid var(--line); border-radius: 12px;
+    background: var(--paper-2); border: 1px solid var(--line);
     white-space: pre-wrap; word-break: break-word;
     font-family: var(--mono); font-size: 11.5px; line-height: 1.55; color: var(--ink-soft);
   }
@@ -259,7 +257,7 @@ anomalia brands`;
 
   .cd-url {
     display: flex; align-items: center; gap: 10px;
-    background: var(--paper-2); border: 1px solid var(--line); border-radius: 12px;
+    background: var(--paper-2); border: 1px solid var(--line);
     padding: 12px 12px 12px 15px;
   }
   .cd-url code { font-family: var(--mono); font-size: 12.5px; flex: 1; word-break: break-all; }
@@ -267,13 +265,12 @@ anomalia brands`;
   .cd-block { position: relative; }
   .cd-block pre {
     margin: 0; padding: 13px 15px;
-    background: var(--paper-2); border: 1px solid var(--line); border-radius: 12px;
+    background: var(--paper-2); border: 1px solid var(--line);
     white-space: pre-wrap; word-break: break-word;
     font-family: var(--mono); font-size: 11.5px; line-height: 1.55; color: var(--ink);
   }
   .cd-copy {
-    border: 1px solid var(--line); background: var(--paper); color: var(--ink);
-    border-radius: 999px; padding: 5px 13px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--line); background: var(--paper); color: var(--ink); padding: 5px 13px; font-size: 11.5px; font-weight: 600; cursor: pointer;
     white-space: nowrap;
   }
   .cd-block .cd-copy { position: absolute; top: 9px; right: 9px; }
@@ -291,7 +288,7 @@ anomalia brands`;
   }
 
   @media (max-width: 560px) {
-    .cd-card { padding: 26px 20px 24px; border-radius: 20px; }
+    .cd-card { padding: 26px 20px 24px; }
     .cd-app-head a { margin-left: 0; }
     .cd-tab { padding: 10px 8px; font-size: 13px; }
   }

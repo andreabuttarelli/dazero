@@ -24,16 +24,16 @@
       setTimeout(() => { window.location.href = '/app'; }, 2500);
     } catch {
       status = 'error';
-      errorMsg = 'Impossibile raggiungere la CLI. Assicurati che anomalia sia in esecuzione e riprova.';
+      errorMsg = 'Impossibile raggiungere la CLI. Assicurati che feega sia in esecuzione e riprova.';
     }
   }
 </script>
 
-<svelte:head><title>Autorizza CLI — Anomalia</title></svelte:head>
+<svelte:head><title>Autorizza CLI — feega</title></svelte:head>
 
 <div class="wrap">
   <div class="card">
-    <div class="logo">Anomalia</div>
+    <div class="logo">feega</div>
 
     {#if status === 'done'}
       <div class="done">
@@ -42,10 +42,10 @@
         <p>Torna al terminale. Questa pagina si chiuderà tra poco.</p>
       </div>
     {:else}
-      <h2>Anomalia CLI vuole accedere al tuo account</h2>
+      <h2>feega CLI vuole accedere al tuo account</h2>
       <p class="email">{userEmail}</p>
       <p class="desc">
-        La CLI di Anomalia gestirà i tuoi brand e i contenuti dal terminale, usando le stesse autorizzazioni del tuo account.
+        La CLI di feega gestirà i tuoi brand e i contenuti dal terminale, usando le stesse autorizzazioni del tuo account.
       </p>
 
       {#if status === 'error'}
@@ -71,7 +71,6 @@
   }
   .card {
     background: var(--paper, #fff);
-    border-radius: 20px;
     padding: 40px 36px;
     max-width: 420px;
     width: 100%;
@@ -110,7 +109,6 @@
     background: var(--accent, #7c5cff);
     color: #fff;
     border: none;
-    border-radius: 14px;
     padding: 14px 22px;
     font-size: 15px;
     font-weight: 600;

@@ -32,13 +32,10 @@ function setsDiffer(a: string[], b: string[]): boolean {
 export interface BrandWarningInput {
   base: string; // e.g. /app/acme
   // False for free/trial brands — connect CTAs must go to /activate (pricing), not Settings OAuth.
-  canConnectSocials?: boolean;
   targetPlatforms: string[];
   connectedPlatforms: string[];
   brokenPlatforms: string[]; // accounts that exist but need reconnecting (expired/error/disconnected)
-  autopilotFailureCount: number; // consecutive autopilot failures (>=3 → auto-disabled)
-  autopilotMaxFailures: number; // the threshold at which autopilot auto-disables
-  hasProposedPlan: boolean; // an autopilot-proposed strategy/plan is awaiting the user's review
+  hasProposedPlan: boolean; // a proposed strategy/plan is awaiting the user's review
   strategyPlatforms: string[] | null; // null = no strategy generated yet
   editorialPlanPlatforms: string[] | null; // null = no active editorial plan
   contentPlatforms: string[]; // platforms of generated, not-yet-published posts
@@ -57,10 +54,8 @@ export interface BrandWarningInput {
   hasLogo: boolean;
   hasVisualStyle: boolean;
   hasHashtags: boolean;
-  peopleCount: number;
   competitorCount: number;
-  blogEnabled: boolean; // the brand opted its blog into the content pipeline (plan + radar)
-  hasGeoAudit: boolean; // at least one GEO audit has been run
+  blogEnabled: boolean; // the brand opted its blog into the content pipeline
 }
 
 export function computeBrandWarnings(i: BrandWarningInput): AppWarning[] {
@@ -71,7 +66,7 @@ export function computeBrandWarnings(i: BrandWarningInput): AppWarning[] {
   // separately (reconnect), so it must not ALSO read as "never connected".
   const hasAccount = new Set([...connected, ...broken]);
   const connectHref =
-    i.canConnectSocials === false ? `${i.base}/activate` : `${i.base}/settings/connected-accounts`;
+    `${i.base}/settings/connected-accounts`;
   const out: AppWarning[] = [];
 
   // A previously-connected account is now broken (token expired / revoked) → publishing fails there.
@@ -90,14 +85,14 @@ export function computeBrandWarnings(i: BrandWarningInput): AppWarning[] {
     // operates on → it should be regenerated to fit them.
     if (i.strategyPlatforms && i.strategyPlatforms.length && setsDiffer(targets, i.strategyPlatforms)) {
       const strat = i.strategyPlatforms.map(normPlatform);
-      out.push({ id: 'strategy-platform-mismatch', severity: 'warning', title: 'warnings.strategyMismatch.title', message: 'warnings.strategyMismatch.msg', values: { strategy: labels([...new Set(strat)]), current: labels(targets) }, href: `${i.base}/gtm` });
+      out.push({ id: 'strategy-platform-mismatch', severity: 'warning', title: 'warnings.strategyMismatch.title', message: 'warnings.strategyMismatch.msg', values: { strategy: labels([...new Set(strat)]), current: labels(targets) }, href: `${i.base}/settings/brand` });
     }
 
     // The editorial plan cascades from the strategy — if it too was built for other platforms, it
     // needs adjusting to the new set.
     if (i.editorialPlanPlatforms && i.editorialPlanPlatforms.length && setsDiffer(targets, i.editorialPlanPlatforms)) {
       const plan = i.editorialPlanPlatforms.map(normPlatform);
-      out.push({ id: 'plan-platform-mismatch', severity: 'warning', title: 'warnings.planMismatch.title', message: 'warnings.planMismatch.msg', values: { plan: labels([...new Set(plan)]), current: labels(targets) }, href: `${i.base}/plan` });
+      out.push({ id: 'plan-platform-mismatch', severity: 'warning', title: 'warnings.planMismatch.title', message: 'warnings.planMismatch.msg', values: { plan: labels([...new Set(plan)]), current: labels(targets) }, href: `${i.base}/calendar` });
     }
 
     // Cross-post opportunity: content already generated but not yet published doesn't cover some of
@@ -111,17 +106,9 @@ export function computeBrandWarnings(i: BrandWarningInput): AppWarning[] {
     }
   }
 
-  // Autopilot health: repeated failures degrade to a warning, then auto-disable (a hard error the
-  // user must act on to resume the weekly engine).
-  if (i.autopilotFailureCount >= i.autopilotMaxFailures) {
-    out.push({ id: 'autopilot-disabled', severity: 'error', title: 'warnings.autopilotDisabled.title', message: 'warnings.autopilotDisabled.msg', href: `${i.base}/settings` });
-  } else if (i.autopilotFailureCount > 0) {
-    out.push({ id: 'autopilot-failing', severity: 'warning', title: 'warnings.autopilotFailing.title', message: 'warnings.autopilotFailing.msg', values: { count: i.autopilotFailureCount }, href: `${i.base}/settings` });
-  }
-
-  // Autopilot proposed a new strategy/plan cycle and is waiting for the user to review it.
+  // A new strategy/plan cycle was proposed and is waiting for the user to review it.
   if (i.hasProposedPlan) {
-    out.push({ id: 'plan-proposed', severity: 'suggestion', title: 'warnings.proposed.title', message: 'warnings.proposed.msg', href: `${i.base}/gtm` });
+    out.push({ id: 'plan-proposed', severity: 'suggestion', title: 'warnings.proposed.title', message: 'warnings.proposed.msg', href: `${i.base}/settings/brand` });
   }
 
   // Publishing failed on one or more posts — a hard failure the user must see.
@@ -151,9 +138,9 @@ export function computeBrandWarnings(i: BrandWarningInput): AppWarning[] {
   // Strategy layers not set up yet — nudge the user through them in order (strategy → plan).
   // Skipped when the continue-onboarding CTA already covers the same gap.
   if (i.onboardingCompleted && !i.hasStrategy) {
-    out.push({ id: 'no-strategy', severity: 'suggestion', title: 'warnings.noStrategy.title', message: 'warnings.noStrategy.msg', href: `${i.base}/gtm` });
+    out.push({ id: 'no-strategy', severity: 'suggestion', title: 'warnings.noStrategy.title', message: 'warnings.noStrategy.msg', href: `${i.base}/settings/brand` });
   } else if (i.onboardingCompleted && !i.hasEditorialPlan) {
-    out.push({ id: 'no-plan', severity: 'suggestion', title: 'warnings.noPlan.title', message: 'warnings.noPlan.msg', href: `${i.base}/plan` });
+    out.push({ id: 'no-plan', severity: 'suggestion', title: 'warnings.noPlan.title', message: 'warnings.noPlan.msg', href: `${i.base}/calendar` });
   }
 
   if (i.pendingCount > 0) {
@@ -170,16 +157,14 @@ export function computeBrandWarnings(i: BrandWarningInput): AppWarning[] {
   // content with them, but none blocks generation).
   if (!i.hasLogo) out.push({ id: 'studio-no-logo', severity: 'suggestion', title: 'warnings.studioLogo.title', message: 'warnings.studioLogo.msg', href: `${i.base}/settings/brand` });
   if (!i.hasVisualStyle) out.push({ id: 'studio-no-visual-style', severity: 'suggestion', title: 'warnings.studioVisual.title', message: 'warnings.studioVisual.msg', href: `${i.base}/settings/brand` });
-  if (i.peopleCount === 0) out.push({ id: 'studio-no-people', severity: 'suggestion', title: 'warnings.studioPeople.title', message: 'warnings.studioPeople.msg', href: `${i.base}/settings/people` });
-  if (i.competitorCount === 0) out.push({ id: 'studio-no-competitors', severity: 'suggestion', title: 'warnings.studioCompetitors.title', message: 'warnings.studioCompetitors.msg', href: `${i.base}/competitors` });
+  if (i.competitorCount === 0) out.push({ id: 'studio-no-competitors', severity: 'suggestion', title: 'warnings.studioCompetitors.title', message: 'warnings.studioCompetitors.msg', href: i.base });
   if (!i.hasHashtags) out.push({ id: 'studio-no-hashtags', severity: 'suggestion', title: 'warnings.studioHashtags.title', message: 'warnings.studioHashtags.msg', href: `${i.base}/settings/brand#hashtags` });
 
-  // Blog not opted in → Anomalia's plan & radar generate social only. Nudge the user to enable it so
-  // the pipeline also produces blog articles (from the plan and from the news).
+  // Blog not opted in → feega's plan generates social only. Nudge the user to enable it so
+  // the pipeline also produces blog articles.
   if (!i.blogEnabled) out.push({ id: 'blog-not-enabled', severity: 'suggestion', title: 'warnings.blogOff.title', message: 'warnings.blogOff.msg', href: `${i.base}/site` });
 
   // No GEO audit yet — nudge the user to run one so they see their AI visibility.
-  if (!i.hasGeoAudit) out.push({ id: 'no-geo-audit', severity: 'suggestion', title: 'warnings.noGeoAudit.title', message: 'warnings.noGeoAudit.msg', href: `${i.base}/seo` });
 
   return out;
 }
@@ -218,7 +203,7 @@ export const brandWarnings = writable<AppWarning[]>([]);
 // ponytail: localStorage, come SHELL_PREF_KEYS — quindi il "visto" è PER DISPOSITIVO. Segnarle
 // viste sul portatile le lascia accese sul telefono. Farlo per utente vorrebbe una colonna dove
 // salvare preferenze utente, che oggi non c'è: la proposta di migration è nel report.
-export const seenWarningsKey = (brandSlug: string) => `anomalia.warningsSeen.${brandSlug}`;
+export const seenWarningsKey = (brandSlug: string) => `feega.warningsSeen.${brandSlug}`;
 
 /**
  * Le segnalazioni non ancora viste. `seen` è l'insieme salvato all'ultima apertura del pannello.

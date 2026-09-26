@@ -135,6 +135,6 @@ export function invalidateBrandNav(slug: string) {
 
 /** Columns the brand layout needs to render the shell. Kit is logo-only — studio fields load deferred. */
 export const BRAND_SHELL_SELECT =
-  'id, name, slug, website, status, plan, timezone, target_platforms, launched_at, content_prefs, blog_config, setup_step, setup_completed_at, onboarding_completed_at, onboarding_state, autopilot_enabled, autopilot_failure_count, chat_default_tier, zernio_profile_id, ads_settings, brand_kit(favicon_url, logos)';
+  'id, name, slug, website, status, plan, timezone, target_platforms, launched_at, content_prefs, blog_config, setup_step, setup_completed_at, onboarding_completed_at, onboarding_state, chat_default_tier, zernio_profile_id, ads_settings, brand_kit(favicon_url, logos)';
 
 export const BRAND_SWITCHER_SELECT = 'id, name, slug, status, brand_kit(favicon_url, logos)';

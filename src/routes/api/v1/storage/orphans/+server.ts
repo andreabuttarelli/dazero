@@ -21,8 +21,6 @@ import { collectOrphans } from '$lib/server/storage-collect';
  * Richiede la migrazione `20260921170000_storage_objects_page`: senza quella funzione l'inventario
  * non è leggibile da nessun client e la risposta è 500 su ogni giro, `mode=report` compreso.
  */
-export const config = { maxDuration: 60 };
-
 export const GET: RequestHandler = async ({ request, url }) => {
   if (!cronAuthorized(request)) return new Response('Unauthorized', { status: 401 });
 

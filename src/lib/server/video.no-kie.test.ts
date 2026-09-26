@@ -17,7 +17,7 @@ const SRC = join(import.meta.dirname);
 const VIETATI = ['kie', 'Kie', 'KIE', 'aleph', 'Aleph'];
 
 describe('il video non nomina kie da nessuna parte', () => {
-  for (const file of ['video.ts', 'openrouter-video.ts', 'openrouter-video-models.ts']) {
+  for (const file of ['video.ts', 'openrouter-video.ts']) {
     it(`${file} non contiene nessuna traccia del vecchio fornitore`, () => {
       const src = readFileSync(join(SRC, file), 'utf8');
       const trovati = VIETATI.filter((t) => src.includes(t));

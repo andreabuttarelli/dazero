@@ -1,6 +1,6 @@
-# Anomalia
+# feega
 
-Anomalia is a social media AI autopilot: a team of specialist agents produces, publishes and improves content for a brand. This glossary fixes the language of that team.
+feega is a social media AI autopilot: a team of specialist agents produces, publishes and improves content for a brand. This glossary fixes the language of that team.
 
 ## Language
 
@@ -14,7 +14,7 @@ _Avoid_: worker, instance, sub-agent.
 A short-lived in-turn helper spawned by one main agent to split its own macro-task. Shares the delegating agent's goal and voice context; has no identity and no thread of its own.
 _Avoid_: colleague, teammate.
 
-**Generalist (Anomalia)**:
+**Generalist (feega)**:
 The agent with no craft (agent = null). Routes and covers when no specialist fits; cannot open a user session of its own.
 _Avoid_: omni, assistant.
 

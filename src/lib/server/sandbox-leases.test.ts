@@ -79,7 +79,7 @@ function fakeDb() {
   return { db: { from: builder } as never, rows, stop, upsertConflicts };
 }
 
-const BASE = { name: 'anomalia-vm-g5', brandId: 'b1', kind: 'turn' as const };
+const BASE = { name: 'dazero-vm-g5', brandId: 'b1', kind: 'turn' as const };
 
 describe('HOLDER_CONFLICT_TARGET', () => {
   /**

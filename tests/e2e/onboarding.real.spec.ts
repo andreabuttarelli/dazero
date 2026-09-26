@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
  * altri test di integrazione del repo.
  */
 const REAL_STACK = process.env.E2E_REAL_STACK === '1';
-const SEEDED_USER = process.env.E2E_USER ?? 'test@anomalia.so';
+const SEEDED_USER = process.env.E2E_USER ?? 'test@feega.app';
 const SEEDED_SECRET = process.env.E2E_PASSWORD ?? '123456';
 const SEEDED_BRAND = 'demo';
 

@@ -3,7 +3,8 @@ import type { RequestHandler } from './$types';
 import { authenticate, checkApiKeyWriteAccess, loadBrandForUser } from '$lib/server/cli-auth';
 import { appOrigin } from '$lib/server/app-url';
 import { connectPath, managePath, socialConnections } from '$lib/server/social-connections';
-import { SOCIAL_CONNECT_LINK, TARGET_PLATFORMS, statusForFailure } from '@anomalia/api-contracts';
+import { projectIdOfBrand } from '$lib/server/tenancy/brand-slug';
+import { SOCIAL_CONNECT_LINK, TARGET_PLATFORMS, statusForFailure } from '@feega/api-contracts';
 
 /**
  * Conia la porta, non la attraversa.
@@ -14,8 +15,9 @@ import { SOCIAL_CONNECT_LINK, TARGET_PLATFORMS, statusForFailure } from '@anomal
  * token nell'indirizzo — tre buoni motivi perché non passi mai da un agente. Così invece il
  * consenso lo dà una persona già dentro, e qui non transita nessun segreto.
  *
- * I due rifiuti sono separati di proposito: un piano che non collega account e un piano pieno
- * chiedono due rimedi diversi, e un solo errore generico li avrebbe confusi.
+ * Niente più piani: il rifiuto è uno solo, `insufficient_credits` — il saldo dell'org non copre il
+ * canone di un account in più. Riautorizzare una piattaforma già collegata non lo attraversa mai:
+ * il posto è già suo, e rifiutarlo lascerebbe un account scaduto senza modo di tornare vivo.
  */
 export const POST: RequestHandler = async ({ request, params, url }) => {
   const { supabase, error, apiKey } = await authenticate(request);
@@ -41,36 +43,25 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
 
   const { platform } = parsed.data;
   const origin = appOrigin(url);
-  const manageUrl = `${origin}${managePath(brand.slug)}`;
-  const state = await socialConnections(supabase, brand);
-
-  if (!state.canConnect) {
-    return json(
-      {
-        error: 'plan_cannot_connect',
-        plan: brand.plan,
-        brand_status: brand.status,
-        activate_url: `${origin}/app/${encodeURIComponent(brand.slug)}/activate`
-      },
-      { status: statusForFailure(SOCIAL_CONNECT_LINK, 'plan_cannot_connect') }
-    );
+  const projectId = await projectIdOfBrand(supabase, brand.id);
+  if (!projectId) {
+    return json({ error: 'no_project' }, { status: 409 });
   }
-
+  const manageUrl = `${origin}${managePath(projectId)}`;
+  const state = await socialConnections(supabase, brand);
   const alreadyConnected = state.connected.includes(platform);
 
-  // Un posto pieno blocca una piattaforma NUOVA. Riautorizzarne una già collegata no: il posto è
-  // già suo, e rifiutarlo lascerebbe un account scaduto senza modo di tornare vivo.
-  if (!alreadyConnected && state.slots.used >= state.slots.limit) {
+  if (!alreadyConnected && !state.canConnect) {
     return json(
-      { error: 'account_limit', slots: state.slots, manage_url: manageUrl },
-      { status: statusForFailure(SOCIAL_CONNECT_LINK, 'account_limit') }
+      { error: 'insufficient_credits', slots: state.slots, manage_url: manageUrl },
+      { status: statusForFailure(SOCIAL_CONNECT_LINK, 'insufficient_credits') }
     );
   }
 
   return json({
     ok: true,
     platform,
-    url: `${origin}${connectPath(brand.slug, platform)}`,
+    url: `${origin}${connectPath(projectId, platform)}`,
     already_connected: alreadyConnected,
     slots: state.slots,
     manage_url: manageUrl

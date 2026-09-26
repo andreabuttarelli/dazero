@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_APP_URL: 'https://anomalia.so' } }));
+vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_APP_URL: 'https://feega.app' } }));
 
 const createSignedUrl = vi.fn(async () => ({
   data: { signedUrl: 'https://storage.test/object/sign/brand-knowledge/x.jpg?token=abc' },

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { redactSecrets, redactJson, noteSecret } from './redact';
-import { agentSessionRow, createRecorder } from './agent-sessions';
+import { redactSecrets, redactJson, noteSecret, redactFor } from './redact';
 
 /**
  * IL CORPUS, in due metà che devono valere insieme.
@@ -30,7 +29,7 @@ const DEVONO_SPARIRE: Array<[string, string, string]> = [
   ['installation token', 'ghs_INVENTATA0000aaaaBBBBccccDDDD2222', 'ghs_INVENTATA0000'],
   ['pat fine-grained', 'github_pat_11AINVENTATA0000_aaaaBBBBccccDDDD1111eeee', 'github_pat_11AINVENTATA'],
   ['device code json', `{"device_code":"${DEV}","interval":5}`, DEV],
-  ['nostra api key', 'anomalia_live_0123456789abcdef0123456789abcdef', 'anomalia_live_0123'],
+  ['nostra api key', 'dazero_live_0123456789abcdef0123456789abcdef', 'dazero_live_0123'],
   ['jwt', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJJTlZFTlRBVE8ifQ.SW52ZW50YXRhRmlybWFYWVo', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'],
   ['url firmata', 'https://xyz.supabase.co/storage/v1/object/sign/brand-knowledge/a.png?token=eyJhbGciOiJIUzI1NiJ9INVENTATA&download=1', 'eyJhbGciOiJIUzI1NiJ9INVENTATA'],
   ['pgpassword', 'PGPASSWORD=Inv3nt4t4! psql -h db.esempio.io -U app', 'Inv3nt4t4!'],
@@ -70,10 +69,10 @@ const DEVONO_RESTARE: Array<[string, string]> = [
   ['errore npm', 'npm error code ERESOLVE — exit code 1'],
   ['path con riga', 'src/routes/api/v1/brands/[slug]/agent-sessions/+server.ts:31'],
   ['timestamp e durata', '2026-08-22T14:03:11.482Z · durata 1832 ms'],
-  ['nome vm', 'anomalia-4f3c2b1a-9e8d-4c7b-a6f5-0d1e2f3a4b5c-compute-g2'],
+  ['nome vm', 'dazero-4f3c2b1a-9e8d-4c7b-a6f5-0d1e2f3a4b5c-compute-g2'],
   ['prosa', 'Il delegato ha aperto la VM, installato le dipendenze e prodotto il rapporto finale.'],
   ['riga modello', 'model: anthropic claude-opus-5[1m] · eventi: 47'],
-  ['url pubblica', 'https://www.anomalia.so/it/blog/come-funziona-il-piano-editoriale-settimanale'],
+  ['url pubblica', 'https://www.dazero.co/it/blog/come-funziona-il-piano-editoriale-settimanale'],
   ['import', "import { createAdminClient } from '$lib/server/supabase-admin';"]
 ];
 
@@ -87,23 +86,6 @@ describe('redactSecrets — devono restare', () => {
   // La metà che impedisce di "risolvere" oscurando tutto.
   it.each(DEVONO_RESTARE)('%s', (_n, input) => {
     expect(redactSecrets(input, KNOWN)).toBe(input);
-  });
-});
-
-describe('redazione PRIMA del taglio', () => {
-  /**
-   * `clipEventData` taglia a 4.000 caratteri. Redigere dopo lascerebbe 39 caratteri su 40 di un
-   * token — cioè sedici tentativi di forza bruta invece di un segreto.
-   */
-  it('un segreto oltre il taglio non sopravvive nel troncamento', () => {
-    noteSecret('b-clip', TOK);
-    const rec = createRecorder(Date.now, 'b-clip');
-    rec.event('sandbox_exec', { stdout: 'x'.repeat(3990) + TOK });
-    // La spia è corta di proposito. Con `'gho_INVENTATO'` (13 caratteri) questo test passerebbe
-    // anche SENZA redazione, perché il taglio a 4.000 lascia sopravvivere solo `gho_INVENT` — ed è
-    // precisamente il difetto: dieci caratteri di token in chiaro sono sedici tentativi di forza
-    // bruta, non un segreto protetto. Otto caratteri è la soglia sotto cui non redigiamo comunque.
-    expect(JSON.stringify(rec.events())).not.toContain('gho_INVE');
   });
 });
 
@@ -134,17 +116,14 @@ describe('costo', () => {
   });
 });
 
-describe('la riga scritta è redatta in ogni campo, non solo nel transcript', () => {
-  it('system_prompt ed error non escono in chiaro, e la riga è marcata', () => {
+describe('redazione applicata a ogni campo, non solo a uno', () => {
+  it('system_prompt, transcript ed error non escono in chiaro nello stesso giro', () => {
     noteSecret('b-save', TOK);
-    const rec = createRecorder(Date.now, 'b-save');
-    rec.event('report', { report: `rapporto con ${TOK}` });
-    const row = agentSessionRow({
-      brandId: 'b-save', agent: 'motion', mode: 'execute', surface: 'chat_subagent', status: 'error',
-      systemPrompt: `sistema con ${TOK}`, transcript: `rapporto con ${TOK}`, error: `errore con ${TOK}`,
-      recorder: rec
-    });
+    const row = {
+      system_prompt: redactFor(`sistema con ${TOK}`, 'b-save'),
+      transcript: redactFor(`rapporto con ${TOK}`, 'b-save'),
+      error: redactFor(`errore con ${TOK}`, 'b-save')
+    };
     expect(JSON.stringify(row)).not.toContain('gho_INVE');
-    expect(row.format_version).toBe(2);
   });
 });

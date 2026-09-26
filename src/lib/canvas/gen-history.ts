@@ -15,30 +15,19 @@
  * — l'ultima? — significherebbe che tornare indietro su una vecchia generazione dura finché non
  * si chiude la scheda.
  */
-import type { GenMedium, GenNode, GenRun } from './gen-node';
+import { hasPrompt, type GenMedium, type GenNode, type GenRun, type UpstreamTextAvailability } from './gen-node';
+import { effectiveModel, type ModelChoiceLike } from './default-models';
 
 export type { GenRun };
 
 /**
- * I MEDIUM CHE GIRANO DAVVERO, e il testo non è fra loro.
+ * I MEDIUM CHE GIRANO DAVVERO: tutti e tre quelli che producono.
  *
- * Non è una dimenticanza né una pigrizia: `ref_id` di un nodo punta a `brand_media`, e quella
- * tabella ammette `kind in ('image','video')` — verificato sul database, non supposto. Un testo
- * generato non è un file e non ha una riga in cui depositarsi; inventargliene una significherebbe
- * un asset di libreria il cui `url` non porta da nessuna parte, che poi comparirebbe fra le
- * immagini del brand e in tutto ciò che legge quella tabella.
- *
- * COSA È STATO SCARTATO. Mandare il testo al centralino (`$lib/server/llm`) e tenerlo in `body`
- * della riga sarebbe stato poche righe — ma `body` è il testo di una NOTA, e riusarlo qui darebbe
- * una colonna che significa due cose a seconda del vicino: è la stessa ragione per cui il nodo che
- * produce ha avuto colonne sue invece di un JSON dentro `body`. E la storia delle generazioni,
- * appena costruita attorno a `media_id`, non saprebbe dove mettere un testo.
- *
- * Quindi il bottone del nodo testo resta spento CON UN PERCHÉ VISIBILE, che è la cosa onesta: un
- * bottone che finge di lavorare è peggio di uno che dice di non poterlo ancora fare. Il giorno in
- * cui un testo avrà un posto dove atterrare, questa riga cambia e nient'altro.
+ * Il testo era escluso perché `ref_id` puntava a `brand_media`, che ammette solo image e video —
+ * un testo non aveva una riga in cui depositarsi. Ora l'uscita atterra su `assets`, che ha una
+ * colonna `content` e un tipo `text`: il posto c'è, e il bottone del nodo testo si accende.
  */
-export const RUNNABLE_MEDIUMS = ['image', 'video'] as const satisfies readonly GenMedium[];
+export const RUNNABLE_MEDIUMS = ['text', 'image', 'video'] as const satisfies readonly GenMedium[];
 
 function runnable(medium: GenMedium): boolean {
   return (RUNNABLE_MEDIUMS as readonly string[]).includes(medium);
@@ -52,17 +41,29 @@ function runnable(medium: GenMedium): boolean {
  * divergono in silenzio — un bottone spento senza spiegazione è esattamente il difetto segnalato
  * come «non funziona».
  *
- * L'ORDINE CONTA: il medium viene per primo perché un nodo di testo non gira comunque, e dirgli
- * «scegli un modello» lo manderebbe a cercare una soluzione che non risolve niente.
+ * L'ORDINE CONTA: il medium viene per primo perché un nodo che non gira comunque non deve essere
+ * mandato a scegliere una soluzione che non risolve niente.
+ *
+ * IL MODELLO CHE CONTA È QUELLO RISOLTO (`effectiveModel`), non `node.model`: un nodo nato prima
+ * del default del medium non ha mai scritto un modello in `nodes.data`, e bloccarlo su quello
+ * spegnerebbe "Genera" su ogni nodo vecchio finché qualcuno non apre un menù che non c'è più.
+ *
+ * «SCRIVI COSA VUOI» conta un testo a monte collegato come prompt (`hasPrompt`, `gen-node.ts`):
+ * un'immagine senza prompt proprio ma wired a un nodo testo con qualcosa scritto è già pronta a
+ * girare — il testo a monte È il prompt, quando il nodo non ne ha uno suo.
  */
-const BLOCKED: readonly { when: (node: GenNode) => boolean; say: string }[] = [
-  { when: (n) => !runnable(n.medium), say: 'Il nodo testo non gira ancora' },
-  { when: (n) => !n.prompt.trim(), say: 'Scrivi cosa vuoi' },
-  { when: (n) => !n.model, say: 'Scegli un modello' }
+const BLOCKED: readonly { when: (node: GenNode, choices: readonly ModelChoiceLike[], upstream: UpstreamTextAvailability) => boolean; say: string }[] = [
+  { when: (n) => !runnable(n.medium), say: 'Questo nodo non produce nulla' },
+  { when: (n, _choices, upstream) => !hasPrompt(n, upstream), say: 'Scrivi cosa vuoi' },
+  { when: (n, choices) => !effectiveModel(n.medium, n.model, choices), say: 'Scegli un modello' }
 ];
 
-export function blockedReason(node: GenNode): string | null {
-  return BLOCKED.find((rule) => rule.when(node))?.say ?? null;
+export function blockedReason(
+  node: GenNode,
+  choices: readonly ModelChoiceLike[] = [],
+  upstream: UpstreamTextAvailability = { hasUpstreamText: false }
+): string | null {
+  return BLOCKED.find((rule) => rule.when(node, choices, upstream))?.say ?? null;
 }
 
 /**
@@ -76,7 +77,7 @@ export function blockedReason(node: GenNode): string | null {
  */
 export function withRun(node: GenNode, run: GenRun): GenNode {
   if (!run.mediaId) return node;
-  if (node.runs.some((r) => r.id === run.id)) return node;
+  if (node.runs.some((r) => r.id === run.id || r.mediaId === run.mediaId)) return node;
 
   return { ...node, runs: [...node.runs, run], refId: run.mediaId };
 }
@@ -111,6 +112,21 @@ export function shownIndex(node: GenNode): number {
  * Un nodo che ha già prodotto PUÒ rifare: è la seconda generazione, quella che la storia esiste
  * per non perdere.
  */
-export function canStartRun(node: GenNode): boolean {
-  return !node.running && !blockedReason(node);
+export function canStartRun(
+  node: GenNode,
+  choices: readonly ModelChoiceLike[] = [],
+  upstream: UpstreamTextAvailability = { hasUpstreamText: false }
+): boolean {
+  return !node.running && !blockedReason(node, choices, upstream);
+}
+
+export function producedRuns(runs: GenRun[]): GenRun[] {
+  const seen = new Set<string>();
+  return runs.filter((run) => {
+    if (run.mediaId === null || seen.has(run.mediaId)) {
+      return false;
+    }
+    seen.add(run.mediaId);
+    return true;
+  });
 }

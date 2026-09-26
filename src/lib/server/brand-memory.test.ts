@@ -45,7 +45,7 @@ function mockSupabase(rows: any[]) {
 describe('buildMemoryContext skills', () => {
   it('injects only the trigger line and does not count a listing as usage', async () => {
     const { supabase, rpc } = mockSupabase([
-      { id: 'f1', category: 'fact', key: 'site', value: 'The site is anomalia.so', confidence: 1 },
+      { id: 'f1', category: 'fact', key: 'site', value: 'The site is feega.app', confidence: 1 },
       {
         id: 's1',
         category: 'skill',
@@ -62,20 +62,6 @@ describe('buildMemoryContext skills', () => {
     expect(out).not.toContain('CTA on the last line');
     // Only the fact counts as used — otherwise a listed-but-unused skill would never decay.
     expect(rpc).toHaveBeenCalledWith('bump_brand_memory_usage', { entry_ids: ['f1'] });
-  });
-
-  it('appends built-in product skill triggers, scoped by agent', async () => {
-    const { supabase } = mockSupabase([]);
-
-    // Il Motion Specialist vede i trigger delle skill di default (trigger, mai il corpo).
-    const motion = await buildMemoryContext(supabase as never, 'brand-1', { agent: 'motion' });
-    expect(motion).toContain('motion-voiceover-fit — Use when');
-    expect(motion).toContain('motion-transition-mechanism — Use when');
-    expect(motion).not.toContain('generate_voiceover ONCE'); // steps stay behind read_memory
-
-    // L'analyst non scrive sorgente Remotion: nessuna riga spesa sul suo prompt.
-    const analyst = await buildMemoryContext(supabase as never, 'brand-1', { agent: 'analyst' });
-    expect(analyst).not.toContain('motion-voiceover-fit');
   });
 });
 
@@ -164,7 +150,7 @@ describe('memoria del brand vs memoria dell agente', () => {
     expect(motion).not.toContain('terza slide');
   });
 
-  it('senza agente (scheduler, radar) entra solo la memoria del brand', async () => {
+  it('senza agente (scheduler, weekly-recap) entra solo la memoria del brand', async () => {
     const { supabase } = scopedSupabase([BRAND_FACT, CONTENT_CRAFT]);
     const out = await buildMemoryContext(supabase as never, 'brand-1');
     expect(out).toContain('soluzione innovativa');

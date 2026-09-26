@@ -25,6 +25,7 @@ import {
 import { generateCampaignDraft } from '$lib/server/ads-generate';
 import { normalizeUrl } from '$lib/ads-fee';
 import { withBrandContext } from '$lib/server/ai-log';
+import { brandSlugOf } from '$lib/server/tenancy/brand-slug';
 
 // Social ads and Google ads are the same machinery pointed at different networks, so the two
 // routes share one loader and one action set. Only the channel differs.
@@ -57,6 +58,14 @@ async function loadBrand(supabase: any, slug: string, email?: string | null): Pr
   return { ...(data as AdsBrand), actorEmail: email ?? null };
 }
 
+/** Resolves the brand slug from the route: `projectId` under `/p/…`, `brand` on old links. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadBrandForEvent(event: { locals: { supabase: any }; params: Record<string, string | undefined> }, email?: string | null): Promise<AdsBrand | null> {
+  const slug = event.params.brand ?? (event.params.projectId ? await brandSlugOf(event.locals.supabase, event.params.projectId) : null);
+  if (!slug) return null;
+  return loadBrand(event.locals.supabase, slug, email);
+}
+
 function actorEmail(event: {
   locals: { safeGetSession: () => Promise<{ user: { email?: string | null } | null }> };
 }): Promise<string | null> {
@@ -65,8 +74,9 @@ function actorEmail(event: {
 
 export function adsChannelLoad(channel: AdsChannel) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return async ({ parent, locals: { supabase, safeGetSession }, url }: ServerLoadEvent<any, any>) => {
+  return async ({ parent, params, locals: { supabase, safeGetSession }, url }: ServerLoadEvent<any, any>) => {
     const { brand } = (await parent()) as { brand: AdsBrand };
+    const base = params.brand ? `/app/${params.brand}` : `/p/${params.projectId}`;
     const { user } = await safeGetSession();
     const email = user?.email ?? null;
 
@@ -103,7 +113,7 @@ export function adsChannelLoad(channel: AdsChannel) {
     }
 
     // Settings page, not /upgrade — opening a URL must not start a Stripe flow.
-    if (!adsAvailable(brand.plan, email)) throw redirect(303, `/app/${brand.slug}/settings/ads`);
+    if (!adsAvailable(brand.plan, email)) throw redirect(303, `${base}/settings/ads`);
 
     // Coming back from an ads OAuth, an explicit refresh — or simply having no ad account stored
     // yet: turn the authorisation into ad account rows before rendering the checklist that asks
@@ -124,7 +134,7 @@ export function adsChannelLoad(channel: AdsChannel) {
 
     const [summary, readiness, candidates] = await Promise.all([
       getPaidSummary(supabase, brand.id, { channel, email }),
-      adsReadiness(supabase, { ...brand, actorEmail: email }, channel),
+      adsReadiness(supabase, { ...brand, actorEmail: email }, channel, base),
       // Boosting an organic winner only exists on social — Google has no organic post to promote.
       channel === 'social'
         ? rankBoostCandidates(supabase, brand.id, { limit: 8 })
@@ -152,7 +162,7 @@ export function adsChannelActions(channel: AdsChannel): Actions {
     sync: async (event) => {
       const email = await actorEmail(event);
       if (!adsSelfServeEnabled(isAdsPreviewUser(email))) return refuseUntilSelfServe();
-      const brand = await loadBrand(event.locals.supabase, event.params.brand!, email);
+      const brand = await loadBrandForEvent(event, email);
       if (!brand || !adsAvailable(brand.plan, email)) return fail(403, { error: 'ads_not_on_plan' });
       const accounts = await syncAdAccounts(event.locals.supabase, brand);
       const metrics = await syncAdMetrics(event.locals.supabase, brand.id);
@@ -162,7 +172,7 @@ export function adsChannelActions(channel: AdsChannel): Actions {
     propose: async (event) => {
       const email = await actorEmail(event);
       if (!adsSelfServeEnabled(isAdsPreviewUser(email))) return refuseUntilSelfServe();
-      const brand = await loadBrand(event.locals.supabase, event.params.brand!, email);
+      const brand = await loadBrandForEvent(event, email);
       if (!brand || !adsAvailable(brand.plan, email)) return fail(403, { error: 'ads_not_on_plan' });
       if (channel !== 'social') return fail(400, { error: 'boost_social_only' });
       return { proposed: await proposeBoosts(event.locals.supabase, brand) };
@@ -171,7 +181,7 @@ export function adsChannelActions(channel: AdsChannel): Actions {
     approve: async (event) => {
       const email = await actorEmail(event);
       if (!adsSelfServeEnabled(isAdsPreviewUser(email))) return refuseUntilSelfServe();
-      const brand = await loadBrand(event.locals.supabase, event.params.brand!, email);
+      const brand = await loadBrandForEvent(event, email);
       if (!brand || !adsAvailable(brand.plan, email)) return fail(403, { error: 'ads_not_on_plan' });
 
       const fd = await event.request.formData();
@@ -193,7 +203,7 @@ export function adsChannelActions(channel: AdsChannel): Actions {
     reject: async (event) => {
       const email = await actorEmail(event);
       if (!adsSelfServeEnabled(isAdsPreviewUser(email))) return refuseUntilSelfServe();
-      const brand = await loadBrand(event.locals.supabase, event.params.brand!, email);
+      const brand = await loadBrandForEvent(event, email);
       if (!brand) return fail(404, { error: 'not_found' });
       const fd = await event.request.formData();
       await rejectCampaign(event.locals.supabase, brand.id, String(fd.get('campaignId') ?? ''));
@@ -203,7 +213,7 @@ export function adsChannelActions(channel: AdsChannel): Actions {
     pause: async (event) => {
       const email = await actorEmail(event);
       if (!adsSelfServeEnabled(isAdsPreviewUser(email))) return refuseUntilSelfServe();
-      const brand = await loadBrand(event.locals.supabase, event.params.brand!, email);
+      const brand = await loadBrandForEvent(event, email);
       if (!brand) return fail(404, { error: 'not_found' });
       const fd = await event.request.formData();
       const result = await pauseCampaign(
@@ -219,7 +229,7 @@ export function adsChannelActions(channel: AdsChannel): Actions {
     toggle: async (event) => {
       const email = await actorEmail(event);
       if (!adsSelfServeEnabled(isAdsPreviewUser(email))) return refuseUntilSelfServe();
-      const brand = await loadBrand(event.locals.supabase, event.params.brand!, email);
+      const brand = await loadBrandForEvent(event, email);
       if (!brand) return fail(404, { error: 'not_found' });
       const fd = await event.request.formData();
       const campaignId = String(fd.get('campaignId') ?? '');
@@ -244,7 +254,7 @@ function adsCreateAction(channel: AdsChannel): NonNullable<Actions[string]> {
   return async (event) => {
     const email = await actorEmail(event);
     if (!adsSelfServeEnabled(isAdsPreviewUser(email))) return refuseUntilSelfServe();
-    const brand = await loadBrand(event.locals.supabase, event.params.brand!, email);
+    const brand = await loadBrandForEvent(event, email);
     if (!brand || !adsAvailable(brand.plan, email)) return fail(403, { error: 'ads_not_on_plan' });
 
     const fd = await event.request.formData();
@@ -257,7 +267,7 @@ function adsCreateAction(channel: AdsChannel): NonNullable<Actions[string]> {
         .flatMap((v) => String(v).split('\n'))
         .map((s) => s.trim())
         .filter(Boolean);
-    // "anomalia.so" is what the AI (and a human) writes — add the scheme instead of rejecting it.
+    // "feega.app" is what the AI (and a human) writes — add the scheme instead of rejecting it.
     const url = (k: string) => normalizeUrl(str(k));
 
     // Social ads are Meta-only for now — ignore any other platform posted from the form.
@@ -369,12 +379,13 @@ export const adsNewLoad = async ({
   const { brand } = (await parent()) as { brand: AdsBrand };
   const { user } = await safeGetSession();
   const email = user?.email ?? null;
+  const base = params.brand ? `/app/${params.brand}` : `/p/${params.projectId}`;
   if (!adsFeatureEnabled(email)) throw error(404, 'Not found');
   // No new-campaign form until self-serve — send them back to the book-a-call placeholder.
-  if (!adsSelfServeEnabled(isAdsPreviewUser(email))) throw redirect(303, `/app/${brand.slug}/ads/${channel}`);
-  if (!adsAvailable(brand.plan, email)) throw redirect(303, `/app/${brand.slug}/settings/ads`);
+  if (!adsSelfServeEnabled(isAdsPreviewUser(email))) throw redirect(303, `${base}/ads/${channel}`);
+  if (!adsAvailable(brand.plan, email)) throw redirect(303, `${base}/settings/ads`);
 
-  const readiness = await adsReadiness(supabase, { ...brand, actorEmail: email }, channel);
+  const readiness = await adsReadiness(supabase, { ...brand, actorEmail: email }, channel, base);
   return { channel, readiness, website: brand.website, selfServe: true };
 };
 
@@ -386,7 +397,7 @@ export const adsNewActions: Actions = {
     if (!adsSelfServeEnabled(isAdsPreviewUser(email))) return refuseUntilSelfServe();
     const channel = event.params.channel;
     if (!isAdsChannel(channel)) return fail(404, { error: 'not_found' });
-    const brand = await loadBrand(event.locals.supabase, event.params.brand!, email);
+    const brand = await loadBrandForEvent(event, email);
     if (!brand || !adsAvailable(brand.plan, email)) return fail(403, { error: 'ads_not_on_plan' });
 
     const fd = await event.request.formData();

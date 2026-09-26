@@ -25,17 +25,28 @@
    * che si colora e il menù dei versi, e tre copie diverrebbero diverse al primo caso nuovo.
    */
   import { untrack } from 'svelte';
-  import { SvelteFlow, Background, Controls, MiniMap, type Node } from '@xyflow/svelte';
+  import { SvelteFlow, Background, SelectionMode, type Node } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
   import CanvasTile from './CanvasTile.svelte';
   import CanvasPointer from './CanvasPointer.svelte';
   import CanvasAddBar from './CanvasAddBar.svelte';
   import CanvasKeys from './CanvasKeys.svelte';
+  import CanvasSelectionBridge from './CanvasSelectionBridge.svelte';
+  import SelectionToolbar from './SelectionToolbar.svelte';
+  import NextStepChips from './NextStepChips.svelte';
+  import ConnectPicker from './ConnectPicker.svelte';
+  import type { SelectionActionId } from '$lib/canvas/selection-actions';
+  import type { GenMedium, ModelChoice } from '$lib/canvas/gen-node';
   import { CANVAS_DRAG_MEDIUM } from '$lib/canvas/new-node';
+  import { CANVAS_DRAG_FILLED_NODE, parseFilledNodeDrag, type FilledNodeDrag } from '$lib/canvas/drag-payload';
   import { syncNodes } from '$lib/canvas/tile-sync';
-  import { CANVAS_EDGE_KINDS, EDGE_KIND_LABEL, type CanvasEdgeKind, type FlowEdge } from '$lib/canvas-edges';
-  import { CANVAS_ADDABLE, ADDABLE_LABEL, isAddable, type Addable } from '$lib/canvas/addable';
+  import { CANVAS_EDGE_KINDS, EDGE_KIND_LABEL, WIRE_MODES, WIRE_MODE_LABEL, type CanvasEdgeKind, type FlowEdge, type WireMode } from '$lib/canvas-edges';
+  import { isAddable, type Addable } from '$lib/canvas/addable';
   import { DEFAULT_EDGE_KIND, edgeKindsFor, verdictBetween } from '$lib/canvas/connect-rules';
+  import { connectorAccepts, nodeAcceptsConnection } from '$lib/canvas/connector-ports';
+  import { anyPortAccepts, landingPort, portListValued, type ConnectorType } from '$lib/canvas/connectors';
+  import { setTileRender } from '$lib/canvas/tile-render-context';
+  import { setTileResize } from '$lib/canvas/tile-resize-context';
   import type { CanvasNode } from '$lib/canvas/graph';
 
   /**
@@ -59,17 +70,56 @@
     h: number;
     connectable?: boolean;
     node?: CanvasNode;
+    /** La taglia minima di QUESTO tipo di nodo (`nodeSize`, `node-size.ts`) — `NodeResizer` non
+     *  lascia stringere sotto. Assente = non ridimensionabile a mano (il resize resta spento). */
+    minW?: number;
+    minH?: number;
+    /** Le porte di questo nodo (`connectorsFor`), passate a `CanvasTile` così com'è. Assente =
+     *  un solo ingresso generico. */
+    connectors?: ConnectorType[];
+    output?: ConnectorType | null;
+    /** `nodes.type`: la targhetta fuori dal corpo (`CanvasTile`) ne legge icona e nome di
+     *  riserva. Assente su quel che non è un nodo del modello. */
+    kind?: string;
+    /** `nodes.display_name`, quando chi ha nominato il nodo l'ha scritto — vince sul nome del
+     *  tipo nella targhetta. */
+    displayName?: string | null;
+    /** Il nodo è già usato in almeno un post (`post_sources`) — la targhetta ne mostra un
+     *  indicatore. Assente = mai usato. */
+    inPost?: boolean;
+    /** Questa tile è appena nata da un gesto di QUESTO client — la barra, un trascinamento, un
+     *  duplicato/incolla, "Collega a nuovo…". `syncNodes` la consuma una volta sola e la
+     *  seleziona; un inserimento realtime da un altro utente non la porta mai. */
+    select?: boolean;
   };
 
   let {
     tiles = [],
     edges: incomingEdges = [],
     onMove,
+    onMoveEnd,
+    onResize,
     onConnect,
     onDelete,
+    onCreatePost,
     onEdgeDelete,
     onEdgeRetype,
+    onEdgeModeChange,
     onCreate,
+    onCreateFilled,
+    onUpload,
+    onDuplicate,
+    onCopy,
+    onPaste,
+    onUndo,
+    onRedo,
+    onConnectNew,
+    onConnectExisting,
+    onRunWorkflow,
+    nodeSummaries = [],
+    modelChoicesFor,
+    catalogueSyncedFor,
+    onPropertyChange,
     tile
   }: {
     tiles?: Tile[];
@@ -78,23 +128,91 @@
     /** Dove una tile è finita, per scriverlo dove vive davvero. */
     onMove?: (id: string, x: number, y: number) => void;
     /**
+     * LA FINE DI UN TRASCINAMENTO, CON TUTTE LE TILE CHE SI SONO MOSSE — non una per chiamata
+     * come `onMove`. Trascinare una selezione di cinque tile è UN gesto: annullarlo deve
+     * riportarle tutte e cinque, non una alla volta con quattro Ctrl+Z. SvelteFlow lo sa già
+     * (`onnodedragstop` porta `nodes`, il set intero, non solo `targetNode`); prima di questo
+     * prop nessuno lo leggeva.
+     */
+    onMoveEnd?: (moves: { id: string; x: number; y: number }[]) => void;
+    /**
      * Una linea appena tirata fra due tile, col verso già scelto: il primo che `edgeKindsFor`
      * propone su quella coppia. Un `kind` fisso qui sarebbe una derivazione salvata anche fra due
      * cose che non si derivano — cioè un dato falso scritto senza che nessuno l'abbia chiesto.
      */
-    onConnect?: (sourceItemId: string, targetItemId: string, kind: CanvasEdgeKind) => void;
+    onConnect?: (sourceItemId: string, targetItemId: string, kind: CanvasEdgeKind, targetHandle: ConnectorType | null) => void;
     /**
      * Le tile da togliere. Chiesto fuori e non fatto qui: SvelteFlow le toglierebbe dal proprio
      * stato e basta, e alla prima riconciliazione `syncNodes` le rimetterebbe dentro perché
      * `tiles` le contiene ancora — il difetto era esattamente il nodo che torna in scena.
      */
     onDelete?: (ids: string[]) => void;
+    /** "Crea post" dalla barra della selezione: gli id scelti, così com'è per `onDelete`. */
+    onCreatePost?: (ids: string[]) => void;
     /** Una linea da togliere. Senza, il primo errore resta sulla tela per sempre. */
     onEdgeDelete?: (edgeId: string) => void;
     /** Il verso di una linea che c'è già: si corregge, non si rifà. */
     onEdgeRetype?: (edgeId: string, kind: CanvasEdgeKind) => void;
-    /** Una tile nuova chiesta col doppio clic, col punto già in unità di tela. */
+    /** Fisso o iterate: se assente il pannello della linea non offre il toggle — la stessa
+     *  disciplina di `onEdgeRetype`/`onEdgeDelete`, un prop opzionale per una riga opzionale del
+     *  menù. */
+    onEdgeModeChange?: (edgeId: string, mode: WireMode) => void;
+    /** Una tile nuova chiesta dalla barra o dal trascinamento, col punto già in unità di tela. */
     onCreate?: (what: Addable, at: { x: number; y: number }) => void;
+    /**
+     * Una tile che nasce già PIENA — trascinata dalla libreria degli asset o dai brand, non dal
+     * click sulla barra. `onDrop` la prova PRIMA del fallback `onCreate`: un file che ha già
+     * un `assetId` non deve mai diventare un nodo vuoto perché il ramo sbagliato ha guardato per
+     * primo.
+     */
+    onCreateFilled?: (drag: FilledNodeDrag, at: { x: number; y: number }) => void;
+    /** Un file scelto dalla barra: la tela non lo carica da sé, lo passa a chi la monta. */
+    onUpload?: (file: File) => void;
+    /** ⌘D: duplica la selezione, con gli id come SvelteFlow li conosce. */
+    onDuplicate?: (ids: string[]) => void;
+    /** ⌘C: copia la selezione negli appunti di chi monta la tela. */
+    onCopy?: (ids: string[]) => void;
+    /** ⌘V: incolla, al centro di quel che si sta guardando adesso. */
+    onPaste?: (at: { x: number; y: number }) => void;
+    /** ⌘Z: annulla l'ultimo gesto di questa scheda. */
+    onUndo?: () => void;
+    /** ⇧⌘Z: ripete l'ultimo gesto annullato. */
+    onRedo?: () => void;
+    /**
+     * "Collega a nuovo…": la scelta del tipo la fa questo componente (`ConnectPicker`), il nodo e
+     * i fili li fa chi monta la tela — la stessa divisione di `onCreate`, dove il PUNTO lo decide
+     * `CanvasFlow` e la SCRITTURA la pagina. `at` è già in unità di tela, a destra della selezione.
+     */
+    onConnectNew?: (ids: string[], medium: GenMedium, at: { x: number; y: number }, prompt?: string) => void;
+    /** "Collega a…": gli id scelti e il nodo su cui si è cliccato per chiudere la modalità bersaglio. */
+    onConnectExisting?: (ids: string[], targetId: string) => void;
+    /** "Esegui flusso": gli id scelti, così com'è per `onDelete`/`onCreatePost`. */
+    onRunWorkflow?: (ids: string[]) => void;
+    /** `type`/`data` di ogni tile — la forma grezza che `commonPropertiesOf` legge, non `Tile`. */
+    nodeSummaries?: { id: string; type: string; data: Record<string, unknown> }[];
+    /** I modelli offribili per un medium che genera, dal catalogo di chi monta la tela. */
+    modelChoicesFor?: (type: 'text' | 'image' | 'video') => ModelChoice[];
+    /** Il catalogo di un medium è già sincronizzato? Come `GenNode`, per il campo modello della
+     *  barra quando la selezione è di un solo tipo. */
+    catalogueSyncedFor?: (type: 'text' | 'image' | 'video') => boolean;
+    /** La barra ha scritto: un campo, applicato a ogni nodo selezionato — uno o molti, stessa
+     *  concorrenza ottimistica di `write`, N scritture indipendenti per una barra sola. */
+    onPropertyChange?: (
+      ids: string[],
+      patch: {
+        model?: string | null;
+        aspectRatio?: string;
+        duration?: number;
+        resolution?: string;
+        audio?: boolean;
+        enhancePrompt?: boolean;
+        repeat?: number;
+        dynamicParams?: Record<string, unknown>;
+      }
+    ) => void;
+    /** Un nodo ha finito di essere ridimensionato dai suoi angoli/lati — `w`/`h` già in unità di
+     *  tela. Assente = nessuna tile è ridimensionabile a mano (il resizer non compare). */
+    onResize?: (id: string, w: number, h: number) => void;
     /** Cosa disegnare dentro una tile. La tela non sa cosa mostra: lo decide chi la usa. */
     tile: import('svelte').Snippet<[{ id: string; selected: boolean }]>;
   } = $props();
@@ -110,11 +228,24 @@
   // Un `$derived` non risolve: rigenerando i nodi a ogni cambio di `tiles` si butterebbe via il
   // trascinamento in corso. La sincronizzazione va scritta a mano, ed è il prezzo fisso della
   // libreria — quando arriverà `brand_canvas_items`, è qui che le due posizioni si riconciliano.
+  setTileRender(() => tile);
+  setTileResize(() => onResize);
+
   const toNode = (t: Tile): Node => ({
     id: t.id,
     position: { x: t.x, y: t.y },
-    // `render` è lo snippet del chiamante: il nodo lo esegue senza sapere cosa disegni.
-    data: { tile: t, id: t.id, render: tile, connectable: t.connectable !== false },
+    selected: t.select === true,
+    data: {
+      id: t.id,
+      connectable: t.connectable !== false,
+      connectors: t.connectors,
+      output: t.output ?? null,
+      kind: t.kind,
+      displayName: t.displayName,
+      inPost: t.inPost,
+      minW: t.minW,
+      minH: t.minH
+    },
     type: 'tile',
     style: `width:${t.w}px;height:${t.h}px`
   });
@@ -125,7 +256,7 @@
   let nodes = $state.raw<Node[]>(tiles.map(toNode));
   // svelte-ignore state_referenced_locally -- stessa cattura iniziale dei nodi, e stesso motivo:
   // da qui in poi gli archi sono di SvelteFlow, e l'effetto sotto ci porta dentro solo i NUOVI.
-  let edges = $state.raw<FlowEdge[]>([...incomingEdges]);
+  let edges = $state.raw<FlowEdge[]>($state.snapshot(incomingEdges) as FlowEdge[]);
 
   // Le tile che arrivano dal server entrano, quelle sparite escono, e quelle che l'utente sta
   // muovendo restano dove le ha lasciate — la riconciliazione sta in `syncNodes`, col suo test.
@@ -139,12 +270,24 @@
 
   // Gli archi seguono la stessa riconciliazione dei nodi: entrano i nuovi, escono quelli tolti.
   $effect(() => {
-    const next = syncNodes(untrack(() => edges), incomingEdges, (e) => e);
+    const next = syncNodes(untrack(() => edges), $state.snapshot(incomingEdges) as FlowEdge[], (e) => e);
     if (next) edges = next;
   });
 
-  function onNodeDragStop({ targetNode }: { targetNode: Node | null }) {
-    if (targetNode) onMove?.(targetNode.id, targetNode.position.x, targetNode.position.y);
+  /**
+   * OGNI TILE TRASCINATA SI SALVA, non solo quella sotto il puntatore. `nodes` porta l'INTERA
+   * selezione mossa insieme (SvelteFlow lo dà già); prima solo `targetNode` veniva scritto, e un
+   * trascinamento di più tile perdeva la posizione di tutte le altre alla prossima apertura —
+   * un difetto che `onMoveEnd`, sotto, avrebbe reso visibile comunque: annullare uno spostamento
+   * che il server non ha mai salvato riporterebbe un nodo a un `before` che coincide col suo
+   * `after`, cioè a niente.
+   */
+  function onNodeDragStop({ targetNode, nodes: dragged }: { targetNode: Node | null; nodes: Node[] }) {
+    if (!targetNode) return;
+    for (const n of dragged) {
+      onMove?.(n.id, n.position.x, n.position.y);
+    }
+    onMoveEnd?.(dragged.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y })));
   }
 
   /**
@@ -157,6 +300,11 @@
 
   const lookup = (id: string) => nodeOf.get(id) ?? null;
 
+  /** Le porte tipizzate di una tile, per id — usate solo per rifiutare un secondo filo su un
+   *  connettore a valore singolo già occupato: `connect-rules.ts` non conosce i connettori, la
+   *  domanda "quale porta" è di questo file. */
+  const connectorsOf = $derived(new Map(tiles.map((t) => [t.id, t.connectors])));
+
   /**
    * IL RIFIUTO, MENTRE IL PUNTATORE È ANCORA IN ARIA. La libreria si ferma qui e domanda: tornare
    * `false` significa che la linea non si aggancia e l'attacco non si accende, senza che nessuno
@@ -168,13 +316,43 @@
    */
   let refusal = $state<string | null>(null);
 
-  function isValidConnection(c: { source?: string | null; target?: string | null }): boolean {
-    const { source, target } = c;
+  function isValidConnection(c: {
+    source?: string | null;
+    target?: string | null;
+    targetHandle?: string | null;
+  }): boolean {
+    const { source, target, targetHandle } = c;
     if (!source || !target) return false;
 
     const verdict = verdictBetween(lookup, source, target);
-    refusal = verdict.ok ? null : verdict.why;
-    return verdict.ok;
+    if (!verdict.ok) {
+      refusal = verdict.why;
+      return false;
+    }
+
+    const connector = targetHandle as ConnectorType | null | undefined;
+    const connectors = connectorsOf.get(target);
+    const output = tiles.find((t) => t.id === source)?.output ?? null;
+    const targetKind = tiles.find((t) => t.id === target)?.kind ?? '';
+    const portEdges = edges.map((e) => ({ id: e.id, target: e.target, targetHandle: e.targetHandle ?? null }));
+    if (!nodeAcceptsConnection(portEdges, target, targetKind)) {
+      refusal = 'un nodo effetti prende un solo media';
+      return false;
+    }
+    if (output && connectors?.length && !anyPortAccepts(connectors, output)) {
+      refusal = `nessuna porta accetta ${output}`;
+      return false;
+    }
+    if (connector && connectors?.includes(connector)) {
+      const free = connectorAccepts(portEdges, target, connector, portListValued(targetKind, connector));
+      if (!free) {
+        refusal = `porta ${connector} già occupata`;
+        return false;
+      }
+    }
+
+    refusal = null;
+    return true;
   }
 
   /**
@@ -182,12 +360,14 @@
    * quando il server la restituisce con il suo id vero. Disegnarla subito con un id inventato
    * significherebbe averla due volte appena i dati tornano — la copia ottimista e quella vera.
    */
-  function onConnected(connection: { source?: string | null; target?: string | null }) {
+  function onConnected(connection: { source?: string | null; target?: string | null; targetHandle?: string | null }) {
     const { source, target } = connection;
     if (!source || !target || source === target) return;
 
     refusal = null;
-    onConnect?.(source, target, edgeKindsFor(lookup, source, target)[0] ?? DEFAULT_EDGE_KIND);
+    const output = tiles.find((t) => t.id === source)?.output ?? null;
+    const handle = landingPort((connection.targetHandle as ConnectorType | null) ?? null, output, connectorsOf.get(target) ?? []);
+    onConnect?.(source, target, edgeKindsFor(lookup, source, target)[0] ?? DEFAULT_EDGE_KIND, handle);
   }
 
   /**
@@ -221,6 +401,15 @@
     picked = null;
   }
 
+  /** Fisso o iterate: NON chiude il pannello — a differenza del verso, il toggle si guarda
+   *  mentre si sceglie (quante combinazioni farebbe un loop a valle), non un clic e via. */
+  function retypeMode(mode: WireMode) {
+    if (!picked) return;
+
+    onEdgeModeChange?.(picked.edge.id, mode);
+    picked = { ...picked, edge: { ...picked.edge, mode } };
+  }
+
   function drop() {
     if (!picked) return;
 
@@ -248,51 +437,148 @@
   }
 
   /**
-   * IL MENÙ DEL DOPPIO CLIC.
-   *
-   * Si apre dove si è cliccato e porta tutto ciò che si può aggiungere. Tiene DUE punti: quello
-   * dello schermo, che serve a disegnarlo, e quello della tela, che è dove il nodo andrà —
-   * separati perché la tela si può scorrere mentre il menù è aperto, e un solo punto darebbe un
-   * nodo che nasce altrove.
+   * LA BARRA DELLA SELEZIONE. `CanvasSelectionBridge` vive dentro `SvelteFlow` e riporta qui id e
+   * riquadro a ogni cambio — la barra stessa vive fuori, sotto, perché non ha bisogno del contesto
+   * della libreria, solo di coordinate già pronte.
    */
-  let menu = $state<{ screen: { x: number; y: number }; flow: { x: number; y: number } } | null>(null);
-  // `$state` e non un `let` semplice: la conversione arriva da `CanvasPointer` DOPO il mount, e in
-  // una variabile non reattiva il gestore del doppio clic continuerebbe a leggere il `null` di
-  // partenza — il menù non si aprirebbe mai, e senza errori.
+  let selection = $state<{ ids: string[]; box: { x: number; y: number; width: number; height: number } | null; zoom: number }>({
+    ids: [],
+    box: null,
+    zoom: 1
+  });
+
+  /**
+   * "COLLEGA A NUOVO…": apre `ConnectPicker` a destra del riquadro della selezione — lo stesso
+   * `selection.box`, già in coordinate di schermo, che disegna la barra. La posizione del nodo
+   * nuovo si converte in unità di tela solo alla scelta del tipo (`pickConnectMedium`): prima non
+   * serve, e la selezione può muoversi mentre il menù è aperto.
+   */
+  let connectPickerAt = $state<{ x: number; y: number } | null>(null);
+
+  /**
+   * "COLLEGA A…": la tela entra in modalità bersaglio — il prossimo clic su UN nodo (non sullo
+   * sfondo, non su uno già nella selezione) lo sceglie come destinazione e chiude la modalità.
+   * `targeting` porta gli id della selezione che l'ha aperta: la barra può nel frattempo perdere
+   * quella selezione (l'utente clicca altrove prima di scegliere) senza perdere QUALI nodi
+   * andavano collegati.
+   */
+  let targeting = $state<string[] | null>(null);
+
+  function onNodeClick({ node }: { node: Node }) {
+    if (!targeting) return;
+    if (targeting.includes(node.id)) return;
+
+    onConnectExisting?.(targeting, node.id);
+    targeting = null;
+  }
+
+  /**
+   * COSA FA OGNI BOTTONE DELLA BARRA — una tabella, non un `if` per azione: la stessa idea di
+   * `RUN` in `CanvasKeys.svelte`, qui perché lo stato della selezione (`selection.ids`) vive in
+   * questo componente e non in quello.
+   */
+  const SELECTION_RUN: Record<SelectionActionId, (ids: string[]) => void> = {
+    duplicate: (ids) => onDuplicate?.(ids),
+    'connect-new': () => {
+      if (!selection.box) return;
+      connectPickerAt = { x: selection.box.x + selection.box.width + 24, y: selection.box.y };
+    },
+    'connect-existing': (ids) => {
+      targeting = ids;
+    },
+    'create-post': (ids) => onCreatePost?.(ids),
+    'run-workflow': (ids) => onRunWorkflow?.(ids),
+    'copy-id': (ids) => {
+      void navigator.clipboard?.writeText(ids.join('\n'));
+    },
+    delete: (ids) => onDelete?.(ids)
+  };
+
+  function runSelectionAction(id: SelectionActionId) {
+    if (!selection.ids.length) return;
+    SELECTION_RUN[id](selection.ids);
+  }
+
+  /**
+   * COSA È SELEZIONATO, NELLA FORMA CHE LA BARRA LEGGE — uno o molti nodi, stessa forma:
+   * `SelectionToolbar` decide da sé cosa hanno in comune (`commonPropertiesOf`), qui basta
+   * filtrare `nodeSummaries` sugli id scelti.
+   */
+  const selectedSummaries = $derived(nodeSummaries.filter((n) => selection.ids.includes(n.id)));
+  const selectionEdges = $derived(edges.map((e) => ({ sourceNodeId: e.source, targetNodeId: e.target })));
+  const selectionMedium = $derived(
+    selectedSummaries.length && selectedSummaries.every((n) => n.type === selectedSummaries[0].type)
+      ? (selectedSummaries[0].type as 'text' | 'image' | 'video')
+      : null
+  );
+
+  function pickConnectMedium(medium: GenMedium) {
+    if (!connectPickerAt || !toFlow) { connectPickerAt = null; return; }
+
+    onConnectNew?.(selection.ids, medium, toFlow(connectPickerAt));
+    connectPickerAt = null;
+  }
+
+  /**
+   * UN CHIP CLICCATO — stessa geometria di "Collega a nuovo…" (a destra della selezione), ma il
+   * medium e il prompt arrivano già decisi dal suggerimento, non da una seconda scelta dell'utente.
+   */
+  function pickNextStep(suggestion: {
+    createsNodeType: 'video' | 'text' | 'image' | null;
+    wiring: 'connect-new' | 'create-post';
+    promptTemplate: string;
+  }) {
+    if (!selection.box || !toFlow) return;
+
+    if (suggestion.wiring === 'create-post') {
+      onCreatePost?.(selection.ids);
+      return;
+    }
+    if (!suggestion.createsNodeType) return;
+
+    const at = toFlow({ x: selection.box.x + selection.box.width + 24, y: selection.box.y });
+    onConnectNew?.(selection.ids, suggestion.createsNodeType, at, suggestion.promptTemplate);
+  }
+
+  const nextStepNodeId = $derived(selection.ids.length === 1 ? selection.ids[0] : null);
+
+  // La conversione schermo → tela arriva da `CanvasPointer` DOPO il mount — serve al trascinamento
+  // (`onDrop`) e al clic sulla barra (`addAtCentre`). `$state` e non un `let` semplice: in una
+  // variabile non reattiva chi la legge prima del mount vedrebbe il `null` di partenza per sempre.
   let toFlow = $state<((p: { x: number; y: number }) => { x: number; y: number }) | null>(null);
-
-  function openMenu(e: MouseEvent) {
-    if (!onCreate || !toFlow) return;
-    // Solo sullo sfondo: doppio clic su una tile è un gesto suo (aprire, rinominare), e aprirci
-    // sopra un menù di creazione lo ruberebbe.
-    if ((e.target as HTMLElement)?.closest('.svelte-flow__node')) return;
-
-    e.preventDefault();
-    menu = {
-      screen: { x: e.clientX, y: e.clientY },
-      flow: toFlow({ x: e.clientX, y: e.clientY })
-    };
-  }
-
-  function pick(what: Addable) {
-    if (!menu) return;
-    onCreate?.(what, menu.flow);
-    menu = null;
-  }
 
   /**
    * Qualcosa lasciato cadere sulla tela. `ondragover` con `preventDefault` non è cerimonia: senza,
    * il browser rifiuta il rilascio e il trascinamento finisce in un nulla di fatto.
    */
   function onDragOver(e: DragEvent) {
-    if (!e.dataTransfer?.types.includes(CANVAS_DRAG_MEDIUM)) return;
+    const types = e.dataTransfer?.types ?? [];
+    if (!types.includes(CANVAS_DRAG_FILLED_NODE) && !types.includes(CANVAS_DRAG_MEDIUM)) return;
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
+    e.dataTransfer!.dropEffect = 'copy';
   }
 
+  /**
+   * IL PAYLOAD PIENO SI PROVA PER PRIMO. La stessa card trascinata porta ENTRAMBI i MIME
+   * (`drag-payload.ts`, i pannelli che trascinano) — pieno come strada normale, vuoto come
+   * fallback per chi non lo legge ancora. Guardare prima il fallback creerebbe un nodo vuoto e
+   * scarterebbe in silenzio il file che l'utente aveva già pronto in mano.
+   */
   function onDrop(e: DragEvent) {
+    if (!toFlow) return;
+
+    const filledRaw = e.dataTransfer?.getData(CANVAS_DRAG_FILLED_NODE);
+    if (filledRaw) {
+      const drag = parseFilledNodeDrag(filledRaw);
+      if (drag) {
+        e.preventDefault();
+        onCreateFilled?.(drag, toFlow({ x: e.clientX, y: e.clientY }));
+        return;
+      }
+    }
+
     const what = e.dataTransfer?.getData(CANVAS_DRAG_MEDIUM);
-    if (!what || !isAddable(what) || !toFlow) return;
+    if (!what || !isAddable(what)) return;
 
     e.preventDefault();
     onCreate?.(what, toFlow({ x: e.clientX, y: e.clientY }));
@@ -310,13 +596,11 @@
   let wrap = $state<HTMLDivElement | null>(null);
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -- il doppio clic è una scorciatoia sulla
-     tela, non l'unico modo di creare un nodo: chi usa la tastiera passa dai bottoni di chi la
-     monta, e il menù che si apre è raggiungibile da lì. -->
+<!-- svelte-ignore a11y_no_static_element_interactions -- il trascinamento è una scorciatoia sulla
+     tela, non l'unico modo di creare un nodo: chi non trascina usa la barra o la tastiera. -->
 <div
   class="wrap"
   bind:this={wrap}
-  ondblclick={openMenu}
   ondragover={onDragOver}
   ondrop={onDrop}
 >
@@ -326,9 +610,9 @@
     (`zoomOnScroll={false}`) — che sarebbe il difetto peggiore su un trackpad, la scala che salta
     mentre si scorre.
 
-    Il quarto spegne lo zoom sul DOPPIO CLIC, che la libreria fa di default e prima che l'evento
-    arrivi a noi: il menù per aggiungere un nodo si apriva mentre la tela saltava di una tacca
-    sotto di lui. Un gesto, un significato.
+    Il quarto spegne lo zoom sul DOPPIO CLIC, che la libreria fa di default: un doppio clic sullo
+    sfondo non ha più un gesto proprio qui, e lasciare lo zoom della libreria darebbe un salto di
+    scala che nessuno ha chiesto.
 
     È il caso in cui la libreria guadagna: il comportamento si chiede, non si scrive.
 
@@ -346,6 +630,7 @@
     onnodedragstop={onNodeDragStop}
     onconnect={onConnected}
     onedgeclick={onEdgeClick}
+    onnodeclick={onNodeClick}
     {isValidConnection}
     onconnectend={() => (refusal = null)}
     panOnScroll
@@ -353,16 +638,25 @@
     zoomOnScroll={false}
     zoomOnDoubleClick={false}
     deleteKey={null}
+    selectionOnDrag
+    selectionMode={SelectionMode.Partial}
+    panOnDrag={[1, 2]}
     fitView
+    multiSelectionKey={['Meta', 'Control', 'Shift']}
   >
     <CanvasPointer onready={(fn) => (toFlow = fn)} />
-    <CanvasKeys onadd={addAtCentre} onmove={onMove} ondelete={dropSelection} />
+    <CanvasKeys
+      onadd={addAtCentre}
+      onmove={onMove}
+      ondelete={dropSelection}
+      onduplicate={onDuplicate}
+      oncopy={onCopy}
+      onpaste={onPaste}
+      onundo={onUndo}
+      onredo={onRedo}
+    />
+    <CanvasSelectionBridge onchange={(next) => (selection = next)} />
     <Background gap={24} />
-    <Controls position="bottom-right" orientation="horizontal" />
-    <!-- Accanto ai controlli e piccola: la mappa serve a sapere DOVE si è, non a leggere quel che
-         c'è dentro — a 200×150 copriva un angolo intero della tela per un'informazione che si
-         coglie in un colpo d'occhio. -->
-    <MiniMap position="bottom-right" width={132} height={92} pannable zoomable />
   </SvelteFlow>
 
   {#if refusal}
@@ -371,8 +665,30 @@
     <p class="edge-refusal" role="status">{refusal}</p>
   {/if}
 
+  {#if targeting}
+    <p class="edge-refusal" role="status">Scegli il nodo a cui collegare — Esc per annullare</p>
+  {/if}
+
   {#if onCreate}
-    <CanvasAddBar onpick={addAtCentre} />
+    <CanvasAddBar onpick={addAtCentre} onupload={onUpload} />
+  {/if}
+
+  <SelectionToolbar
+    box={selection.box}
+    zoom={selection.zoom}
+    count={selection.ids.length}
+    nodeSummaries={selectedSummaries}
+    edges={selectionEdges}
+    choicesFor={modelChoicesFor}
+    catalogueSynced={selectionMedium && catalogueSyncedFor ? catalogueSyncedFor(selectionMedium) : true}
+    onaction={runSelectionAction}
+    onpropertychange={(patch) => onPropertyChange?.(selection.ids, patch)}
+  />
+
+  <NextStepChips box={selection.box} zoom={selection.zoom} nodeId={nextStepNodeId} onpick={pickNextStep} />
+
+  {#if connectPickerAt}
+    <ConnectPicker at={connectPickerAt} onpick={pickConnectMedium} onclose={() => (connectPickerAt = null)} />
   {/if}
 
   {#if picked && (onEdgeRetype || onEdgeDelete)}
@@ -397,35 +713,24 @@
         {/each}
       {/if}
 
+      {#if onEdgeModeChange}
+        <div class="edge-panel-sep" role="separator"></div>
+        {#each WIRE_MODES as mode (mode)}
+          <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={(picked.edge.mode ?? 'fixed') === mode}
+            class:is-on={(picked.edge.mode ?? 'fixed') === mode}
+            onclick={() => retypeMode(mode)}
+          >
+            {WIRE_MODE_LABEL[mode]}
+          </button>
+        {/each}
+      {/if}
+
       {#if onEdgeDelete}
         <button type="button" role="menuitem" class="edge-drop" onclick={drop}>Togli</button>
       {/if}
-    </div>
-  {/if}
-
-  {#if menu}
-    <!-- Chiude cliccando altrove o con Esc: un menù che resta aperto mentre si scorre la tela
-         punterebbe a un posto che non è più quello. -->
-    <div
-      class="gen-menu-veil"
-      role="presentation"
-      onclick={() => (menu = null)}
-      oncontextmenu={(e) => {
-        e.preventDefault();
-        menu = null;
-      }}
-    ></div>
-    <div
-      class="gen-menu"
-      role="menu"
-      tabindex="-1"
-      style={`left:${menu.screen.x}px; top:${menu.screen.y}px`}
-    >
-      {#each CANVAS_ADDABLE as what (what)}
-        <button type="button" role="menuitem" onclick={() => pick(what)}>
-          {ADDABLE_LABEL[what]}
-        </button>
-      {/each}
     </div>
   {/if}
 </div>
@@ -433,9 +738,10 @@
 <svelte:window
   onkeydown={(e) => {
     if (e.key !== 'Escape') return;
-    menu = null;
     picked = null;
     refusal = null;
+    connectPickerAt = null;
+    targeting = null;
   }}
 />
 
@@ -458,27 +764,12 @@
     --xy-background-color: var(--paper, #fff);
     --xy-background-pattern-color: var(--line-2, #d2d2d7);
 
-    --xy-controls-button-background-color: var(--paper, #fff);
-    --xy-controls-button-background-color-hover: var(--paper-2, #f9f9f9);
-    --xy-controls-button-color: var(--ink, #1d1d1f);
-    --xy-controls-button-color-hover: var(--ink, #1d1d1f);
-    --xy-controls-button-border-color: var(--line-2, #d2d2d7);
-    --xy-controls-box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
-
-    --xy-minimap-background-color: var(--paper, #fff);
-    --xy-minimap-node-background-color: var(--line-2, #d2d2d7);
-    --xy-minimap-node-stroke-color: var(--line, #e5e5e5);
-    --xy-minimap-mask-background-color: color-mix(in srgb, var(--paper-2, #f9f9f9) 72%, transparent);
-    --xy-minimap-mask-stroke-color: var(--line-2, #d2d2d7);
-
     /* L'attribuzione resta — nasconderla è del piano Pro — quindi almeno si veste come il resto,
        invece di essere l'unico riquadro bianco su una tela scura. */
     --xy-attribution-background-color: color-mix(in srgb, var(--paper, #fff) 70%, transparent);
 
     --xy-edge-stroke: var(--ink-soft, #6e6e73);
     --xy-edge-stroke-selected: var(--accent, #7c5cff);
-    --xy-edge-label-background-color: var(--paper, #fff);
-    --xy-edge-label-color: var(--ink-soft, #6e6e73);
   }
 
   /* Il colore del link è scritto fisso nella libreria (`#999`), quindi non basta una variabile. */
@@ -486,59 +777,13 @@
     color: var(--ink-soft, #6e6e73);
   }
 
-  /* Il menù del doppio clic. `position: fixed` perché il punto che lo colloca è quello dello
-     SCHERMO: dentro il flusso si muoverebbe con la tela mentre lo si guarda. */
+  /* Lo sfondo cliccabile che chiude il pannello di una linea. `position: fixed` perché il punto
+     che lo colloca è quello dello SCHERMO: dentro il flusso si muoverebbe con la tela mentre lo
+     si guarda. */
   .gen-menu-veil {
     position: fixed;
     inset: 0;
     z-index: 20;
-  }
-  .gen-menu {
-    position: fixed;
-    z-index: 21;
-    display: flex;
-    flex-direction: column;
-    min-width: 132px;
-    padding: 4px;
-    border-radius: 10px;
-    background: var(--paper, #fff);
-    border: 1px solid var(--line-2, #d2d2d7);
-    box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
-  }
-  .gen-menu button {
-    padding: 6px 10px;
-    font: inherit;
-    font-size: 12.5px;
-    text-align: left;
-    color: var(--ink, #1d1d1f);
-    background: none;
-    border: none;
-    border-radius: 7px;
-    cursor: pointer;
-  }
-  .gen-menu button:hover,
-  .gen-menu button:focus-visible {
-    background: var(--paper-2, #f9f9f9);
-  }
-
-  /* La minimappa e i controlli restano riquadri dell'app: stesso bordo e stesso raggio del resto. */
-  .wrap :global(.svelte-flow__minimap),
-  .wrap :global(.svelte-flow__controls) {
-    border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-
-  /* Stanno nello STESSO angolo, quindi vanno impilati a mano: la libreria li ancora entrambi in
-     basso a destra e si sovrapporrebbero. La mappa sopra, i controlli sotto — l'ordine in cui si
-     guardano, e i controlli restano dove la mano li cerca. Il margine tiene conto della barra per
-     aggiungere, che sta in mezzo in basso. */
-  .wrap :global(.svelte-flow__minimap) {
-    /* 12 di bordo + 28 di controlli (bottoni da 26px più il bordo) + 6 di respiro fra i due. */
-    margin: 0 12px 46px 0;
-  }
-  .wrap :global(.svelte-flow__controls) {
-    margin: 0 12px 12px 0;
   }
 
   /* Il motivo del rifiuto, sotto lo sguardo di chi sta tirando la linea e non in un angolo:
@@ -615,5 +860,9 @@
     border-top: 1px solid var(--line, #e5e5e5);
     border-radius: 0;
     color: #c0392b;
+  }
+  .edge-panel-sep {
+    margin: 3px 0;
+    border-top: 1px solid var(--line, #e5e5e5);
   }
 </style>

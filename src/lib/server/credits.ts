@@ -1,13 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { FREE_CREDITS, PLANS } from '$lib/plans';
 import { swallow } from '$lib/server/swallow';
+import { billedCreditsFor } from '$lib/server/credit-ladder';
 
 // ── AI Credits: consumption tracking per billing period ─────────────────────────
 // Every AI call logs cost_usd in ai_calls (tagged by brand_id via the AsyncLocalStorage
-// context). This module sums those costs into "credits" (100 credits = $1 USD) and enforces
-// the per-plan monthly quota. Every model is stored at 100% of list — Gemini Flash and Nano
-// Banana Pro carried a per-plan discount until 2026-08 and no longer do, so the same quota now
-// buys fewer looks and fewer stills. Quotas were NOT adjusted for this; that is a separate call.
+// context). This module sums those costs into "credits" with `billedCreditsFor`
+// (credit-ladder.ts) — the same rate `ai-log.ts` bills each row at — and enforces the per-plan
+// monthly quota. Every model is stored at 100% of list — Gemini Flash and Nano Banana Pro
+// carried a per-plan discount until 2026-08 and no longer do, so the same quota now buys fewer
+// looks and fewer stills. Quotas were NOT adjusted for this; that is a separate call.
 
 export type Brand = {
   id: string;
@@ -76,9 +78,9 @@ function shiftToAnchor(anchor: Date, now: Date): Date {
 
 /**
  * Current billing window: [period anchor, +1 month).
- * The anchor comes from Stripe (read live via the brand_billing_period RPC — annual plans
- * report a year-long item period, so shiftToAnchor normalises to the monthly anniversary).
- * Falls back to activated_at if there's no synced subscription, then to calendar month start.
+ * The new schema (`orgs`, `brands`) carries no subscription, so there is no anchor to read live
+ * anymore — every period is the calendar month, in UTC. `activated_at` and a Stripe anchor are
+ * kept as optional inputs so old callers still compile; neither has a column to come from today.
  */
 export function currentBillingPeriod(
   brand: Pick<Brand, 'activated_at'>,
@@ -91,72 +93,36 @@ export function currentBillingPeriod(
   return { start, end };
 }
 
-/**
- * Billing period anchor from the synced stripe.subscriptions table (security-definer RPC,
- * migration 0089). Null when the brand has no active subscription — callers fall back.
- * Cached 5 min per isolate: the anniversary does not move mid-request storm, and remaining()
- * is also called from calendar/plan/editorial on top of the layout deferred path.
- */
-const STRIPE_PERIOD_TTL_MS = 5 * 60_000;
-const stripePeriodByBrand = new Map<string, { value: Date | null; at: number }>();
-
-export async function fetchStripePeriodStart(
-  supabase: SupabaseClient,
-  brandId: string
-): Promise<Date | null> {
-  const hit = stripePeriodByBrand.get(brandId);
-  if (hit && Date.now() - hit.at < STRIPE_PERIOD_TTL_MS) return hit.value;
-
-  const { data, error } = await supabase
-    .rpc('brand_billing_period', { _brand_id: brandId })
-    .maybeSingle<{ period_start: string | null; period_end: string | null }>();
-  if (error) return null;
-  const value = data?.period_start ? new Date(data.period_start) : null;
-  stripePeriodByBrand.set(brandId, { value, at: Date.now() });
-  return value;
-}
-
 // ── Org scope ────────────────────────────────────────────────────────────────────
-// One subscription belongs to an ORGANIZATION and covers every brand under it, so the pool a
-// brand spends from is the org's. The rollout is org-by-org: an org that has not had its turn
-// yet carries nothing, and its paying brand still holds the plan, the subscription and the
-// period — so every read is org-first and falls back to that brand. Both shapes answer the
-// same numbers, which is what lets the migration run one org at a time.
+// Spend is pooled at the ORG, not the brand: every brand under an org draws from the same
+// ai_calls sum. `getCreditsUsage` reads org-first and falls back to the brand alone only when
+// the brand row itself cannot be resolved to an org.
 
+const ORG_BILLING_TTL_MS = 5 * 60_000;
+
+/**
+ * `orgs` carries no billing columns on the new schema — no plan, no subscription, no period
+ * anchor — and neither does `brands` anymore. Billing has no home yet; see the module doc at the
+ * top. `plan`/`activatedAt` are kept in the shape (always null today) so `creditQuota`/
+ * `currentBillingPeriod` keep one signature instead of forking for "before" and "after" billing
+ * lands somewhere. `billingBrandId` is gone with them — there is no brand left to anchor a period on.
+ */
 export type OrgBilling = {
   orgId: string;
-  /** organizations.plan, or the plan of whichever brand of the org still carries the subscription. */
   plan: string | null;
   activatedAt: string | null;
-  /** The org's brand holding a subscription — the period source until the org has its own. */
-  billingBrandId: string | null;
   brandIds: string[];
-};
-
-type OrgBrandRow = {
-  id: string;
-  plan: string | null;
-  activated_at: string | null;
-  stripe_subscription_id: string | null;
-};
-
-type OrgRow = {
-  id: string;
-  plan: string | null;
-  activated_at: string | null;
-  stripe_subscription_id: string | null;
-  brands?: OrgBrandRow[];
 };
 
 const orgBillingByBrand = new Map<string, { value: OrgBilling | null; at: number }>();
 
-/** The org a brand bills through, with plan and period source resolved for both rollout states. */
+/** The org a brand belongs to, and every sibling brand under it (the pool spend is shared over). */
 export async function resolveOrgBilling(
   supabase: SupabaseClient,
   brandId: string
 ): Promise<OrgBilling | null> {
   const hit = orgBillingByBrand.get(brandId);
-  if (hit && Date.now() - hit.at < STRIPE_PERIOD_TTL_MS) return hit.value;
+  if (hit && Date.now() - hit.at < ORG_BILLING_TTL_MS) return hit.value;
 
   const value = await readOrgBilling(supabase, brandId);
   orgBillingByBrand.set(brandId, { value, at: Date.now() });
@@ -183,33 +149,23 @@ export async function readOrgBillingById(
   supabase: SupabaseClient,
   orgId: string
 ): Promise<OrgBilling | null> {
-  const { data } = await supabase
-    .from('organizations')
-    .select(
-      'id, plan, activated_at, stripe_subscription_id, brands(id, plan, activated_at, stripe_subscription_id)'
-    )
-    .eq('id', orgId)
-    .maybeSingle();
-  const org = data as OrgRow | null;
+  const { data: org } = await supabase.from('orgs').select('id').eq('id', orgId).maybeSingle();
   if (!org) return null;
 
-  const brands = org.brands ?? [];
-  // At most one brand of an org pays (no customer holds two subscriptions), but pick by quota
-  // rather than by arrival order so a stray second one can never shrink the pool.
-  const paying = brands
-    .filter((b) => b.stripe_subscription_id && b.plan)
-    .sort((a, b) => creditQuota(b.plan) - creditQuota(a.plan))[0];
+  const { data: brands } = await supabase.from('brands').select('id').eq('org_id', orgId);
 
   return {
-    orgId: org.id,
-    plan: org.plan ?? paying?.plan ?? null,
-    activatedAt: org.activated_at ?? paying?.activated_at ?? null,
-    billingBrandId: org.stripe_subscription_id ? null : (paying?.id ?? null),
-    brandIds: brands.map((b) => b.id)
+    orgId,
+    plan: null,
+    activatedAt: null,
+    brandIds: (brands ?? []).map((b) => (b as { id: string }).id)
   };
 }
 
-/** The plan the org bills on, for a caller holding only a brand id. */
+/**
+ * The plan the org bills on. Always null today — kept as a function (not inlined at the two call
+ * sites) so the day billing gets a real column, one place answers instead of two.
+ */
 export async function orgPlanForBrand(
   supabase: SupabaseClient,
   brandId: string
@@ -217,44 +173,58 @@ export async function orgPlanForBrand(
   return (await resolveOrgBilling(supabase, brandId))?.plan ?? null;
 }
 
-const orgPeriodByOrg = new Map<string, { value: Date | null; at: number }>();
+// ── Ledger balance ───────────────────────────────────────────────────────────────
+// Il saldo vero: `credit_ledger` sommato (grant − debit, righe non scadute), letto dalla RPC
+// `org_credit_balance` — non da `ai_calls` sommato contro una quota fissa (vedi sotto). Ogni
+// chiamata AI prezzata scrive già un debito qui (ai-log.ts): questo è l'unico posto che LEGGE
+// quel saldo per decidere se una spesa nuova può passare.
 
-/** Period anchor for the org: its own subscription first, its paying brand's while it waits. */
-async function fetchOrgPeriodStart(
-  supabase: SupabaseClient,
-  org: OrgBilling
-): Promise<Date | null> {
-  const hit = orgPeriodByOrg.get(org.orgId);
-  if (hit && Date.now() - hit.at < STRIPE_PERIOD_TTL_MS) return hit.value;
-
-  const { data, error } = await supabase
-    .rpc('org_billing_period', { _org_id: org.orgId })
-    .maybeSingle<{ period_start: string | null }>();
-  let value = !error && data?.period_start ? new Date(data.period_start) : null;
-  if (!value && org.billingBrandId) {
-    value = await fetchStripePeriodStart(supabase, org.billingBrandId);
-  }
-  orgPeriodByOrg.set(org.orgId, { value, at: Date.now() });
-  return value;
+/** Il saldo crediti dell'org, dalla RPC `org_credit_balance` (grant − debit, credit_ledger). */
+export async function orgCreditBalance(supabase: SupabaseClient, orgId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('org_credit_balance', { _org_id: orgId });
+  if (error) throw new Error(`org_credit_balance failed: ${error.message}`);
+  return Number(data ?? 0);
 }
 
 // ── Usage query ──────────────────────────────────────────────────────────────────
 
-const CREDITS_PER_USD = 100;
+/**
+ * Sum `cost_usd` from `ai_calls` in the current billing period for one scope (an org, or a
+ * single brand when no org is in reach). PostgREST aggregates are off, so the sum runs in JS —
+ * the row set is one billing period of one org's calls, not the whole table.
+ */
+async function sumAiCostUsd(
+  supabase: SupabaseClient,
+  scope: { orgId: string } | { brandId: string },
+  start: Date,
+  end: Date
+): Promise<number> {
+  let query = supabase
+    .from('ai_calls')
+    .select('cost_usd')
+    .gte('created_at', start.toISOString())
+    .lt('created_at', end.toISOString());
+  query = 'orgId' in scope ? query.eq('org_id', scope.orgId) : query.eq('brand_id', scope.brandId);
+
+  const { data, error } = await query;
+  if (error) throw new Error(`ai_calls sum failed: ${error.message}`);
+
+  return (data ?? []).reduce((sum: number, row: { cost_usd: number | null }) => sum + (row.cost_usd ?? 0), 0);
+}
 
 /**
  * Sum cost_usd × 100 from ai_calls in the current billing period for this brand.
- * Only rows with a non-null cost_usd and brand_id are counted (excludes exempt/dev calls).
- * Active credit_grants boost the quota (one-time / time-bound extras).
- * Spend is summed in SQL (`sum_brand_ai_cost_usd`); grants run in parallel with that RPC.
+ * Quota is always the free-tier quota: `orgs`/`brands` carry no plan column on the new schema,
+ * so there is nothing to read a paid quota from — see the module doc. A read failure THROWS
+ * (never returns `used: 0`): the caller's fail-open catch is the only place that decides to let
+ * a spend through despite an unreadable ledger, and it reports every time it does.
  */
 export async function getCreditsUsage(
   supabase: SupabaseClient,
   brand: Brand
 ): Promise<CreditsUsage> {
   const org = await resolveOrgBilling(supabase, brand.id);
-  // No org in reach (a brand row that isn't there, or a read that failed): answer for the brand
-  // alone, exactly as before org-level billing. Never leave a caller without a budget.
+  // No org in reach (a brand row that isn't there): answer for the brand alone.
   if (!org) return brandCreditsUsage(supabase, brand);
 
   return orgCreditsUsage(supabase, org, brand.activated_at);
@@ -269,35 +239,19 @@ export async function orgCreditsUsage(
   org: OrgBilling,
   activatedAtFallback: string | null = null
 ): Promise<CreditsUsage> {
-  const periodStart = await fetchOrgPeriodStart(supabase, org);
-  const { start, end } = currentBillingPeriod(
-    { activated_at: org.activatedAt ?? activatedAtFallback },
-    periodStart
-  );
-  const planQuota = creditQuota(org.plan);
+  const { start, end } = currentBillingPeriod({ activated_at: org.activatedAt ?? activatedAtFallback });
+  // creditQuota(null), not creditQuota(org.plan): org.plan is always null on the new schema (see
+  // the OrgBilling doc above) — reading it here would let a caller-constructed OrgBilling with a
+  // stale plan string buy a bigger quota than any org can actually prove it is entitled to.
+  const quota = creditQuota(null);
 
-  // Grants + spend don't depend on each other. Spend is summed in SQL (PostgREST
-  // aggregates are disabled — see 0158 / sum_org_ai_cost_usd).
-  const [bonus, { data: spentUsd, error }] = await Promise.all([
-    sumActiveCreditGrants(supabase, org),
-    supabase.rpc('sum_org_ai_cost_usd', {
-      p_org_id: org.orgId,
-      p_start: start.toISOString(),
-      p_end: end.toISOString()
-    })
-  ]);
-  const quota = planQuota + bonus;
+  const spentUsd = await sumAiCostUsd(supabase, { orgId: org.orgId }, start, end);
+  const used = billedCreditsFor(spentUsd);
 
-  if (error) {
-    console.warn('[credits] query failed:', error.message);
-    return { used: 0, quota, bonus, remaining: quota, periodStart: start, periodEnd: end, percent: 0 };
-  }
-
-  const used = Math.round(Number(spentUsd ?? 0) * CREDITS_PER_USD);
   return {
     used,
     quota,
-    bonus,
+    bonus: 0,
     remaining: Math.max(0, quota - used),
     periodStart: start,
     periodEnd: end,
@@ -310,30 +264,16 @@ async function brandCreditsUsage(
   supabase: SupabaseClient,
   brand: Brand
 ): Promise<CreditsUsage> {
-  const periodStart = await fetchStripePeriodStart(supabase, brand.id);
-  const { start, end } = currentBillingPeriod(brand, periodStart);
-  const planQuota = creditQuota(brand.plan);
+  const { start, end } = currentBillingPeriod(brand);
+  const quota = creditQuota(brand.plan);
 
-  const [bonus, { data: spentUsd, error }] = await Promise.all([
-    sumGrantRows(supabase, (q) => q.eq('brand_id', brand.id)),
-    supabase.rpc('sum_brand_ai_cost_usd', {
-      p_brand_id: brand.id,
-      p_start: start.toISOString(),
-      p_end: end.toISOString()
-    })
-  ]);
-  const quota = planQuota + bonus;
+  const spentUsd = await sumAiCostUsd(supabase, { brandId: brand.id }, start, end);
+  const used = billedCreditsFor(spentUsd);
 
-  if (error) {
-    console.warn('[credits] query failed:', error.message);
-    return { used: 0, quota, bonus, remaining: quota, periodStart: start, periodEnd: end, percent: 0 };
-  }
-
-  const used = Math.round(Number(spentUsd ?? 0) * CREDITS_PER_USD);
   return {
     used,
     quota,
-    bonus,
+    bonus: 0,
     remaining: Math.max(0, quota - used),
     periodStart: start,
     periodEnd: end,
@@ -341,47 +281,12 @@ async function brandCreditsUsage(
   };
 }
 
-/**
- * Active grants for the whole org: the ones handed to the org itself, plus the ones handed to
- * any of its brands. A grant names one or the other (migration 20260903190000's check
- * constraint), and both land in the same shared pool.
- */
-export async function sumActiveCreditGrants(
-  supabase: SupabaseClient,
-  org: OrgBilling
-): Promise<number> {
-  const [orgGrants, brandGrants] = await Promise.all([
-    sumGrantRows(supabase, (q) => q.eq('org_id', org.orgId)),
-    org.brandIds.length
-      ? sumGrantRows(supabase, (q) => q.in('brand_id', org.brandIds))
-      : Promise.resolve(0)
-  ]);
-  return orgGrants + brandGrants;
-}
-
-/** Active: never-expiring, or expires_at still in the future. */
-async function sumGrantRows(
-  supabase: SupabaseClient,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  filter: (q: any) => any
-): Promise<number> {
-  const now = new Date().toISOString();
-  const { data, error } = await filter(
-    supabase.from('credit_grants').select('amount, expires_at')
-  );
-
-  if (error) {
-    console.warn('[credits] grants query failed:', error.message);
-    return 0;
-  }
-
-  return ((data ?? []) as { amount: unknown; expires_at: string | null }[]).reduce((sum, row) => {
-    const exp = row.expires_at;
-    if (exp && exp <= now) return sum;
-    const n = Number(row.amount);
-    return sum + (Number.isFinite(n) && n > 0 ? n : 0);
-  }, 0);
-}
+// `credit_grants` does not exist on the new schema (verified against database.types.ts) — the
+// grant-summing that used to run here (sumActiveCreditGrants/sumGrantRows) has no table to read,
+// so `bonus` above is hardcoded to 0 instead of a function that would always throw or always
+// silently return 0. `grantCredits` below is left as dead code, not rewired: its only caller,
+// referrals.ts, is itself built on tables that don't exist on the new schema (referral_codes,
+// referrals) and is a deletion candidate per TYPES_AUDIT.md, not a repoint target.
 
 // ── Enforcement ──────────────────────────────────────────────────────────────────
 
@@ -451,7 +356,7 @@ export async function grantCredits(
 /**
  * The 29 call sites (17 direct + 12 via cli-auth.ts's gateAiAction) all call THIS function,
  * unchanged — it's the chokepoint. It delegates to the billing provider: the open provider's
- * gate() is a no-op, the anomalia provider's gate() calls gateCreditsCore below (the real,
+ * gate() is a no-op, the feega provider's gate() calls gateCreditsCore below (the real,
  * unrewritten enforcement). Dynamic import dodges a credits↔billing↔credits init-order cycle
  * (same trick already used below for ai-log).
  */
@@ -502,9 +407,7 @@ export async function gateOrgCreditsCore(orgId: string): Promise<void> {
   let usage: CreditsUsage;
   try {
     const admin = createAdminClient();
-    const org = await readOrgBillingById(admin, orgId);
-    if (!org) return;
-    usage = await orgCreditsUsage(admin, org);
+    usage = await ledgerCreditsUsage(admin, orgId);
     gateCache.set(orgId, { usage, at: Date.now() });
   } catch (e) {
     reportFailOpen(orgId, e);
@@ -514,7 +417,26 @@ export async function gateOrgCreditsCore(orgId: string): Promise<void> {
 }
 
 /**
- * The real enforcement, moved out of gateCredits() unchanged so the anomalia provider can call
+ * Il saldo `credit_ledger` travestito da `CreditsUsage`, per il cancello e per la cache che già
+ * esiste — non un secondo concetto di "quota", solo il saldo vero letto una volta. `quota`/`used`
+ * qui sono display: quello che decide è `remaining`, ed è il saldo stesso.
+ */
+async function ledgerCreditsUsage(supabase: SupabaseClient, orgId: string): Promise<CreditsUsage> {
+  const balance = await orgCreditBalance(supabase, orgId);
+  const now = new Date();
+  return {
+    used: 0,
+    quota: Math.max(0, balance),
+    bonus: 0,
+    remaining: Math.max(0, balance),
+    periodStart: now,
+    periodEnd: now,
+    percent: 0
+  };
+}
+
+/**
+ * The real enforcement, moved out of gateCredits() unchanged so the feega provider can call
  * it without gateCredits recursing back through itself. Not for direct use — call gateCredits().
  */
 export async function gateCreditsCore(brandId: string): Promise<void> {
@@ -527,10 +449,14 @@ export async function gateCreditsCore(brandId: string): Promise<void> {
   // the same one, instead of each paying for its own copy of the same numbers.
   let admin: SupabaseClient | null = null;
   let cacheKey = brandId;
+  let orgId: string | null = null;
   try {
     admin = createAdminClient();
     const org = await resolveOrgBilling(admin, brandId);
-    if (org) cacheKey = org.orgId;
+    if (org) {
+      cacheKey = org.orgId;
+      orgId = org.orgId;
+    }
   } catch (e) {
     reportFailOpen(brandId, e);
     return;
@@ -546,14 +472,19 @@ export async function gateCreditsCore(brandId: string): Promise<void> {
 
   let usage: CreditsUsage | null = null;
   try {
-    const { data: brand } = await admin
-      .from('brands')
-      .select('id, plan, activated_at, status')
-      .eq('id', brandId)
-      .maybeSingle();
-    if (!brand) return;
-    usage = await getCreditsUsage(admin, brand as Brand);
-    gateCache.set(cacheKey, { usage, at: Date.now() });
+    if (orgId) {
+      // Il saldo vero è dell'org, non del brand: due brand dello stesso org leggono lo stesso saldo.
+      usage = await ledgerCreditsUsage(admin, orgId);
+      gateCache.set(cacheKey, { usage, at: Date.now() });
+    } else {
+      const { data: brand, error } = await admin.from('brands').select('id').eq('id', brandId).maybeSingle();
+      if (error) throw new Error(`brands lookup failed: ${error.message}`);
+      if (!brand) return;
+      // Un brand senza org risolvibile (dato inconsistente) non ha un saldo da leggere — fallback
+      // alla quota free, per non lasciare la spesa senza alcun tetto.
+      usage = await getCreditsUsage(admin, { id: brand.id, plan: null, activated_at: null, status: 'active' });
+      gateCache.set(cacheKey, { usage, at: Date.now() });
+    }
   } catch (e) {
     reportFailOpen(brandId, e);
     return;
@@ -566,7 +497,7 @@ export async function gateCreditsCore(brandId: string): Promise<void> {
 const WARNING_THRESHOLD = 80;
 
 import { env as publicEnv } from '$env/dynamic/public';
-import { brandContacts } from './scheduler';
+import { brandContacts } from './brand-contacts';
 import { creditWarningEmailSubject, creditWarningEmailHtml, creditWarningEmailText } from './email';
 
 /**
@@ -639,7 +570,8 @@ export async function maybeSendCreditWarning(
     if (!(await claimCreditWarning(supabase, orgId, monthKey, start))) return;
 
     const appBase = (publicEnv.PUBLIC_APP_URL || '').replace(/\/$/, '');
-    const dashboardUrl = brand.slug ? `${appBase}/app/${brand.slug}` : appBase;
+    const { appPathForBrand } = await import('$lib/server/tenancy/brand-slug');
+    const dashboardUrl = `${appBase}${await appPathForBrand(supabase, brand.id)}`;
 
     const { notifyBrandContacts } = await import('$lib/server/brand-notify');
     await notifyBrandContacts(supabase, contacts, {

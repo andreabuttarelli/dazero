@@ -332,7 +332,6 @@ describe('loadDesignDoc', () => {
     brands: { name: 'Caffè Milano', content_prefs: { language: 'it' }, target_platforms: ['instagram'] },
     brand_kit: { about: 'Torrefazione', brand_colors: ['#7c5cff'] },
     products: [{ id: 'p1', title: 'Blend Milano' }],
-    people: [{ id: 'pe1', name: 'Giulia' }],
     competitors: [{ name: 'Rivale' }],
     brand_documents: [{ id: 'd1', title: 'Tone of voice' }]
   };
@@ -360,10 +359,9 @@ describe('loadDesignDoc', () => {
     const doc = await loadDesignDoc(fakeSupabase(seen), 'b1');
     expect(doc).toContain('# DESIGN.md — Caffè Milano');
     expect(doc).toContain('Blend Milano');
-    expect(doc).toContain('Giulia');
     expect(doc).toContain('Rivale');
     expect(doc).toContain('Content language**: it');
-    expect(seen).toEqual(expect.arrayContaining(['brands', 'brand_kit', 'products', 'people', 'competitors', 'brand_documents']));
+    expect(seen).toEqual(expect.arrayContaining(['brands', 'brand_kit', 'products', 'competitors', 'brand_documents']));
   });
 
   it('does not query a table whose section is switched off', async () => {
@@ -371,7 +369,6 @@ describe('loadDesignDoc', () => {
     await loadDesignDoc(fakeSupabase(seen), 'b1', { include: { products: false, documents: false } });
     expect(seen).not.toContain('products');
     expect(seen).not.toContain('brand_documents');
-    expect(seen).toContain('people');
   });
 
   it('skips the brands lookup when the caller already knows the name', async () => {

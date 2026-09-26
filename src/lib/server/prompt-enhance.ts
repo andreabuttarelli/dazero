@@ -19,7 +19,7 @@
  *
  * I CONTROLLI SONO DETERMINISTICI, NON UN SECONDO GIUDIZIO. Un LLM che giudica l'output di un LLM
  * costa un'altra chiamata e sbaglia in modo correlato al primo. Qui: ogni cosa che il brief nomina
- * deve essere ancora nella riscrittura (`tokenize`, lo stesso dei link interni), e le tre regole
+ * deve essere ancora nella riscrittura (`tokenize`), e le tre regole
  * che si vedono con una regex — testo leggibile chiesto, inquadratura dichiarata, lunghezza fuori
  * scala — si controllano così.
  *
@@ -32,14 +32,29 @@
  * MAI UN RIFIUTO SU UN MODELLO SCONOSCIUTO. Torna il prompt invariato con `changed: false` e il
  * motivo nelle note, come `imageCraftFor` torna '' invece di inventare.
  */
-import { generateText } from 'ai';
 import { env } from '$env/dynamic/private';
+import { llmText } from '$lib/server/llm';
 import { craftAgentModel } from '$lib/server/craft-model';
 import { imageCraftFor } from '$lib/design/image-craft';
 import { videoCraftFor } from '$lib/design/video-craft';
 import { PHOTO_CRAFT_SPECS } from '$lib/design/photo-craft';
 import { photoModeSpec, type PhotoModeId } from '$lib/design/photo-modes';
-import { tokenize } from '$lib/server/backlink-network';
+
+const STOP = new Set(
+  'the a an and or of to in for on with your you our we is are how what why when come cosa perche gli una uno del della delle dei nel nei alla dai per con che non più sono der die das und oder mit von zu den dem'.split(
+    ' '
+  )
+);
+
+function tokenize(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const w of String(text ?? '')
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)) {
+    if (w.length > 3 && !STOP.has(w)) out.add(w);
+  }
+  return out;
+}
 
 export type EnhanceInput = {
   prompt: string;
@@ -100,10 +115,11 @@ const DECLARES_FRAME = /\b\d{1,2}\s*:\s*\d{1,2}\b|\b(?:portrait|landscape|square
 
 const runWithModel: EnhanceRunner = async ({ system, prompt }) => {
   // Il tier pro come gli altri mestieri, con la sua scappatoia: riscrivere un brief è un lavoro di
-  // forma, e un modello veloce restituisce una parafrasi. Bassa temperatura perché qui fantasia
-  // significa inventare soggetti — esattamente ciò che `checkRewrite` scarta.
-  const { model } = craftAgentModel({ envModel: env.ENHANCE_PROMPT_MODEL });
-  const { text } = await generateText({ model, system, prompt, temperature: 0.3 });
+  // forma, e un modello veloce restituisce una parafrasi. `llmText` fattura la chiamata come ogni
+  // altra sul tubo centrale (`logAiCall`, label `prompt.enhance`) — un `generateText` nudo qui
+  // pagava il provider senza scrivere la riga in `ai_calls`.
+  const { modelId } = craftAgentModel({ envModel: env.ENHANCE_PROMPT_MODEL });
+  const { text } = await llmText({ system, prompt, model: modelId, label: 'prompt.enhance' });
   return text ?? '';
 };
 

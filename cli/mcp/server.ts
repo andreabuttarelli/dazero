@@ -3,10 +3,11 @@ import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { asTool } from '../lib/api.ts';
 import { getRequestAuth } from './context.ts';
 import { mcpLog } from './observability.ts';
-import { registerAuthTools } from './tools/auth.ts';
-import { registerBrandTools } from './tools/brand-content.ts';
-import { registerPlanTools } from './tools/plan.ts';
-import { registerStudioTools } from './tools/studio.ts';
+import { registerOrgDataTools } from './tools/org-data.ts';
+import { registerPostTools } from './tools/posts.ts';
+import { registerAdsTools } from './tools/ads.ts';
+import { registerNodeTools } from './tools/nodes.ts';
+import { registerPromptTools } from './tools/prompts.ts';
 
 /**
  * Il client la mostra da solo al handshake, una volta per sessione, PRIMA di ogni descrizione e
@@ -18,14 +19,13 @@ import { registerStudioTools } from './tools/studio.ts';
  * un'organizzazione vera e scrivendo nella libreria di un cliente vero.
  */
 export const MCP_INSTRUCTIONS = [
-  'Anomalia runs social brands: posts, editorial plans, media, knowledge, SEO, blog.',
-  'Most tools act on ONE brand and need its `slug`; `list_brands` is where slugs come from. When you do not know which brand, ASK — never call `list_brands` to pick one yourself: guessing spends a real organisation’s credits and writes into a real client’s library.',
-  'Reads cost nothing and change nothing, and READING IS ONE TOOL: `query`. Posts, media, articles, memory, competitors, products, plans, settings, audits — every table, as the signed-in person. Name `columns` or the answer comes back short; `offset` is the next page and the reply tells you which; `count: "exact"` when the number IS the answer; `embed` brings a related table along. The skill has the query for each subject already written.',
-  'Seven other reads exist and none is a select: `diagnose_brand`, `diagnose_radar`, `search_knowledge`, `get_writing_skills`, `get_creation_kit`, `get_gsc`, `get_media_models`. Every other `get_*`/`list_*` you remember is now a `query`.',
-  'Writing is explicit and separate: generating a picture or clip creates nothing in the calendar, and nothing goes out until a post is approved. Whatever spends credits says so in its own description; everything else is free.',
-  'Changing an existing asset is `refine_media` — picture or clip — not a second generation, which buys a different subject.',
-  'Post and article ids accept short unambiguous prefixes — the ids `query` returns are where they come from.',
-  'Signing in is not a tool: over HTTP the host does the OAuth round and sends the Bearer; locally run `anomalia login` once — the CLI and this server share one session file. No API keys.'
+  'feega is an infinite canvas of typed nodes (media, social feeds, products, ads, generations), driven by a person, the in-app chat, or an agent here over MCP.',
+  'Reads cost nothing and change nothing, and READING IS ONE TOOL: `query`. Projects, canvases, nodes, connections, assets, posts, ad campaigns, products, social accounts — every table, scoped to your org. Name `columns` or the answer comes back short; `offset` is the next page; `count: "exact"` when the number IS the answer; `embed` brings a related table along.',
+  'Three generic writes reach every table: `insert_row`, `update_row`, `delete_row`. `describe_node_types` gives the JSON Schema `nodes.data` must match per `type` before you insert or update one.',
+  '`run_node_generation` is the canvas Generate button: fills an existing node with text/image/video, never creates one; `medium` must match the node\'s type; a video comes back `queued`. `apply_effects` renders an `effects` node\'s filter stack, free. `run_node_loop` queues every combination of a node\'s inputs and returns at once (`preview_node_loop` free, `cancel_node_loop` stops what\'s queued); confirm above 50, refused above 1000.',
+  'A canvas node is raw material; a post (`list_posts`/`create_post`/`set_post_status`) is the promoted artifact ready to schedule. An ad campaign (`list_ad_campaigns`/`create_ad_campaign`/`approve_ad_campaign`) spends real money and always drafts unapproved — only a signed-in person can approve it, never an API key.',
+  'A project has no brand until one is attached (`projects.brand_id` is nullable, and that is the normal case): open a canvas to explore, choose a brand only once something is ready to publish.',
+  'Signing in is not a tool: over HTTP the host does the OAuth round and sends the Bearer; locally run `feega login` once — the CLI and this server share one session file. No API keys required, though one works the same way.'
 ].join(' ');
 
 type ListedTool = { inputSchema?: Record<string, unknown> };
@@ -124,13 +124,13 @@ function recordToolCalls(server: McpServer): void {
     }) as never)) as typeof server.registerTool;
 }
 
-export function createAnomaliaMcpServer(): McpServer {
+export function createFeegaMcpServer(): McpServer {
   const server = new McpServer(
     {
-      name: 'anomalia',
+      name: 'feega',
       version: '0.1.0',
       description:
-        'Anomalia social media AI autopilot — manage brands, posts, plans, studio, SEO/GEO, and blog via OAuth.',
+        'feega infinite canvas — query and write projects, canvases, nodes, posts and ad campaigns via OAuth.',
     },
     { instructions: MCP_INSTRUCTIONS },
   );
@@ -138,10 +138,11 @@ export function createAnomaliaMcpServer(): McpServer {
   trimListedTools(server);
   recordToolCalls(server);
 
-  registerAuthTools(server);
-  registerBrandTools(server);
-  registerPlanTools(server);
-  registerStudioTools(server);
+  registerOrgDataTools(server);
+  registerPostTools(server);
+  registerAdsTools(server);
+  registerNodeTools(server);
+  registerPromptTools(server);
 
   return server;
 }

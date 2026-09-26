@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { computeBrandWarnings, warningCounts } from './warnings';
 
 const base = '/app/acme';
-const baseInput = { base, targetPlatforms: [], connectedPlatforms: [], brokenPlatforms: [], autopilotFailureCount: 0, autopilotMaxFailures: 3, hasProposedPlan: false, strategyPlatforms: null, editorialPlanPlatforms: null, contentPlatforms: [], contentCount: 0, failedPostCount: 0, attentionPostCount: 0, postsRemaining: 10, postsQuota: 30, hasStrategy: true, hasEditorialPlan: true, onboardingCompleted: true, pendingCount: 0, calendarConflicts: 0, hasLogo: true, hasVisualStyle: true, hasHashtags: true, peopleCount: 1, competitorCount: 1, blogEnabled: true, hasGeoAudit: true };
+const baseInput = { base, targetPlatforms: [], connectedPlatforms: [], brokenPlatforms: [], autopilotFailureCount: 0, autopilotMaxFailures: 3, hasProposedPlan: false, strategyPlatforms: null, editorialPlanPlatforms: null, contentPlatforms: [], contentCount: 0, failedPostCount: 0, attentionPostCount: 0, postsRemaining: 10, postsQuota: 30, hasStrategy: true, hasEditorialPlan: true, onboardingCompleted: true, pendingCount: 0, calendarConflicts: 0, hasLogo: true, hasVisualStyle: true, hasHashtags: true, competitorCount: 1, blogEnabled: true };
 
 describe('computeBrandWarnings', () => {
   it('warns when no platforms are selected', () => {
@@ -65,9 +65,9 @@ describe('computeBrandWarnings', () => {
   });
 
   it('suggests each missing Studio piece', () => {
-    const w = computeBrandWarnings({ ...baseInput, hasLogo: false, hasVisualStyle: false, hasHashtags: false, peopleCount: 0, competitorCount: 0 });
+    const w = computeBrandWarnings({ ...baseInput, hasLogo: false, hasVisualStyle: false, hasHashtags: false, competitorCount: 0 });
     const ids = w.map((x) => x.id);
-    expect(ids).toEqual(expect.arrayContaining(['studio-no-logo', 'studio-no-visual-style', 'studio-no-people', 'studio-no-competitors', 'studio-no-hashtags']));
+    expect(ids).toEqual(expect.arrayContaining(['studio-no-logo', 'studio-no-visual-style', 'studio-no-competitors', 'studio-no-hashtags']));
     expect(w.filter((x) => x.id.startsWith('studio-no-')).every((x) => x.severity === 'suggestion')).toBe(true);
     // A fully-filled Studio raises none of them.
     expect(computeBrandWarnings({ ...baseInput }).some((x) => x.id.startsWith('studio-no-'))).toBe(false);
@@ -80,14 +80,7 @@ describe('computeBrandWarnings', () => {
     expect(w.find((x) => x.id === 'platforms-not-connected')).toBeUndefined();
   });
 
-  it('escalates autopilot failures: warning, then auto-disabled error', () => {
-    expect(computeBrandWarnings({ ...baseInput, autopilotFailureCount: 1 }).find((x) => x.id === 'autopilot-failing')?.severity).toBe('warning');
-    const dead = computeBrandWarnings({ ...baseInput, autopilotFailureCount: 3 });
-    expect(dead.find((x) => x.id === 'autopilot-disabled')?.severity).toBe('error');
-    expect(dead.find((x) => x.id === 'autopilot-failing')).toBeUndefined(); // one or the other, not both
-  });
-
-  it('suggests reviewing an autopilot proposal', () => {
+  it('suggests reviewing a proposed plan', () => {
     expect(computeBrandWarnings({ ...baseInput, hasProposedPlan: true }).find((x) => x.id === 'plan-proposed')?.severity).toBe('suggestion');
   });
 

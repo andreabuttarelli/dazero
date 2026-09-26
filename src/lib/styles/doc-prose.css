@@ -1,0 +1,217 @@
+/* Markdown scritto: il documento in lettura e la sua pagina pubblica.
+   Stessi token della chat (`--accent-ink` per i link: `--accent` puro non passa AA),
+   scala da foglio invece che da bolla — h1/h2 restano su `--serif` come in app.css. */
+
+.doc-prose {
+  font-family: var(--sans);
+  line-height: 1.65;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.doc-prose h1,
+.doc-prose h2,
+.doc-prose h3,
+.doc-prose h4,
+.doc-prose h5,
+.doc-prose h6 {
+  font-family: var(--serif);
+  font-weight: var(--heading-weight);
+  letter-spacing: var(--heading-tracking);
+  line-height: 1.2;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.doc-prose h1 {
+  margin: 0 0 0.55em;
+  padding-bottom: 0.35em;
+  border-bottom: 1px solid var(--line);
+  font-size: 1.7em;
+}
+.doc-prose h2 {
+  margin: 1.35em 0 0.45em;
+  font-size: 1.32em;
+}
+.doc-prose h3 {
+  margin: 1.2em 0 0.4em;
+  font-size: 1.12em;
+}
+.doc-prose h4 {
+  margin: 1.1em 0 0.35em;
+  font-size: 1em;
+  font-family: var(--sans);
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.doc-prose h5 {
+  margin: 1em 0 0.3em;
+  font-size: 0.92em;
+  font-family: var(--sans);
+  font-weight: 650;
+  letter-spacing: 0;
+  color: var(--ink-soft);
+}
+.doc-prose h6 {
+  margin: 1em 0 0.3em;
+  font-size: 0.86em;
+  font-family: var(--sans);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.doc-prose h1:first-child,
+.doc-prose h2:first-child,
+.doc-prose h3:first-child,
+.doc-prose h4:first-child {
+  margin-top: 0;
+}
+
+.doc-prose p {
+  margin: 0 0 0.85em;
+}
+
+.doc-prose strong {
+  font-weight: 650;
+}
+
+.doc-prose em {
+  font-style: italic;
+}
+
+.doc-prose del {
+  color: var(--ink-faint);
+}
+
+/* Tailwind azzera list-style: senza questo le liste arrivano senza segni. */
+.doc-prose ul {
+  margin: 0 0 0.85em;
+  padding-left: 1.35em;
+  list-style: disc outside;
+}
+.doc-prose ol {
+  margin: 0 0 0.85em;
+  padding-left: 1.5em;
+  list-style: decimal outside;
+}
+.doc-prose ul ul {
+  list-style: circle outside;
+}
+.doc-prose ul ul ul {
+  list-style: square outside;
+}
+.doc-prose ol ol {
+  list-style: lower-alpha outside;
+}
+.doc-prose li {
+  margin: 0.25em 0;
+}
+.doc-prose li > p {
+  margin: 0.35em 0;
+}
+.doc-prose li::marker {
+  color: var(--ink-faint);
+}
+
+.doc-prose a {
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.doc-prose a:hover {
+  text-decoration-thickness: 2px;
+}
+.doc-prose a:focus-visible {
+  outline: 2px solid var(--accent-solid);
+  outline-offset: 2px;
+}
+
+/* Il filetto a sinistra del citato prende un filo d'accento: una virgoletta sola
+   a questa dimensione sparisce, il bordo colorato no. */
+.doc-prose blockquote {
+  margin: 0 0 0.95em;
+  padding: 0.15em 0 0.15em 12px;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 45%, var(--line-2));
+  color: var(--ink-soft);
+}
+.doc-prose blockquote > :first-child {
+  margin-top: 0;
+}
+.doc-prose blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.doc-prose code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  letter-spacing: 0;
+  padding: 0.1em 0.35em;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+}
+
+.doc-prose pre {
+  margin: 0 0 0.95em;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border: 1px solid var(--line-2);
+  background: var(--paper-2);
+  -webkit-overflow-scrolling: touch;
+}
+.doc-prose pre code {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.doc-prose hr {
+  margin: 1.5em 0;
+  border: none;
+  border-top: 1px solid var(--line);
+}
+
+.doc-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto 0.95em;
+  border: 1px solid var(--line);
+}
+
+.doc-prose table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  font-size: 0.92em;
+  overflow-x: auto;
+  display: block;
+}
+.doc-prose th,
+.doc-prose td {
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+.doc-prose th {
+  background: var(--paper-2);
+  font-weight: 650;
+  font-size: 0.86em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border-bottom-color: var(--line-2);
+}
+.doc-prose tr:last-child td {
+  border-bottom: none;
+}
+.doc-prose tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+}

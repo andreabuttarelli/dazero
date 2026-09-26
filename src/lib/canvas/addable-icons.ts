@@ -15,6 +15,13 @@ import Type from '@lucide/svelte/icons/type';
 import Image from '@lucide/svelte/icons/image';
 import Video from '@lucide/svelte/icons/video';
 import Globe from '@lucide/svelte/icons/globe';
+import FileText from '@lucide/svelte/icons/file-text';
+import ShoppingBag from '@lucide/svelte/icons/shopping-bag';
+import Rss from '@lucide/svelte/icons/rss';
+import List from '@lucide/svelte/icons/list';
+import MousePointerClick from '@lucide/svelte/icons/mouse-pointer-click';
+import WandSparkles from '@lucide/svelte/icons/wand-sparkles';
+import Orbit from '@lucide/svelte/icons/orbit';
 import type { Component } from 'svelte';
 import type { Addable } from './addable';
 
@@ -22,5 +29,12 @@ export const ADDABLE_ICON: Record<Addable, Component> = {
   text: Type,
   image: Image,
   video: Video,
-  iframe: Globe
+  iframe: Globe,
+  doc: FileText,
+  products: ShoppingBag,
+  social_account_feed: Rss,
+  list: List,
+  select: MousePointerClick,
+  effects: WandSparkles,
+  composition: Orbit
 };

@@ -10,7 +10,9 @@ import {
   videoModelForRole,
   VIDEO_MODEL_CHOICES,
   GROK_IMAGINE_VIDEO_MODEL,
-  KLING_3_VIDEO_MODEL
+  KLING_3_VIDEO_MODEL,
+  videoDurationOptions,
+  nearestVideoDuration
 } from '$lib/video-models';
 
 describe('video model reference capabilities', () => {
@@ -25,6 +27,21 @@ describe('video model reference capabilities', () => {
   it('Grok Imagine does not accept reference videos (images only)', () => {
     expect(modelSupportsReferenceVideo('grok-imagine-video-1-5-preview')).toBe(false);
     expect(isSeedanceFamily('grok-imagine-video-1-5-preview')).toBe(false);
+  });
+});
+
+describe('videoModelSpec risolve ogni id a se stesso', () => {
+  it('bytedance/seedance-2-fast non risolve allo spec di seedance-2', () => {
+    expect(videoModelSpec('bytedance/seedance-2-fast')?.id).toBe('bytedance/seedance-2-fast');
+  });
+
+  it('bytedance/seedance-2-mini non risolve allo spec di seedance-2', () => {
+    expect(videoModelSpec('bytedance/seedance-2-mini')?.id).toBe('bytedance/seedance-2-mini');
+  });
+
+  it('ogni id esatto dei quattro Seedance risolve a se stesso', () => {
+    const ids = ['bytedance/seedance-2-5', 'bytedance/seedance-2', 'bytedance/seedance-2-fast', 'bytedance/seedance-2-mini'];
+    expect(ids.map((id) => videoModelSpec(id)?.id)).toEqual(ids);
   });
 });
 
@@ -113,5 +130,49 @@ describe('il refine ha un modello raggiungibile', () => {
     const refiners = videoModelsForRole('refine').map((m) => videoModelSpec(m.id));
 
     expect(refiners.some((s) => s?.openrouterId), 'nessun refine raggiungibile').toBe(true);
+  });
+});
+
+describe('videoDurationOptions', () => {
+  it('un modello a intervallo continuo offre OGNI secondo dentro la sua finestra', () => {
+    // grok-imagine/image-to-video: minDuration 1, maxDuration 15.
+    expect(videoDurationOptions('grok-imagine/image-to-video')).toEqual(
+      Array.from({ length: 15 }, (_, i) => i + 1)
+    );
+  });
+
+  it('un modello a intervallo continuo con minimo > 1 parte da lì', () => {
+    // kling-3.0/video: minDuration 3, maxDuration 15.
+    expect(videoDurationOptions('kling-3.0/video')).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+  });
+
+  it('seedance-2-5 offre ogni secondo da 4 a 30', () => {
+    expect(videoDurationOptions('bytedance/seedance-2-5')).toEqual(
+      Array.from({ length: 27 }, (_, i) => i + 4)
+    );
+  });
+
+  it('un id sconosciuto ricade sulla finestra Grok, 1..15', () => {
+    expect(videoDurationOptions('modello-mai-visto')).toEqual(
+      Array.from({ length: 15 }, (_, i) => i + 1)
+    );
+  });
+});
+
+describe('nearestVideoDuration', () => {
+  it('tiene il valore se è fra le opzioni', () => {
+    expect(nearestVideoDuration([10, 13, 15], 13)).toBe(13);
+  });
+
+  it('sceglie il gradino più vicino quando il valore non è offerto', () => {
+    expect(nearestVideoDuration([10, 13, 15, 20, 30], 25)).toBe(20);
+  });
+
+  it('pareggio va al più basso', () => {
+    expect(nearestVideoDuration([10, 20], 15)).toBe(10);
+  });
+
+  it('nessuna opzione: il valore chiesto resta', () => {
+    expect(nearestVideoDuration([], 17)).toBe(17);
   });
 });

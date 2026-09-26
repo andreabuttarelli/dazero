@@ -5,7 +5,6 @@ import {
   redirectUriMatches,
   stashOAuthReturn
 } from '$lib/server/oauth';
-import { canEnter } from '$lib/server/access';
 import type { Actions, PageServerLoad } from './$types';
 
 type Parsed =
@@ -56,7 +55,7 @@ function parse(url: URL): Parsed {
   return { kind: 'ok', redirectUri, state, challenge, clientId, clientName: client.name };
 }
 
-export const load: PageServerLoad = async ({ url, cookies, locals: { supabase, safeGetSession } }) => {
+export const load: PageServerLoad = async ({ url, cookies, locals: { safeGetSession } }) => {
   const parsed = parse(url);
   if (parsed.kind === 'error') throw redirect(303, parsed.back.toString());
   if (parsed.kind === 'fatal') return { fatal: parsed.message };
@@ -65,12 +64,6 @@ export const load: PageServerLoad = async ({ url, cookies, locals: { supabase, s
   if (!session || !user) {
     stashOAuthReturn(cookies, url.pathname + url.search);
     throw redirect(303, '/login');
-  }
-
-  // The waitlist gate lives here, not in the login redirect hooks: this is the single point
-  // both the already-signed-in and the just-signed-in paths pass through.
-  if (!(await canEnter(supabase))) {
-    return { fatal: 'Questo account non ha ancora accesso ad Anomalia.' };
   }
 
   return {
@@ -82,15 +75,13 @@ export const load: PageServerLoad = async ({ url, cookies, locals: { supabase, s
 };
 
 export const actions: Actions = {
-  approve: async ({ url, locals: { supabase, safeGetSession } }) => {
+  approve: async ({ url, locals: { safeGetSession } }) => {
     const parsed = parse(url);
     if (parsed.kind === 'error') throw redirect(303, parsed.back.toString());
     if (parsed.kind === 'fatal') throw redirect(303, '/app');
 
     const { session, user } = await safeGetSession();
     if (!session || !user?.email) throw redirect(303, '/login');
-    // Re-checked here too: the action is reachable without ever rendering the page.
-    if (!(await canEnter(supabase))) throw redirect(303, '/waitlist');
 
     const code = issueCode({
       email: user.email,

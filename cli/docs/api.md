@@ -1,6 +1,10 @@
 # API Reference
 
-Tutti gli endpoint sono sotto `/api/v1/` e richiedono autenticazione Bearer token.
+Tutti gli endpoint sono sotto `/api/v1/` e richiedono autenticazione Bearer token. Questa pagina
+copre le rotte brand-scoped (`/api/v1/brands/:slug/*`) che il CLI chiama — la fallback quando MCP
+non è connesso. Un agente MCP non passa da qui: legge e scrive con `query`/`insert_row`/
+`update_row`/`delete_row`/`run_node_generation`, org-scoped, non brand-scoped — vedi
+[`skills/feega/references/tools.md`](../skills/feega/references/tools.md).
 
 ## Autenticazione
 
@@ -8,7 +12,7 @@ Tutti gli endpoint sono sotto `/api/v1/` e richiedono autenticazione Bearer toke
 Authorization: Bearer <jwt_token>
 ```
 
-Il token viene ottenuto tramite il flow OAuth della CLI. Viene salvato in `~/.config/anomalia/session.json` e rinnovato automaticamente.
+Il token viene ottenuto tramite il flow OAuth della CLI. Viene salvato in `~/.config/feega/session.json` e rinnovato automaticamente.
 
 ## Brand
 
@@ -23,12 +27,6 @@ Lista tutti i brand dell'utente.
     "id": "uuid",
     "name": "My Brand",
     "slug": "my-brand",
-    "plan": "pro",
-    "status": "active",
-    "autopilot_enabled": true,
-    "autopilot_failure_count": 0,
-    "last_autopilot_run_at": "2026-06-19T10:00:00Z",
-    "timezone": "Europe/Rome",
     "pendingCount": 3
   }
 ]
@@ -43,16 +41,8 @@ Dettaglio completo di un brand.
 {
   "brand": { ... },
   "pendingCount": 3,
-  "runs": [{ "status": "completed", "posts_created": 5, "created_at": "...", "error": null }],
-  "plan": { "id": "...", "status": "active", "cadence": "5/week", "weeks": [...] },
   "productCount": 12,
   "accountCount": 3,
-  "scheduledCount": 8,
-  "publishedCount": 45,
-  "hasGtm": true,
-  "hasContentPlans": true,
-  "hasHistory": true,
-  "kit": { "about": "...", "brand_colors": ["#fff"] },
   "logoUrl": "https://..."
 }
 ```
@@ -77,185 +67,12 @@ Lista post con filtro opzionale.
     "status": "pending_user",
     "slot": "2026-06-20T10:00:00Z",
     "scheduled_for": "2026-06-20T10:00:00Z",
-    "pillar": "educational",
     "format": "carousel",
     "product_name": "Pizza Margherita",
     "created_at": "2026-06-19T08:00:00Z"
   }
 ]
 ```
-
-### POST /api/v1/brands/:slug/posts/:id/approve
-
-Approva e pubblica un singolo post.
-
-**Response:**
-```json
-{ "ok": true, "status": "published" }
-```
-
-### POST /api/v1/brands/:slug/posts/approve-all
-
-Approva tutti i post pending.
-
-**Response:**
-```json
-{
-  "results": [
-    { "id": "uuid", "ok": true },
-    { "id": "uuid", "ok": false, "error": "..." }
-  ]
-}
-```
-
-## Strategia
-
-### GET /api/v1/brands/:slug/editorial-plan
-
-Piano editoriale attivo e proposto.
-
-### GET /api/v1/brands/:slug/weekly-plan
-
-Piano settimanale con seeds e quota.
-
-### GET /api/v1/brands/:slug/gtm
-
-GTM Roadmap con fasi e KPI.
-
-### GET /api/v1/brands/:slug/voice
-
-Voice framework e regole per platform.
-
-## Analytics
-
-### GET /api/v1/brands/:slug/analytics
-
-Analytics completi.
-
-### GET /api/v1/brands/:slug/calendar?month=YYYY-MM
-
-Calendario mensile.
-
-## Studio
-
-### GET /api/v1/brands/:slug/studio
-
-Studio completo (brand kit, products, people, competitors, documents).
-
-### PUT /api/v1/brands/:slug/studio/kit
-
-Aggiorna brand kit.
-
-**Body:**
-```json
-{
-  "about": "...",
-  "category": "...",
-  "target_audience": "...",
-  "brand_style": "...",
-  "language": "it"
-}
-```
-
-### PUT /api/v1/brands/:slug/studio/colors
-
-Imposta colori brand.
-
-**Body:**
-```json
-{ "colors": ["#7c5cff", "#ffffff"] }
-```
-
-### POST /api/v1/brands/:slug/studio/people
-
-Crea persona (reale o AI).
-
-**Body (persona reale):** `consent: true` è obbligatorio — è l'attestazione di chi chiama, senza
-la quale la persona non viene creata (`400`).
-```json
-{
-  "name": "Marco",
-  "role": "CEO",
-  "description": "...",
-  "kind": "real",
-  "consent": true
-}
-```
-
-**Body (persona AI):**
-```json
-{
-  "name": "Sofia",
-  "role": "Influencer",
-  "kind": "ai",
-  "gender": "female",
-  "ageRange": "26-35",
-  "vibe": "professional"
-}
-```
-
-### DELETE /api/v1/brands/:slug/studio/people/:id
-
-Elimina persona.
-
-### POST /api/v1/brands/:slug/studio/documents
-
-Aggiungi nota o documento.
-
-**Body:**
-```json
-{
-  "title": "Tone of voice",
-  "content_text": "Siamo amichevoli...",
-  "kind": "note"
-}
-```
-
-### DELETE /api/v1/brands/:slug/studio/documents/:id
-
-Elimina documento.
-
-### POST /api/v1/brands/:slug/studio/competitors
-
-Aggiungi competitor.
-
-**Body:**
-```json
-{
-  "name": "RivalCo",
-  "website": "rivalco.com",
-  "kind": "direct",
-  "rationale": "Compete nel nostro settore"
-}
-```
-
-### PUT /api/v1/brands/:slug/studio/competitors/:id
-
-Modifica competitor.
-
-### DELETE /api/v1/brands/:slug/studio/competitors/:id
-
-Elimina competitor.
-
-### POST /api/v1/brands/:slug/studio/competitors/research
-
-Ricerca competitor con AI.
-
-**Response:**
-```json
-{ "ok": true, "found": 5, "added": 3 }
-```
-
-### POST /api/v1/brands/:slug/studio/history/sync
-
-Sincronizza storico post dai social.
-
-**Response:**
-```json
-{ "synced": 24 }
-```
-
-## Posts (editing)
 
 ### PUT /api/v1/brands/:slug/posts/:id
 
@@ -277,6 +94,24 @@ Modifica un post.
 
 Elimina un post (solo status `pending_user`).
 
+### POST /api/v1/brands/:slug/posts/:id/approve
+
+Approva e schedula un singolo post.
+
+### POST /api/v1/brands/:slug/posts/approve-all
+
+Approva tutti i post pending.
+
+**Response:**
+```json
+{
+  "results": [
+    { "id": "uuid", "ok": true },
+    { "id": "uuid", "ok": false, "error": "..." }
+  ]
+}
+```
+
 ### POST /api/v1/brands/:slug/posts/:id/reschedule
 
 Riprogramma un post.
@@ -290,93 +125,61 @@ Riprogramma un post.
 
 Pubblica immediatamente un post.
 
-## Strategia
+### POST /api/v1/brands/:slug/posts/:id/render
 
-### POST /api/v1/brands/:slug/editorial-plan/update
+Genera l'immagine mancante dal prompt del post.
 
-Modifica il piano editoriale.
-
-**Body:**
+**Response:**
 ```json
-{
-  "voice": { "mood": "friendly", "tone": "casual" },
-  "cadence": "5/week",
-  "platform_mix": { "instagram": 0.6, "tiktok": 0.4 },
-  "week_index": 0,
-  "week_theme": "Dietro le quinte",
-  "week_brief": "Mostra il processo creativo"
-}
+{ "ok": true, "url": "https://...", "error": null }
 ```
 
-### POST /api/v1/brands/:slug/gtm/update
+## Calendar
 
-Modifica il piano GTM.
+### GET /api/v1/brands/:slug/calendar?month=YYYY-MM
 
-**Body:**
-```json
-{
-  "objective": "Aumentare brand awareness",
-  "phase_index": 0,
-  "phase_name": "Lancio",
-  "phase_objective": "Raggiungere 1000 follower",
-  "platform_weights": { "instagram": 0.7, "tiktok": 0.3 },
-  "pillars": ["educational", "behind-the-scenes"]
-}
-```
-
-### POST /api/v1/brands/:slug/voice/update
-
-Modifica il voice framework.
-
-**Body:**
-```json
-{
-  "mood": "energico",
-  "tone": "friendly",
-  "register": 40,
-  "emotion": "entusiasta",
-  "character": "amichevole",
-  "syntax": "short",
-  "platform_instructions": { "instagram": "Usa emoji con moderazione" },
-  "avoid": ["costoso", "economico"]
-}
-```
+Calendario mensile dei post schedulati.
 
 ## Prodotti
 
-### PUT /api/v1/brands/:slug/products/:id
+### GET /api/v1/brands/:slug/products
 
-Modifica un prodotto.
+Lista prodotti del catalogo.
 
-**Body:**
+### POST /api/v1/brands/:slug/products
+
+Re-importa il catalogo dallo store collegato (Shopify/Woo).
+
+**Response:**
 ```json
-{
-  "title": "Pizza Gourmet",
-  "description": "La nostra pizza signature",
-  "pricing": "€12",
-  "featured": true
-}
+{ "ok": true, "platform": "shopify", "synced": 24, "rejected": [] }
 ```
 
-### DELETE /api/v1/brands/:slug/products/:id
+## Ads
 
-Elimina un prodotto.
+### GET /api/v1/brands/:slug/ads
 
-## Persone
+Campagne, spesa, metriche e candidati boost.
 
-### PUT /api/v1/brands/:slug/people/:id
+### POST /api/v1/brands/:slug/ads
 
-Modifica una persona.
+Azione sulle ads (`action` nel body: `sync`, `propose`, `approve`, `pause`, `resume`, `duplicate`,
+`delete`, `create`, …) — vedi [`cli/commands/ads.ts`](../commands/ads.ts) per il mapping completo
+dei flag CLI su questo endpoint.
 
-**Body:**
-```json
-{
-  "name": "Marco Rossi",
-  "role": "CEO",
-  "description": "Fondatore",
-  "attributes": { "gender": "male", "ageRange": "36-50" }
-}
-```
+### POST /api/v1/brands/:slug/ads/remix
+
+Remix di ads competitor/trending in brief creativi in brand voice.
+
+## Billing
+
+### POST /api/v1/brands/:slug/billing/checkout
+
+Apre il checkout Stripe per l'upgrade del piano.
+
+### POST /api/v1/brands/:slug/billing/portal
+
+Apre il portale di billing Stripe (fatture, carta, cambio piano, cancellazione).
 
 ## Errori
 

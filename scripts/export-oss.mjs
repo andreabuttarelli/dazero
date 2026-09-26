@@ -9,9 +9,9 @@ import path from "node:path"
 
 const run = promisify(execFile)
 
-const DEFAULT_OUT = "../anomalia"
+const DEFAULT_OUT = "../feega"
 const EXTRA_RULES_FILE = "oss-exclusions.txt"
-const OUT_PKG_NAME = "anomalia"
+const OUT_PKG_NAME = "feega"
 
 export const EXCLUSION_RULES = [
   "session-*",
@@ -24,8 +24,8 @@ export const EXCLUSION_RULES = [
   "scripts/chat-live/",
   // La CLI ha la sua distribuzione (releases, npm, Homebrew): l'export resta la build aperta dell'app.
   "cli/",
-  "src/lib/server/billing/anomalia-provider.ts",
-  "src/lib/server/billing/anomalia-provider.test.ts",
+  "src/lib/server/billing/feega-provider.ts",
+  "src/lib/server/billing/feega-provider.test.ts",
   "src/lib/server/billing/index.test.ts",
   "basename:stripe*",
   "src/routes/api/v1/webhooks/stripe*",
@@ -70,7 +70,7 @@ const GUARD_HARD_PATTERNS = [
 ]
 
 const GUARD_POLICY_PATTERNS = [
-  { id: "product-domain", re: /anomalia\.so/ },
+  { id: "product-domain", re: /feega\.so/ },
   { id: "hosted-api-endpoint", re: /zernio\.com\/api/ },
 ]
 
@@ -149,7 +149,7 @@ const REDACT_KEY_FIXTURE_ALLOWLIST = [
 // intercettano per tornare alla via aperta (billing/index.ts → openBillingProvider,
 // blog-settings.ts → null).
 const STUB_MODULES = [
-  "src/lib/server/billing/anomalia-provider.ts",
+  "src/lib/server/billing/feega-provider.ts",
   "src/lib/server/stripe.ts",
   "src/lib/server/vercel-domains.ts",
 ]
@@ -159,7 +159,6 @@ const STUB_TEXT = `throw new Error('not available in the open build')\n\nexport 
 // Sorgente dentro una stringa normale: un parser lo distinguerebbe da un import, un'espressione
 // regolare no. Sono due, si nominano qui e si vedono insieme.
 const DANGLING_ALLOWLIST = [
-  { file: "scripts/bake-motion-library.ts", specifier: "./V${i}" },
   { file: "src/lib/server/chat/loop-guard.test.ts", specifier: "./motion-trailer-1x1" },
 ]
 

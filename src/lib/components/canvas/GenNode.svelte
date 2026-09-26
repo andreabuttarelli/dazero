@@ -2,55 +2,99 @@
   /**
    * IL NODO CHE PRODUCE, disegnato.
    *
-   * Tre fasce, e l'ordine non è estetico: sopra COME si fa (modello e parametri), in mezzo quel
-   * che è VENUTO FUORI, sotto COSA si chiede. Il prompt sta in fondo perché è la riga che si
-   * riscrive dieci volte guardando il risultato che le sta sopra — al contrario, ogni modifica
-   * spingerebbe il risultato fuori dallo sguardo.
+   * Due fasce, e l'ordine non è estetico: sopra quel che è VENUTO FUORI, sotto COSA si chiede. Il
+   * prompt sta in fondo perché è la riga che si riscrive dieci volte guardando il risultato che le
+   * sta sopra — al contrario, ogni modifica spingerebbe il risultato fuori dallo sguardo.
    *
-   * LE PROPRIETÀ COMPAIONO SUL NODO SELEZIONATO, e stanno FUORI dal suo corpo.
-   *
-   * Erano una fascia fissa dentro ogni nodo, e la ragione scritta qui era che nascondere modello e
-   * formato costringe ad aprirli per sapere con cosa una cosa è stata fatta. Vero per un nodo; su
-   * una tela con dieci sono dieci file di menù addosso a quel che si sta guardando, e il contenuto
-   * — l'immagine, la clip — resta schiacciato sotto. Vince il contenuto: i controlli servono a chi
-   * sta lavorando su QUEL nodo, e chi ci sta lavorando l'ha selezionato.
-   *
-   * Fuori dal corpo e non dentro: dentro, aprirli cambierebbe la misura del nodo, e tutto quel che
-   * c'è sotto salterebbe a ogni selezione.
-   *
-   * I LIMITI SONO QUELLI DEL MODELLO, letti dal catalogo: i formati sono quelli che serve, la
-   * durata sta fra il suo minimo e il suo massimo, e il prompt troppo lungo si dice PRIMA invece
-   * di tornare come un rifiuto pagato.
+   * MODELLO, FORMATO, DURATA E RIPETIZIONE NON STANNO PIÙ QUI: stanno nella barra della selezione
+   * (`SelectionToolbar.svelte`), che compare quando il nodo è scelto — la stessa barra che porta
+   * duplica/collega/elimina, non una seconda accanto. Questo file resta il PRODOTTO — prompt,
+   * risultato, storia — e legge ancora il catalogo (`choices`) perché `tooLong` e il motivo per
+   * cui "Genera" è spento dipendono dal modello scelto, che il nodo continua a sapere.
    */
   import { runStateOf, promptTooLong, type GenNode, type ModelChoice } from '$lib/canvas/gen-node';
   import { blockedReason, canStartRun, shownIndex } from '$lib/canvas/gen-history';
-  import { ADDABLE_LABEL } from '$lib/canvas/addable';
-  import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
+  import { effectiveModel } from '$lib/canvas/default-models';
+  import { scrollGuard } from '$lib/canvas/scroll-guard';
+  import { creditsForRun, creditsForLoop } from '$lib/canvas/gen-cost';
+  import CreditAmount from '$lib/components/CreditAmount.svelte';
 
   let {
     node,
     choices = [],
-    selected = false,
+    catalogueSynced = true,
+    enhanceUnitCredits,
+    hasUpstreamText = false,
+    loopQueued = 0,
+    loopVisible = false,
+    loopCombinationCount = 0,
     onchange,
     onrun,
+    onrunloop,
+    oncancelloop,
     onshow,
+    onunlock,
+    onmeasure,
     result
   }: {
     node: GenNode;
     /** I modelli che questo medium può usare, dal catalogo del brand. */
     choices?: ModelChoice[];
-    /** Le proprietà si aprono solo sul nodo scelto: dieci fasce addosso al contenuto lo coprono. */
-    selected?: boolean;
+    /**
+     * Il catalogo che alimenta `choices` ha almeno una riga per questo medium. `false` con
+     * `choices` vuoto vuol dire "il sync non è ancora passato", non "questo medium non ha
+     * modelli": un menù vuoto senza dirlo sembra un difetto, non la conseguenza accettata della
+     * regola "non sincronizzato, non offerto" (`offerable-models.ts`).
+     */
+    catalogueSynced?: boolean;
+    /** Il prezzo di UNA riscrittura "Migliora prompt" per questo medium (`canvas-catalogue.ts`),
+     *  dallo stesso listino di `TEXT_NODE_CREDITS` — assente = costo ignoto, il preventivo non
+     *  aggiunge un extra. */
+    enhanceUnitCredits?: number;
+    /** Un testo a monte collegato conta come prompt quando il nodo non ne ha uno suo
+     *  (`hasPrompt`, `gen-node.ts`) — chi usa il nodo lo calcola da `edges`/`nodes`, che il nodo
+     *  stesso non conosce. */
+    hasUpstreamText?: boolean;
+    /** Quanti biglietti di loop sono ancora in coda per QUESTO nodo — 0 = nessun loop in corso.
+     *  Chi lo usa lo calcola da `node_runs` (`params.loop.phase === 'queued'`): il nodo non ha un
+     *  `db`, mostra solo quel che gli si passa, come ogni altro suo stato. */
+    loopQueued?: number;
+    /** Se un loop è possibile per questo nodo — un filo `iterate` la cui sorgente porta
+     *  >=2 valori (un asse). Chi lo usa lo calcola da `edges`/`nodes` (`loop-axes.ts::loopAffordance`):
+     *  senza un asse, il bottone non ha niente da combinare e resta nascosto. */
+    loopVisible?: boolean;
+    /** Quante combinazioni il loop girerebbe — mostrato sul bottone ("Loop ×N"). */
+    loopCombinationCount?: number;
     onchange?: (patch: Partial<GenNode>) => void;
     onrun?: () => void;
+    /** Genera in loop — N combinazioni degli archi `iterate`, o N varianti (`repeat`) senza
+     *  assi. Il nodo non pianifica né chiede conferma da sé: chi lo usa lo fa (`loop_plan`
+     *  prima, poi `run_loop`, che METTE IN CODA — il cron gira le combinazioni nei minuti
+     *  successivi, non questa chiamata). */
+    onrunloop?: () => void;
+    /** Ferma i biglietti non ancora reclamati — quelli già in corso finiscono comunque. */
+    oncancelloop?: () => void;
     /** Rimettere in vetrina un giro di prima. Il nodo non sa scrivere: chiede a chi lo usa. */
     onshow?: (runId: string) => void;
+    /** Sblocca una corsa che non torna più. Senza, il bottone resta spento per sempre. */
+    onunlock?: () => void;
+    /** Solo per `medium === 'text'`: l'altezza reale del contenuto (prompt + risultato), a ogni
+     *  cambio — mai scritta, chi la usa la clampa (`text-node-grow.ts`) e la mostra soltanto. */
+    onmeasure?: (contentHeight: number) => void;
     /** Come si disegna quel che è uscito. Il nodo non sa da dove venga l'URL firmato. */
-    result?: import('svelte').Snippet<[{ refId: string }]>;
+    result?: import('svelte').Snippet<[{ refId: string; text: string | null }]>;
   } = $props();
 
-  const choice = $derived(choices.find((c) => c.id === node.model) ?? choices[0]);
-  const state = $derived(runStateOf(node));
+  /**
+   * IL MODELLO CHE CONTA È QUELLO RISOLTO, non `node.model`: un nodo nato prima del default per
+   * il suo medium (`default-models.ts`) non ha mai scritto un `model` in `nodes.data`, e senza
+   * questo il bottone resterebbe spento su ogni nodo vecchio finché qualcuno non riapre un menù
+   * che non c'è più.
+   */
+  const resolvedModel = $derived(effectiveModel(node.medium, node.model, choices));
+  const choice = $derived(choices.find((c) => c.id === resolvedModel) ?? choices[0]);
+  const upstream = $derived({ hasUpstreamText });
+  const state = $derived(runStateOf(node, upstream));
   const tooLong = $derived(!!choice && promptTooLong(node.prompt, choice));
 
   /**
@@ -65,103 +109,114 @@
    * caso solo.
    */
   const blocked = $derived(
-    tooLong && choice?.maxPromptChars ? `Prompt troppo lungo` : blockedReason(node)
+    tooLong && choice?.maxPromptChars ? `Prompt troppo lungo` : blockedReason(node, choices, upstream)
   );
-  const canRun = $derived(canStartRun(node) && !tooLong);
+  const canRun = $derived(canStartRun(node, choices, upstream) && !tooLong);
   const shown = $derived(shownIndex(node));
+
+  /** Quanto costerebbe UN giro, con lo stesso modello/parametri che "Genera" spedirebbe adesso —
+   *  `null` quando il catalogo non porta un prezzo per questo modello, mai un numero inventato. */
+  const runCredits = $derived(
+    creditsForRun({ medium: node.medium, model: choice ?? null, params: node.params, enhanceUnitCredits })
+  );
+  const loopCredits = $derived(
+    creditsForLoop(
+      { medium: node.medium, model: choice ?? null, params: node.params, enhanceUnitCredits },
+      loopCombinationCount
+    )
+  );
+
+  /**
+   * SE QUESTO NODO HA UNA FASCIA `.gen-body` DA MOSTRARE — la stessa regola che decide se
+   * disegnarla (sotto), tenuta in UN POSTO SOLO perché anche il layout del prompt la legge: senza
+   * un corpo, il prompt riempie tutto il nodo invece di restare una striscia di due righe sopra
+   * uno spazio vuoto.
+   */
+  const hasBody = $derived(node.medium !== 'text' || state === 'running' || state === 'failed' || !!node.refId);
 
   const LABEL: Record<string, string> = {
     empty: 'Scrivi cosa vuoi',
     ready: 'Pronto',
     running: 'Sta lavorando…',
-    done: 'Fatto'
+    done: 'Fatto',
+    failed: 'Non è riuscito'
   };
 
-  const TypeIcon = $derived(ADDABLE_ICON[node.medium]);
+  /**
+   * QUANTO È ALTO IL CONTENUTO VERO, per il nodo testo — `scrollHeight`, non i caratteri del
+   * prompt: conta a capo, la lunghezza reale della riga resa e il font dell'utente, che una
+   * stima a caratteri indovinerebbe male.
+   *
+   * `.gen-body` e `.gen-prompt` sono entrambi vincolati alla propria fascia (`overflow` interno):
+   * lo `scrollHeight` che conta è quello del testo VERO dentro — `.gen-text`, che ha `overflow:
+   * auto` e quindi uno `scrollHeight` che riflette il contenuto, non la fascia che lo contiene.
+   * Il primo figlio di `.gen-body` (`.gen-text-wrap`) è `height: 100%`: il suo `scrollHeight`
+   * torna sempre uguale allo spazio che GIÀ ha, mai a quanto il testo chiederebbe — misurarlo
+   * lì avrebbe chiuso il nodo su se stesso, crescita che non cresce mai. `.gen-prompt`, la
+   * `textarea`, sommata — non il suo contenitore, che resterebbe fisso all'altezza assegnata.
+   * `ResizeObserver` su entrambi, non una lettura sola: il corpo cresce mentre si digita o mentre
+   * il risultato arriva a pezzi, non solo al montaggio.
+   */
+  function measureHeight(el: HTMLElement) {
+    if (node.medium !== 'text' || !onmeasure) return {};
 
-  function patchParams(patch: Record<string, unknown>) {
-    onchange?.({ params: { ...node.params, ...patch } });
+    let bodyHeight = 0;
+    let promptHeight = 0;
+    const report = () => onmeasure?.(bodyHeight + promptHeight);
+
+    const body = el.querySelector<HTMLElement>('.gen-text') ?? el.querySelector<HTMLElement>('.gen-body > *');
+    const prompt = el.querySelector<HTMLTextAreaElement>('.gen-prompt');
+
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = entry.target.scrollHeight;
+        if (entry.target === body) bodyHeight = height;
+        if (entry.target === prompt) promptHeight = height;
+      }
+      report();
+    });
+    if (body) ro.observe(body);
+    if (prompt) ro.observe(prompt);
+
+    bodyHeight = body?.scrollHeight ?? 0;
+    promptHeight = prompt?.scrollHeight ?? 0;
+    report();
+
+    return { destroy: () => ro.disconnect() };
   }
 </script>
 
-<div class="gen" class:is-running={state === 'running'} class:is-chosen={selected}>
-  <!-- La targhetta resta SEMPRE: da lontano, con lo zoom stretto, è l'unica cosa che dice cosa
-       sia un riquadro quando il contenuto è ancora vuoto o è una miniatura illeggibile. Nome e
-       icona vengono dal registro, gli stessi della barra in basso: due elenchi darebbero un globo
-       in fondo allo schermo e un quadrato sul nodo, per la stessa cosa. -->
-  <div class="gen-tag">
-    <TypeIcon size={13} strokeWidth={1.8} />
-    <span>{ADDABLE_LABEL[node.medium]}</span>
-  </div>
-
-  {#if selected}
-  <header class="gen-head">
-    <select
-      class="gen-field"
-      value={node.model ?? ''}
-      onchange={(e) => onchange?.({ model: e.currentTarget.value || null })}
-      aria-label="Modello"
-    >
-      {#if !node.model}
-        <option value="">Modello…</option>
-      {/if}
-      {#each choices as c (c.id)}
-        <option value={c.id}>{c.label}</option>
-      {/each}
-    </select>
-
-    {#if choice?.aspectRatios?.length}
-      <select
-        class="gen-field"
-        value={node.params.aspectRatio ?? ''}
-        onchange={(e) => patchParams({ aspectRatio: e.currentTarget.value })}
-        aria-label="Formato"
-      >
-        {#each choice.aspectRatios as ratio (ratio)}
-          <option value={ratio}>{ratio}</option>
-        {/each}
-      </select>
-    {/if}
-
-    {#if typeof choice?.maxDuration === 'number' && choice.maxDuration > 0}
-      <label class="gen-duration">
-        <input
-          type="number"
-          class="gen-field gen-number"
-          min={choice.minDuration ?? 1}
-          max={choice.maxDuration}
-          value={node.params.duration ?? choice.minDuration ?? 1}
-          oninput={(e) => patchParams({ duration: Number(e.currentTarget.value) })}
-          aria-label="Durata in secondi"
-        />
-        <span class="gen-unit">s</span>
-      </label>
-    {/if}
-
-    {#if choice?.generateAudio !== undefined}
-      <label class="gen-toggle">
-        <input
-          type="checkbox"
-          checked={node.params.audio ?? choice.generateAudio}
-          onchange={(e) => patchParams({ audio: e.currentTarget.checked })}
-        />
-        audio
-      </label>
-    {/if}
-  </header>
-  {/if}
-
+<div class="gen" class:is-running={state === 'running' || loopQueued > 0} use:measureHeight>
   <!-- Il risultato, quando c'è. Il testo lo mostra qui perché è esso stesso il prodotto; immagine
-       e video li disegna chi usa il nodo, che sa da dove viene l'URL firmato. -->
-  <div class="gen-body">
-    {#if state === 'running'}
-      <span class="gen-dots" aria-label={LABEL.running}><i></i><i></i><i></i></span>
-    {:else if node.refId && result}
-      {@render result({ refId: node.refId })}
-    {:else}
-      <p class="gen-hint">{LABEL[state]}</p>
-    {/if}
-  </div>
+       e video li disegna chi usa il nodo, che sa da dove viene l'URL firmato.
+
+       UN NODO TESTO SENZA ANCORA NIENTE DA MOSTRARE non ha un corpo: la fascia con «Scrivi cosa
+       vuoi»/«Pronto» al centro era un riquadro vuoto sopra una casella di scrittura che dice la
+       stessa cosa — running/failed restano visibili, sono uno stato del giro, non un placeholder
+       del risultato. Immagine e video tengono il proprio placeholder: la fascia è la loro unica
+       anteprima prima di girare, non una ripetizione di quel che il prompt già dice. -->
+  {#if hasBody}
+    <div class="gen-body">
+      {#if state === 'running'}
+        <div class="gen-busy">
+          <span class="gen-dots" aria-label={LABEL.running}><i></i><i></i><i></i></span>
+          <button type="button" class="gen-unlock" onclick={() => onunlock?.()}>Sblocca</button>
+        </div>
+      {:else if state === 'failed'}
+        <div class="gen-fail" role="alert">
+          <p class="gen-fail-title">{LABEL.failed}</p>
+          {#if node.error}
+            <p class="gen-fail-why">{node.error}</p>
+          {/if}
+          <button type="button" class="gen-unlock" onclick={() => onrun?.()} disabled={!canRun}>Riprova</button>
+        </div>
+      {:else if node.refId && result}
+        {@render result({ refId: node.refId, text: node.runs.find((r) => r.mediaId === node.refId)?.text ?? null })}
+      {:else}
+        <p class="gen-hint">{LABEL[state]}</p>
+      {/if}
+    </div>
+  {/if}
 
   <!-- LA STORIA, sotto il risultato e sopra il prompt: si guarda quel che è uscito, si sceglie
        fra i giri fatti, si riscrive la frase. Una striscia e non frecce, perché con le frecce per
@@ -187,13 +242,15 @@
     </div>
   {/if}
 
-  <footer class="gen-foot">
+  <footer class="gen-foot" class:is-full={!hasBody}>
     <textarea
-      class="gen-prompt"
+      class="gen-prompt nodrag"
+      class:is-full={!hasBody}
       rows="2"
       placeholder={node.medium === 'text' ? 'Di cosa deve parlare…' : 'Descrivi cosa vuoi vedere…'}
       value={node.prompt}
       oninput={(e) => onchange?.({ prompt: e.currentTarget.value })}
+      use:scrollGuard
     ></textarea>
 
     <div class="gen-actions">
@@ -205,8 +262,17 @@
             ({node.prompt.length}/{choice.maxPromptChars}){/if}
         </span>
       {/if}
+      {#if loopQueued > 0 && oncancelloop}
+        <button type="button" class="gen-loop" onclick={() => oncancelloop?.()}>
+          Annulla loop ({loopQueued})
+        </button>
+      {:else if onrunloop && loopVisible}
+        <button type="button" class="gen-loop" onclick={() => onrunloop?.()} disabled={!canRun}>
+          Loop ×{loopCombinationCount}{#if loopCredits !== null} · <CreditAmount amount={loopCredits} approx />{/if}
+        </button>
+      {/if}
       <button type="button" onclick={() => onrun?.()} disabled={!canRun}>
-        {state === 'done' ? 'Rifai' : 'Genera'}
+        {state === 'done' ? 'Rifai' : 'Genera'}{#if runCredits !== null} · <CreditAmount amount={runCredits} approx />{/if}
       </button>
     </div>
   </footer>
@@ -225,13 +291,11 @@
    * — come erano — il nodo era più scuro dello sfondo, che è il contrario di quel che galleggia.
    */
   .gen {
-    /* Il riferimento per l'overlay, che gli sta sopra e fuori. */
     position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    border-radius: 16px;
     background: var(--paper, #fff);
     border: 1px solid var(--line, #e5e5e5);
     box-shadow:
@@ -246,83 +310,50 @@
       0 1px 2px rgb(0 0 0 / 0.06),
       0 12px 32px -14px rgb(0 0 0 / 0.26);
   }
-  .gen.is-chosen {
-    border-color: var(--accent, #c485fe);
-    box-shadow:
-      0 0 0 1px var(--accent, #c485fe),
-      0 16px 40px -16px rgb(0 0 0 / 0.3);
-  }
-
   .gen.is-running {
-    border-color: var(--accent, #c485fe);
+    border-color: transparent;
+  }
+  .gen.is-running::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    padding: 2px;
+    pointer-events: none;
+    background: conic-gradient(
+      from var(--gen-running-angle),
+      transparent 0deg,
+      var(--accent, #c485fe) 70deg,
+      transparent 140deg,
+      transparent 360deg
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: gen-running-spin 1.6s linear infinite;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .gen {
-      transition: none;
+  @property --gen-running-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+  }
+
+  @keyframes gen-running-spin {
+    to {
+      --gen-running-angle: 360deg;
     }
   }
 
-  /* Galleggia SOPRA il nodo, ancorata al suo bordo alto: dentro il corpo cambierebbe la misura
-     del nodo a ogni selezione, e quel che sta sotto salterebbe. `max-content` perché i controlli
-     sono pochi e diversi per medium — una barra larga quanto il nodo sarebbe mezza vuota su un
-     nodo di testo. */
-  .gen-head {
-    position: absolute;
-    z-index: 3;
-    bottom: calc(100% + 8px);
-    left: 0;
-    width: max-content;
-    max-width: 148%;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-    padding: 6px 8px;
-    border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 11px;
-    background: var(--paper, #fff);
-    box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
-  }
-  /* Galleggia sull'angolo alto, fuori dal flusso: dentro toglierebbe spazio al contenuto, che è
-     la cosa che si guarda. */
-  .gen-tag {
-    position: absolute;
-    z-index: 2;
-    top: 8px;
-    left: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px 3px 6px;
-    font-size: 11px;
-    color: var(--ink-soft, #6e6e73);
-    background: color-mix(in srgb, var(--paper, #fff) 86%, transparent);
-    border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 999px;
-    backdrop-filter: blur(6px);
-    pointer-events: none;
-  }
-  .gen-field {
-    max-width: 130px;
-    padding: 3px 6px;
-    font: inherit;
-    font-size: 11.5px;
-    color: var(--ink, #1d1d1f);
-    background: var(--paper-2, #f9f9f9);
-    border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 7px;
-  }
-  .gen-number {
-    width: 52px;
-  }
-  .gen-duration,
-  .gen-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11.5px;
-    color: var(--ink-soft, #6e6e73);
+  @media (prefers-reduced-motion: reduce) {
+    .gen.is-running::after {
+      animation: none;
+      background: var(--accent, #c485fe);
+    }
+    .gen {
+      transition: none;
+    }
   }
 
   /*
@@ -341,7 +372,6 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border-radius: 15px 15px 0 0;
     background: var(--paper-2, #f9f9f9);
   }
 
@@ -364,23 +394,88 @@
     color: var(--ink-soft, #6e6e73);
   }
 
+  .gen-busy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .gen-fail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .gen-fail-title {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 650;
+    color: var(--ink, #1d1d1f);
+  }
+  .gen-fail-why {
+    margin: 0;
+    max-width: 28ch;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--ink-soft, #6e6e73);
+    overflow-wrap: anywhere;
+  }
+
+  .gen-unlock {
+    padding: 4px 12px;
+    font: inherit;
+    font-size: 11.5px;
+    border: 1px solid var(--line-2, #d2d2d7);
+    background: var(--paper, #fff);
+    color: var(--ink, #1d1d1f);
+    cursor: pointer;
+  }
+  .gen-unlock:hover {
+    background: var(--paper-2, #f9f9f9);
+  }
+  .gen-unlock:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  /* `margin-top: auto` spinge il piede in fondo quando `.gen-body` manca (un nodo testo mai
+     girato, CLAUDE.md): senza, l'altezza fissa del nodo lascerebbe uno spazio vuoto sotto la
+     casella invece del bordo del nodo. Con `.gen-body` presente non cambia niente: `flex: 1` ha
+     già preso lo spazio restante. */
   .gen-foot {
-    border-radius: 0 0 15px 15px;
+    margin-top: auto;
     padding: 8px 9px 9px;
     border-top: 1px solid var(--line, #e5e5e5);
     background: var(--paper, #fff);
+  }
+  /* SENZA `.gen-body` — un nodo testo che non ha ancora prodotto niente — il prompt è l'unica
+     cosa sul nodo: riempie tutto lo spazio invece di restare una striscia di due righe sopra un
+     vuoto. `flex: 1` sulla fascia e sulla textarea, non un'altezza fissa: la crescita resta
+     quella di `text-node-grow.ts`, non una seconda regola scritta qui. */
+  .gen-foot.is-full {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
   }
   .gen-prompt {
     width: 100%;
     resize: none;
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 9px;
     padding: 6px 8px;
     font: inherit;
     font-size: 12.5px;
     line-height: 1.45;
     color: var(--ink, #1d1d1f);
     background: var(--paper-2, #f9f9f9);
+  }
+  .gen-prompt.is-full {
+    flex: 1;
+    min-height: 0;
   }
   .gen-prompt:focus {
     outline: none;
@@ -427,7 +522,6 @@
     color: var(--ink-soft, #6e6e73);
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 6px;
     cursor: pointer;
   }
   .gen-past-one.is-shown {
@@ -440,7 +534,6 @@
     font: inherit;
     font-size: 12px;
     border: none;
-    border-radius: 8px;
     background: var(--ink, #1d1d1f);
     color: var(--paper, #fff);
     cursor: pointer;
@@ -448,6 +541,15 @@
   button:disabled {
     opacity: 0.35;
     cursor: default;
+  }
+  /* Secondario a "Genera": stesso posto, meno peso — il loop è l'azione meno frequente delle due. */
+  .gen-loop {
+    background: var(--paper, #fff);
+    color: var(--ink, #1d1d1f);
+    border: 1px solid var(--line-2, #d2d2d7);
+  }
+  .gen-loop:hover:not(:disabled) {
+    background: var(--paper-2, #f9f9f9);
   }
 
   .gen-dots {
@@ -457,7 +559,6 @@
   .gen-dots i {
     width: 6px;
     height: 6px;
-    border-radius: 50%;
     background: var(--accent, #c485fe);
     animation: gen-blink 1.2s infinite;
   }

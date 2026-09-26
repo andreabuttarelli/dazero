@@ -65,6 +65,18 @@ describe('canConnect — un arco che non produrrebbe niente si rifiuta', () => {
       expect(canConnect(node('s', k), node('p', 'post')).ok, k).toBe(true);
     }
   });
+
+  it('un nodo testo alimenta un altro nodo testo: il secondo può nascere dal primo', () => {
+    expect(canConnect(node('a', 'text'), node('b', 'text')).ok).toBe(true);
+  });
+
+  it("un'immagine alimenta un nodo testo: un modello vision la legge come riferimento", () => {
+    expect(canConnect(node('i', 'image'), node('t', 'text')).ok).toBe(true);
+  });
+
+  it('un video alimenta un nodo testo, come un riferimento multimodale', () => {
+    expect(canConnect(node('v', 'video'), node('t', 'text')).ok).toBe(true);
+  });
 });
 
 describe('missingInputs — un nodo dice cosa gli manca invece di fallire dopo', () => {
@@ -124,6 +136,22 @@ describe('quanti ingressi accetta un nodo, e dipende dal modello', () => {
     expect(out.accepted).toHaveLength(1);
     expect(out.rejected).toHaveLength(1);
   });
+
+  it("un'immagine di riferimento entra: senza modello noto, una sola", () => {
+    const out = acceptedInputs(node('i', 'image'), [node('r1', 'image'), node('r2', 'image')]);
+
+    expect(out.accepted).toHaveLength(1);
+    expect(out.rejected).toHaveLength(1);
+  });
+
+  it("con un modello che ne regge di più, entrano tutte fino al suo tetto", () => {
+    const refs = Array.from({ length: 5 }, (_, i) => node(`r${i}`, 'image'));
+
+    const out = acceptedInputs(node('i', 'image', { model: 'qwen3-pro' }), refs);
+
+    expect(out.accepted).toHaveLength(3); // maxRefs di qwen3-pro
+    expect(out.rejected).toHaveLength(2);
+  });
 });
 
 describe('una pagina incorporata è una sorgente, come un documento', () => {
@@ -140,8 +168,13 @@ describe('una pagina incorporata è una sorgente, come un documento', () => {
     // La ragione per cui vale la pena metterla nel registro: «riassumi questa pagina» e «fai
     // un'immagine ispirata a questa» sono le due catene che la rendono utile.
     expect(canConnect(node('f', 'iframe'), node('i', 'image')).ok).toBe(true);
-    expect(canConnect(node('f', 'iframe'), node('t', 'text')).ok).toBe(false);
+    expect(canConnect(node('f', 'iframe'), node('t', 'text')).ok).toBe(true);
     expect(canConnect(node('f', 'iframe'), node('p', 'post')).ok).toBe(true);
+  });
+
+  it('un documento alimenta immagine e video, come qualunque testo', () => {
+    expect(canConnect(node('d', 'document'), node('i', 'image')).ok).toBe(true);
+    expect(canConnect(node('d', 'document'), node('v', 'video')).ok).toBe(true);
   });
 
   it('è testo: quel che se ne può usare è quel che c è scritto', () => {
@@ -167,5 +200,46 @@ describe('il registro è una tabella sola', () => {
     for (const [kind, spec] of Object.entries(CANVAS_NODE_SPECS)) {
       if (!spec.generated) expect(spec.accepts, kind).toEqual([]);
     }
+  });
+});
+
+describe('canConnect — una lista riceve immagini o testo, mai video', () => {
+  it('un\'immagine e un testo alimentano una lista', () => {
+    expect(canConnect(node('i', 'image'), node('l', 'list')).ok).toBe(true);
+    expect(canConnect(node('t', 'text'), node('l', 'list')).ok).toBe(true);
+  });
+
+  it('un video non alimenta una lista', () => {
+    expect(canConnect(node('v', 'video'), node('l', 'list')).ok).toBe(false);
+  });
+});
+
+describe('canConnect — un nodo effects prende un solo media, immagine o video', () => {
+  it('un\'immagine alimenta un effects', () => {
+    expect(canConnect(node('i', 'image'), node('e', 'effects')).ok).toBe(true);
+  });
+
+  it('un testo non alimenta un effects', () => {
+    expect(canConnect(node('t', 'text'), node('e', 'effects')).ok).toBe(false);
+  });
+
+  it('un video alimenta un effects', () => {
+    expect(canConnect(node('v', 'video'), node('e', 'effects')).ok).toBe(true);
+  });
+
+  it('un effects richiede un\'immagine per essere pronto', () => {
+    expect(missingInputs(node('e', 'effects'), [])).toEqual(['image']);
+    expect(missingInputs(node('e', 'effects'), [node('i', 'image')])).toEqual([]);
+    expect(missingInputs(node('e', 'effects'), [node('v', 'video')])).toEqual([]);
+  });
+
+  it('un effects video produce video', () => {
+    expect(mediumOf(node('e', 'effects', { mediaKind: 'video' }))).toBe('video');
+  });
+
+  it('accetta un solo media totale', () => {
+    const result = acceptedInputs(node('e', 'effects'), [node('i', 'image'), node('v', 'video')]);
+    expect(result.accepted.map((input) => input.id)).toEqual(['i']);
+    expect(result.rejected.map((input) => input.id)).toEqual(['v']);
   });
 });

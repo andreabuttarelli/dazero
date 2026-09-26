@@ -1,11 +1,11 @@
 {
-  "name": "Anomalia",
-  "short_name": "Anomalia",
+  "name": "feega",
+  "short_name": "feega",
   "description": "An AI that runs your social media.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#c485fe",
+  "background_color": "#1d1d1b",
+  "theme_color": "#1d1d1b",
   "icons": [
     {
       "src": "/icon-192.png",

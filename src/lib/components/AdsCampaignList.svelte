@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import { _ } from 'svelte-i18n';
   import { creditsForSpend } from '$lib/ads-fee';
+  import { formatCredits } from '$lib/components/credit-amount-format';
   import PlatformGlyph from '$lib/components/PlatformGlyph.svelte';
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -117,7 +118,7 @@
         </form>
         <!-- Priced off the number in the box, not the stored one: the field is editable, so a
              cost pinned to the saved budget quoted a price the user was not about to pay. -->
-        <div class="cost">{$_('app.ads.launchCost', { values: { credits: creditsForSpend(budgetOf(c)) } })}</div>
+        <div class="cost">{$_('app.ads.launchCost', { values: { credits: formatCredits(creditsForSpend(budgetOf(c))) } })}</div>
         <form method="POST" action="?/reject" use:enhance>
           <input type="hidden" name="campaignId" value={c.id} />
           <button class="mini edit" type="submit">{$_('app.ads.reject')}</button>
@@ -154,11 +155,11 @@
   .sw-form { display: inline-flex; }
   .sw {
     width: 40px; height: 24px; padding: 0; flex: 0 0 auto;
-    border: 1px solid var(--line-2); border-radius: 980px; background: var(--paper-2);
+    border: 1px solid var(--line-2); background: var(--paper-2);
     cursor: pointer; transition: background .18s var(--ease), border-color .18s var(--ease);
   }
   .sw .knob {
-    display: block; width: 16px; height: 16px; margin-left: 3px; border-radius: 50%;
+    display: block; width: 16px; height: 16px; margin-left: 3px;
     background: var(--ink-faint); transition: transform .18s var(--ease), background .18s var(--ease);
   }
   .sw.on { background: var(--accent); border-color: transparent; }
@@ -168,13 +169,13 @@
   .creatives { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
   .creatives li {
     display: flex; align-items: center; gap: 8px;
-    padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px;
+    padding: 6px 10px; border: 1px solid var(--line);
     font-size: 12.5px;
   }
   .creatives li.off { opacity: .55; }
   .creatives .cnum {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 18px; height: 18px; border-radius: 50%; flex: 0 0 auto;
+    width: 18px; height: 18px; flex: 0 0 auto;
     background: var(--paper-2); font-size: 11px; font-weight: 700;
   }
   .creatives .cnm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -187,7 +188,7 @@
   }
   .camp:last-child { border-bottom: none; }
   .ic {
-    width: 38px; height: 38px; border-radius: 12px; flex: 0 0 auto;
+    width: 38px; height: 38px; flex: 0 0 auto;
     display: inline-flex; align-items: center; justify-content: center;
     background: var(--paper-2); border: 1px solid var(--line);
   }
@@ -196,7 +197,7 @@
   .nm { font-size: 14.5px; font-weight: 600; letter-spacing: -0.01em; }
   .badge {
     font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
-    padding: 3px 8px; border-radius: 980px; background: var(--paper-2); color: var(--ink-faint);
+    padding: 3px 8px; background: var(--paper-2); color: var(--ink-faint);
   }
   .badge.s-proposed { background: rgba(var(--accent-rgb), 0.12); color: var(--accent); }
   .badge.s-active { background: #e8f6ee; color: #1c7a45; }
@@ -214,7 +215,7 @@
   .approve { display: flex; align-items: center; gap: 8px; }
   .approve input {
     width: 84px; height: 36px; box-sizing: border-box; padding: 0 10px;
-    border: 1px solid var(--line-2); border-radius: 10px;
+    border: 1px solid var(--line-2);
     background: var(--paper); color: var(--ink); font: inherit; font-size: 13.5px; text-align: right;
   }
   .approve input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.1); }

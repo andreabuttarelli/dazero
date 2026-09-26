@@ -1,8 +1,8 @@
-import { isPaidPlan, PLAN_WEEKS, RADAR_SOURCE_LIMITS } from '$lib/plans';
+import { isPaidPlan, PLAN_WEEKS } from '$lib/plans';
 import { creditsForPost } from '$lib/server/content-cost';
 import { isPlanGoEnabled } from '$lib/server/feature-flags';
 
-// Free / absent plan matches Go quotas for blog + radar (capabilities parity, not credits).
+// Free / absent plan matches Go quotas for blog (capabilities parity, not credits).
 
 // Connected-account caps per plan (the Zernio cost lever). All plans get every
 // platform; the limit is on how many accounts a brand can connect.
@@ -115,90 +115,14 @@ export function countForFrequency(frequency?: string | null): number {
   return 7;
 }
 
-// Default blog cadence (articles/week) when blog_config.articlesPerWeek is unset — an explicit
-// value set by the user always wins (clamped by blogArticlesPerWeekMax).
-// Go ~3/week, Starter daily, Pro 3× Starter (~21/week).
-export const BLOG_ARTICLES_PER_WEEK: Record<string, number> = {
-  go: 3,
-  starter: 7,
-  pro: 21
-};
-
-export function blogArticlesPerWeek(plan: string | null | undefined): number {
-  return BLOG_ARTICLES_PER_WEEK[plan ?? ''] ?? BLOG_ARTICLES_PER_WEEK.go;
-}
-
-/** Max articles/week the user may set in blog settings — derived from the monthly ceiling. */
-export function blogArticlesPerWeekMax(plan: string | null | undefined): number {
-  return Math.max(1, Math.ceil(blogArticlesPerMonth(plan) / 4));
-}
-
-// HARD ceiling on AI-generated articles per calendar month. Distinct from BLOG_ARTICLES_PER_WEEK,
-// which is the *cadence* (how the month is spread): the cadence can be raised by the user in blog
-// settings up to blogArticlesPerWeekMax, this cannot. It bounds the batch entry points (month plan
-// + autopilot drip); generating ONE article from a typed topic stays available past the cap.
-//
-// Ladder: Go 15 / Starter 30 (2× Go) / Pro 90 (3× Starter).
-export const BLOG_ARTICLES_PER_MONTH: Record<string, number> = {
-  go: 15,
-  starter: 30,
-  pro: 90,
-  scale: 90
-};
-
-export function blogArticlesPerMonth(plan: string | null | undefined): number {
-  return BLOG_ARTICLES_PER_MONTH[plan ?? ''] ?? BLOG_ARTICLES_PER_MONTH.go;
-}
-
-// Extra languages each article may be translated into, on the top tier only. The cap above counts
-// ORIGINALS, so a Pro brand at the ceiling ships 90 originals + 270 translations.
-export const BLOG_TRANSLATION_LANGUAGES: Record<string, number> = {
-  go: 0,
-  starter: 0,
-  pro: 3,
-  scale: 3
-};
-
-export function blogTranslationLanguages(plan: string | null | undefined): number {
-  return BLOG_TRANSLATION_LANGUAGES[plan ?? ''] ?? 0;
-}
-
-// Founder-made video commissions per month — HUMAN-produced clips the Anomalia team crafts and
-// delivers in-app (the AI can't make these from scratch). A user-facing, plan-gated quota,
-// distinct from videoCap() (the internal AI-clip guardrail).
-export const FOUNDER_VIDEO_QUOTAS: Record<string, number> = {
-  go: 0,
-  starter: 0,
-  pro: 2
-};
-
-export function founderVideoQuota(plan: string | null | undefined): number {
-  return FOUNDER_VIDEO_QUOTAS[plan ?? ''] ?? FOUNDER_VIDEO_QUOTAS.starter;
-}
-
-// Radar source caps live in `$lib/plans` (Plan.radarSources + radarSourceLimit) so pricing
-// cards and the Settings UI share one source of truth with the server gate.
 export {
   isPaidPlan,
   canConnectSocials,
   hasSocialPublishing,
-  hasBlogIntegrations,
-  hasBlogCustomDomain,
   hasFullChatContext,
   CHAT_CONTEXT_CAP_TOKENS,
-  hasWebHub,
-  hasLeadFinding,
-  hasProRadarLeads,
-  leadEngagePlatforms,
-  RADAR_PLATFORM_KEYS,
-  hasAds,
-  hasBacklinkNetwork,
-  radarAllowedKinds,
-  isRadarKindAllowed,
-  RADAR_SOURCE_LIMITS,
-  radarSourceLimit
+  hasAds
 } from '$lib/plans';
-export type { RadarPlatformKey } from '$lib/plans';
 
 // Plan ladder (cheapest → top), with display labels — used by the settings Upgrade flow.
 // Go sits at the bottom; FEATURE_PLAN_GO only gates *selling* it, not upgrades from it.
@@ -211,7 +135,6 @@ export type UpgradeOption = {
   label: string;
   posts: number;
   accounts: number;
-  radarSources: number;
 };
 
 // The plans strictly ABOVE the current one (what the user can upgrade to). Unknown/absent plan
@@ -225,8 +148,7 @@ export function plansAbove(plan: string | null | undefined): UpgradeOption[] {
       key: k,
       label: PLAN_LABELS[k],
       posts: POST_QUOTAS[k],
-      accounts: ACCOUNT_LIMITS[k],
-      radarSources: RADAR_SOURCE_LIMITS[k]
+      accounts: ACCOUNT_LIMITS[k]
     }));
 }
 

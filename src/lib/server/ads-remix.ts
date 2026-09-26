@@ -109,7 +109,6 @@ export function digestToNormalizedAd(ad: MetaAdDigestItem): NormalizedAd {
 // ------------------------------------------------------------------------------------------------
 
 /** Al massimo tre smontaggi per giro: ffmpeg + Gemini per clip, e il resto del pool è testo. */
-export const REMIX_MAX_BREAKDOWNS = 3;
 
 const THIRD_PARTY_MEDIA_HOST =
   /(?:^|\.)(?:fbcdn\.net|facebook\.com|fb\.watch|cdninstagram\.com|instagram\.com|tiktokcdn\.com|tiktokcdn-us\.com|ttwstatic\.com|licdn\.com|akamaized\.net|pinimg\.com|twimg\.com)$/i;
@@ -153,25 +152,6 @@ export function composeRemixVisualPrompt(shotBrief: string | null, modelPrompt: 
   ]
     .join('\n')
     .slice(0, 4000);
-}
-
-/**
- * Smonta i video del pool in TESTO. Best-effort: un fallimento (fetch/ffmpeg/modello) fa
- * semplicemente tornare il brief alla frase dell'agente.
- */
-async function breakdownPoolVideos(pool: NormalizedAd[]): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
-  const targets = pool
-    .filter((a) => typeof a.videoUrl === 'string' && /^https?:\/\//i.test(a.videoUrl))
-    .slice(0, REMIX_MAX_BREAKDOWNS);
-  if (!targets.length) return out;
-  const { breakdownReferenceVideo } = await import('$lib/server/video-breakdown');
-  for (const a of targets) {
-    // In serie: ogni smontaggio è un download + ffmpeg + una chiamata Gemini.
-    const b = await breakdownReferenceVideo(a.videoUrl!).catch((error) => { swallow('breakdown reference video', error); return null; });
-    if (b?.prompt) out.set(a.adArchiveId, b.prompt);
-  }
-  return out;
 }
 
 /** Pure: pick and order the pool the agent sees. Competitor ads first (ranked by position in the
@@ -309,9 +289,7 @@ export async function remixAdsPool(
       .limit(20)
   ]);
 
-  // Smontaggio dei video PRIMA dell'analisi: l'agente deve poter leggere il ritmo reale
-  // dell'annuncio, non dedurlo dalla copy. Solo testo esce da qui (vedi il blocco del vincolo).
-  const breakdowns = await breakdownPoolVideos(pool).catch((error) => { swallow('breakdown ad videos', error); return new Map<string, string>(); });
+  const breakdowns = new Map<string, string>();
 
   const thumbPaths = poolThumbs(pool);
   const signed = await signedThumbUrls(supabase, thumbPaths).catch((error) => { swallow('sign thumb urls', error); return []; });
@@ -574,15 +552,12 @@ export async function loadRemixClientAssets(
   brief: RemixBrief
 ): Promise<RemixClientAssets> {
   const { normalizeImageUrls } = await import('$lib/server/brand-design-doc');
-  const [{ data: productRows }, { data: peopleRows }] = await Promise.all([
-    supabase
-      .from('products')
-      .select('id, title, images, featured')
-      .eq('brand_id', brandId)
-      .order('featured', { ascending: false })
-      .limit(20),
-    supabase.from('people').select('id, name, images').eq('brand_id', brandId).limit(10)
-  ]);
+  const { data: productRows } = await supabase
+    .from('products')
+    .select('id, title, images, featured')
+    .eq('brand_id', brandId)
+    .order('featured', { ascending: false })
+    .limit(20);
 
   const wanted = (brief.productName ?? '').trim().toLowerCase();
   const products: RemixEntityRef[] = (productRows ?? [])
@@ -598,18 +573,7 @@ export async function loadRemixClientAssets(
       return am - bm;
     });
 
-  const { signPersonImages } = await import('$lib/server/people');
-  const people: RemixEntityRef[] = (
-    await Promise.all(
-      (peopleRows ?? []).map(async (p) => ({
-        id: String((p as AnyRec).id),
-        name: String((p as AnyRec).name ?? 'person'),
-        urls: Array.isArray((p as AnyRec).images)
-          ? await signPersonImages(supabase, (p as AnyRec).images.slice(0, 3)).catch((error) => { swallow('images.slice failed', error); return []; })
-          : []
-      }))
-    )
-  ).filter((p) => p.urls.length);
+  const people: RemixEntityRef[] = [];
 
   const { listBrandMedia } = await import('$lib/server/brand-media');
   const media = await listBrandMedia(supabase, brandId, { limit: 40 }).catch((error) => { swallow('list brand media', error); return []; });
@@ -622,9 +586,9 @@ export async function loadRemixClientAssets(
 }
 
 /**
- * Manda in produzione un brief: coda designer (`ugc_batch`, lo stesso percorso dell'UGC Creator,
- * quindi stessa review automatica dopo il render e stessa coda di approvazione a valle) e status
- * 'converted'. Non pubblica niente: le clip restano da approvare come qualsiasi altro media.
+ * La coda designer che rendeva un brief non esiste più: content si genera sulla tela. Resta il
+ * controllo che il brief sia del brand giusto; produrlo è `not_implemented` finché la tela non ha
+ * un ingresso per una serie di reference remix.
  */
 export async function produceRemixBrief(
   supabase: SupabaseClient,
@@ -638,58 +602,5 @@ export async function produceRemixBrief(
     .maybeSingle();
   if (!row) return { ok: false, error: 'brief_not_found' };
 
-  const r = row as AnyRec;
-  const brief: RemixBrief = {
-    id: String(r.id),
-    sourceAdId: String(r.source_ad_id),
-    sourcePageName: r.source_page_name ?? null,
-    sourceBody: r.source_body ?? null,
-    sourceThumbnail: r.source_thumbnail ?? null,
-    sourceLibraryUrl: r.source_library_url ?? null,
-    rank: Number(r.rank) || 1,
-    strategy: String(r.strategy ?? ''),
-    keep: String(r.keep ?? ''),
-    change: String(r.change ?? ''),
-    hook: String(r.hook ?? ''),
-    headline: String(r.headline ?? ''),
-    body: r.body ?? null,
-    cta: r.cta ?? null,
-    productName: r.product_name ?? null,
-    visualPrompt: String(r.visual_prompt ?? ''),
-    status: r.status as RemixBrief['status']
-  };
-
-  const assets = await loadRemixClientAssets(supabase, opts.brandId, brief);
-  const params = buildRemixProduceParams(brief, assets);
-
-  const { DESIGNER_TOOL_UGC, kickDesignerWork } = await import('$lib/server/designer-jobs');
-  // 'pending', non 'running': questa richiesta non renderizza nulla, la coda designer la prende
-  // in un'altra invocazione — è la sola che ha il budget di tempo per una clip Seedance.
-  const { data: job, error } = await supabase
-    .from('chat_jobs')
-    .insert({
-      brand_id: opts.brandId,
-      user_id: opts.userId,
-      tool_name: DESIGNER_TOOL_UGC,
-      status: 'pending',
-      input_params: {
-        ...params,
-        queued: true,
-        origin: opts.origin,
-        continuation_depth: 0,
-        ads_remix_brief_id: brief.id
-      }
-    })
-    .select('id')
-    .maybeSingle();
-  if (error || !job?.id) return { ok: false, error: error?.message ?? 'job_insert_failed' };
-
-  await supabase
-    .from('ads_remix_briefs')
-    .update({ status: 'converted', updated_at: new Date().toISOString() })
-    .eq('id', brief.id)
-    .eq('brand_id', opts.brandId);
-
-  void kickDesignerWork(opts.origin);
-  return { ok: true, jobId: String(job.id) };
+  return { ok: false, error: 'not_implemented' };
 }

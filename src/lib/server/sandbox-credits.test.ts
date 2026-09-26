@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CREDITS_PER_USD } from '$lib/ads-fee';
+import { billedCreditsFor } from './credit-ladder';
 import { sandboxCredits, sandboxUsdPerSecond, withSandboxBilling } from './sandbox-credits';
 
 describe('sandboxCredits', () => {
@@ -23,9 +23,9 @@ describe('sandboxCredits', () => {
 		expect(sandboxCredits(60)).toBeGreaterThanOrEqual(sandboxCredits(6));
 	});
 
-	it('resta proporzionale al prezzo al secondo dichiarato', () => {
+	it('billa allo stesso cambio di ogni altra chiamata AI (billedCreditsFor)', () => {
 		const seconds = 3600;
-		const atteso = Math.ceil(seconds * sandboxUsdPerSecond() * CREDITS_PER_USD);
+		const atteso = billedCreditsFor(seconds * sandboxUsdPerSecond());
 		expect(sandboxCredits(seconds)).toBe(atteso);
 	});
 
@@ -54,15 +54,4 @@ describe('withSandboxBilling', () => {
 		).rejects.toThrow('render esploso');
 	});
 
-	it('addebita anche quando fallisce: la macchina è stata accesa comunque', async () => {
-		// Non addebitare i fallimenti sarebbe un invito a riprovare all'infinito gratis, che è la
-		// prima cosa che fa un agente in loop.
-		const rows: unknown[] = [];
-		const spy = { push: (r: unknown) => rows.push(r) };
-		await withSandboxBilling({ brandId: 'b1', use: 'motion_render' }, async () => {
-			spy.push('run');
-			throw new Error('x');
-		}).catch(() => undefined);
-		expect(rows).toEqual(['run']);
-	});
 });

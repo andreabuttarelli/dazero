@@ -1,5 +1,5 @@
 /* ============================================================
-     Anomalia — calm automation, Apple-grade restraint.
+     feega — calm automation, Apple-grade restraint.
      One typeface family, dramatic weight contrast, Apple's
      signature off-white (#f5f5f7), a single calm accent.
      The "softer" feeling comes from one faint hero glow and
@@ -84,7 +84,7 @@
   .nav-link {
     font-size: 14px; font-weight: 500; color: var(--ink-soft);
     letter-spacing: 0.04em;
-    text-decoration: none; padding: 6px 12px; border-radius: 8px;
+    text-decoration: none; padding: 6px 12px;
     transition: color .15s, background .15s;
   }
   .nav-link:hover { color: var(--ink); background: rgba(var(--accent-rgb), 0.06); }
@@ -98,23 +98,23 @@
   /* Override the global app.css `.brand` (dashboard) which adds padding: 4px 8px 22px — that
      bottom padding pushes the wordmark to the top of the bar. Specific enough to win the cascade. */
   header.nav .brand { padding: 0; }
-  /* Logo mark larger than the 19px "Anomalia" wordmark so the symbol leads (nav + footer). */
+  /* Logo mark larger than the 19px "feega" wordmark so the symbol leads (nav + footer). */
   .brand .brandmark { width: 30px; height: 30px; }
   header.nav .brand .brandmark { width: 44px; height: 44px; }
   .brand .dot {
-    width: 7px; height: 7px; border-radius: 50%;
+    width: 7px; height: 7px;
     background: linear-gradient(135deg, var(--accent-2), var(--accent));
     box-shadow: 0 0 0 4px rgba(var(--accent-2-rgb), 0.12);
   }
 
-  /* Wordmark plays on the name: Anomalia reads as "0 to 1" (zero-to-one,
+  /* Wordmark plays on the name: feega reads as "0 to 1" (zero-to-one,
      the growth promise). The middle "2" IS the "to" — accented, and on hover
      it expands into the full phrase. Default stays compact + legible. */
   .logo { display: inline-flex; align-items: baseline; font-weight: 700; }
   .logo .mid {
     position: relative; display: inline-block;
     width: 1ch; text-align: center;
-    /* Monochrome wordmark — the "2" matches the rest of "Anomalia" (no coloured accent). */
+    /* Monochrome wordmark — the "2" matches the rest of "feega" (no coloured accent). */
     color: inherit;
     transition: width .42s var(--ease);
   }
@@ -141,7 +141,7 @@
   .nav-pricing.is-current { color:var(--ink); }
   .nav-cta {
     font-size: 14px; font-weight: 600;
-    padding: 6px 15px; border-radius: 980px;
+    padding: 6px 15px;
     background: var(--ink); color: var(--paper);
     transition: transform .3s var(--ease), opacity .3s var(--ease);
     letter-spacing: 0.04em;
@@ -182,7 +182,7 @@
     font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
     color: var(--accent);
     margin-bottom: 16px;
-    padding: 6px 14px; border-radius: 980px;
+    padding: 6px 14px;
     background: rgba(var(--accent-rgb), 0.07);
     border: 1px solid rgba(var(--accent-rgb), 0.12);
   }
@@ -249,7 +249,7 @@
     font-family: var(--sans);
     font-size: 15px; font-weight: 600;
     letter-spacing: 0.09em;
-    padding: 14px 30px; border-radius: 980px;
+    padding: 14px 30px;
     cursor: pointer; border: none;
     transition: transform .3s var(--ease), background .3s var(--ease), opacity .3s var(--ease);
   }
@@ -327,7 +327,7 @@
   .geo-audit-providers { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
   .geo-chip {
     display: inline-flex; align-items: center; gap: 8px; padding: 8px 15px;
-    border: 1px solid var(--line); border-radius: 999px; background: var(--paper);
+    border: 1px solid var(--line); background: var(--paper);
     font-weight: 600; font-size: 0.95rem; color: var(--ink);
   }
   .geo-chip svg { width: 18px; height: 18px; }
@@ -338,7 +338,7 @@
   }
   .gr-actions { margin-top: 34px; display: flex; gap: 16px; align-items: center; justify-content: center; flex-wrap: wrap; width: 100%; }
   .gr-ghost {
-    border: 1px solid var(--line); border-radius: 980px; color: var(--ink);
+    border: 1px solid var(--line); color: var(--ink);
     background: var(--paper); padding: 18px 34px; font-size: 16px;
   }
   .gr-ghost:hover { background: var(--paper-2); gap: 6px; }
@@ -352,7 +352,7 @@
     margin-top: 14px;
     display: inline-flex; align-items: center; gap: 8px;
     padding: 9px 18px;
-    border: 1px solid var(--line); border-radius: 999px;
+    border: 1px solid var(--line);
     background: var(--paper); color: var(--ink);
     font: inherit; font-size: 14px; font-weight: 600;
     cursor: pointer;
@@ -411,14 +411,14 @@
   /* ---------- Phone mockup: the "approve with one tap" proof ---------- */
   .stage { margin-top: 0; display: flex; justify-content: center; position: relative; }
 
-  /* Floating capability cards around the phone — concrete proof of what Anomalia does. */
+  /* Floating capability cards around the phone — concrete proof of what feega does. */
   .float {
     position: absolute; z-index: 4;
     display: flex; align-items: center; gap: 10px;
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: saturate(160%) blur(10px);
     -webkit-backdrop-filter: saturate(160%) blur(10px);
-    border: 1px solid rgba(0, 0, 0, 0.06); border-radius: 15px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
     padding: 10px 13px;
     box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.22);
     text-align: left; white-space: nowrap;
@@ -429,7 +429,7 @@
   }
   .float.show { opacity: 1; }
   .float .f-ic {
-    width: 30px; height: 30px; flex: 0 0 auto; border-radius: 9px;
+    width: 30px; height: 30px; flex: 0 0 auto;
     display: inline-flex; align-items: center; justify-content: center; font-size: 15px;
     background: rgba(var(--accent-rgb), 0.1);
   }
@@ -448,7 +448,6 @@
 
   .phone {
     width: 320px;
-    border-radius: 46px;
     background: #fff;
     border: 1px solid var(--line);
     box-shadow: 0 2px 4px rgba(0,0,0,0.04),
@@ -458,11 +457,10 @@
   }
   .phone::before { /* notch */
     content: ""; position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-    width: 110px; height: 26px; background: #fff; border-radius: 0 0 16px 16px;
+    width: 110px; height: 26px; background: #fff;
     border: 1px solid var(--line); border-top: none; z-index: 3;
   }
-  .screen {
-    border-radius: 34px; overflow: hidden;
+  .screen { overflow: hidden;
     background: var(--paper-2);
     height: 600px;
     display: flex; flex-direction: column;
@@ -476,8 +474,7 @@
 
   .feed { flex: 1; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
   .post {
-    background: #fff; border: 1px solid rgba(0,0,0,0.06);
-    border-radius: 16px; padding: 12px;
+    background: #fff; border: 1px solid rgba(0,0,0,0.06); padding: 12px;
     display: flex; gap: 11px; align-items: center;
     text-align: left; position: relative;
     /* Posts mount when the "generating" step starts (.feed.gen) and drop in one-by-one. */
@@ -494,17 +491,17 @@
   .plan-item { display: flex; align-items: center; gap: 11px; font-size: 14px; font-weight: 500;
     color: var(--ink-faint); transition: color .3s var(--ease); }
   .plan-item.active, .plan-item.done { color: var(--ink); }
-  .pi-ic { width: 22px; height: 22px; flex: 0 0 auto; border-radius: 50%;
+  .pi-ic { width: 22px; height: 22px; flex: 0 0 auto;
     display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
   .plan-item.done .pi-ic { background: var(--accent); color: #fff; }
-  .pi-spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.12); }
+  .pi-spin { width: 14px; height: 14px; border: 2px solid rgba(0,0,0,0.12); }
   .plan-item.active .pi-spin { border-color: rgba(var(--accent-rgb), 0.25); border-top-color: var(--accent);
     animation: spin .7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* Generating (step 2) — each post shows a shimmering image + caption placeholder until it resolves. */
   .sk-lines { flex: 1; display: flex; flex-direction: column; gap: 7px; }
-  .sk-lines span { height: 9px; border-radius: 5px; }
+  .sk-lines span { height: 9px; }
   .sk-l1 { width: 40%; } .sk-l2 { width: 85%; } .sk-l3 { width: 55%; }
   .sk-lines span,
   .thumb.loading {
@@ -513,11 +510,11 @@
   }
   .thumb.loading { position: relative; }
   .thumb-spin { position: absolute; inset: 0; margin: auto; width: 14px; height: 14px;
-    border: 2px solid rgba(var(--accent-rgb), 0.3); border-top-color: var(--accent); border-radius: 50%;
+    border: 2px solid rgba(var(--accent-rgb), 0.3); border-top-color: var(--accent);
     animation: spin .7s linear infinite; }
   @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 
-  .thumb { width: 44px; height: 44px; border-radius: 11px; flex: 0 0 auto;
+  .thumb { width: 44px; height: 44px; flex: 0 0 auto;
     background-size: cover; background-position: center; background-repeat: no-repeat; }
   /* Example post images, generated with Nano Banana Pro (see gen-hero.mjs). Gradient = fallback. */
   .t1 { background-color: #f6c1d4; background-image: url('/hero/post1.png'); }
@@ -535,7 +532,7 @@
      The check sits on the thumbnail corner (left) so the floating cards on the right never hide it. */
   .pcheck {
     position: absolute; top: 6px; left: 42px; z-index: 2;
-    width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff;
+    width: 20px; height: 20px; border: 2px solid #fff;
     background: var(--accent); color: #fff;
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 10px; font-weight: 700; line-height: 1;
@@ -566,9 +563,9 @@
     font-size: 12px; font-weight: 700;
   }
   .approve-status.done .as-ic {
-    background: var(--accent); color: #fff; border-radius: 50%;
+    background: var(--accent); color: #fff;
   }
-  .as-spin { width: 14px; height: 14px; border-radius: 50%;
+  .as-spin { width: 14px; height: 14px;
     border: 2px solid rgba(var(--accent-rgb), 0.22); border-top-color: var(--accent);
     animation: spin .8s linear infinite; }
   .approve-hint { text-align: center; font-size: 11px; color: var(--ink-faint); margin-top: 10px; }
@@ -648,11 +645,11 @@
     stroke-linecap: round; stroke-linejoin: round;
   }
   .au-ring {
-    width: 20px; height: 20px; border-radius: 50%;
+    width: 20px; height: 20px;
     border: 2px solid rgba(255, 255, 255, 0.28);
   }
   .au-spin {
-    width: 20px; height: 20px; border-radius: 50%;
+    width: 20px; height: 20px;
     border: 2px solid rgba(255, 255, 255, 0.25);
     border-top-color: #fff;
     animation: spin 0.7s linear infinite;
@@ -691,7 +688,6 @@
   /* Each card is a real generated post: platform + handle header, the visual, then the caption hook. */
   .carousel-item {
     flex: 0 0 240px;
-    border-radius: 18px;
     overflow: hidden;
     margin-right: 16px;
     display: flex; flex-direction: column;
@@ -731,7 +727,7 @@
     gap: 22px; max-width: 940px; margin: 0 auto;
   }
   .cmp-card {
-    flex: 1; border-radius: 22px; padding: 30px 28px;
+    flex: 1; padding: 30px 28px;
     border: 1px solid var(--line); background: #fff;
   }
   .cmp-card.before { background: var(--paper-2); border-color: rgba(0, 0, 0, 0.06); }
@@ -753,7 +749,7 @@
   .cmp-card.before li { color: var(--ink-soft); }
   .cmp-card.after li { color: var(--ink); }
   .cmp-ic {
-    flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%;
+    flex: 0 0 auto; width: 22px; height: 22px;
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 11px; font-weight: 700; margin-top: 1px;
   }
@@ -766,7 +762,6 @@
   .feature {
     background: #fff;
     border: 1px solid rgba(0,0,0,0.06);
-    border-radius: 24px;
     overflow: hidden;
     display: flex; flex-direction: column;
     transition: transform .4s var(--ease), box-shadow .4s var(--ease), border-color .4s var(--ease);
@@ -808,7 +803,7 @@
     display: inline-flex; align-items: baseline; gap: 2px;
   }
   .step .num::after {
-    content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    content: ""; display: inline-block; width: 6px; height: 6px;
     background: var(--accent); margin-left: 4px; transform: translateY(-4px);
   }
   .step h3 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.04em; }
@@ -836,7 +831,7 @@
   }
   .svc-card {
     position: relative; display: flex; flex-direction: column;
-    padding: 0px 0px 0; border-radius: 16px;
+    padding: 0px 0px 0;
     background: transparent; border: 1px solid var(--line);
     overflow: visible; min-width: 0;
   }
@@ -845,7 +840,6 @@
   .svc-mockup {
     position: relative; flex: 1; margin: 20px 0 0;
     overflow: hidden; background: var(--accent);
-    border-radius: 0 0 16px 16px;
     padding-top: 40px; padding-left: 40px;
     flex: 1;
   }
@@ -859,7 +853,6 @@
   .svc-mockup.shot { padding: 40px 0 0 40px; }
   .svc-mockup.shot img {
     display: block; width: 100%; height: auto;
-    border-radius: 18px 0 0 0;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
   }
   .sm-browser {
@@ -903,26 +896,26 @@
   .radar-sec .step { background: transparent; border: 0; }
   .radar-steps .step:not(:last-child)::before { display: none; }
   .radar-ui {
-    height: 200px; overflow: hidden; margin-bottom: 22px; padding: 14px; border-radius: 14px;
+    height: 200px; overflow: hidden; margin-bottom: 22px; padding: 14px;
     background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
     display: flex; flex-direction: column; gap: 8px;
   }
   .rui-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #fff; }
-  .rui-live { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.6); animation: rui-pulse 1.8s ease-out infinite; }
+  .rui-live { width: 7px; height: 7px; background: var(--accent); box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.6); animation: rui-pulse 1.8s ease-out infinite; }
   @keyframes rui-pulse { to { box-shadow: 0 0 0 7px rgba(var(--accent-rgb), 0); } }
-  .rui-src { display: flex; align-items: center; gap: 8px; font-size: 12px; color: rgba(255,255,255,0.72); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 9px; }
-  .rui-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .rui-src { display: flex; align-items: center; gap: 8px; font-size: 12px; color: rgba(255,255,255,0.72); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 6px 9px; }
+  .rui-dot { width: 8px; height: 8px; flex: none; }
   .rui-news { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; color: var(--accent-2); }
   .rui-caption { font-size: 12.5px; color: #fff; line-height: 1.4; }
   .rui-actions { display: flex; gap: 8px; margin-top: auto; }
-  .rui-btn { font-size: 11.5px; font-weight: 600; padding: 5px 11px; border-radius: 999px; color: rgba(255,255,255,0.75); border: 1px solid rgba(255,255,255,0.16); white-space: nowrap; }
+  .rui-btn { font-size: 11.5px; font-weight: 600; padding: 5px 11px; color: rgba(255,255,255,0.75); border: 1px solid rgba(255,255,255,0.16); white-space: nowrap; }
   .rui-btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
   /* Reply-suggestion: Reddit-style thread — original comment → your drafted nested reply */
   .rui-reddit { gap: 0; }
   .rui-sub { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.85); margin-bottom: 10px; }
   .rui-sub-ic { color: #ff4500; }
   .rui-cmt { display: flex; gap: 9px; }
-  .rui-cmt.nested { margin-top: auto; margin-left: 10px; padding: 9px 10px 9px 10px; border-left: 2px solid rgba(var(--accent-rgb), 0.5); background: rgba(var(--accent-rgb), 0.08); border-radius: 0 10px 10px 0; }
+  .rui-cmt.nested { margin-top: auto; margin-left: 10px; padding: 9px 10px 9px 10px; border-left: 2px solid rgba(var(--accent-rgb), 0.5); background: rgba(var(--accent-rgb), 0.08); }
   .rui-votes { display: flex; flex-direction: column; align-items: center; gap: 1px; flex: none; padding-top: 1px; }
   .rui-vote { width: 13px; height: 13px; fill: rgba(255,255,255,0.38); }
   .rui-vote.on { fill: #ff4500; }
@@ -945,19 +938,19 @@
   .blog-points { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
   .blog-points li { display: flex; gap: 12px; font-size: 1.02rem; line-height: 1.5; color: var(--ink-soft); }
   .blog-points b { color: var(--ink); font-weight: 650; }
-  .blog-check { flex: none; width: 22px; height: 22px; border-radius: 50%; background: rgba(var(--accent-rgb), 0.12); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .blog-check { flex: none; width: 22px; height: 22px; background: rgba(var(--accent-rgb), 0.12); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
   .blog-check svg { width: 13px; height: 13px; }
-  .blog-card { background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 26px 28px; box-shadow: 0 24px 50px -30px rgba(0,0,0,0.25); }
+  .blog-card { background: var(--paper); border: 1px solid var(--line); padding: 26px 28px; box-shadow: 0 24px 50px -30px rgba(0,0,0,0.25); }
   .bc-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-  .bc-tag { font-size: 11.5px; font-weight: 700; color: var(--accent); background: rgba(var(--accent-rgb), 0.1); padding: 3px 9px; border-radius: 999px; }
+  .bc-tag { font-size: 11.5px; font-weight: 700; color: var(--accent); background: rgba(var(--accent-rgb), 0.1); padding: 3px 9px; }
   .bc-swatches { display: inline-flex; gap: 4px; }
-  .bc-swatches i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
-  .bc-voice { font-size: 11.5px; font-weight: 600; color: var(--ink-soft); background: var(--paper-2); border: 1px solid var(--line); padding: 3px 9px; border-radius: 999px; }
+  .bc-swatches i { width: 14px; height: 14px; display: inline-block; }
+  .bc-voice { font-size: 11.5px; font-weight: 600; color: var(--ink-soft); background: var(--paper-2); border: 1px solid var(--line); padding: 3px 9px; }
   .bc-meta { font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-faint); margin-top: 18px; }
   .bc-title { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2; margin-top: 6px; }
   .bc-tldr { color: var(--ink-soft); font-size: 0.98rem; line-height: 1.5; margin-top: 12px; }
   .bc-lines { display: flex; flex-direction: column; gap: 9px; margin-top: 18px; }
-  .bc-lines span { height: 8px; border-radius: 4px; background: var(--paper-2); }
+  .bc-lines span { height: 8px; background: var(--paper-2); }
   .bc-lines span:nth-child(2) { width: 92%; }
   .bc-lines span:nth-child(3) { width: 97%; }
   .bc-lines span:nth-child(4) { width: 78%; }
@@ -1041,15 +1034,13 @@
   }
   .dev-section code {
     display: inline-block;
-    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 10px; padding: 12px 20px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); padding: 12px 20px;
     font-family: var(--mono, 'SF Mono', 'Fira Code', monospace);
     font-size: 0.82rem; color: rgba(255,255,255,0.8);
   }
   .code-block {
     display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 10px; padding: 12px 16px 12px 20px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); padding: 12px 16px 12px 20px;
   }
   .code-block code {
     background: none; border: none; padding: 0;
@@ -1062,7 +1053,7 @@
   .syn-pipe { color: rgba(255,255,255,0.5); }
   .copy-btn {
     display: flex; align-items: center; justify-content: center;
-    width: 32px; height: 32px; border-radius: 8px;
+    width: 32px; height: 32px;
     background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
     color: rgba(255,255,255,0.5); cursor: pointer;
     transition: color .2s, background .2s; flex-shrink: 0;
@@ -1075,7 +1066,6 @@
   .agent-logo {
     display: inline-flex; align-items: center; justify-content: center;
     width: 44px; height: 44px;
-    border-radius: 12px;
     color: rgba(255,255,255,0.5);
     transition: color .2s, background .2s;
   }
@@ -1092,7 +1082,7 @@
   }
   form.waitlist input {
     flex: 1; font-family: var(--sans); font-size: 16px;
-    padding: 15px 20px; border-radius: 14px;
+    padding: 15px 20px;
     border: 1px solid var(--line); background: #fff; color: var(--ink);
     transition: border-color .3s var(--ease), box-shadow .3s var(--ease);
   }
@@ -1180,7 +1170,7 @@
     .features, .steps { grid-template-columns: 1fr; gap: 16px; }
     .blog-split { grid-template-columns: 1fr; gap: 32px; }
     .step:not(:last-child)::before { display: none; }
-    .step { padding: 24px; background: #fff; border: 1px solid rgba(0,0,0,0.06); border-radius: 20px; }
+    .step { padding: 24px; background: #fff; border: 1px solid rgba(0,0,0,0.06); }
     html:not([data-shell='app']) section { padding: 80px 0; }
     .hero { padding: 124px 0 72px; text-align: center; }
     /* Stack the hero back to one column and re-centre the copy. */
@@ -1228,7 +1218,7 @@
       /* 33px = the .nav-cta pill height next to it (14px text x 1.5 line-height + 6px
          padding top/bottom), so the circle and the pill line up exactly. */
       width: 33px; height: 33px; padding: 0;
-      border: 1px solid var(--line); border-radius: 999px;
+      border: 1px solid var(--line);
       background: none; color: var(--ink); cursor: pointer;
       transition: border-color .2s, background .2s;
     }
@@ -1248,7 +1238,7 @@
     .nav-left { display: contents; } /* children become direct grid items */
     .nav-left > .brand { grid-column: 1; justify-self: start; }
     .nav-left > :not(.brand) { display: none; } /* hide sound button */
-    .logo-text { display: none; } /* hide "Anomalia" wordmark on mobile, icon only */
+    .logo-text { display: none; } /* hide "feega" wordmark on mobile, icon only */
     .nav-right { grid-column: 2; justify-self: end; gap: 8px; }
     .nav-right .nav-link { display: none; }
     .nav-right .nav-github { display: none; } /* GitHub lives in the drawer */
@@ -1260,7 +1250,7 @@
       position: fixed; top: 56px; left: 0; right: 0; bottom: 0;
       margin: 0; padding: 0;
       width: 100%; height: auto; max-width: none; max-height: none;
-      border: 0; border-radius: 0;
+      border: 0;
       background: rgba(255, 255, 255, 0.98);
       backdrop-filter: saturate(180%) blur(20px);
       -webkit-backdrop-filter: saturate(180%) blur(20px);

@@ -1,0 +1,16 @@
+block	git stash
+block	git stash -u
+block	git stash push -m wip
+block	npm test && git stash
+block	git -C /repo stash
+block	git reset --hard HEAD
+block	git reset --keep origin/main
+block	git clean -fd
+block	git clean -xdf
+allow	git stash list
+allow	git stash show -p stash@{0}
+allow	git reset HEAD~1
+allow	git commit -m ok
+allow	git diff > /tmp/p.diff
+allow	git checkout -- src/app.css
+allow	echo "never run git stash" >> NOTES.md

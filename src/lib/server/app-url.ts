@@ -5,7 +5,7 @@ import { env as publicEnv } from '$env/dynamic/public';
  *
  * Prefer the request origin when it matches PUBLIC_APP_URL's registrable host
  * (www vs apex). Using only PUBLIC_APP_URL breaks Google/GitHub OAuth when the
- * browser is on www.anomalia.so but PUBLIC_APP_URL is https://anomalia.so —
+ * browser is on www.feega.app but PUBLIC_APP_URL is https://feega.app —
  * Supabase rejects the unlisted redirectTo and dumps `?code=` on the Site URL
  * root instead of /auth/callback.
  */

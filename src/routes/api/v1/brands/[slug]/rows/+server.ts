@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
-import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from '@anomalia/api-contracts';
-import { createWriteTools } from '$lib/server/chat/write-tool';
+import { INSERT_ROW, UPDATE_ROW, DELETE_ROW } from '@feega/api-contracts';
+import { createWriteTools } from '$lib/server/brand-data/write-tool';
 
 /**
  * `insert_row` e `update_row` sopra REST, e quindi sopra CLI e MCP. Come la rotta di `query`, non

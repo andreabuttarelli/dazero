@@ -6,6 +6,9 @@ import {
   isGenMedium,
   promptTooLong,
   runStateOf,
+  snapResolution,
+  startRun,
+  unlockRun,
   type GenNode,
   type ModelChoice
 } from './gen-node';
@@ -49,6 +52,16 @@ describe('lo stato di un nodo', () => {
     expect(runStateOf(node())).toBe('ready');
   });
 
+  it('senza un prompt proprio ma con un testo a monte collegato, è pronto lo stesso', () => {
+    // Il difetto segnalato: un'immagine collegata a un nodo testo con un prompt scritto restava
+    // «Scrivi cosa vuoi» perché il testo a monte non contava come prompt.
+    expect(runStateOf(node({ prompt: '' }), { hasUpstreamText: true })).toBe('ready');
+  });
+
+  it('senza prompt proprio e senza niente a monte, resta vuoto', () => {
+    expect(runStateOf(node({ prompt: '' }), { hasUpstreamText: false })).toBe('empty');
+  });
+
   it('un nodo che ha già prodotto è fatto, non di nuovo pronto', () => {
     // Senza questo stato il nodo tornerebbe «pronto» dopo aver girato, e il bottone inviterebbe a
     // pagare una seconda volta la stessa cosa.
@@ -88,6 +101,32 @@ describe('i parametri che un modello accetta', () => {
   });
 });
 
+describe('la risoluzione video dopo un cambio di modello', () => {
+  it('resta quella salvata se il nuovo modello la offre ancora', () => {
+    const m = choice({ resolutions: ['480p', '720p'] });
+
+    expect(snapResolution(m, '720p')).toBe('720p');
+  });
+
+  it('scivola al default del modello se quella salvata non è più offerta — regressione cb1de6e2', () => {
+    // happyhorse-1.0 non offre 480p: un nodo passato da Seedance (480p salvato) a happyhorse deve
+    // scivolare a 720p, non spedire un token che il provider rifiuta.
+    const happyhorse = choice({ resolutions: ['720p', '1080p'] });
+
+    expect(snapResolution(happyhorse, '480p')).toBe('720p');
+  });
+
+  it('senza una risoluzione salvata parte dal default del modello', () => {
+    const m = choice({ resolutions: ['720p', '1080p'] });
+
+    expect(snapResolution(m, undefined)).toBe('720p');
+  });
+
+  it('un modello senza selettore non ha nessuna risoluzione da imporre', () => {
+    expect(snapResolution(choice(), '480p')).toBeUndefined();
+  });
+});
+
 describe('il tetto del prompt', () => {
   it('avverte PRIMA della chiamata quando il modello lo dichiara', () => {
     expect(promptTooLong('x'.repeat(11), choice({ maxPromptChars: 10 }))).toBe(true);
@@ -107,5 +146,41 @@ describe('la misura di un nodo sulla tela', () => {
   it('immagine e video sono alti abbastanza da mostrare quel che producono', () => {
     expect(genNodeSize('image').h).toBeGreaterThan(300);
     expect(genNodeSize('video').h).toBeGreaterThan(300);
+  });
+});
+
+describe('un giro fallito non chiude il nodo', () => {
+  it('lo stato dice che è fallito, non che è ancora in corso', () => {
+    expect(runStateOf(node({ error: 'store_failed' }))).toBe('failed');
+    expect(runStateOf(node({ refId: 'media-1', error: 'store_failed' }))).toBe('failed');
+  });
+
+  it('sbloccare toglie la corsa e l errore: si può rifare', () => {
+    const stuck = node({ running: true, error: 'render_failed', refId: 'media-1' });
+    const free = unlockRun(stuck);
+
+    expect(free.running).toBe(false);
+    expect(free.error).toBeNull();
+    expect(free.refId).toBe('media-1');
+    expect(runStateOf(free)).toBe('done');
+  });
+});
+
+describe('il clic su Genera accende subito lo stato in corsa', () => {
+  it('running diventa true e un errore di prima si toglie, prima che il server risponda', () => {
+    const started = startRun(node({ error: 'store_failed' }));
+
+    expect(started.running).toBe(true);
+    expect(started.error).toBeNull();
+    expect(runStateOf(started)).toBe('running');
+  });
+
+  it('sbloccare torna esattamente allo stato di prima del clic', () => {
+    const before = node({ error: 'store_failed', refId: 'media-1' });
+    const rolledBack = unlockRun(startRun(before));
+
+    expect(rolledBack.running).toBe(false);
+    expect(rolledBack.error).toBeNull();
+    expect(rolledBack.refId).toBe('media-1');
   });
 });

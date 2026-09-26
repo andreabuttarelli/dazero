@@ -273,14 +273,14 @@ describe('aprire una VM la nomina per agente', () => {
     getOrCreate.mockResolvedValue(fakeSandbox());
     const { openBrandSandbox } = await import('./sandbox');
     await openBrandSandbox({ brandId: 'b1', mode: 'research', agentId: 'motion', timeoutMs: 300_000, runId: 'r1' });
-    expect(getOrCreate.mock.calls.at(-1)?.[0]?.name).toBe('anomalia-b1-motion-g5');
+    expect(getOrCreate.mock.calls.at(-1)?.[0]?.name).toBe('dazero-b1-motion-g5');
   });
 
   it('senza agente resta la macchina del brand', async () => {
     getOrCreate.mockResolvedValue(fakeSandbox());
     const { openBrandSandbox } = await import('./sandbox');
     await openBrandSandbox({ brandId: 'b1', mode: 'research', timeoutMs: 300_000, runId: 'r1' });
-    expect(getOrCreate.mock.calls.at(-1)?.[0]?.name).toBe('anomalia-b1-g5');
+    expect(getOrCreate.mock.calls.at(-1)?.[0]?.name).toBe('dazero-b1-g5');
   });
 });
 
@@ -298,6 +298,6 @@ describe('handle.read', () => {
     getOrCreate.mockResolvedValue(fakeSandbox());
     const { openBrandSandbox } = await import('./sandbox');
     const handle = await openBrandSandbox({ brandId: 'b1', mode: 'research', timeoutMs: 300_000, runId: 'r1' });
-    expect(await handle.read('.anomalia/motion-render/package.json')).toBe('{"name":"motion-render"}');
+    expect(await handle.read('.dazero/motion-render/package.json')).toBe('{"name":"motion-render"}');
   });
 });

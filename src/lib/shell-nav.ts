@@ -1,70 +1,89 @@
-/**
- * Cosa disegna la shell del brand MENTRE una navigazione è in volo.
- *
- * Lo scheletro è ottimistico: parte al clic, non a load finita, o la pagina di prima resterebbe
- * a schermo per tutta la load. Le eccezioni sono poche e ognuna ha il suo motivo, quindi stanno
- * tutte qui: una regola scritta in due `$derived` di un file .svelte non si può né leggere tutta
- * insieme né mettere sotto test, ed è così che ci è passata sotto la più cara — la chat.
- */
+export type NavFamily = 'panel' | 'sheet';
 
-export type ShellShimmer = 'page' | 'overview' | 'chat' | 'calendar' | 'media' | 'workbench';
-
-/** Il primo segmento di `/app/...` quando è uno slug di brand (non una rotta sorella). */
-const NON_BRAND_APP_SEGMENTS = new Set(['onboarding']);
-
-export function appBrandSlug(pathname: string | null | undefined): string | null {
-  if (!pathname) return null;
-  const seg = pathname.match(/^\/app\/([^/]+)/)?.[1];
-  if (!seg || NON_BRAND_APP_SEGMENTS.has(seg)) return null;
-  return seg;
-}
-
-/** Un thread APERTO. Il composer vuoto (`/chat/new`) non è un thread: non ha niente da caricare. */
-export function isThreadPath(pathname: string | null | undefined): boolean {
-  if (!pathname) return false;
-  return /\/chat\/[^/]+\/?$/.test(pathname) && !pathname.endsWith('/chat/new');
-}
-
-/** Le rotte che si aprono dentro la shell ma non ne fanno parte: nessuno scheletro sopra. */
-const PASSTHROUGH = ['/success', '/activate', '/proposal'];
-
-export type ShellNavigation = {
-  from: string | null | undefined;
-  to: string | null | undefined;
-  fromSearch: string;
-  toSearch: string;
-  brandSlug: string;
+export type NavEntry = {
+  id: string;
+  labelKey: string;
+  icon: 'images' | 'building' | 'user-round' | 'calendar-days' | 'megaphone' | 'settings';
+  family: NavFamily;
+  path: string;
+  group: 'panel' | 'workbench' | 'hidden';
 };
 
-export function shellShimmerFor(nav: ShellNavigation): ShellShimmer | null {
-  const { from, to } = nav;
-  if (!to) return null;
-  if (PASSTHROUGH.some((p) => to.includes(p))) return null;
+/**
+ * OGNI VOCE DELLA RAIL, IN UNA TABELLA SOLA. `family` decide come si apre — `panel` accanto alla
+ * tela (Assets/Brands, un pannello alla volta), `sheet` al posto della tela (Calendar/Ads/
+ * Settings, un foglio SvelteKit shallow-routed sopra). La rail li separa in due gruppi con un
+ * divisore: il raggruppamento stesso dice il comportamento, senza un `if` per voce altrove.
+ */
+export const NAV_ENTRIES: NavEntry[] = [
+  { id: 'assets', labelKey: 'app.nav2.materials', icon: 'images', family: 'panel', path: '/assets', group: 'panel' },
+  { id: 'brands', labelKey: 'app.nav2.brands', icon: 'building', family: 'panel', path: '/brands', group: 'panel' },
+  { id: 'influencers', labelKey: 'app.nav2.influencers', icon: 'user-round', family: 'panel', path: '/influencers', group: 'panel' },
+  { id: 'calendar', labelKey: 'app.hub.publish.calendar', icon: 'calendar-days', family: 'sheet', path: '/calendar', group: 'workbench' },
+  { id: 'ads', labelKey: 'app.hub.ads.social', icon: 'megaphone', family: 'sheet', path: '/ads/social', group: 'workbench' },
+  { id: 'settings', labelKey: 'app.nav.settings', icon: 'settings', family: 'sheet', path: '/settings/connected-accounts', group: 'workbench' },
+  { id: 'create-post', labelKey: 'app.hub.publish.createPost', icon: 'megaphone', family: 'sheet', path: '/create-post', group: 'hidden' }
+];
 
-  const toBrand = appBrandSlug(to);
-  const brandSwitch = !!toBrand && toBrand !== nav.brandSlug;
+/**
+ * LARGHEZZA DI OGNI FOGLIO/PANNELLO, IN UNA TABELLA SOLA — non CSS per componente. Calendar è
+ * una griglia mensile e vuole più spazio; gli altri fogli (Ads, Settings, Create post) sono
+ * moduli di testo e stanno bene più stretti. I pannelli sinistri (Assets/Brands/Influencers)
+ * restano alla larghezza fissa che avevano.
+ */
+export const SHEET_WIDTHS: Record<string, number> = {
+  calendar: 960,
+  ads: 720,
+  settings: 720,
+  'create-post': 720,
+  assets: 320,
+  brands: 320,
+  influencers: 320
+};
 
-  // Panoramica → thread: la Panoramica È il composer, e un invio può essere in volo dentro. Uno
-  // scheletro qui lo smonta a metà e il turno appena spedito sparisce dallo schermo.
-  //
-  // Thread → THREAD è il caso opposto, e senza scheletro mente: la testata cambia al clic (il
-  // nome viene dallo store, in memoria) e il transcript solo a load finita (viene dal server),
-  // quindi nel mezzo si legge la conversazione di PRIMA sotto il nome dell'agente NUOVO. Con due
-  // agenti appena presentati, che si somigliano, è come se dicessero la stessa cosa.
-  if (isThreadPath(to) && !isThreadPath(from) && !brandSwitch) return null;
-
-  const base = `/app/${nav.brandSlug}`;
-  if (!brandSwitch && !(to === base || to.startsWith(`${base}/`))) return null;
-  if (!brandSwitch && !toBrand) return null;
-  if (from === to && nav.fromSearch === nav.toSearch) return null;
-
-  const toBase = toBrand ? `/app/${toBrand}` : base;
-  if (to === toBase || to === `${toBase}/`) return 'overview';
-  if (isThreadPath(to)) return 'chat';
-  // Il workbench è una tela, e una tela non ha colonna: con lo scheletro di `page` il contenuto
-  // salterebbe di un padding a navigazione finita.
-  if (/\/workbench\/?$/.test(to)) return 'workbench';
-  if (/\/calendar\/?$/.test(to)) return 'calendar';
-  if (/\/(media-generator|ugc-creator|motion-video)\/?$/.test(to)) return 'media';
-  return 'page';
+export function navEntriesByGroup(group: NavEntry['group']): NavEntry[] {
+  return NAV_ENTRIES.filter((entry) => entry.group === group);
 }
+
+export function navHref(projectId: string, entry: NavEntry): string {
+  return `/p/${projectId}${entry.path}`;
+}
+
+/**
+ * LA RADICE DI UNA VOCE `sheet` è il suo primo segmento (`/settings`, `/calendar`, `/ads`): il
+ * foglio Settings deve restare aperto anche su `/settings/brand`, non solo sull'esatto
+ * `/settings/connected-accounts` a cui la rail porta di default — la sezione dentro cambia, la
+ * famiglia no. Una sola regola invece di un elenco di prefissi sparso fra layout e componenti.
+ */
+function sheetRootOf(entry: NavEntry): string {
+  return `/${entry.path.split('/')[1]}`;
+}
+
+export function sheetEntryForPath(path: string): NavEntry | null {
+  const normalized = path.split(/[?#]/)[0].replace(/\/$/, '');
+  return (
+    NAV_ENTRIES.find((entry) => {
+      if (entry.family !== 'sheet') return false;
+      const root = sheetRootOf(entry);
+      return normalized === root || normalized.startsWith(`${root}/`);
+    }) ?? null
+  );
+}
+
+export type MobileTab = { id: string; labelKey: string; icon: 'layout-grid' | 'message-circle' | 'calendar-days' | 'more-horizontal'; path: string | null };
+
+/**
+ * LA BARRA MOBILE: quattro voci fisse, non l'inventario della rail. "More" non ha un `path` —
+ * apre un foglio locale con le voci restanti (Assets, Brands, Ads, Settings), che su schermo
+ * piccolo sono rotte intere e non pannelli/sheet.
+ */
+export const MOBILE_TABS: MobileTab[] = [
+  { id: 'canvas', labelKey: 'app.shell.mobile.canvas', icon: 'layout-grid', path: null },
+  { id: 'chat', labelKey: 'app.shell.mobile.chat', icon: 'message-circle', path: null },
+  { id: 'calendar', labelKey: 'app.hub.publish.calendar', icon: 'calendar-days', path: '/calendar' },
+  { id: 'more', labelKey: 'app.shell.mobile.more', icon: 'more-horizontal', path: null }
+];
+
+export const MOBILE_MORE_ENTRIES: NavEntry[] = NAV_ENTRIES.filter(
+  (entry) => entry.group !== 'hidden' && entry.id !== 'calendar'
+);

@@ -1,46 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
-import { authenticate, loadBrandForUser, type ApiKeyInfo, type CliBrand } from './cli-auth';
+import { authenticate, loadBrandForUser, type ApiKeyInfo } from './cli-auth';
 import { isRlsScoped } from '$lib/server/rls-client';
 import { createTestSupabase } from '$lib/testkit/supabase';
-import { BOOKING_URL } from '$lib/links';
 
-const approved = vi.hoisted(() => ({ current: true }));
-vi.mock('$lib/server/access', () => ({
-  userCanEnter: async () => approved.current
-}));
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({
     auth: { getUser: async () => ({ data: { user: { id: 'user-1', email: 'a@b.c' } }, error: null }) }
   })
 }));
 
-const BRAND: CliBrand = {
-  id: 'brand-1',
-  org_id: 'org-1',
-  name: 'Acme',
-  slug: 'acme',
-  status: 'trial',
-  plan: 'pro',
-  timezone: 'Europe/Rome',
-  target_platforms: ['instagram', 'facebook'],
-  launched_at: null,
-  content_prefs: null,
-  setup_step: null,
-  setup_completed_at: null,
-  autopilot_enabled: false,
-  autopilot_failure_count: 0,
-  last_autopilot_run_at: null,
-  zernio_profile_id: null,
-  ads_settings: null
-};
+const BRAND = { id: 'brand-1', org_id: 'org-1', name: 'Acme', slug: 'acme' };
 
 const API_KEY: ApiKeyInfo = {
   id: 'key-1',
   name: 'test key',
   user_id: 'user-1',
-  permissions: { brand_ids: ['brand-1'], scopes: ['read'] }
+  org_id: 'org-1',
+  scopes: ['read']
 };
 
 /**
@@ -54,41 +32,19 @@ function mockClient(tables: Record<string, Record<string, unknown>[]>): Supabase
 }
 
 describe('loadBrandForUser with API key', () => {
-  it('returns the brand when the key user owns the brand org', async () => {
-    const supabase = mockClient({ brands: [BRAND], organizations: [{ id: 'org-1', owner_id: 'user-1' }] });
+  it('returns the brand when the brand’s org matches the key’s org', async () => {
+    const supabase = mockClient({ brands: [BRAND] });
     const { brand, error } = await loadBrandForUser(supabase, 'acme', API_KEY);
     expect(error).toBeUndefined();
     expect(brand?.id).toBe('brand-1');
   });
 
-  it('returns 404 when the org is not owned by the key user and no brand membership', async () => {
-    const supabase = mockClient({ brands: [BRAND] });
+  it('returns 404 (not 403) when the brand belongs to a different org — anti-probing', async () => {
+    const supabase = mockClient({ brands: [{ ...BRAND, org_id: 'org-other' }] });
     const { brand, error } = await loadBrandForUser(supabase, 'acme', API_KEY);
     expect(brand).toBeUndefined();
     expect(error?.status).toBe(404);
     expect(await (error as Response).json()).toEqual({ error: 'Brand not found' });
-  });
-
-  it('returns the brand when the key user is a brand member', async () => {
-    const supabase = mockClient({
-      brands: [BRAND],
-      brand_members: [{ brand_id: 'brand-1', user_id: 'user-1' }]
-    });
-    const { brand, error } = await loadBrandForUser(supabase, 'acme', API_KEY);
-    expect(error).toBeUndefined();
-    expect(brand?.id).toBe('brand-1');
-  });
-
-  it('returns 404 (not 403) when the brand is owned but outside the key brand_ids scope', async () => {
-    // Anti-probing: an out-of-scope brand is indistinguishable from a non-existent slug.
-    const supabase = mockClient({ brands: [BRAND], organizations: [{ id: 'org-1', owner_id: 'user-1' }] });
-    const narrowed: ApiKeyInfo = {
-      ...API_KEY,
-      permissions: { brand_ids: ['brand-other'], scopes: ['read'] }
-    };
-    const { brand, error } = await loadBrandForUser(supabase, 'acme', narrowed);
-    expect(brand).toBeUndefined();
-    expect(error?.status).toBe(404);
   });
 
   it('returns 404 when the brand does not exist', async () => {
@@ -99,43 +55,27 @@ describe('loadBrandForUser with API key', () => {
   });
 });
 
-/**
- * Chiudere il browser e lasciare aperta la API non è chiudere il prodotto: la CLI e l'MCP
- * entrano da qui, e `authenticate` è l'unico passaggio che entrambe attraversano. La guardia
- * sta lì, una volta, non in sessanta rotte.
- */
-describe('authenticate — prodotto chiuso', () => {
+describe('authenticate', () => {
   beforeEach(() => {
     vi.resetModules();
-    approved.current = true;
   });
 
-  async function callWithJwt() {
+  it('un JWT valido passa', async () => {
     const { authenticate } = await import('./cli-auth');
-    return authenticate(new Request('https://x/api/v1/brands', { headers: { authorization: 'Bearer jwt-token' } }));
-  }
-
-  it('un utente non approvato non passa', async () => {
-    approved.current = false;
-    const res = await callWithJwt();
-
-    expect(res.error?.status).toBe(403);
-    expect(res.user).toBeUndefined();
-  });
-
-  it('dice dove prenotare, invece di un 403 muto', async () => {
-    approved.current = false;
-    const res = await callWithJwt();
-    const body = await res.error!.json();
-
-    expect(JSON.stringify(body)).toContain(BOOKING_URL);
-  });
-
-  it('un utente approvato passa come prima', async () => {
-    const res = await callWithJwt();
+    const res = await authenticate(
+      new Request('https://x/api/v1/brands', { headers: { authorization: 'Bearer jwt-token' } })
+    );
 
     expect(res.error).toBeUndefined();
     expect(res.user?.id).toBe('user-1');
+  });
+
+  it('senza Authorization si prende un 401', async () => {
+    const { authenticate } = await import('./cli-auth');
+    const res = await authenticate(new Request('https://x/api/v1/brands'));
+
+    expect(res.error?.status).toBe(401);
+    expect(res.user).toBeUndefined();
   });
 });
 
@@ -146,7 +86,7 @@ describe('authenticate — prodotto chiuso', () => {
  * sparirebbe per tutte insieme. Questo test è la prova che c'è.
  */
 describe('una chiave di sola lettura', () => {
-  const RAW_KEY = 'anomalia_live_sololetturatest';
+  const RAW_KEY = 'dazero_live_sololetturatest';
 
   async function callWithKey(method: string) {
     const rows: Record<string, unknown>[] = [];
@@ -160,9 +100,10 @@ describe('una chiave di sola lettura', () => {
     rows.push({
       id: 'key-1',
       user_id: 'user-1',
+      org_id: 'org-1',
       name: 'read only',
       key_hash: await hashApiKey(RAW_KEY),
-      permissions: { brand_ids: '*', scopes: ['read'] }
+      scopes: ['read']
     });
 
     return authenticate(
@@ -191,12 +132,67 @@ describe('una chiave di sola lettura', () => {
 });
 
 /**
+ * Il prefisso di una chiave cambia a ogni rinomina del prodotto, ma le chiavi già emesse restano
+ * in mano ai clienti: `021_live_` viene dall'era precedente, `anomalia_` da quella prima di
+ * dazero. Riconoscerli non è cortesia — è la differenza fra una rinomina e un'interruzione di
+ * servizio silenziosa per chiunque non rigeneri la chiave.
+ */
+describe('una chiave emessa prima della rinomina', () => {
+  async function callWithKey(rawKey: string) {
+    const rows: Record<string, unknown>[] = [];
+    vi.resetModules();
+    vi.doMock('$env/dynamic/private', () => ({ env: { SUPABASE_SERVICE_ROLE_KEY: 'service-role' } }));
+    vi.doMock('@supabase/supabase-js', () => ({
+      createClient: () => createTestSupabase({ api_keys: rows }).client
+    }));
+
+    const { authenticate, hashApiKey } = await import('./cli-auth');
+    rows.push({
+      id: 'key-legacy',
+      user_id: 'user-1',
+      org_id: 'org-1',
+      name: 'legacy',
+      key_hash: await hashApiKey(rawKey),
+      scopes: ['read']
+    });
+
+    return authenticate(
+      new Request('https://x/api/v1/brands', { headers: { authorization: `Bearer ${rawKey}` } })
+    );
+  }
+
+  it('entra ancora, qualunque sia il prefisso di quando è stata emessa', async () => {
+    for (const rawKey of [
+      'anomalia_live_chiavevecchia',
+      '021_live_chiaveanticha',
+      'dazero_live_chiavenuova',
+      'feega_live_chiaveattuale'
+    ]) {
+      const res = await callWithKey(rawKey);
+
+      expect(res.error, rawKey).toBeUndefined();
+      expect(res.apiKey?.id, rawKey).toBe('key-legacy');
+    }
+  });
+});
+
+describe('una chiave nuova', () => {
+  it('generateApiKey emette il prefisso feega_', async () => {
+    const { generateApiKey } = await import('./cli-auth');
+    const { raw, prefix } = await generateApiKey();
+
+    expect(raw.startsWith('feega_live_')).toBe(true);
+    expect(prefix.startsWith('feega_live_')).toBe(true);
+  });
+});
+
+/**
  * QUALE DEI DUE CLIENT ESCE DA `authenticate`. È la domanda su cui `query` decide di leggere, e
  * sbagliarla non dà un errore: dà le righe di ogni brand di ogni cliente.
  */
 describe('il marchio RLS esce solo dal percorso JWT', () => {
   const bearer = (token: string) =>
-    new Request('https://anomalia.so/api/v1/brands/acme', { headers: { Authorization: `Bearer ${token}` } });
+    new Request('https://dazero.co/api/v1/brands/acme', { headers: { Authorization: `Bearer ${token}` } });
 
   it('il JWT utente torna un client marchiato: chiave anon, policy dell utente', async () => {
     const { supabase, error } = await authenticate(bearer('a.user.jwt'));
@@ -208,8 +204,8 @@ describe('il marchio RLS esce solo dal percorso JWT', () => {
   /**
    * Il percorso a chiave API costruisce la service role (`bypassrls=true`): non si marchia, e non
    * si promuove a sessione utente nemmeno il giorno in cui avremo un segreto di firma — una chiave
-   * porta `permissions.brand_ids`, spesso più stretto dei brand del suo proprietario, e la RLS non
-   * vede quella restrizione. Coniare un JWT allargherebbe in silenzio una chiave ristretta.
+   * vale per un'org sola (`api_keys.org_id`), spesso più stretta dei brand del suo proprietario, e
+   * la RLS non vede quella restrizione. Coniare un JWT allargherebbe in silenzio una chiave ristretta.
    */
   it('il client service-role della chiave API non viene mai marchiato', () => {
     const src = readFileSync(new URL('./cli-auth.ts', import.meta.url), 'utf8');

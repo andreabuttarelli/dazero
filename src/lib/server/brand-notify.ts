@@ -54,7 +54,7 @@ export async function pushToBrandContacts(
 					const locale = emailLocale(c.locale);
 					const body = typeof push.body === 'function' ? push.body(locale) : push.body;
 					const res = await sendPushToUser(supabase, c.userId, {
-						title: push.title || 'Anomalia',
+						title: push.title || 'feega',
 						body,
 						url: push.url,
 						tag: push.tag
@@ -138,7 +138,7 @@ export async function notifyBrandContacts(
 						if (!subject || !c.userId) return;
 						try {
 							await sendPushToUser(supabase, c.userId, {
-								title: push.title || 'Anomalia',
+								title: push.title || 'feega',
 								body: subject,
 								url: push.url,
 								tag: push.tag

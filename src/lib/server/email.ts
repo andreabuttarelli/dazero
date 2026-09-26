@@ -2,14 +2,15 @@ import { env } from '$env/dynamic/private';
 import { tEmail } from './email-i18n';
 import { senderEmailDomain } from './support-config';
 import type { Locale } from '$lib/i18n/locale';
-import type { Stage } from './lifecycle';
 import { siteUrl } from '$lib/seo';
+import { joinAppPath } from '$lib/server/tenancy/brand-slug';
+import { formatCredits } from '$lib/components/credit-amount-format';
 
 // Sender address. The domain must be verified in Resend, otherwise Resend rejects delivery to
 // anyone but the account owner. Override EMAIL_FROM entirely, or just EMAIL_DOMAIN to change only
 // the domain while keeping the default local-part and display name.
 const EMAIL_DOMAIN = env.EMAIL_DOMAIN || senderEmailDomain();
-const FROM = env.EMAIL_FROM || `Anomalia <noreply@${EMAIL_DOMAIN}>`;
+const FROM = env.EMAIL_FROM || `feega <noreply@${EMAIL_DOMAIN}>`;
 
 // Brand accent (matches --accent in app.css). Used for the wordmark's "2" in email headers.
 const ACCENT = '#7c5cff';
@@ -42,11 +43,11 @@ function esc(s: string | null | undefined): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Header: the real Anomalia mark (hosted PNG, reliable across clients) + the wordmark in the
+// Header: the real feega mark (hosted PNG, reliable across clients) + the wordmark in the
 // current brand accent. If the image is blocked, the wordmark still reads as the brand.
 function header(origin?: string): string {
   const logo = `${siteUrl(origin)}/icon-192.png`;
-  return `<div style="font-size:20px;font-weight:600;line-height:24px;margin-bottom:6px;"><img src="${logo}" width="22" height="22" alt="" style="vertical-align:-5px;border-radius:6px;margin-right:8px;" />Anomalia</div>`;
+  return `<div style="font-size:20px;font-weight:600;line-height:24px;margin-bottom:6px;"><img src="${logo}" width="22" height="22" alt="" style="vertical-align:-5px;border-radius:6px;margin-right:8px;" />feega</div>`;
 }
 
 function shell(origin: string | undefined, inner: string): string {
@@ -67,53 +68,6 @@ function postRow(p: PreviewPost): string {
 
 function cta(approveUrl: string, label: string): string {
   return `<a href="${approveUrl}" style="display:inline-block;background:#1d1d1f;color:#fff;padding:13px 26px;border-radius:980px;text-decoration:none;font-weight:600;margin-top:6px;">${label}</a>`;
-}
-
-export function approvalEmailSubject(locale: Locale, brandName: string, count: number): string {
-  return tEmail(locale, 'approval.subject', { brand: brandName, count });
-}
-
-export function approvalEmailHtml(
-  locale: Locale,
-  brandName: string,
-  count: number,
-  approveUrl: string,
-  preview: PreviewPost[],
-  origin?: string
-): string {
-  // Show EVERY pending post (with its image), not a truncated sample — the owner approves them all.
-  const items = preview.map(postRow).join('');
-  return shell(
-    origin,
-    `
-    <h2 style="font-size:22px;letter-spacing:-0.02em;margin:14px 0 6px;">${tEmail(locale, 'approval.heading', { brand: brandName, count })}</h2>
-    <p style="color:#6e6e73;line-height:1.5;margin:0 0 18px;">${tEmail(locale, 'approval.intro')}</p>
-    ${items}
-    ${cta(approveUrl, tEmail(locale, 'approval.cta'))}
-    <p style="color:#86868b;font-size:12px;margin-top:22px;">${tEmail(locale, 'approval.footer')}</p>`
-  );
-}
-
-// Plain-text alternative (deliverability + accessibility).
-export function approvalEmailText(
-  locale: Locale,
-  brandName: string,
-  count: number,
-  approveUrl: string,
-  preview: PreviewPost[]
-): string {
-  const lines = preview.map((p) => `- ${(p.platform ?? '').toUpperCase()}: ${(p.caption ?? '').slice(0, 140)}`).join('\n');
-  return [
-    tEmail(locale, 'approval.heading', { brand: brandName, count }),
-    '',
-    tEmail(locale, 'approval.intro'),
-    '',
-    lines,
-    '',
-    `${tEmail(locale, 'approval.cta')} ${approveUrl}`,
-    '',
-    tEmail(locale, 'approval.footer')
-  ].join('\n');
 }
 
 // ── Password reset ─────────────────────────────────────────────────────────────────────────────
@@ -149,7 +103,7 @@ export function passwordResetEmailText(locale: Locale, resetUrl: string): string
 
 // ── Onboarding recap ───────────────────────────────────────────────────────────────────────────
 // Sent once, when the background onboarding generation finishes. Unlike the approval emails this is
-// NOT a one-tap action — there's nothing to approve yet — it just announces what Anomalia generated
+// NOT a one-tap action — there's nothing to approve yet — it just announces what feega generated
 // (posts, competitors analysed, a multi-week editorial plan + strategy) and links to the proof page
 // where the user reviews everything and continues to activation. No token: the proof page is behind
 // the user's normal login (they created the account during onboarding).
@@ -192,45 +146,6 @@ export function strategyPlanReadyEmailText(
     `${tEmail(locale, 'strategy_plan.cta')} ${continueUrl}`,
     '',
     tEmail(locale, 'strategy_plan.footer')
-  ].join('\n');
-}
-
-// Recurring-autopilot variant of the approval email. Same one-tap flow and signed token as
-// approvalEmailHtml (stateless — the token IS the authorization, no DB row, 3-day expiry), so
-// /approve/[token] handles it identically. Only the copy changes: this batch came from the
-// recurring planner running on the brand's cadence, not a one-off click. We keep no per-post
-// preview here because the recurring email is unsolicited (cron-triggered) and we want it short;
-// the owner reviews details on the Approvals page if they don't trust the one-tap link.
-export function schedulerEmailSubject(locale: Locale, brandName: string, count: number): string {
-  return tEmail(locale, 'scheduler.subject', { brand: brandName, count });
-}
-
-export function schedulerApprovalEmailHtml(
-  locale: Locale,
-  brandName: string,
-  count: number,
-  approveUrl: string,
-  origin?: string
-): string {
-  return shell(
-    origin,
-    `
-    <h2 style="font-size:22px;letter-spacing:-0.02em;margin:14px 0 6px;">${tEmail(locale, 'scheduler.heading', { brand: brandName, count })}</h2>
-    <p style="color:#6e6e73;line-height:1.5;margin:0 0 16px;">${tEmail(locale, 'scheduler.intro', { count })}</p>
-    ${cta(approveUrl, tEmail(locale, 'scheduler.cta'))}
-    <p style="color:#86868b;font-size:12px;margin-top:22px;">${tEmail(locale, 'scheduler.footer')}</p>`
-  );
-}
-
-export function schedulerApprovalEmailText(locale: Locale, brandName: string, count: number, approveUrl: string): string {
-  return [
-    tEmail(locale, 'scheduler.heading', { brand: brandName, count }),
-    '',
-    tEmail(locale, 'scheduler.intro', { count }),
-    '',
-    `${tEmail(locale, 'scheduler.cta')} ${approveUrl}`,
-    '',
-    tEmail(locale, 'scheduler.footer')
   ].join('\n');
 }
 
@@ -299,7 +214,7 @@ export function calendarConflictEmailText(locale: Locale, brandName: string, cou
 
 // ── Weekly recap email ──────────────────────────────────────────────────────
 // Sent every Monday morning with the brand's weekly performance snapshot: post activity,
-// engagement metrics, trends, AI suggestions, and action items. The richest email Anomalia sends.
+// engagement metrics, trends, AI suggestions, and action items. The richest email feega sends.
 
 export type RecapData = {
   brandName: string;
@@ -324,13 +239,6 @@ export type RecapData = {
   actionItems: { label: string; url?: string }[];
   dashboardUrl: string;
   connectedAccounts: { platform: string; username: string | null }[];
-  /** Organic-growth remediation — null/empty when brand data is complete. */
-  growth: {
-    ready: boolean;
-    blockingCount: number;
-    warningCount: number;
-    fixes: { key: string; blocking: boolean; url?: string }[];
-  } | null;
   /** Click path (post → traffico misurabile): post_links clicks (redirect + landing) in the
    *  last 7 days. Optional — the section renders only when present and > 0. */
   linkClicks?: number;
@@ -339,7 +247,6 @@ export type RecapData = {
   visualInsights?: { dimension: string; value: string; n: number; erAvg: number; delta: number }[];
   /** Web/rank KPIs (P4): tracked keywords and their movement. Optional — the section renders
    *  only when present and tracked > 0. */
-  webKpis?: { tracked: number; improved: number; worsened: number; improvedList: string[] };
 };
 
 function sectionTitle(text: string): string {
@@ -415,57 +322,6 @@ function visualInsightsSectionHtml(locale: Locale, data: RecapData): string {
     })
     .join('');
   return `${sectionTitle(tEmail(locale, 'recap_weekly.visual_insights'))}${items}`;
-}
-
-// Web/rank KPIs (P4): tracked/improved/worsened + top improved keywords. Renders nothing when
-// the brand tracks no keywords or has no rank data.
-function webKpisSectionHtml(locale: Locale, data: RecapData): string {
-  const k = data.webKpis;
-  if (!k || k.tracked <= 0) return '';
-  const top = k.improvedList.length
-    ? `<div style="margin-top:8px;">
-        <div style="font-size:11px;color:#86868b;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:4px;">${tEmail(locale, 'recap_weekly.webkpis.top_movers')}</div>
-        ${k.improvedList.map((kw) => `<div style="font-size:13px;color:#16a34a;line-height:1.5;">▲ ${esc(kw)}</div>`).join('')}
-      </div>`
-    : '';
-  return `${sectionTitle(tEmail(locale, 'recap_weekly.webkpis.title'))}
-    <div style="font-size:14px;font-weight:600;color:#1d1d1f;">${esc(tEmail(locale, 'recap_weekly.webkpis.summary', { tracked: k.tracked, improved: k.improved, worsened: k.worsened }))}</div>
-    ${top}`;
-}
-
-function growthSectionHtml(locale: Locale, data: RecapData): string {
-  const g = data.growth;
-  if (!g || (!g.blockingCount && !g.warningCount)) return '';
-  const status = g.blockingCount
-    ? tEmail(locale, 'recap_weekly.growth.blocked', { n: g.blockingCount })
-    : tEmail(locale, 'recap_weekly.growth.warn', { n: g.warningCount });
-  const lede = g.blockingCount
-    ? tEmail(locale, 'recap_weekly.growth.lede_blocked')
-    : tEmail(locale, 'recap_weekly.growth.lede_warn');
-  const bg = g.blockingCount ? '#fff8f0' : '#f8fafc';
-  const border = g.blockingCount ? '#fde68a' : '#e2e8f0';
-  const titleColor = g.blockingCount ? '#92400e' : '#334155';
-  const rows = g.fixes
-    .map((f) => {
-      const label = tEmail(locale, `recap_weekly.growth.check.${f.key}`);
-      const link = f.url
-        ? `<a href="${esc(f.url)}" style="color:${ACCENT};text-decoration:none;font-weight:600;white-space:nowrap;">${tEmail(locale, 'recap_weekly.growth.fix')}</a>`
-        : '';
-      const badge = f.blocking
-        ? `<span style="font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#b45309;margin-right:6px;">${tEmail(locale, 'recap_weekly.growth.required')}</span>`
-        : '';
-      return `<div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:8px 0;border-top:1px solid ${border};font-size:13px;color:#1d1d1f;line-height:1.4;">
-        <div>${badge}${esc(label)}</div>
-        ${link}
-      </div>`;
-    })
-    .join('');
-  return `${sectionTitle(tEmail(locale, 'recap_weekly.growth.title'))}
-    <div style="padding:14px 16px;background:${bg};border-radius:10px;border:1px solid ${border};margin:0 0 8px;">
-      <div style="font-size:13px;font-weight:700;color:${titleColor};">${esc(status)}</div>
-      <div style="font-size:12px;color:${titleColor};margin-top:4px;line-height:1.5;">${esc(lede)}</div>
-      <div style="margin-top:8px;">${rows}</div>
-    </div>`;
 }
 
 function accountBadge(platform: string, username: string | null): string {
@@ -544,8 +400,6 @@ export function weeklyRecapEmailHtml(locale: Locale, data: RecapData, origin?: s
 
     ${accountsSection}
 
-    ${growthSectionHtml(locale, data)}
-
     ${divider()}
     ${sectionTitle(tEmail(locale, 'recap_weekly.stats_title'))}
 
@@ -557,7 +411,6 @@ export function weeklyRecapEmailHtml(locale: Locale, data: RecapData, origin?: s
     ${comparisonLine}
 
     ${visualInsightsSectionHtml(locale, data)}
-    ${webKpisSectionHtml(locale, data)}
 
     ${data.postsPending > 0 ? `<div style="margin-top:12px;padding:10px 14px;background:#fff8f0;border-radius:8px;border:1px solid #fde68a;font-size:13px;color:#92400e;font-weight:600;">${tEmail(locale, 'recap_weekly.pending_posts', { count: data.postsPending })}</div>` : ''}
 
@@ -602,26 +455,6 @@ export function weeklyRecapEmailText(locale: Locale, data: RecapData): string {
     lines.push('');
   }
 
-  if (data.growth && (data.growth.blockingCount || data.growth.warningCount)) {
-    lines.push(`— ${tEmail(locale, 'recap_weekly.growth.title')} —`);
-    lines.push(
-      data.growth.blockingCount
-        ? tEmail(locale, 'recap_weekly.growth.blocked', { n: data.growth.blockingCount })
-        : tEmail(locale, 'recap_weekly.growth.warn', { n: data.growth.warningCount })
-    );
-    lines.push(
-      data.growth.blockingCount
-        ? tEmail(locale, 'recap_weekly.growth.lede_blocked')
-        : tEmail(locale, 'recap_weekly.growth.lede_warn')
-    );
-    for (const f of data.growth.fixes) {
-      const label = tEmail(locale, `recap_weekly.growth.check.${f.key}`);
-      const tag = f.blocking ? `[${tEmail(locale, 'recap_weekly.growth.required')}] ` : '';
-      lines.push(`  → ${tag}${label}${f.url ? ` ${f.url}` : ''}`);
-    }
-    lines.push('');
-  }
-
   lines.push(`— ${tEmail(locale, 'recap_weekly.stats_title')} —`);
   lines.push(`${tEmail(locale, 'recap_weekly.stat_published')}: ${data.postsPublished}${data.postsScheduled > 0 ? ` (${data.postsScheduled} ${tEmail(locale, 'recap_weekly.scheduled')})` : ''}`);
   lines.push(`${tEmail(locale, 'recap_weekly.stat_engagement')}: ${data.totalEngagement}${data.prevEngagement > 0 ? ` (${tEmail(locale, 'recap_weekly.prev_week')}: ${data.prevEngagement})` : ''}`);
@@ -637,15 +470,6 @@ export function weeklyRecapEmailText(locale: Locale, data: RecapData): string {
     for (const v of [...data.visualInsights].sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 3)) {
       const d = Math.round(v.delta);
       lines.push(`  ${v.dimension}: ${v.value} ${d > 0 ? '+' : ''}${d}% ER vs avg (n=${v.n})`);
-    }
-    lines.push('');
-  }
-
-  if (data.webKpis && data.webKpis.tracked > 0) {
-    lines.push(`— ${tEmail(locale, 'recap_weekly.webkpis.title')} —`);
-    lines.push(`  ${tEmail(locale, 'recap_weekly.webkpis.summary', { tracked: data.webKpis.tracked, improved: data.webKpis.improved, worsened: data.webKpis.worsened })}`);
-    if (data.webKpis.improvedList.length) {
-      lines.push(`  ${tEmail(locale, 'recap_weekly.webkpis.top_movers')}: ${data.webKpis.improvedList.join(', ')}`);
     }
     lines.push('');
   }
@@ -727,9 +551,10 @@ export function digestEmailHtml(
   locale: Locale,
   brand: { name: string; slug: string },
   posts: DigestPost[],
+  appBasePath: string,
   origin?: string
 ): string {
-  const calendarUrl = `${siteUrl(origin)}/app/${brand.slug}/calendar`;
+  const calendarUrl = `${siteUrl(origin)}${joinAppPath(appBasePath, '/calendar')}`;
   const items = posts.map((p) => digestPostRow(p, calendarUrl)).join('');
   return shell(
     origin,
@@ -744,9 +569,10 @@ export function digestEmailHtml(
 export function digestEmailText(
   locale: Locale,
   brand: { name: string; slug: string },
-  posts: DigestPost[]
+  posts: DigestPost[],
+  appBasePath: string
 ): string {
-  const calendarUrl = `${siteUrl()}/app/${brand.slug}/calendar`;
+  const calendarUrl = `${siteUrl()}${joinAppPath(appBasePath, '/calendar')}`;
   const lines = posts.map((p) => {
     const url = p.published_url || calendarUrl;
     return `- ${(p.platform ?? '').toUpperCase()}: ${(p.caption ?? '').slice(0, 160)} (${url})`;
@@ -839,8 +665,8 @@ export function creditWarningEmailHtml(locale: Locale, opts: {
     <p style="font-size:15px;line-height:1.5;color:#1d1d1f;margin:0 0 16px;">
       ${tEmail(locale, 'credit_warning.intro', {
         brand: esc(opts.brandName),
-        used: opts.used.toLocaleString(),
-        quota: opts.quota.toLocaleString(),
+        used: formatCredits(opts.used),
+        quota: formatCredits(opts.quota),
         percent: opts.percent,
         resetDate: resetStr
       })}
@@ -848,7 +674,7 @@ export function creditWarningEmailHtml(locale: Locale, opts: {
     <div style="background:#f5f5f7;border-radius:10px;padding:16px;margin:0 0 16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:13px;color:#86868b;">${tEmail(locale, 'credit_warning.heading')}</span>
-        <span style="font-size:14px;font-weight:600;">${opts.used.toLocaleString()} / ${opts.quota.toLocaleString()}</span>
+        <span style="font-size:14px;font-weight:600;">${formatCredits(opts.used)} / ${formatCredits(opts.quota)}</span>
       </div>
       <div style="background:#e5e5ea;border-radius:4px;height:8px;overflow:hidden;">
         <div style="background:${opts.percent >= 80 ? '#dc2626' : opts.percent >= 60 ? '#f59e0b' : '#16a34a'};height:100%;width:${Math.min(100, opts.percent)}%;border-radius:4px;"></div>
@@ -869,196 +695,17 @@ export function creditWarningEmailText(locale: Locale, opts: {
     '',
     tEmail(locale, 'credit_warning.intro', {
       brand: opts.brandName,
-      used: opts.used.toLocaleString(),
-      quota: opts.quota.toLocaleString(),
+      used: formatCredits(opts.used),
+      quota: formatCredits(opts.quota),
       percent: opts.percent,
       resetDate: resetStr
     }),
     '',
-    `${opts.used.toLocaleString()} / ${opts.quota.toLocaleString()} (${opts.percent}%)`,
+    `${formatCredits(opts.used)} / ${formatCredits(opts.quota)} (${opts.percent}%)`,
     '',
     `${tEmail(locale, 'credit_warning.cta')} ${opts.dashboardUrl}`,
     '',
     tEmail(locale, 'credit_warning.footer')
-  ].join('\n');
-}
-
-// ── Lifecycle drip ───────────────────────────────────────────────────────────────────────────
-// Welcome (T+0), day-1 call-insist, and day-2/3 next-step nudges. Sent by api/v1/lifecycle/tick.
-// The 6 welcome "next steps" mirror the in-app OnboardingChecklist (sidebar progress).
-const WELCOME_STEPS: { key: string; path: string }[] = [
-  { key: 'studio', path: 'studio' },
-  { key: 'strategy', path: 'gtm' },
-  { key: 'plan', path: 'plan' },
-  { key: 'blog', path: 'site' },
-  { key: 'radar', path: 'radar' },
-  { key: 'seo', path: 'seo' }
-];
-
-export function welcomeEmailSubject(locale: Locale, brandName: string): string {
-  return tEmail(locale, 'welcome.subject', { brand: brandName });
-}
-
-export function welcomeEmailHtml(
-  locale: Locale,
-  opts: { name: string; brandName: string; brandSlug: string; callUrl: string },
-  origin?: string
-): string {
-  const base = `${siteUrl(origin)}/app/${opts.brandSlug}`;
-  const steps = WELCOME_STEPS.map(
-    (s) =>
-      `<li style="margin:0 0 8px;"><a href="${base}/${s.path}" style="color:#7c5cff;text-decoration:none;">${tEmail(locale, `welcome.step.${s.key}`)}</a></li>`
-  ).join('');
-  return shell(
-    origin,
-    `
-    <h2 style="font-size:22px;letter-spacing:-0.02em;margin:14px 0 6px;">${tEmail(locale, 'welcome.heading', { name: esc(opts.name) })}</h2>
-    <p style="color:#6e6e73;line-height:1.5;margin:0 0 14px;">${tEmail(locale, 'welcome.intro', { brand: esc(opts.brandName) })}</p>
-    <p style="color:#1d1d1f;line-height:1.5;margin:0 0 14px;">${tEmail(locale, 'welcome.call_lead')}</p>
-    ${cta(opts.callUrl, tEmail(locale, 'welcome.cta'))}
-    <p style="color:#1d1d1f;font-weight:600;margin:22px 0 8px;">${tEmail(locale, 'welcome.steps_title', { brand: esc(opts.brandName) })}</p>
-    <ol style="color:#1d1d1f;font-size:14px;line-height:1.5;padding-left:20px;margin:0 0 18px;">${steps}</ol>
-    <p style="color:#86868b;font-size:12px;margin-top:22px;">${tEmail(locale, 'welcome.footer')}</p>`
-  );
-}
-
-export function welcomeEmailText(
-  locale: Locale,
-  opts: { name: string; brandName: string; brandSlug: string; callUrl: string },
-  origin?: string
-): string {
-  const base = `${siteUrl(origin)}/app/${opts.brandSlug}`;
-  const steps = WELCOME_STEPS.map((s, i) => `${i + 1}. ${tEmail(locale, `welcome.step.${s.key}`)} — ${base}/${s.path}`).join('\n');
-  return [
-    tEmail(locale, 'welcome.heading', { name: opts.name }),
-    '',
-    tEmail(locale, 'welcome.intro', { brand: opts.brandName }),
-    '',
-    tEmail(locale, 'welcome.call_lead'),
-    `${tEmail(locale, 'welcome.cta')} ${opts.callUrl}`,
-    '',
-    tEmail(locale, 'welcome.steps_title', { brand: opts.brandName }),
-    steps,
-    '',
-    tEmail(locale, 'welcome.footer')
-  ].join('\n');
-}
-
-export function day1EmailSubject(locale: Locale, name: string, brandName: string): string {
-  return tEmail(locale, 'lifecycle.day1.subject', { name, brand: brandName });
-}
-
-export function day1EmailHtml(
-  locale: Locale,
-  opts: { name: string; brandName: string; brandSlug: string; callUrl: string },
-  origin?: string
-): string {
-  const selfUrl = `${siteUrl(origin)}/app/${opts.brandSlug}/settings/brand`;
-  return shell(
-    origin,
-    `
-    <h2 style="font-size:22px;letter-spacing:-0.02em;margin:14px 0 6px;">${tEmail(locale, 'lifecycle.day1.heading', { brand: esc(opts.brandName) })}</h2>
-    <p style="color:#6e6e73;line-height:1.5;margin:0 0 14px;">${tEmail(locale, 'lifecycle.day1.intro', { brand: esc(opts.brandName) })}</p>
-    <p style="color:#1d1d1f;line-height:1.5;margin:0 0 14px;">${tEmail(locale, 'lifecycle.day1.body')}</p>
-    ${cta(opts.callUrl, tEmail(locale, 'lifecycle.cta_call'))}
-    <p style="color:#6e6e73;font-size:13px;margin-top:18px;">${tEmail(locale, 'lifecycle.or_self')} <a href="${selfUrl}" style="color:#7c5cff;text-decoration:none;">${selfUrl}</a></p>
-    <p style="color:#86868b;font-size:12px;margin-top:18px;">${tEmail(locale, 'lifecycle.footer')}</p>`
-  );
-}
-
-export function day1EmailText(
-  locale: Locale,
-  opts: { name: string; brandName: string; brandSlug: string; callUrl: string },
-  origin?: string
-): string {
-  const selfUrl = `${siteUrl(origin)}/app/${opts.brandSlug}/settings/brand`;
-  return [
-    tEmail(locale, 'lifecycle.day1.heading', { brand: opts.brandName }),
-    '',
-    tEmail(locale, 'lifecycle.day1.intro', { brand: opts.brandName }),
-    '',
-    tEmail(locale, 'lifecycle.day1.body'),
-    `${tEmail(locale, 'lifecycle.cta_call')} ${opts.callUrl}`,
-    '',
-    `${tEmail(locale, 'lifecycle.or_self')} ${selfUrl}`,
-    '',
-    tEmail(locale, 'lifecycle.footer')
-  ].join('\n');
-}
-
-/**
- * Chi si iscrive col prodotto chiuso non ha un brand, quindi il drip di lifecycle — che pende dai
- * brand — non lo vede mai. Senza questa, uno che si registra e non prenota non riceve nulla:
- * prodotto chiuso e recupero spento insieme.
- */
-export function pendingEmailSubject(locale: Locale): string {
-  return tEmail(locale, 'pending.subject');
-}
-
-export function pendingEmailHtml(locale: Locale, opts: { callUrl: string }, origin?: string): string {
-  return shell(
-    origin,
-    `
-    <h2 style="font-size:22px;letter-spacing:-0.02em;margin:14px 0 6px;">${tEmail(locale, 'pending.heading')}</h2>
-    <p style="color:#1d1d1f;line-height:1.5;margin:0 0 14px;">${tEmail(locale, 'pending.body')}</p>
-    ${cta(opts.callUrl, tEmail(locale, 'lifecycle.cta_call'))}
-    <p style="color:#86868b;font-size:12px;margin-top:22px;">${tEmail(locale, 'lifecycle.footer')}</p>`
-  );
-}
-
-export function pendingEmailText(locale: Locale, opts: { callUrl: string }): string {
-  return [
-    tEmail(locale, 'pending.heading'),
-    '',
-    tEmail(locale, 'pending.body'),
-    `${tEmail(locale, 'lifecycle.cta_call')} ${opts.callUrl}`,
-    '',
-    tEmail(locale, 'lifecycle.footer')
-  ].join('\n');
-}
-
-export function stepEmailSubject(locale: Locale, brandName: string, stage: Stage): string {
-  return tEmail(locale, 'lifecycle.step.subject', { brand: brandName, step: tEmail(locale, `lifecycle.step.title.${stage}`) });
-}
-
-export function stepEmailHtml(
-  locale: Locale,
-  opts: { name: string; brandName: string; stage: Stage; stepUrl: string; callUrl: string; day: 2 | 3 },
-  origin?: string
-): string {
-  const title = tEmail(locale, `lifecycle.step.title.${opts.stage}`);
-  const line = tEmail(locale, `lifecycle.step.line.${opts.stage}`, { brand: esc(opts.brandName) });
-  const day3 = opts.day === 3 ? `<p style="color:#1d1d1f;font-weight:600;margin:0 0 8px;">${tEmail(locale, 'lifecycle.step.intro_day3')}</p>` : '';
-  return shell(
-    origin,
-    `
-    <h2 style="font-size:22px;letter-spacing:-0.02em;margin:14px 0 6px;">${tEmail(locale, 'lifecycle.step.heading', { brand: esc(opts.brandName) })}</h2>
-    ${day3}
-    <p style="color:#6e6e73;line-height:1.5;margin:0 0 16px;">${line}</p>
-    ${cta(opts.stepUrl, title)}
-    <p style="color:#6e6e73;font-size:13px;margin-top:18px;">${tEmail(locale, 'lifecycle.step.or_call')} <a href="${opts.callUrl}" style="color:#7c5cff;text-decoration:none;">${tEmail(locale, 'lifecycle.step.cta_call')}</a></p>
-    <p style="color:#86868b;font-size:12px;margin-top:18px;">${tEmail(locale, 'lifecycle.footer')}</p>`
-  );
-}
-
-export function stepEmailText(
-  locale: Locale,
-  opts: { name: string; brandName: string; stage: Stage; stepUrl: string; callUrl: string; day: 2 | 3 },
-  origin?: string
-): string {
-  const title = tEmail(locale, `lifecycle.step.title.${opts.stage}`);
-  const line = tEmail(locale, `lifecycle.step.line.${opts.stage}`, { brand: opts.brandName });
-  return [
-    tEmail(locale, 'lifecycle.step.heading', { brand: opts.brandName }),
-    '',
-    opts.day === 3 ? tEmail(locale, 'lifecycle.step.intro_day3') + '\n' : '',
-    line,
-    '',
-    `${title}: ${opts.stepUrl}`,
-    '',
-    `${tEmail(locale, 'lifecycle.step.or_call')} ${opts.callUrl}`,
-    '',
-    tEmail(locale, 'lifecycle.footer')
   ].join('\n');
 }
 

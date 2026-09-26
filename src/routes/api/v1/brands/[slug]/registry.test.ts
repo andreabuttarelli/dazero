@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { BRAND_ENDPOINTS, pathFor, pathWithoutBrand, type BrandEndpoint } from '@anomalia/api-contracts';
+import { BRAND_ENDPOINTS, pathFor, pathWithoutBrand, type BrandEndpoint } from '@feega/api-contracts';
 
 /**
  * IL REGISTRY PROMETTE, LE ROTTE MANTENGONO. Ogni entry di BRAND_ENDPOINTS diventa da sola un
@@ -119,95 +119,33 @@ describe('BRAND_ENDPOINTS', () => {
  * rotta resta viva, raggiungibile e senza più nessun posto dove è descritta — nessun tool, nessun
  * contratto, nessun rosso.
  *
- * Una volta è una curiosità. Le letture rientrate dentro `query` sono trentatré, e trentatré
- * rotte che nessuno può elencare sono il modo in cui il percorso a chiave API diventa in silenzio
- * l'unica strada per un terzo del prodotto — perché `query` la chiave API la RIFIUTA
- * (`createQueryTool` pretende un client RLS-scoped, e `authenticate` sul percorso a chiave dà la
- * service role).
- *
  * Quindi una rotta senza contratto si DICHIARA qui. La lista non porta un motivo per riga perché
- * ventotto di queste esistevano già da prima e inventarne il motivo sarebbe peggio che tacerlo:
- * quello che la lista impone è che la riga si aggiunga a mano, in un diff che qualcuno legge, con
- * la domanda giusta davanti — questa rotta cos'è adesso, se non è più un tool? Superficie REST
- * voluta, o codice morto da cancellare.
+ * gran parte di queste esistevano già da prima e inventarne il motivo sarebbe peggio che
+ * tacerlo: quello che la lista impone è che la riga si aggiunga a mano, in un diff che qualcuno
+ * legge, con la domanda giusta davanti — questa rotta cos'è adesso, se non è più un tool?
+ * Superficie REST voluta, o codice morto da cancellare.
  */
 /** La rotta alla radice del brand: non ha un segmento da nominare, ma va dichiarata come le altre. */
 const BRAND_ROOT = '.';
 
 const REST_ONLY = [
   BRAND_ROOT,
-  'agent-sessions',
-  'agent-sessions/[id]',
-  'analytics',
+  // La chat nella sidebar: il browser arriva con un cookie di sessione, non con un Bearer, quindi
+  // queste due non passano da `authenticate` e non possono diventare un tool MCP. Restano rotte e
+  // basta, ed è la superficie che `src/lib/server/brand-agent/` serve.
+  'agent',
+  'agent/assets',
+  // `ads_action` chiama funzioni sue (approva, rifiuta, duplica, propone) senza passare da un
+  // contratto: il CLI la raggiunge con `api.adsAction`, non con `ADS_ACTION`.
+  'ads',
   'api-keys',
   'api-keys/[id]',
-  'articles',
-  'articles/[id]',
-  'backlinks',
-  'calendar',
-  'connections',
-  'connections/[id]',
-  'connections/[id]/complete',
-  'connections/catalog',
-  // Le quattro rotte che scrivevano piano e settimana con un modello loro. Il tool esce — chi
-  // chiama Anomalia è già un agente che scrive, e `save_plan` / `save_week_seeds` depositano il
-  // testo suo — ma la rotta resta, perché l'autopilot passa da queste stesse funzioni su ogni
-  // brand con un piano attivo.
-  'captions/generate',
-  'editorial-plan',
-  'editorial-plan/propose',
-  'editorial-plan/replan-week',
-  'editorial-plan/revise',
-  'editorial-plan/update',
-  'goals',
-  'gtm',
-  'gtm/update',
-  'ideas',
-  'knowledge',
-  'library/scan',
-  'market/field',
-  // `generate_media` era la porta vecchia: inoltrava a `generate_image` e `generate_video` e la
-  // sua stessa descrizione diceva di preferirli. Il tool esce, la rotta resta per chi l'ha cablata.
-  'media/generate',
-  // `create_product` e `update_person` erano un insert e un update di una riga e nient'altro:
-  // `insert_row` e `update_row` li fanno con la RLS di chi chiama. I tool escono, le rotte
-  // restano. Le altre due — `update_product` e `update_competitor` — non compaiono qui perché
-  // le loro cartelle le rivendica ancora la cancellazione che ci abita accanto.
-  'people/[id]',
-  'posts/[id]/approve',
-  'posts/[id]/media',
-  'posts/[id]/publish',
-  'posts/[id]/revoke',
-  'posts/approve-all',
   'products',
+  // `update_product` era un update di una riga e nient'altro: `update_row` lo fa con la RLS di
+  // chi chiama. Il tool esce, la rotta resta — il CLI la chiama ancora.
+  'products/[id]',
   'publishing',
-  'ranks',
-  'rubrics',
-  'rubrics/approve',
-  'rubrics/propose',
   'social/accounts',
-  'studio',
-  'studio/memory',
-  'studio/memory/[id]',
-  'studio/products',
-  'tick',
-  'voice',
-  'web',
-  // `generate_article` e `optimize_article` sono usciti per la stessa ragione: il markdown lo
-  // scrive chi chiama e `create_article` lo deposita. Il radar e il cron del blog continuano a
-  // passare di qui.
-  'web/article/[id]/optimize',
-  'web/generate',
-  'web/audits',
-  'web/audits/citations',
-  'web/audits/findings',
-  'web/fixes',
-  'webhook',
-  'weekly-plan',
-  'weekly-plan/plan',
-  'weekly-plan/produce',
-  'weekly-plan/render',
-  'weekly-plan/save',
 ];
 
 const BRAND_ROUTES = 'src/routes/api/v1/brands/[slug]';

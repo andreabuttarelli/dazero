@@ -16,14 +16,14 @@ function fail(message: string): never {
 }
 
 export async function cmdLogin(options: LoginOptions = {}) {
-  console.log(c.bold('\nLogin a Anomalia\n'));
+  console.log(c.bold('\nLogin a feega\n'));
 
   // Check if already logged in
   const existing = await loadSession();
   if (existing) {
     console.log(`  Già autenticato come: ${c.bold(existing.user.email)}`);
     console.log(`  Sessione valida fino a: ${new Date(existing.expires_at * 1000).toLocaleDateString('it-IT')}`);
-    console.log(`\n  Per forzare il re-login, esegui: anomalia logout && anomalia login`);
+    console.log(`\n  Per forzare il re-login, esegui: feega logout && feega login`);
     return;
   }
 

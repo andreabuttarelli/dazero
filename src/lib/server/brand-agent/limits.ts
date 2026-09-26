@@ -18,7 +18,10 @@
  * passo: chiudere l'MCP, salvare il turno, scrivere `ai_calls`.
  */
 import { stepCountIs } from 'ai';
-import { deadlineReached } from '$lib/server/strategy-agent';
+
+function deadlineReached(startedAt: number, deadlineMs: number): boolean {
+  return Date.now() - startedAt >= deadlineMs;
+}
 
 /** Lo scaglione Vercel di questa rotta. Vive qui per essere confrontabile col margine. */
 export const AGENT_MAX_DURATION_S = 300;

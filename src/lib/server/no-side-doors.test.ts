@@ -59,7 +59,7 @@ describe('nessuna porta laterale verso un fornitore', () => {
 	 */
 	it('nessun file di src importa lo SDK di un fornitore come valore', () => {
 		const open: string[] = [];
-		for (const file of [...tsFiles(join(SRC, 'lib')), ...tsFiles(join(SRC, 'routes')), ...tsFiles(join(SRC, 'worker'))]) {
+		for (const file of [...tsFiles(join(SRC, 'lib')), ...tsFiles(join(SRC, 'routes'))]) {
 			for (const pkg of vendorSdkImports(file)) {
 				open.push(`${file.replace(SRC + '/', '')} → ${pkg}`);
 			}

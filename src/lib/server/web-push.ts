@@ -10,7 +10,7 @@ export type PushPayload = {
 	body: string;
 	url?: string;
 	tag?: string;
-	/** When true, the service worker skips showing if an Anomalia tab is focused. */
+	/** When true, the service worker skips showing if an feega tab is focused. */
 	skipIfFocused?: boolean;
 };
 
@@ -63,7 +63,7 @@ export async function sendPushToUser(
 		title: payload.title,
 		body: payload.body,
 		url: absolutePushUrl(payload.url),
-		tag: payload.tag || 'anomalia',
+		tag: payload.tag || 'feega',
 		icon: '/icon-192.png',
 		skipIfFocused: !!payload.skipIfFocused
 	});

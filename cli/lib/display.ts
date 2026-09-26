@@ -28,10 +28,6 @@ export function formatDate(iso: string | null | undefined): string {
     ' ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function autopilotBadge(enabled: boolean): string {
-  return enabled ? chalk.green('● autopilot') : chalk.dim('○ manuale');
-}
-
 export function statusBadge(status: string): string {
   const map: Record<string, string> = {
     active: chalk.green('active'),

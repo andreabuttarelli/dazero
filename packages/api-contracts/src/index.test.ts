@@ -3,7 +3,6 @@ import { z } from 'zod';
 import {
   BRAND_ENDPOINTS,
   BRAND_RESOURCES,
-  GET_ARTICLE_READ,
   LIST_MEDIA_READ,
   RESOURCE_SEGMENT,
   pathFor,
@@ -52,7 +51,7 @@ describe('il registry degli endpoint di brand', () => {
     for (const e of BRAND_ENDPOINTS) {
       expect(e.pathUnderBrand.startsWith('/'), e.tool).toBe(true);
     }
-    expect(pathFor(byTool('create_post'), 'demo')).toBe('/api/v1/brands/demo/posts');
+    expect(pathFor(byTool('import_media_url'), 'demo')).toBe('/api/v1/brands/demo/media');
   });
 
   it('un endpoint di risorsa mette l id risolto al posto del segmento', () => {
@@ -100,42 +99,15 @@ describe('il registry degli endpoint di brand', () => {
   });
 
   it('lo status di un fallimento non dichiarato è 500, non un 400 silenzioso', () => {
-    const createPost = byTool('create_post');
-    expect(statusForFailure(createPost, 'need_caption')).toBe(400);
-    expect(statusForFailure(createPost, 'insert_failed')).toBe(500);
-  });
-
-  it('un guasto della pipeline media non è colpa di chi chiama: 5xx, non 400', () => {
-    const createPost = byTool('create_post');
-    expect(statusForFailure(createPost, 'media_not_found')).toBe(400);
-    expect(statusForFailure(createPost, 'media_unavailable')).toBe(502);
-  });
-
-  it('create_post accetta la copy e rifiuta una richiesta senza piattaforme', () => {
-    const { input } = byTool('create_post');
-    expect(input.safeParse({ platforms: ['linkedin'], caption: 'ciao' }).success).toBe(true);
-    expect(input.safeParse({ platforms: [], caption: 'ciao' }).success).toBe(false);
-    expect(input.safeParse({ platforms: ['linkedin'], caption: '' }).success).toBe(false);
+    const importMedia = byTool('import_media_url');
+    expect(statusForFailure(importMedia, 'not_https')).toBe(400);
+    expect(statusForFailure(importMedia, 'insert_failed')).toBe(500);
   });
 
   it('un campo che nessun endpoint dichiara viene rifiutato, non scartato in silenzio', () => {
     for (const e of BRAND_ENDPOINTS) {
       expect(e.input.safeParse({ campo_che_non_esiste: 'x' }).success, e.tool).toBe(false);
     }
-    expect(
-      byTool('create_post').input.safeParse({
-        platforms: ['linkedin'],
-        caption: 'ciao',
-        campo_che_non_esiste: 'x'
-      }).success
-    ).toBe(false);
-  });
-
-  it('create_post accetta i media della libreria, che prima non avevano dove passare', () => {
-    const { input } = byTool('create_post');
-    expect(
-      input.safeParse({ platforms: ['instagram'], caption: 'ciao', media_ids: ['asset-1'] }).success
-    ).toBe(true);
   });
 
   it('la lettura dei media dichiara un tetto, e nessun fallimento proprio', () => {
@@ -163,88 +135,6 @@ describe('il registry degli endpoint di brand', () => {
     expect(input.safeParse({}).success).toBe(false);
     expect(input.safeParse({ url: '' }).success).toBe(false);
     expect(input.safeParse({ url: 'https://cdn.example.com/a.png', quality: 'high' }).success).toBe(false);
-  });
-
-  it('create_post promette un post pending_user con la data proposta', () => {
-    const { output } = byTool('create_post');
-    const ok = output.safeParse({
-      ok: true,
-      id: 'post-1',
-      status: 'pending_user',
-      scheduled_for: '2030-05-16T07:00:00.000Z',
-      scheduled_for_local: '2030-05-16 09:00 (Europe/Rome)',
-      slot: 'Thu 09:00',
-      review_url: 'https://anomalia.so/app/demo/posts/post-1'
-    });
-    expect(ok.success).toBe(true);
-    expect(output.safeParse({ ok: true, id: 'post-1', status: 'approved' }).success).toBe(false);
-  });
-
-  it('check_content è una POST per forma e una lettura per effetto', () => {
-    const check = byTool('check_content');
-    expect(check.method).toBe('POST');
-    expect(check.destructive).toBe(false);
-    expect(pathFor(check, 'demo')).toBe('/api/v1/brands/demo/content/check');
-  });
-
-  it('check_content promette errori, avvisi, punteggi e le versioni delle regole', () => {
-    const { output } = byTool('check_content');
-    const ok = output.safeParse({
-      ok: false,
-      errors: [{ code: 'over_limit', field: 'caption', detail: 'LinkedIn: 3001 characters, limit 3000' }],
-      warnings: [],
-      scores: [
-        {
-          platform: 'linkedin',
-          index: 42.5,
-          checks: [{ id: 'hook_strength', value: 0.4, weight: 18, note: 'hook generico' }]
-        }
-      ],
-      versions: { rules: 1, scorer: 3 }
-    });
-    expect(ok.success).toBe(true);
-    expect(output.safeParse({ ok: true, errors: [], warnings: [], scores: [] }).success).toBe(false);
-  });
-
-  it('leggere un articolo chiede il suo id, e non parte senza', () => {
-    expect(GET_ARTICLE_READ.input.safeParse({ id: 'art-1' }).success).toBe(true);
-    expect(GET_ARTICLE_READ.input.safeParse({}).success).toBe(false);
-  });
-
-  it('update_article dichiara ogni campo che si può scrivere senza un modello', () => {
-    const { input } = byTool('update_article');
-    expect(
-      input.safeParse({
-        id: 'art-1',
-        title: 'Guida',
-        body_md: '# Guida',
-        meta_title: null,
-        meta_description: null,
-        category_id: 'cat-1',
-        author_id: null,
-        tag_ids: ['tag-1'],
-        language: 'it',
-        scheduled_for: null
-      }).success
-    ).toBe(true);
-    expect(input.safeParse({ id: 'art-1', title: '' }).success).toBe(false);
-    expect(input.safeParse({ id: 'art-1', title: 'a'.repeat(201) }).success).toBe(false);
-    expect(input.safeParse({ id: 'art-1', meta_title: 'a'.repeat(71) }).success).toBe(false);
-    expect(input.safeParse({ id: 'art-1', cover_image: 'https://cdn/x.png' }).success).toBe(false);
-  });
-
-  it('un articolo pubblicato non si aggiorna: il rifiuto è un 409, non un 500 muto', () => {
-    const update = byTool('update_article');
-    expect(statusForFailure(update, 'article_published')).toBe(409);
-    expect(statusForFailure(update, 'planned_needs_slot')).toBe(409);
-    expect(statusForFailure(update, 'translation_locked')).toBe(409);
-    expect(statusForFailure(update, 'category_not_found')).toBe(400);
-    expect(statusForFailure(update, 'article_not_found')).toBe(404);
-  });
-
-  it('scrivere un articolo è una POST sull indirizzo dell articolo', () => {
-    expect(byTool('update_article').pathUnderBrand).toBe('/web/article');
-    expect(byTool('update_article').method).toBe('POST');
   });
 
   it('i due link di fatturazione portano a Stripe e non sono distruttivi', () => {
@@ -286,11 +176,11 @@ describe('il registry degli endpoint di brand', () => {
     expect(statusForFailure(byTool('create_checkout_link'), 'no_subscription')).toBe(409);
   });
 
-  it('il checkout accetta un piano opzionale e rifiuta il resto', () => {
+  it('il checkout accetta un gradino della scala opzionale e rifiuta il resto', () => {
     const { input } = byTool('create_checkout_link');
     expect(input.safeParse({}).success).toBe(true);
-    expect(input.safeParse({ plan: 'pro' }).success).toBe(true);
-    expect(input.safeParse({ plan: '' }).success).toBe(false);
+    expect(input.safeParse({ usd: 30 }).success).toBe(true);
+    expect(input.safeParse({ usd: -30 }).success).toBe(false);
     expect(input.safeParse({ coupon: 'FREE' }).success).toBe(false);
   });
 
@@ -308,7 +198,7 @@ describe('il registry degli endpoint di brand', () => {
     expect(byTool('create_checkout_link').output.safeParse({
       ok: true,
       url: 'https://billing.stripe.com/p/session/live_xyz',
-      plans: [{ key: 'pro', label: 'Pro' }]
+      plans: [{ usd: 30, label: '$30/mo' }]
     }).success).toBe(true);
     expect(byTool('create_billing_portal_link').output.safeParse({ ok: true }).success).toBe(false);
   });
@@ -377,18 +267,16 @@ describe('il nome del tool che arriva per intestazione', () => {
  * Il caso pagato: `ads_action` diceva «Read get_ads first» dopo che `get_ads` era uscito dal
  * registro, quindi ogni turno che toccava le ads mandava il modello su un tool inesistente.
  *
- * L'elenco è quello dei dieci ritirati in favore dei quattro generici, non ogni nome che somiglia
+ * L'elenco è quello dei tool ritirati in favore dei quattro generici, non ogni nome che somiglia
  * a un tool: le descrizioni citano anche colonne e rotte, e un estrattore che le confonde con i
  * tool fallisce su tutto tranne che sul difetto.
  */
-describe('nessuna descrizione manda a uno dei dieci tool ritirati', () => {
+describe('nessuna descrizione manda a un tool ritirato', () => {
   const RETIRED = [
     'add_competitor',
-    'add_radar_source',
     'delete_competitor',
     'delete_product',
     'remove_blog_term',
-    'remove_radar_source',
     'get_ads',
     'record_memory_used',
     'discard_plan',

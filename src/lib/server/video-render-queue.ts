@@ -18,6 +18,7 @@ import {
 	type VideoPersistOpts
 } from '$lib/server/video';
 import { withBrandContext, withOrgContext } from '$lib/server/ai-log';
+import { projectIdOfBrand } from '$lib/server/tenancy/brand-slug';
 
 /** Il nome del trasporto nei messaggi di resa: chi apre il registro deve sapere dove guardare. */
 const VIDEO_TRANSPORT = 'openrouter';
@@ -193,7 +194,8 @@ function inPayerScope<T>(row: VideoRenderRow, fn: () => Promise<T>): Promise<T> 
 	return withOrgContext(String(row.org_id), fn);
 }
 
-function rowToSubmitted(row: VideoRenderRow): SubmittedVideoRender {
+/** Esportata: il canvas la riusa per finire un `node_runs` video dalla stessa riga `video_renders`. */
+export function rowToSubmitted(row: VideoRenderRow): SubmittedVideoRender {
 	return {
 		taskId: row.task_id,
 		model: row.model,
@@ -256,34 +258,6 @@ async function applyToLibrary(
 }
 
 /**
- * L'allocazione mensile la consuma un clip che ATTERRA, ovunque atterri — su un post o in
- * libreria. Contarla solo nel ramo del post apriva un arbitraggio: genero in libreria, attacco
- * dopo, e il video non conta mai. Un video è un video.
- *
- * Addebitare all'invio invece — come facevano i chiamanti, perché era lì che un clip esisteva —
- * lascerebbe che dieci render rifiutati si mangino il margine di un mese.
- */
-async function chargeMonthlyVideo(admin: SupabaseClient, row: VideoRenderRow): Promise<void> {
-	// L'allocazione è del PIANO di un brand. Una riga senza brand non ha un piano da consumare: la
-	// paga il saldo crediti dell'organizzazione, che il cancello ha già guardato prima dell'invio.
-	if (!row.brand_id) return;
-
-	try {
-		const { addUsage, monthKey } = await import('$lib/server/usage');
-		const { data: brand } = await admin
-			.from('brands')
-			.select('timezone')
-			.eq('id', row.brand_id)
-			.maybeSingle();
-		await addUsage(admin, row.brand_id, monthKey((brand?.timezone as string) ?? 'Europe/Rome'), {
-			videos: 1
-		});
-	} catch (e) {
-		console.error('[video-render] usage accounting failed:', e);
-	}
-}
-
-/**
  * Dove si reclama un clip atterrato, una riga per padrone. Senza brand non c'è una libreria in cui
  * depositarlo — `brand_media` dice `brand_id in (select auth_brand_ids())`, e `NULL in (…)` vale
  * NULL — quindi il clip si ritrova sulla riga stessa, che `settle` chiude con `media_url`.
@@ -325,66 +299,21 @@ async function landClip(
 }
 
 /**
- * Tell the assistant its clip landed — a real turn, not a canned line written into the transcript
- * as if it had said it. The agent runs with the result in front of it, so it can relate the clip
- * to whatever the user actually asked for and carry on from there.
+ * Dire a chi l'ha chiesto che la clip è arrivata: una push sul post, che è dove la card la mostra.
  */
-async function notifyThread(
-	admin: SupabaseClient,
-	row: VideoRenderRow,
-	outcome: string,
-	origin: string
-) {
-	// Un thread appartiene a un brand: senza brand non c'è una conversazione a cui riportare, e
-	// questo percorso non ne apre una.
+async function notifyThread(admin: SupabaseClient, row: VideoRenderRow, outcome: string) {
 	if (!row.thread_id || !row.brand_id) return;
 	try {
-		const { data: thread } = await admin
-			.from('chat_threads')
-			.select('post_id')
-			.eq('id', row.thread_id)
-			.maybeSingle();
-		const { data: brand } = await admin
-			.from('brands')
-			.select('slug')
-			.eq('id', row.brand_id)
-			.maybeSingle();
-		const slug = (brand?.slug as string) ?? '';
-		const postScoped = !!(thread as { post_id?: string | null } | null)?.post_id;
+		const projectId = await projectIdOfBrand(admin, row.brand_id);
 
-		// A post-scoped editor thread is not a place to run the brand agent: it is a narrow
-		// conversation about one post, hidden from the sidebar, and a queued chat_response there
-		// would drop the full generalist agent into it and link the user to a thread they cannot
-		// find. The card's own chip already reports the render, so the user just gets a push.
-		if (postScoped) {
-			const { sendPushToUser } = await import('$lib/server/web-push');
-			await sendPushToUser(admin, row.user_id, {
-				title: 'Anomalia',
-				body: `Video: ${outcome}`,
-				url: slug && row.post_id ? `/app/${slug}/content/${row.post_id}` : '/',
-				tag: `video-render-${row.id}`,
-				skipIfFocused: true
-			});
-			return;
-		}
-
-		const { enqueueQueuedChatTurn, kickChatQueueWork } = await import('$lib/server/chat/queue');
-		await enqueueQueuedChatTurn(admin, {
-			brandId: row.brand_id,
-			userId: row.user_id,
-			threadId: row.thread_id,
-			userMessage: `[background] The video render you started has finished: ${outcome}. Report it to the user in one short line, referring to what they originally asked for. Do not re-run the render.`,
-			// La nota `[background]` è per il MODELLO: inglese a prescindere. Il locale del job qui
-			// sotto pilota le notice visibili della coda — e nessun profilo reale è in mano a questo
-			// sweep: niente locale significa notice inglesi per tutti (il vecchio hardcoded 'it'
-			// avrebbe parlato italiano con chiunque). La coda rifiuta stringhe vuote: 'en' esplicito.
-			locale: 'en',
-			origin,
-			continuation: true
+		const { sendPushToUser } = await import('$lib/server/web-push');
+		await sendPushToUser(admin, row.user_id, {
+			title: 'feega',
+			body: `Video: ${outcome}`,
+			url: projectId && row.post_id ? `/p/${projectId}/calendar?post=${row.post_id}` : '/',
+			tag: `video-render-${row.id}`,
+			skipIfFocused: true
 		});
-		// Without the kick the reply waits for the */2 drain — minutes of silence after the clip is
-		// already there. The queue picks it up either way; this just makes it prompt.
-		if (origin) void kickChatQueueWork(origin);
 	} catch (e) {
 		console.error('[video-render] thread notify failed:', e);
 	}
@@ -398,11 +327,8 @@ async function notifyThread(
  */
 export async function reconcileVideoRenders(
 	admin: SupabaseClient,
-	opts: { limit?: number; origin?: string } = {}
+	opts: { limit?: number } = {}
 ): Promise<{ checked: number; done: number; failed: number; expired: number }> {
-	// Used to build the links in notifications and to kick the chat queue, so a landed clip is
-	// reported in seconds rather than whenever the */2 drain next runs.
-	const origin = opts.origin ?? '';
 	await releaseStaleClaims(admin);
 
 	const { data: rows } = await admin
@@ -436,7 +362,7 @@ export async function reconcileVideoRenders(
 			}
 			// Told, like every other outcome. This is the slowest one to detect — up to an hour —
 			// so silence here is the longest a user can be left expecting a clip that is not coming.
-			await notifyThread(admin, raw, `it did not complete — ${why}`, origin);
+			await notifyThread(admin, raw, `it did not complete — ${why}`);
 			expired += 1;
 			continue;
 		}
@@ -482,7 +408,7 @@ export async function reconcileVideoRenders(
 						.eq('id', raw.post_id)
 						.then(undefined, () => {});
 				}
-				await notifyThread(admin, raw, `it failed (${outcome.error})`, origin);
+				await notifyThread(admin, raw, `it failed (${outcome.error})`);
 				failed += 1;
 				continue;
 			}
@@ -506,15 +432,13 @@ export async function reconcileVideoRenders(
 					.then(undefined, () => {});
 				continue;
 			}
-			await chargeMonthlyVideo(admin, raw);
 			await settle(admin, raw, { status: 'done', media_url: outcome.url });
 			await notifyThread(
 				admin,
 				raw,
 				raw.post_id
 					? 'the clip is ready and attached to the post'
-					: 'the clip is ready and filed in the media library',
-				origin
+					: 'the clip is ready and filed in the media library'
 			);
 			done += 1;
 		} catch (e) {

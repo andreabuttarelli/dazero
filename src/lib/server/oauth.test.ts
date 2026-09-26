@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { env } from '$env/dynamic/private';
 
 vi.mock('$env/dynamic/public', () => ({
-  env: { PUBLIC_APP_URL: 'https://www.anomalia.so' }
+  env: { PUBLIC_APP_URL: 'https://www.feega.app' }
 }));
 
 // Firmare è fail-closed di proposito: senza `APP_SECRET` nessun token esce. Il segreto se lo dà
@@ -112,13 +112,13 @@ describe('discovery metadata (RFC 8414)', () => {
   };
 
   it('names the host that served the document, apex-free and without trailing slash', async () => {
-    const m = await metadata('https://www.anomalia.so');
-    expect(m.issuer).toBe('https://www.anomalia.so');
+    const m = await metadata('https://www.feega.app');
+    expect(m.issuer).toBe('https://www.feega.app');
     expect(m.issuer).not.toMatch(/\/$/);
   });
 
   it('keeps every endpoint absolute and on the issuer origin', async () => {
-    for (const origin of ['https://www.anomalia.so', 'http://localhost:5173']) {
+    for (const origin of ['https://www.feega.app', 'http://localhost:5173']) {
       const m = await metadata(origin);
       expect(m.issuer).toBe(origin);
       for (const key of ['authorization_endpoint', 'token_endpoint', 'registration_endpoint']) {
@@ -128,7 +128,7 @@ describe('discovery metadata (RFC 8414)', () => {
   });
 
   it('carries what an MCP client needs to start the code+PKCE flow', async () => {
-    const m = await metadata('https://www.anomalia.so');
+    const m = await metadata('https://www.feega.app');
     expect(m.response_types_supported).toContain('code');
     expect(m.code_challenge_methods_supported).toContain('S256');
     expect(m.grant_types_supported).toContain('authorization_code');

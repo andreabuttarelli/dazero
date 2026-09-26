@@ -2,7 +2,7 @@
  * Web MCP — il terzo consumatore del registry.
  *
  * `BRAND_ENDPOINTS` genera gia' i comandi della CLI e i tool del server MCP. Qui genera anche gli
- * strumenti che una pagina espone a un agente che gira NEL browser dell'utente: chi apre Anomalia
+ * strumenti che una pagina espone a un agente che gira NEL browser dell'utente: chi apre feega
  * con un agente nel browser puo' farla lavorare senza passare dal nostro server MCP, e senza una
  * chiave API, perche' la sessione e' gia' quella della persona che sta guardando.
  *
@@ -29,7 +29,7 @@
  * Quando la specifica cambia, cambia questo file: e' l'unico che la conosce.
  */
 
-import { BRAND_ENDPOINTS, RESOURCE_SEGMENT, pathFor, type BrandEndpoint } from '@anomalia/api-contracts';
+import { BRAND_ENDPOINTS, RESOURCE_SEGMENT, pathFor, type BrandEndpoint } from '@feega/api-contracts';
 import { z } from 'zod';
 
 /** La forma che la specifica chiama `ModelContextTool`. */
@@ -60,7 +60,7 @@ const SLUG_PROPERTY = { type: 'string', minLength: 1, description: 'Brand URL sl
  * insieme piu' largo. Marcarne uno di troppo non costa niente; marcarne uno di meno toglie
  * all'agente un avviso che avrebbe dovuto vedere.
  */
-function annotationsFor(endpoint: BrandEndpoint) {
+export function annotationsFor(endpoint: BrandEndpoint) {
   return {
     readOnlyHint: endpoint.method === 'GET',
     consequentialHint: endpoint.destructive,
@@ -68,7 +68,7 @@ function annotationsFor(endpoint: BrandEndpoint) {
   };
 }
 
-function inputSchemaFor(endpoint: BrandEndpoint): Record<string, unknown> {
+export function inputSchemaFor(endpoint: BrandEndpoint): Record<string, unknown> {
   const base = z.toJSONSchema(endpoint.input, { io: 'input' }) as {
     properties?: Record<string, unknown>;
     required?: string[];
@@ -90,7 +90,7 @@ function inputSchemaFor(endpoint: BrandEndpoint): Record<string, unknown> {
  */
 const envelope = (value: unknown) => ({ content: [{ type: 'text', text: JSON.stringify(value) }] });
 
-async function callApi(
+export async function callApi(
   endpoint: BrandEndpoint,
   token: string,
   input: Record<string, unknown>,

@@ -1,8 +1,8 @@
 /**
  * posts.design — the curated wall of social post design, read at runtime by the Motion Video agent.
  *
- * WHY THIS SOURCE AND NOT THE MARKET HARVEST. `market-trends.ts` discovers Instagram Reels and
- * TikToks: UGC, filmed, sound-on. Nothing we generate looks like that — Motion Video makes Remotion
+ * WHY THIS SOURCE AND NOT SCRAPED SOCIAL TRENDS. Instagram Reels and TikToks are UGC: filmed,
+ * sound-on. Nothing we generate looks like that — Motion Video makes Remotion
  * kinetic ads, and the corpus for THAT craft is the launch/announcement post: a card, a screen
  * recording of a product, type in motion, six seconds, no face. posts.design is a hand-curated wall
  * of exactly those, from the accounts that set the bar (Cursor, Cerebras, Vercel, Replit, Nothing).
@@ -24,7 +24,7 @@
  * express Art. 4 reservation under Directive (EU) 2019/790. And the posts are not theirs: they are
  * third-party brands' work, curated. So:
  *   - nothing here is training data, ever — the clip is watched once and dropped;
- *   - nothing here is stored as media (`market-media.ts` archives clips; this deliberately does not);
+ *   - nothing here is stored as media: the clip is never archived;
  *   - no posts.design URL is handed to the model, so none can end up hot-linked inside a rendered
  *     MP4 the brand publishes (`assertNoReferenceHotlinks` in motion-video/agent.ts enforces it);
  *   - what survives a lookup is a TEXT spec — beats, timing, transition kind, type density — plus
@@ -43,7 +43,7 @@ export const POSTS_DESIGN_ORIGIN = 'https://posts.design';
  * crawler and not a training-set collector. An anonymous UA on a site that names AI crawlers in its
  * robots.txt would be the wrong way to arrive.
  */
-export const POSTS_DESIGN_UA = `AnomaliaMotionReference/1.0 (+${env.CRAWLER_CONTACT_URL || 'https://anomalia.so'}; on-demand design reference lookup; no training, no storage)`;
+export const POSTS_DESIGN_UA = `feegaMotionReference/1.0 (+${env.CRAWLER_CONTACT_URL || 'https://feega.app'}; on-demand design reference lookup; no training, no storage)`;
 
 /** Index TTL. The wall adds a handful of posts a day — an hour is fresh enough for a creative turn. */
 const INDEX_TTL_MS = 60 * 60 * 1000;

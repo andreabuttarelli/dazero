@@ -28,6 +28,7 @@
 
 /** Cosa una cosa È. I tre primitivi, e nient'altro. */
 import { videoRefCapacity } from '$lib/video-models';
+import { imageModelSpec } from '$lib/image-models';
 
 export const MEDIUMS = ['text', 'image', 'video'] as const;
 export type Medium = (typeof MEDIUMS)[number];
@@ -45,7 +46,10 @@ export const NODE_KINDS = [
   'media',
   'document',
   'memory',
-  'iframe'
+  'iframe',
+  'list',
+  'effects',
+  'composition'
 ] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
@@ -69,17 +73,25 @@ type NodeSpec = {
   accepts: readonly Medium[];
   /** Quelli senza cui non si può eseguire. Il resto è facoltativo. */
   requires: readonly Medium[];
+  requiresOneOf?: readonly Medium[];
 };
 
 export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
-  // Un testo si scrive, non si genera da altro: è il punto di partenza di ogni catena.
-  text: { medium: 'text', generated: false, accepts: [], requires: [] },
-  // Un'immagine nasce da un prompt. Un'altra immagine come riferimento è un'altra funzione
-  // (`refine_media`), che entrerà quando il nodo saprà distinguerla da un prompt.
-  image: { medium: 'image', generated: true, accepts: ['text'], requires: ['text'] },
-  // Un video nasce dal prompt, e un'immagine è il fotogramma di partenza: facoltativa, perché il
-  // prodotto sa girare una clip dal solo testo e chiederla bloccherebbe quel percorso.
-  video: { medium: 'video', generated: true, accepts: ['text', 'image'], requires: ['text'] },
+  // Un testo si scrive, ma si genera anche da un altro testo — quello a monte è il prompt quando
+  // il nodo non ne ha ancora uno suo. Nessun ingresso è richiesto: il punto di partenza di ogni
+  // catena resta un testo mai collegato a niente, con il prompt scritto a mano. Immagine e video
+  // sono riferimenti facoltativi, come per un nodo immagine: se il modello scelto non li legge, è
+  // `connectorsForNode`/`portAccepts` (`connectors.ts`) a non disegnare la porta — l'arco QUI non
+  // sa ancora quale modello il nodo userà.
+  text: { medium: 'text', generated: true, accepts: ['text', 'image', 'video'], requires: [] },
+  // Un'immagine nasce da un prompt, e un'altra immagine collegata è il riferimento da riprodurre
+  // fedelmente (`ImageJob.baseMediaId`) — non un prompt in più, quindi resta facoltativa.
+  image: { medium: 'image', generated: true, accepts: ['text', 'image'], requires: ['text'] },
+  // Un video nasce dal prompt; un'immagine e un altro video sono riferimenti facoltativi — il
+  // prodotto sa girare una clip dal solo testo, e chiederli bloccherebbe quel percorso. Un video
+  // collegato è un riferimento multimodale (`referenceVideoUrls`), non un fotogramma: quello è
+  // ciò che una MANIGLIA esplicita dice, non ciò che ogni immagine porta di default.
+  video: { medium: 'video', generated: true, accepts: ['text', 'image', 'video'], requires: ['text'] },
   // Un post è un contenitore: prende ciò che gli si dà, e il suo medium lo porta il contenuto.
   post: { medium: null, generated: true, accepts: ['text', 'image', 'video'], requires: ['text'] },
   // Le tre righe che esistono già nel database. Niente le genera: sono sorgenti.
@@ -90,7 +102,15 @@ export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
   // È testo perché quel che se ne può usare a valle è quel che c'è scritto — «riassumi questa
   // pagina», «fai un'immagine ispirata a questa» sono le catene che la rendono utile. L'immagine
   // che il sito mostra non è sua: è del sito, e non c'è un file da passare a valle.
-  iframe: { medium: 'text', generated: false, accepts: [], requires: [] }
+  iframe: { medium: 'text', generated: false, accepts: [], requires: [] },
+  // Una lista raccoglie immagini o testo dai nodi collegati. Quale dei due lo decide la sua porta
+  // (`list-node.ts::listConnectors`), non questa riga: qui non si sa ancora cosa contiene.
+  list: { medium: null, generated: true, accepts: ['text', 'image'], requires: [] },
+  // Un nodo `effects` applica una pila di filtri a un solo media e ne conserva il tipo.
+  effects: { medium: null, generated: true, accepts: ['image', 'video'], requires: [], requiresOneOf: ['image', 'video'] },
+  // Un nodo `composition` compone più immagini in una scena 3D animata: produce un video (fase 3),
+  // richiede almeno un'immagine collegata — senza materiale la scena non ha cosa mostrare.
+  composition: { medium: 'video', generated: true, accepts: ['image'], requires: ['image'] }
 };
 
 /** Da `posts.content_type` al medium: è il ruolo che porta dentro il medium, e qui si separano. */
@@ -104,6 +124,7 @@ function mediumFromContentType(contentType: string | null | undefined): Medium {
 /** Cosa questo nodo È. */
 export function mediumOf(node: CanvasNode): Medium {
   const spec = CANVAS_NODE_SPECS[node.kind];
+  if (node.kind === 'effects') return node.mediaKind === 'video' ? 'video' : 'image';
   if (spec?.medium) return spec.medium;
   if (node.kind === 'media') return node.mediaKind === 'video' ? 'video' : 'image';
   if (node.kind === 'post') return mediumFromContentType(node.contentType);
@@ -141,6 +162,9 @@ export function missingInputs(node: CanvasNode, incoming: CanvasNode[]): Medium[
   const spec = CANVAS_NODE_SPECS[node.kind];
   if (!spec?.generated) return [];
   const have = new Set(incoming.map(mediumOf));
+  if (spec.requiresOneOf && !spec.requiresOneOf.some((medium) => have.has(medium))) {
+    return [spec.requiresOneOf[0]];
+  }
   return spec.requires.filter((m) => !have.has(m));
 }
 
@@ -185,6 +209,11 @@ export function acceptedInputs(node: CanvasNode, incoming: CanvasNode[]): InputV
       why ??= `un ${ITALIAN[medium]} non alimenta questo nodo`;
       continue;
     }
+    if (node.kind === 'effects' && accepted.length > 0) {
+      rejected.push(source);
+      why ??= 'un nodo effetti prende un solo media';
+      continue;
+    }
     if (used[medium] >= room) {
       rejected.push(source);
       why ??=
@@ -201,18 +230,23 @@ export function acceptedInputs(node: CanvasNode, incoming: CanvasNode[]): InputV
 
 /** Quanti ingressi per medium: dal modello quando c'è, altrimenti uno per tipo. */
 function capacityOf(node: CanvasNode): Record<Medium, number> {
+  if (node.kind === 'effects') return { text: 0, image: 1, video: 1 };
   if (node.kind === 'video') {
     const caps = videoRefCapacity(node.model);
     // Il prompt è sempre uno: due prompt sono due video, non un video con due prompt.
     //
-    // Sulle immagini vale il tetto del modello e basta. Il primo fotogramma NON si somma qui: il
-    // renderer lo passa per conto suo (`imageUrl`) ed è la prima delle immagini collegate, non una
-    // in più — sommarlo darebbe un limite che il provider poi rifiuta, cioè la peggiore delle
-    // bugie, quella scoperta dopo aver speso. Un modello senza riferimenti tiene comunque quel
-    // fotogramma: è il caso `Math.max(caps.images, 1)`.
+    // Sulle immagini vale il tetto del modello — che sia un fotogramma su una maniglia esplicita
+    // o un riferimento multimodale, entrambi arrivano come immagini collegate a questo nodo, e il
+    // tetto del provider è sullo STESSO campo (`frame_images` + `input_references` condividono il
+    // conto in `video.ts`). Un modello senza riferimenti multimodali tiene comunque un'immagine:
+    // il fotogramma iniziale resta possibile ovunque, è il caso `Math.max(caps.images, 1)`.
     return { text: 1, image: Math.max(caps.images, 1), video: caps.videos };
   }
   // Un post raccoglie ciò che gli si dà: è un contenitore, non un modello con i suoi limiti.
   if (node.kind === 'post') return { text: 1, image: 20, video: 5 };
+  // Un'immagine di riferimento è quante il MODELLO scelto ne accetta davvero (`maxRefs`, da 3 a
+  // 16): un tetto uguale per tutti mentirebbe agli stessi due versi di `video`. Senza un modello
+  // noto resta 1 — il caso oggi eseguito (`baseMediaId`), mai un numero inventato.
+  if (node.kind === 'image') return { text: 1, image: imageModelSpec(node.model)?.maxRefs ?? 1, video: 0 };
   return { text: 1, image: 1, video: 0 };
 }

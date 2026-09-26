@@ -31,7 +31,8 @@ import { logAiCall } from '$lib/server/ai-log';
 import {
   imageModelSpec,
   openrouterImagesAspectRatio,
-  openrouterImagesSize
+  openrouterImagesSize,
+  IMAGE_REFS_BUDGET
 } from '$lib/image-models';
 import type { GeminiImageRequest } from '$lib/server/image-request';
 
@@ -88,17 +89,17 @@ export async function generateImageOnOpenrouterImages(
   if (!key) throw new Error('OPENROUTER_API_KEY assente: questo render non ha un trasporto');
 
   const spec = imageModelSpec(req.model);
-  const model = spec?.openrouterImages;
-  if (!model) {
-    throw new Error(
-      `${req.model} non è servito dall'API immagini di OpenRouter: questa rotta non lo sa disegnare`
-    );
-  }
+  // Un id sincronizzato da OpenRouter ma senza una riga nostra in image-models.ts (nessuna
+  // famiglia integrata a mano — `offerableModels` lo offre comunque, vedi CLAUDE.md "l'app
+  // comanda") non è "un altro nome" da tradurre: è già l'id sul filo, passato così com'è.
+  const model = spec?.openrouterImages ?? req.model;
 
   const label = opts.label ?? 'renderPostImage';
   const parts = req.contents?.[0]?.parts ?? [];
   const aspectRatio = req.config?.imageConfig?.aspectRatio;
-  const references = referencesOf(parts, spec.maxRefs);
+  const resolution = req.config?.imageConfig?.resolution;
+  const params = req.config?.imageConfig?.params ?? {};
+  const references = referencesOf(parts, spec?.maxRefs ?? IMAGE_REFS_BUDGET);
   const t0 = Date.now();
 
   // Il rapporto per NOME quando quel nome esiste, in pixel quando no: sono le due strade e non c'è
@@ -112,7 +113,9 @@ export async function generateImageOnOpenrouterImages(
     prompt: promptOf(parts).slice(0, 10_000),
     ...(byName ? { aspect_ratio: byName } : {}),
     ...(bySize ? { size: bySize } : {}),
-    ...(references.length ? { input_references: references } : {})
+    ...(resolution ? { resolution } : {}),
+    ...(references.length ? { input_references: references } : {}),
+    ...params
   };
 
   const fail = (error: string): never => {

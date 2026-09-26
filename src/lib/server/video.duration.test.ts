@@ -36,9 +36,11 @@ describe('la durata chiesta', () => {
     expect(clampVideoDuration('non un numero', 'bytedance/seedance-2-5')).toBe(DEFAULT_VIDEO_DURATION);
   });
 
-  it('i gradini di Settings restano quelli, che e un altra cosa', () => {
-    // La tendina offre 10/13/15/…: e' una scelta di interfaccia, non un pavimento. Chi passa dalla
-    // API puo' chiedere 5; chi sceglie da un menu sceglie fra i gradini.
-    expect(videoDurationOptions('grok-imagine/text-to-video')).toContain(10);
+  it('la tendina offre ogni secondo nella finestra del modello, non un pavimento', () => {
+    // Un intervallo continuo (Grok qui: 1..15) non e' un gradino ogni tot secondi: e' ogni intero
+    // che il provider accetta davvero, dal minimo del modello al suo tetto.
+    expect(videoDurationOptions('grok-imagine/text-to-video')).toEqual(
+      Array.from({ length: 15 }, (_, i) => i + 1)
+    );
   });
 });

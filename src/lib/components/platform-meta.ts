@@ -19,7 +19,7 @@ export const PLATFORM_META: Record<string, PlatformInfo> = {
   reddit: { label: 'Reddit', short: 'RD', bg: '#ff4500', icon: siReddit }
 };
 
-// The platforms Anomalia operates on, in display order — the single source for every selection surface
+// The platforms feega operates on, in display order — the single source for every selection surface
 // (onboarding, settings, studio). twitter is a legacy alias for x.
 // YouTube is one channel: Shorts vs long-form is auto-detected by YouTube (≤3 min + 9:16 → Short).
 export const PLATFORM_KEYS = ['instagram', 'tiktok', 'facebook', 'linkedin', 'x', 'threads', 'youtube', 'bluesky', 'reddit'];

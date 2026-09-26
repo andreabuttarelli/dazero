@@ -3,7 +3,8 @@ import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
 import { appOrigin } from '$lib/server/app-url';
 import { managePath, socialConnections } from '$lib/server/social-connections';
-import { TARGET_PLATFORMS } from '@anomalia/api-contracts';
+import { projectIdOfBrand } from '$lib/server/tenancy/brand-slug';
+import { TARGET_PLATFORMS } from '@feega/api-contracts';
 
 /**
  * Su cosa questo brand pubblica davvero. `get_brand_settings` porta lo stesso elenco di
@@ -23,6 +24,7 @@ export const GET: RequestHandler = async ({ request, params, url }) => {
   if (brandError) return brandError;
 
   const state = await socialConnections(supabase, brand);
+  const projectId = await projectIdOfBrand(supabase, brand.id);
 
   return json({
     brand: brand.slug,
@@ -32,6 +34,6 @@ export const GET: RequestHandler = async ({ request, params, url }) => {
     platform_choices: [...TARGET_PLATFORMS],
     can_connect: state.canConnect,
     slots: state.slots,
-    manage_url: `${appOrigin(url)}${managePath(brand.slug)}`
+    manage_url: projectId ? `${appOrigin(url)}${managePath(projectId)}` : null
   });
 };

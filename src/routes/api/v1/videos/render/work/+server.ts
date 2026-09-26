@@ -13,9 +13,7 @@ type Platform = { context?: { waitUntil?: (p: Promise<unknown>) => void } } | un
 
 const run = (request: Request, platform: Platform) => {
   if (!cronAuthorized(request)) return json({ error: 'Unauthorized' }, { status: 401 });
-  const work = reconcileVideoRenders(createAdminClient(), {
-    origin: new URL(request.url).origin
-  }).catch((e) => {
+  const work = reconcileVideoRenders(createAdminClient()).catch((e) => {
     console.error('[video-render] tick failed', e);
     return { checked: 0, done: 0, failed: 0, expired: 0 };
   });

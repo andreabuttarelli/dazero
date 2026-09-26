@@ -1,41 +1,51 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ACCOUNT_SEAT_CREDITS } from '$lib/server/credit-ladder';
 
 vi.mock('$lib/server/cli-auth', () => ({
   authenticate: vi.fn(),
   loadBrandForUser: vi.fn()
 }));
-vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://anomalia.test' }));
+vi.mock('$lib/server/app-url', () => ({ appOrigin: () => 'https://feega.test' }));
 
 import { GET } from './+server';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
 
 type Row = Record<string, unknown>;
 
-function fakeSupabase(accounts: Row[]) {
-  const q = {
-    select: () => q,
-    eq: () => q,
+function fakeSupabase(accounts: Row[], balance: number) {
+  const socialQ = {
+    select: () => socialQ,
+    eq: () => socialQ,
     order: async () => ({ data: accounts })
   };
-  return { from: () => q };
+  const projectQ = {
+    select: () => projectQ,
+    eq: () => projectQ,
+    is: () => projectQ,
+    order: () => projectQ,
+    limit: async () => ({ data: [{ id: 'project-1' }] })
+  };
+  return {
+    from: (table: string) => (table === 'projects' ? projectQ : socialQ),
+    rpc: async () => ({ data: balance, error: null })
+  };
 }
 
-const BRAND = { id: 'brand-1', slug: 'demo', plan: 'pro', status: 'active' };
+const BRAND = { id: 'brand-1', org_id: 'org-1', slug: 'demo' };
 
 const IG = {
   platform: 'Instagram',
-  username: 'demo.brand',
+  handle: 'demo.brand',
   display_name: 'Demo Brand',
-  profile_url: 'https://instagram.com/demo.brand',
   status: 'active',
   connected_at: '2026-08-01T10:00:00.000Z'
 };
 
-const url = 'https://anomalia.test/api/v1/brands/demo/social/accounts';
+const url = 'https://feega.test/api/v1/brands/demo/social/accounts';
 
-const read = (accounts: Row[] = [IG], brand: Row = BRAND) => {
+const read = (accounts: Row[] = [IG], brand: Row = BRAND, balance = ACCOUNT_SEAT_CREDITS) => {
   vi.mocked(authenticate).mockResolvedValue({
-    supabase: fakeSupabase(accounts),
+    supabase: fakeSupabase(accounts, balance),
     apiKey: undefined,
     error: null
   } as never);
@@ -59,7 +69,7 @@ describe('GET /api/v1/brands/:slug/social/accounts', () => {
         platform: 'instagram',
         username: 'demo.brand',
         display_name: 'Demo Brand',
-        profile_url: 'https://instagram.com/demo.brand',
+        profile_url: null,
         status: 'active',
         connected_at: '2026-08-01T10:00:00.000Z'
       }
@@ -77,22 +87,22 @@ describe('GET /api/v1/brands/:slug/social/accounts', () => {
 
   it('non chiama rotta una piattaforma che ha anche un solo account vivo', async () => {
     const { body } = await read([
-      { ...IG, status: 'disconnected', username: 'vecchio' },
-      { ...IG, username: 'nuovo' }
+      { ...IG, status: 'disconnected', handle: 'vecchio' },
+      { ...IG, handle: 'nuovo' }
     ]);
 
     expect(body.connected_platforms).toEqual(['instagram']);
     expect(body.broken_platforms).toEqual([]);
   });
 
-  it('dice che un piano free non collega niente, prima che qualcuno provi', async () => {
-    const { body } = await read([], { ...BRAND, plan: null, status: 'trial' });
+  it("dice che senza crediti per il canone l'org non collega niente", async () => {
+    const { body } = await read([], BRAND, ACCOUNT_SEAT_CREDITS - 1);
 
     expect(body.can_connect).toBe(false);
     expect(body.slots).toEqual({ used: 0, limit: 0 });
   });
 
-  it('conta solo gli account attivi contro il tetto del piano', async () => {
+  it('conta solo gli account attivi contro quanti l\'org può sostenere col saldo che ha', async () => {
     const { body } = await read([IG, { ...IG, platform: 'tiktok', status: 'disconnected' }]);
 
     expect(body.slots.used).toBe(1);
@@ -104,7 +114,7 @@ describe('GET /api/v1/brands/:slug/social/accounts', () => {
 
     expect(body.platform_choices).toContain('linkedin');
     expect(body.manage_url).toBe(
-      'https://anomalia.test/app/demo/settings/connected-accounts'
+      'https://feega.test/p/project-1/settings/connected-accounts'
     );
   });
 
@@ -119,7 +129,7 @@ describe('GET /api/v1/brands/:slug/social/accounts', () => {
   });
 
   it('risponde esattamente quello che il contratto dichiara, niente di più', async () => {
-    const { LIST_SOCIAL_ACCOUNTS_READ } = await import('@anomalia/api-contracts');
+    const { LIST_SOCIAL_ACCOUNTS_READ } = await import('@feega/api-contracts');
     const { body } = await read();
 
     expect(LIST_SOCIAL_ACCOUNTS_READ.output.strict().safeParse(body).success).toBe(true);

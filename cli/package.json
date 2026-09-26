@@ -1,25 +1,25 @@
 {
-  "name": "anomalia-cli",
+  "name": "feega-cli",
   "version": "0.1.0",
-  "description": "Command-line client for Anomalia — the social media AI autopilot.",
+  "description": "Command-line client for feega — the social media AI autopilot.",
   "license": "Apache-2.0",
   "author": "Andrea Buttarelli",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anomaliaso/anomalia.git",
+    "url": "git+https://github.com/andreabuttarelli/feega.git",
     "directory": "cli"
   },
-  "homepage": "https://anomalia.so",
+  "homepage": "https://feega.app",
   "bugs": {
-    "url": "https://github.com/anomaliaso/anomalia/issues"
+    "url": "https://github.com/andreabuttarelli/feega/issues"
   },
   "type": "module",
   "bin": {
-    "anomalia": "./cli.ts",
-    "anomalia-mcp": "./mcp/stdio.ts"
+    "feega": "./cli.ts",
+    "feega-mcp": "./mcp/stdio.ts"
   },
   "keywords": [
-    "anomalia",
+    "feega",
     "cli",
     "social-media",
     "mcp",

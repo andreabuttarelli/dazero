@@ -9,7 +9,7 @@ const run = (t: Tool, args: unknown) =>
 /**
  * Il contratto di questo modulo è uno solo: quello che il server MCP dichiara a runtime diventa
  * quello che il modello può chiamare, senza un elenco scritto a mano da nessuna parte. Un tool
- * aggiunto su mcp.anomalia.so deve comparire qui senza toccare questo repo — per questo il
+ * aggiunto su mcp.feega.app deve comparire qui senza toccare questo repo — per questo il
  * modulo non conosce NESSUN nome di tool.
  */
 describe('toAiTools — i tool del brand vengono dal server, non da una lista qui', () => {

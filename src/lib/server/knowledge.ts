@@ -467,7 +467,7 @@ export async function htmlToMarkdown(html: string): Promise<string> {
 
 async function htmlFromUrl(url: string): Promise<{ markdown: string; title?: string }> {
   const res = await fetch(url, {
-    headers: { 'user-agent': 'AnomaliaKnowledge/1.0' },
+    headers: { 'user-agent': 'feegaKnowledge/1.0' },
     signal: AbortSignal.timeout(20_000)
   });
   if (!res.ok) throw new Error(`Failed to fetch URL (${res.status})`);
@@ -998,11 +998,10 @@ async function extractEntityEdges(
   chunkRows: { id: string }[]
 ): Promise<void> {
   if (!chunkRows.length) return;
-  const [{ data: products }, { data: competitors }, { data: people }, { data: rubrics }, { data: chunks }] =
+  const [{ data: products }, { data: competitors }, { data: rubrics }, { data: chunks }] =
     await Promise.all([
       supabase.from('products').select('id, title').eq('brand_id', brandId).limit(80),
       supabase.from('competitors').select('id, name').eq('brand_id', brandId).limit(80),
-      supabase.from('people').select('id, name').eq('brand_id', brandId).limit(80),
       // 'active' non esiste tra gli status di `rubrics`: questa riga — che alimenta il CONTESTO
       // dell'agente — tornava vuota per ogni brand, quindi l'agente non ha mai visto una rubrica.
       supabase.from('rubrics').select('id, name').eq('brand_id', brandId).eq('status', 'approved').limit(40),
@@ -1017,13 +1016,11 @@ async function extractEntityEdges(
   const catalog = {
     products: (products ?? []).map((p) => ({ id: p.id, name: p.title })),
     competitors: (competitors ?? []).map((c) => ({ id: c.id, name: c.name })),
-    people: (people ?? []).map((p) => ({ id: p.id, name: p.name })),
     rubrics: (rubrics ?? []).map((r) => ({ id: r.id, name: r.name }))
   };
   if (
     !catalog.products.length &&
     !catalog.competitors.length &&
-    !catalog.people.length &&
     !catalog.rubrics.length
   ) {
     return;

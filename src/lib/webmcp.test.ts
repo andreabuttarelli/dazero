@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { BLOG_FONTS, BRAND_ENDPOINTS } from '@anomalia/api-contracts';
-import { brandWebMcpTools, modelContext, registerBrandWebMcp } from './webmcp';
+import { z } from 'zod';
+import { BRAND_ENDPOINTS, MEDIA_MODEL_SLOT_IDS, type BrandEndpoint } from '@feega/api-contracts';
+import { annotationsFor, brandWebMcpTools, callApi, inputSchemaFor, modelContext, registerBrandWebMcp } from './webmcp';
 
 const TOKEN = 'eyJ-fake-session-token';
 const tools = () => brandWebMcpTools('demo', TOKEN);
@@ -9,6 +10,37 @@ const byName = (name: string) => {
   if (!tool) throw new Error(`${name} non generato`);
   return tool;
 };
+
+/**
+ * Nessun endpoint reale porta oggi `resource` o `openWorld`: i test sotto verificano che
+ * `webmcp.ts` sappia comunque generare i due casi, non che il registry ne contenga uno adesso.
+ * Un fixture locale prova il meccanismo senza dipendere da quale contratto capita di esistere.
+ */
+const RESOURCE_FIXTURE = {
+  tool: 'fixture_resource_tool',
+  title: 'Fixture',
+  description: 'Fixture per un endpoint su risorsa',
+  method: 'POST',
+  pathUnderBrand: '/fixture/:id',
+  resource: 'post',
+  input: z.object({}).strict(),
+  output: z.object({ ok: z.literal(true) }),
+  failures: [],
+  destructive: false
+} satisfies BrandEndpoint;
+
+const OPEN_WORLD_FIXTURE = {
+  tool: 'fixture_open_world_tool',
+  title: 'Fixture',
+  description: 'Fixture per un endpoint openWorld',
+  method: 'GET',
+  pathUnderBrand: '/fixture-open-world',
+  input: z.object({}).strict(),
+  output: z.object({ ok: z.literal(true) }),
+  failures: [],
+  destructive: false,
+  openWorld: true
+} satisfies BrandEndpoint;
 
 describe('il registry alimenta anche Web MCP', () => {
   it('genera uno strumento per ogni endpoint, senza elenchi a mano', () => {
@@ -36,9 +68,7 @@ describe('il registry alimenta anche Web MCP', () => {
   });
 
   it('uno strumento su una risorsa chiede anche il suo id', () => {
-    const resourceEndpoint = BRAND_ENDPOINTS.find((e) => e.resource !== undefined);
-    if (!resourceEndpoint) throw new Error('il registry non ha piu’ endpoint su risorsa');
-    const schema = byName(resourceEndpoint.tool).inputSchema as {
+    const schema = inputSchemaFor(RESOURCE_FIXTURE) as {
       properties: Record<string, unknown>;
       required: string[];
     };
@@ -48,12 +78,12 @@ describe('il registry alimenta anche Web MCP', () => {
 
   it('lo schema di ingresso arriva dal contratto, non riscritto a mano', () => {
     // Un enum chiuso del contratto deve arrivare CHIUSO fino all'agente: se lo schema fosse
-    // riscritto a mano, `font` diventerebbe una stringa libera e il primo valore inventato
+    // riscritto a mano, `slot` diventerebbe una stringa libera e il primo valore inventato
     // arriverebbe fino alla rotta.
-    const schema = byName('set_blog_settings').inputSchema as {
-      properties: { font?: { enum?: string[] } };
+    const schema = byName('set_media_model').inputSchema as {
+      properties: { slot?: { enum?: string[] } };
     };
-    expect(schema.properties.font?.enum).toEqual([...BLOG_FONTS]);
+    expect(schema.properties.slot?.enum).toEqual([...MEDIA_MODEL_SLOT_IDS]);
   });
 });
 
@@ -65,7 +95,7 @@ describe('il registry alimenta anche Web MCP', () => {
 describe('le annotazioni dicono la verita’ nel vocabolario giusto', () => {
   it('una lettura e’ readOnly, una scrittura no', () => {
     expect(byName('get_media_models').annotations.readOnlyHint).toBe(true);
-    expect(byName('set_blog_settings').annotations.readOnlyHint).toBe(false);
+    expect(byName('set_media_model').annotations.readOnlyHint).toBe(false);
   });
 
   it('cio’ che il registry chiama distruttivo diventa consequentialHint, non destructiveHint', () => {
@@ -78,9 +108,7 @@ describe('le annotazioni dicono la verita’ nel vocabolario giusto', () => {
   });
 
   it('cio’ che esce su internet e’ marcato come contenuto di cui non rispondiamo', () => {
-    const openWorld = BRAND_ENDPOINTS.find((e) => e.openWorld === true);
-    if (!openWorld) throw new Error('il registry non ha piu’ endpoint openWorld');
-    expect(byName(openWorld.tool).annotations.untrustedContentHint).toBe(true);
+    expect(annotationsFor(OPEN_WORLD_FIXTURE).untrustedContentHint).toBe(true);
     expect(byName('get_media_models').annotations.untrustedContentHint).toBe(false);
   });
 });
@@ -119,17 +147,14 @@ describe('quello che l’esecuzione manda davvero in rete', () => {
   });
 
   it('lo slug lo mette il registratore, non chi chiama lo strumento', async () => {
-    await byName('set_blog_settings').execute({ title: 'Il blog' });
+    await byName('set_media_model').execute({ slot: 'imageModel', model: 'x' });
     const [path, init] = fetchMock.mock.calls[0];
-    expect(path).toBe('/api/v1/brands/demo/settings/blog');
-    expect(JSON.parse(init.body)).toEqual({ title: 'Il blog' });
+    expect(path).toBe('/api/v1/brands/demo/settings/models');
+    expect(JSON.parse(init.body)).toEqual({ slot: 'imageModel', model: 'x' });
   });
 
   it('un id di risorsa entra nel percorso, non nel corpo', async () => {
-    const resource = BRAND_ENDPOINTS.find((e) => e.resource !== undefined);
-    if (!resource) throw new Error('il registry non ha piu’ endpoint su risorsa');
-
-    await byName(resource.tool).execute({ id: 'risorsa-1' });
+    await callApi(RESOURCE_FIXTURE, TOKEN, { slug: 'demo', id: 'risorsa-1' });
     const [path, init] = fetchMock.mock.calls[0];
     expect(path).toContain('risorsa-1');
     expect(init.body ?? '').not.toContain('risorsa-1');
@@ -137,7 +162,7 @@ describe('quello che l’esecuzione manda davvero in rete', () => {
 
   it('un errore dell’API diventa un errore, non un successo silenzioso', async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 403, json: async () => ({ error: 'API key is read-only' }) });
-    await expect(byName('set_blog_settings').execute({ title: 'x' })).rejects.toThrow(/403/);
+    await expect(byName('set_media_model').execute({ slot: 'imageModel', model: 'x' })).rejects.toThrow(/403/);
   });
 
   it('il risultato viaggia nella busta che i client si aspettano', async () => {

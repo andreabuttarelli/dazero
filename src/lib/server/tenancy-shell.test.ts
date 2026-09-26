@@ -37,13 +37,14 @@ describe('il guscio multi-brand risponde a una domanda sola', () => {
 describe('le route del guscio leggono la stessa dichiarazione, non una copia', () => {
 	it('il codice del guscio importa da tenancy.ts e non rilegge la variabile per conto suo', async () => {
 		const { readFileSync } = await import('node:fs');
+		// `/app` e l'onboarding non sono più in lista: il primo è diventato l'ingresso al nuovo
+		// schema — org, progetto, tela — e non nomina nessun brand; il secondo non esiste più,
+		// perché entrare non chiede niente a nessuno. `TENANT_BRAND_ID` punta a una riga `brands`,
+		// quindi riguarda solo ciò che parla ancora di brand.
 		const sorgenti = [
-			'src/routes/app/+page.server.ts',
-			'src/routes/app/[brand]/settings/team/+page.server.ts',
-			'src/routes/app/[brand]/settings/danger/+page.server.ts',
-			'src/lib/server/settings-actions.ts',
-			'src/routes/app/onboarding/+page.server.ts',
-			'src/lib/server/tenant.ts'
+			'src/routes/p/[projectId]/settings/team/+page.server.ts',
+			'src/routes/p/[projectId]/settings/danger/+page.server.ts',
+			'src/lib/server/settings-actions.ts'
 		];
 		for (const f of sorgenti) {
 			const src = readFileSync(f, 'utf8');

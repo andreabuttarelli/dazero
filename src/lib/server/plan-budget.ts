@@ -15,8 +15,7 @@
  * `cost_usd`): usare l'euro darebbe un budget più stretto a parità di margine dichiarato.
  */
 import { PLANS } from '$lib/plans';
-
-const CREDITS_PER_USD = 100;
+import { CREDITS_PER_USD_GRANT } from '$lib/server/credit-ladder';
 
 /** Quanto del prezzo NON va in produzione. Go tiene meno margine: è il piano d'ingresso. */
 export const PRODUCTION_MARGIN = { standard: 0.5, go: 0.4 } as const;
@@ -28,7 +27,7 @@ export function marginFor(plan: string | null | undefined): number {
 export function productionCredits(plan: string | null | undefined): number {
   const entry = PLANS.find((p) => p.key === plan);
   if (!entry) return 0;
-  return Math.round(entry.mUsd * (1 - marginFor(plan)) * CREDITS_PER_USD);
+  return Math.round(entry.mUsd * (1 - marginFor(plan)) * CREDITS_PER_USD_GRANT);
 }
 
 /**

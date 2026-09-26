@@ -110,9 +110,7 @@ if (!dev && typeof window !== 'undefined') {
     path === '/app' ||
     path.startsWith('/app/') ||
     path === '/login' ||
-    path.startsWith('/login') ||
-    path === '/start' ||
-    path.startsWith('/start/');
+    path.startsWith('/login');
 
   if (isApp) whenIdle(() => void bootSentry(), 3000);
 

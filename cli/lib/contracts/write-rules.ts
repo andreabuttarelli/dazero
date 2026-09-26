@@ -9,6 +9,7 @@
  */
 export const TABLE_CHECKS: Record<string, string> = {
   "agent_templates_avatar_face_check": "avatar_face is null or avatar_face in ( 'wide', 'dot', 'wink', 'sleepy', 'squint', 'curious', 'smile', 'grin', 'happy', 'laugh', 'sad', 'visor', 'focus', 'surprise' )",
+  "ai_models_catalogue_check": "catalogue in ('chat', 'image', 'video')",
   "benchmark_runs_kind_check": "kind in ('live', 'golden', 'market')",
   "brand_app_connections_status_check": "status in ('active', 'pending', 'error', 'disconnected')",
   "brand_articles_cover_image_check": "cover_image ~ '^https?://'",

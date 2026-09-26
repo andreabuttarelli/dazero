@@ -26,22 +26,10 @@ export const ICONS: Record<string, { path: string; hex: string }> = {
 export const SETTINGS_SECTIONS = [
   'brand',
   'products',
-  'people',
-  'library',
-  'demo-account',
   'connected-accounts',
-  'connectors',
   'ads',
   'ads-accounts',
-  'radar',
   'video',
-  'blog-appearance',
-  'blog-authors',
-  'blog-categories',
-  'blog-domain',
-  'blog-integrations',
-  'search-console',
-  'language',
   'api-keys',
   'team',
   'profile',
@@ -54,28 +42,15 @@ export const SETTINGS_SECTIONS = [
 /** Former Studio / Identity sections now under Settings → Brand. */
 export const SETTINGS_BRAND_SECTIONS = [
   'brand',
-  'products',
-  'people'
-] as const;
-
-/** Blog settings under Settings → Blog. */
-export const SETTINGS_BLOG_SECTIONS = [
-  'blog-appearance',
-  'blog-authors',
-  'blog-categories',
-  'blog-domain',
-  'blog-integrations',
-  'search-console'
+  'products'
 ] as const;
 
 /** Ads settings under Settings → Ads. */
 export const SETTINGS_ADS_SECTIONS = ['ads-accounts', 'ads'] as const;
 
 /**
- * La mappa delle impostazioni: STESSO ordine e stessi raggruppamenti della SettingsSidebar
- * vera (src/lib/components/SettingsSidebar.svelte). La leggono il rail del drawer mobile e
- * la palette ⌘K: una lista sola, o le tre divergono al primo cambio.
- * `flag` nasconde la voce quando la feature è spenta, esattamente come nella sidebar.
+ * La mappa delle impostazioni: l'inventario delle sezioni, nell'ordine dei loro raggruppamenti.
+ * `flag` nasconde la voce quando la feature è spenta.
  */
 export type SettingsNavEntry = {
   /** Sezione sotto /app/<slug>/settings/. */
@@ -92,21 +67,7 @@ export const SETTINGS_GROUPS: readonly {
     labelKey: 'app.nav.sectionBrand',
     items: [
       { section: 'brand', labelKey: 'app.studio.tabs.brand' },
-      { section: 'products', labelKey: 'app.hub.overview.brand.products' },
-      { section: 'people', labelKey: 'app.studio.tabs.people' },
-      { section: 'library', labelKey: 'app.hub.web.library' },
-      { section: 'demo-account', labelKey: 'app.settings.demoAccount.nav' }
-    ]
-  },
-  {
-    labelKey: 'app.nav.site',
-    items: [
-      { section: 'blog-appearance', labelKey: 'app.settings.blog.appearance' },
-      { section: 'blog-authors', labelKey: 'app.settings.blog.authors' },
-      { section: 'blog-categories', labelKey: 'app.settings.blog.categories' },
-      { section: 'blog-domain', labelKey: 'app.settings.blog.domain' },
-      { section: 'blog-integrations', labelKey: 'app.settings.blog.integrations' },
-      { section: 'search-console', labelKey: 'app.settings.blog.searchConsole' }
+      { section: 'products', labelKey: 'app.hub.overview.brand.products' }
     ]
   },
   {
@@ -120,14 +81,12 @@ export const SETTINGS_GROUPS: readonly {
     labelKey: 'app.nav.sectionPublishing',
     items: [
       { section: 'connected-accounts', labelKey: 'app.settings.connectedAccounts' },
-      { section: 'radar', labelKey: 'app.settings.radar.nav' },
       { section: 'video', labelKey: 'app.settings.video.title' }
     ]
   },
   {
     labelKey: 'app.nav.workspace',
     items: [
-      { section: 'language', labelKey: 'app.settings.language' },
       { section: 'api-keys', labelKey: 'app.settings.apiKeys.title' },
       { section: 'team', labelKey: 'app.settings.team.title' }
     ]

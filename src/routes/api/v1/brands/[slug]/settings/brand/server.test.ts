@@ -14,6 +14,7 @@ type Row = Record<string, unknown>;
 function fakeSupabase(accounts: Row[] = [], updateError: { message: string } | null = null) {
   const updates: Row[] = [];
   const client = {
+    rpc: async () => ({ data: 0, error: null }),
     from(table: string) {
       if (table === 'social_accounts') {
         const q = {

@@ -87,7 +87,7 @@
 
 <style>
   .wc-badge {
-    flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; color: #fff; font-size: 12px; font-weight: 800;
+    flex: 0 0 auto; width: 20px; height: 20px; color: #fff; font-size: 12px; font-weight: 800;
     display: inline-flex; align-items: center; justify-content: center; margin-top: 1px;
   }
   .wc-badge.sev-error { background: #dc2626; }
@@ -105,7 +105,7 @@
   .wc-close { border: none; background: none; font-size: 24px; line-height: 1; color: var(--ink-soft, #555); cursor: pointer; }
   .wc-filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 20px; border-bottom: 1px solid var(--line, #eee); }
   .wc-chip {
-    font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line-2, #d2d2d7);
+    font-size: 12px; font-weight: 600; padding: 5px 11px; border: 1px solid var(--line-2, #d2d2d7);
     background: var(--paper, #fff); color: var(--ink-soft, #555); cursor: pointer;
   }
   .wc-chip.on { border-color: var(--ink, #111); color: var(--ink, #111); }
@@ -115,7 +115,7 @@
   .wc-list { flex: 1; overflow-y: auto; padding: 12px 20px 24px; display: flex; flex-direction: column; gap: 12px; }
   .wc-item {
     display: flex; gap: 12px; align-items: flex-start; background: var(--paper-2, #fafafa); border: 1px solid var(--line, #eee);
-    border-left-width: 4px; border-radius: 12px; padding: 14px;
+    border-left-width: 4px; padding: 14px;
   }
   .wc-item.sev-error { border-left-color: #dc2626; }
   .wc-item.sev-warning { border-left-color: #d97706; }

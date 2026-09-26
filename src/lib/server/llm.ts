@@ -164,20 +164,52 @@ export function llmGeminiSearchModel(): string {
 	throw new Error('GEO Gemini search needs a google/gemini-* id in LLM_MODELS or LLM_DEFAULT_MODEL');
 }
 
+type ContentPart =
+	| { type: 'text'; text: string }
+	| { type: 'file'; data: Buffer | URL; mediaType: string };
+
+/**
+ * L'IMMAGINE/VIDEO/AUDIO DI UN NODO A MONTE ENTRA COME URL, MAI COME BASE64 — a differenza di
+ * `images`/`file` qui sopra (byte inline, da Gemini). `upstream.ts` dà già un URL firmato dallo
+ * storage: scaricarlo qui per poi rimandarlo come byte sarebbe un giro a vuoto che l'SDK fa già
+ * da sé (`ImagePart.image`/`FilePart.data` accettano `URL`, li scarica il provider). Il video e
+ * l'audio non hanno un `type` proprio nel vocabolario dell'SDK: entrano come `file`, con il
+ * `mediaType` che dice al modello cosa sta leggendo.
+ */
+export type UpstreamMediaUrls = {
+	imageUrls?: string[];
+	videoUrls?: string[];
+	audioUrls?: string[];
+};
+
+function urlContentParts(upstream?: UpstreamMediaUrls): ContentPart[] {
+	const parts: ContentPart[] = [];
+	for (const url of upstream?.imageUrls ?? []) {
+		parts.push({ type: 'file', data: new URL(url), mediaType: 'image' });
+	}
+	for (const url of upstream?.videoUrls ?? []) {
+		parts.push({ type: 'file', data: new URL(url), mediaType: 'video' });
+	}
+	for (const url of upstream?.audioUrls ?? []) {
+		parts.push({ type: 'file', data: new URL(url), mediaType: 'audio' });
+	}
+	return parts;
+}
+
 function userContent(
 	prompt: string,
 	images?: LlmMediaPart[],
-	file?: LlmMediaPart
-): Array<{ type: 'text'; text: string } | { type: 'image'; image: Buffer; mediaType: string } | { type: 'file'; data: Buffer; mediaType: string }> {
-	const parts: Array<
-		{ type: 'text'; text: string } | { type: 'image'; image: Buffer; mediaType: string } | { type: 'file'; data: Buffer; mediaType: string }
-	> = [{ type: 'text', text: prompt }];
+	file?: LlmMediaPart,
+	upstream?: UpstreamMediaUrls
+): ContentPart[] {
+	const parts: ContentPart[] = [{ type: 'text', text: prompt }];
 	for (const img of images ?? []) {
-		parts.push({ type: 'image', image: Buffer.from(img.data, 'base64'), mediaType: img.mediaType });
+		parts.push({ type: 'file', data: Buffer.from(img.data, 'base64'), mediaType: img.mediaType ?? 'image' });
 	}
 	if (file) {
 		parts.push({ type: 'file', data: Buffer.from(file.data, 'base64'), mediaType: file.mediaType });
 	}
+	parts.push(...urlContentParts(upstream));
 	return parts;
 }
 
@@ -355,12 +387,92 @@ async function groundedCall(
 	return { text: message?.content ?? '', citations, cost: body.usage?.cost };
 }
 
+function hasVideoOrAudio(upstream: UpstreamMediaUrls | undefined): boolean {
+	return !!(upstream?.videoUrls?.length || upstream?.audioUrls?.length);
+}
+
+type OpenRouterContentPart =
+	| { type: 'text'; text: string }
+	| { type: 'image_url'; image_url: { url: string } }
+	| { type: 'video_url'; video_url: { url: string } }
+	| { type: 'input_audio'; input_audio: { data: string; format: string } };
+
+const AUDIO_FORMAT_BY_MEDIA_TYPE: Record<string, string> = {
+	'audio/mpeg': 'mp3',
+	'audio/mp3': 'mp3',
+	'audio/wav': 'wav',
+	'audio/x-wav': 'wav'
+};
+
+async function audioUrlToInputAudio(url: string): Promise<OpenRouterContentPart> {
+	const res = await fetch(url);
+	if (!res.ok) throw new Error(`audio fetch failed: HTTP ${res.status}`);
+	const mediaType = res.headers.get('content-type')?.split(';')[0]?.trim() ?? 'audio/mpeg';
+	const format = AUDIO_FORMAT_BY_MEDIA_TYPE[mediaType] ?? 'mp3';
+	const bytes = Buffer.from(await res.arrayBuffer());
+	return { type: 'input_audio', input_audio: { data: bytes.toString('base64'), format } };
+}
+
+/**
+ * PARTI DI CONTENUTO PER VIDEO/AUDIO A MONTE, NELLA FORMA NATIVA DI OPENROUTER — non quella
+ * dell'AI SDK. `FilePart` con `mediaType: 'video'` o audio-via-URL non ha una forma che
+ * `@ai-sdk/openai` (Responses o Chat Completions, provati entrambi) accetti: il provider rifiuta
+ * ogni file part il cui top-level media type non è `image`, `audio` (solo byte) o
+ * `application/pdf` — `UnsupportedFunctionalityError: file part media type video/mp4`.
+ * OpenRouter stesso il video lo accetta per URL (`video_url`) e l'audio come byte base64
+ * (`input_audio`), quindi qui si scavalca l'SDK invece di fargli dire di no.
+ */
+async function mediaContentParts(prompt: string, upstream: UpstreamMediaUrls): Promise<OpenRouterContentPart[]> {
+	const parts: OpenRouterContentPart[] = [{ type: 'text', text: prompt }];
+	for (const url of upstream.imageUrls ?? []) parts.push({ type: 'image_url', image_url: { url } });
+	for (const url of upstream.videoUrls ?? []) parts.push({ type: 'video_url', video_url: { url } });
+	for (const url of upstream.audioUrls ?? []) parts.push(await audioUrlToInputAudio(url));
+	return parts;
+}
+
+/**
+ * LA CHIAMATA CON VIDEO/AUDIO A MONTE, MANDATA A MANO COME `groundedCall`: stessa ragione,
+ * OpenRouter parla un dialetto che l'SDK non sa scrivere. Costo e uso letti dallo stesso
+ * `usage.cost`/`usage.{prompt,completion}_tokens` del gateway, la stessa fattura di ogni altra
+ * chiamata su questo tubo.
+ */
+async function mediaCall(
+	modelId: string,
+	opts: { prompt: string; system?: string; upstream: UpstreamMediaUrls }
+): Promise<{ text: string; inputTokens?: number; outputTokens?: number; cost?: number }> {
+	const content = await mediaContentParts(opts.prompt, opts.upstream);
+	const messages = [
+		...(opts.system ? [{ role: 'system', content: opts.system }] : []),
+		{ role: 'user', content }
+	];
+	const res = await fetch(`${llmBaseUrl()}/chat/completions`, {
+		method: 'POST',
+		headers: { authorization: `Bearer ${llmApiKey() ?? ''}`, 'content-type': 'application/json' },
+		body: JSON.stringify({ model: modelId, messages, usage: { include: true } }),
+		signal: AbortSignal.timeout(LLM_TIMEOUT_MS)
+	});
+	const body = (await res.json()) as {
+		choices?: Array<{ message?: { content?: string } }>;
+		usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
+		error?: { message?: string };
+	};
+	if (!res.ok || body.error) throw new Error(body.error?.message ?? `HTTP ${res.status}`);
+	return {
+		text: body.choices?.[0]?.message?.content ?? '',
+		inputTokens: body.usage?.prompt_tokens,
+		outputTokens: body.usage?.completion_tokens,
+		cost: body.usage?.cost
+	};
+}
+
 export async function llmText(opts: {
 	prompt: string;
 	system?: string;
 	model?: string;
 	images?: LlmMediaPart[];
 	file?: LlmMediaPart;
+	/** Immagini/video/audio di un nodo a monte, come URL firmati — v. `urlContentParts`. */
+	upstream?: UpstreamMediaUrls;
 	/** Ricerca web via OpenRouter: col plugin (`native`) o lasciata al modello (`built-in`). */
 	webSearch?: WebSearchMode;
 	reasoningEffort?: ReasoningEffort;
@@ -383,12 +495,32 @@ export async function llmText(opts: {
 			return { text: '', citations: [] };
 		}
 	}
+	if (hasVideoOrAudio(opts.upstream)) {
+		try {
+			const { text, inputTokens, outputTokens, cost } = await mediaCall(modelId, {
+				prompt: opts.prompt,
+				system: opts.system,
+				upstream: opts.upstream!
+			});
+			logAiCall({
+				label, provider: 'llm', model: modelId, prompt: opts.prompt, ms: Date.now() - t0, ok: true,
+				inputTokens, outputTokens, flatCostUsd: cost
+			});
+			return { text, citations: [] };
+		} catch (e) {
+			logAiCall({
+				label, provider: 'llm', model: modelId, prompt: opts.prompt, ms: Date.now() - t0, ok: false,
+				error: e instanceof Error ? e.message : 'media call failed'
+			});
+			throw e;
+		}
+	}
 	try {
 		const result = await generateText({
 			model: llmLanguageModel(modelId),
 			system: opts.system,
 			abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-			messages: [{ role: 'user', content: userContent(opts.prompt, opts.images, opts.file) }],
+			messages: [{ role: 'user', content: userContent(opts.prompt, opts.images, opts.file, opts.upstream) }],
 			providerOptions: { openai: reasoningOptions(opts.reasoningEffort) }
 		});
 		logAiCall({

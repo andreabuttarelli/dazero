@@ -516,11 +516,10 @@ export async function loadDesignDoc(
   let brandRow: AnyRec | null = null;
   let kit: AnyRec | null = null;
   let products: AnyRec[] | null = null;
-  let people: AnyRec[] | null = null;
   let competitors: AnyRec[] | null = null;
   let documents: AnyRec[] | null = null;
   try {
-    [{ data: brandRow }, { data: kit }, { data: products }, { data: people }, { data: competitors }, { data: documents }] =
+    [{ data: brandRow }, { data: kit }, { data: products }, { data: competitors }, { data: documents }] =
         await Promise.all([
         opts.brandName
           ? Promise.resolve({ data: { name: opts.brandName, content_prefs: null, target_platforms: null } })
@@ -539,9 +538,6 @@ export async function loadDesignDoc(
               .eq('brand_id', brandId)
               .order('featured', { ascending: false })
               .limit(PRODUCT_MAX)
-          : Promise.resolve(none),
-        want('people')
-          ? supabase.from('people').select('id, name, role, kind, description, images').eq('brand_id', brandId)
           : Promise.resolve(none),
         want('competitors')
           ? supabase.from('competitors').select('name, website, kind, rationale').eq('brand_id', brandId)
@@ -568,7 +564,6 @@ export async function loadDesignDoc(
       language: typeof prefs.language === 'string' ? prefs.language : null,
       targetPlatforms: Array.isArray(brandRow?.target_platforms) ? (brandRow.target_platforms as string[]) : null,
       products,
-      people,
       competitors,
       documents
     },

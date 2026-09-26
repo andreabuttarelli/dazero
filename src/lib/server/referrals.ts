@@ -7,7 +7,8 @@ import { env as publicEnv } from '$env/dynamic/public';
 /** Credits gifted to BOTH referrer and referee on first-brand redemption. */
 export const REFERRAL_CREDITS_EACH = 500;
 
-export const REFERRAL_COOKIE = 'anomalia_ref';
+export const REFERRAL_COOKIE = 'feega_ref';
+export const REFERRAL_COOKIE_LEGACY = 'feega_ref';
 export const REFERRAL_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 const CODE_RE = /^[a-z0-9]{6,12}$/;
@@ -29,6 +30,7 @@ export function captureReferralCookie(cookies: Cookies, raw: string | null | und
 
 export function clearReferralCookie(cookies: Cookies): void {
   cookies.delete(REFERRAL_COOKIE, { path: '/' });
+  cookies.delete(REFERRAL_COOKIE_LEGACY, { path: '/' });
 }
 
 function randomCode(len = 8): string {
@@ -98,14 +100,14 @@ export async function ensureReferralCode(
 
 /** Public share URL for a code (homepage with ref param). */
 export function referralShareUrl(code: string): string {
-  const base = (publicEnv.PUBLIC_APP_URL || publicEnv.PUBLIC_FALLBACK_APP_URL || 'https://anomalia.so').replace(/\/$/, '');
+  const base = (publicEnv.PUBLIC_APP_URL || publicEnv.PUBLIC_FALLBACK_APP_URL || 'https://feega.app').replace(/\/$/, '');
   return `${base}/?ref=${encodeURIComponent(code)}`;
 }
 
 /** Embeddable HTML badge pointing at the user's referral link. */
 export function referralBadgeHtml(code: string): string {
   const href = referralShareUrl(code);
-  return `<a href="${href}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;border:1px solid #e5e5e5;background:#fff;color:#111;text-decoration:none;font:600 13px/1.2 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:#111;color:#fff;font-size:10px;letter-spacing:-0.04em">0→1</span><span>Made with Anomalia</span></a>`;
+  return `<a href="${href}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;border:1px solid #e5e5e5;background:#fff;color:#111;text-decoration:none;font:600 13px/1.2 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:#111;color:#fff;font-size:10px;letter-spacing:-0.04em">0→1</span><span>Made with feega</span></a>`;
 }
 
 async function resolveReferrerBrandId(
@@ -162,7 +164,7 @@ export async function tryRedeemReferral(opts: {
   refereeUserId: string;
   refereeBrandId: string;
 }): Promise<RedeemResult> {
-  const raw = opts.cookies.get(REFERRAL_COOKIE);
+  const raw = opts.cookies.get(REFERRAL_COOKIE) ?? opts.cookies.get(REFERRAL_COOKIE_LEGACY);
   if (!isValidReferralCode(raw)) return { ok: false, reason: 'no_cookie' };
   const code = raw.toLowerCase();
 

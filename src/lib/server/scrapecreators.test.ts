@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SCRAPECREATORS_TIMEOUT_MS } from './scrapecreators';
-import { BASELINE_TIME_BUDGET_MS } from './market-harvest';
+
+const MAX_FUNCTION_DURATION_MS = 300_000;
 
 describe('SCRAPECREATORS_TIMEOUT_MS', () => {
   it('exists at all — Node fetch has no default, so without it a stalled socket hangs forever', () => {
@@ -18,9 +19,9 @@ describe('SCRAPECREATORS_TIMEOUT_MS', () => {
     expect(SCRAPECREATORS_TIMEOUT_MS).toBeGreaterThanOrEqual(50_000);
   });
 
-  it('cannot swallow a whole fetching budget on one call', () => {
-    // The point of a bound is that a single bad socket costs one slot, not the run. If one call
-    // could eat the baseline budget, the queue would stall exactly as it did before.
-    expect(SCRAPECREATORS_TIMEOUT_MS * 2).toBeLessThan(BASELINE_TIME_BUDGET_MS);
+  it('cannot swallow a whole function wall on one call', () => {
+    // The point of a bound is that a single bad socket costs one slot, not the run. Every caller
+    // runs inside a 300s Vercel wall: two stalled calls must still leave room to finish.
+    expect(SCRAPECREATORS_TIMEOUT_MS * 2).toBeLessThan(MAX_FUNCTION_DURATION_MS);
   });
 });

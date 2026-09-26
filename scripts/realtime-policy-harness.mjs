@@ -22,8 +22,8 @@ const MIGRATION = join(ROOT, 'supabase/migrations/0226_realtime_brand_channel_po
 const REALTIME_SCHEMA = join(ROOT, 'infra/compose/volumes/db/realtime.sql');
 const POLICY_INIT = join(ROOT, 'infra/compose/volumes/db/realtime-policies.sh');
 const MIGRATION_NAME = '0226_realtime_brand_channel_policies.sql';
-const PROJECT = `anomalia-task59-${process.pid}-${Date.now()}`;
-const TEMP = mkdtempSync(join(tmpdir(), 'anomalia-task59-'));
+const PROJECT = `feega-task59-${process.pid}-${Date.now()}`;
+const TEMP = mkdtempSync(join(tmpdir(), 'feega-task59-'));
 const COMPOSE = join(TEMP, 'compose.yml');
 const INIT = join(TEMP, 'init.sql');
 

@@ -38,7 +38,7 @@ let selineScheduled = false;
 let analyticsOptOut = false;
 
 // Nessun default per pixel e token: erano i NOSTRI, cablati come fallback — un'installazione
-// self-hosted caricava il pixel Meta di Anomalia e identificava i propri utenti nel nostro
+// self-hosted caricava il pixel Meta di feega e identificava i propri utenti nel nostro
 // progetto Seline. Senza la variabile d'ambiente, quel pezzo non parte. Vale anche per noi:
 // PUBLIC_META_PIXEL_ID e PUBLIC_SELINE_TOKEN devono stare nell'env di produzione.
 const metaPixelId = () => env.PUBLIC_META_PIXEL_ID?.trim() || '';
@@ -270,7 +270,7 @@ export function startAnonymousAnalytics() {
     posthogReady = true;
     injectInline(POSTHOG_SNIPPET);
     posthog()?.init(key, {
-      api_host: 'https://eu.i.posthog.com', // Anomalia project lives on PostHog EU cloud
+      api_host: 'https://eu.i.posthog.com', // feega project lives on PostHog EU cloud
       persistence: 'memory', // no cookies, no localStorage → anonymous
       person_profiles: 'identified_only',
       disable_session_recording: true,

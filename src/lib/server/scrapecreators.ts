@@ -21,7 +21,7 @@ function apiKey(): string {
   return k;
 }
 
-// Exported for the Radar's Reddit endpoints (same key, same gateway, zero new services).
+// Exported for the Reddit endpoints (same key, same gateway, zero new services).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function scrapeCreatorsGet(path: string): Promise<any> {
   return scfetch('GET', path);

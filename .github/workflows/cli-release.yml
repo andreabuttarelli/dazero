@@ -40,7 +40,7 @@ jobs:
           fi
           npm whoami || { echo "::error::NPM_TOKEN does not authenticate against registry.npmjs.org."; exit 1; }
           if [ -z "$TAP_TOKEN" ]; then
-            echo "::error::TAP_TOKEN is not set. It is needed to push the formula to anomaliaso/homebrew-tap."
+            echo "::error::TAP_TOKEN is not set. It is needed to push the formula to andreabuttarelli/homebrew-tap."
             exit 1
           fi
 
@@ -68,7 +68,7 @@ jobs:
 
       - name: Checksums
         working-directory: cli/dist
-        run: sha256sum anomalia-* > SHA256SUMS.txt
+        run: sha256sum feega-* > SHA256SUMS.txt
 
       - name: Update Homebrew formula
         if: startsWith(github.ref, 'refs/tags/cli-v')
@@ -89,7 +89,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            cli/dist/anomalia-*
+            cli/dist/feega-*
             cli/dist/SHA256SUMS.txt
           generate_release_notes: true
 
@@ -98,9 +98,9 @@ jobs:
         env:
           TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
         run: |
-          git clone https://x-access-token:${TAP_TOKEN}@github.com/anomaliaso/homebrew-tap.git tap
+          git clone https://x-access-token:${TAP_TOKEN}@github.com/andreabuttarelli/homebrew-tap.git tap
           mkdir -p tap/Formula
-          cp cli/Formula/anomalia.rb tap/Formula/anomalia.rb
+          cp cli/Formula/feega.rb tap/Formula/feega.rb
           cd tap
           if git diff --quiet; then
             echo "Tap unchanged"
@@ -108,15 +108,15 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/anomalia.rb
-          git commit -m "anomalia ${GITHUB_REF_NAME#cli-v}"
+          git add Formula/feega.rb
+          git commit -m "feega ${GITHUB_REF_NAME#cli-v}"
           git push
 
       - name: Upload build artifacts (manual runs)
         if: ${{ !startsWith(github.ref, 'refs/tags/cli-v') }}
         uses: actions/upload-artifact@v4
         with:
-          name: anomalia-dist
+          name: feega-dist
           path: |
-            cli/dist/anomalia-*
+            cli/dist/feega-*
             cli/dist/SHA256SUMS.txt

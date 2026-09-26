@@ -118,11 +118,11 @@ async function pool(items, worker, size = 12) {
 // ─────────────────────────────────────────────────────────────────────────────
 // AUTOTEST — se la sonda smette di distinguere "esiste" da "non esiste", tutto il resto
 // diventa un verde bugiardo. È esattamente il modo in cui l'incidente è passato inosservato.
-// Il caso di riferimento è quello vero: graphic_designs.source.
+// Il riferimento deve esistere anche sul nuovo schema canvas.
 // ─────────────────────────────────────────────────────────────────────────────
 async function selfTest() {
-	const absent = await probe('graphic_designs', '__colonna_che_non_esiste__');
-	const present = await probe('graphic_designs', 'id');
+	const absent = await probe('profiles', '__colonna_che_non_esiste__');
+	const present = await probe('profiles', 'id');
 	const missingTable = await probe('__tabella_che_non_esiste__', 'id');
 	const problems = [];
 	if (absent.ok || absent.code !== '42703')
@@ -130,14 +130,7 @@ async function selfTest() {
 	if (!present.ok) problems.push(`una colonna esistente viene segnalata a torto (${present.code})`);
 	if (missingTable.ok || missingTable.code !== 'PGRST205')
 		problems.push(`una tabella inesistente NON viene segnalata (${missingTable.code ?? 'ok'})`);
-	// La prova richiesta: se `graphic_designs.source` sparisse, questo script direbbe cosa.
-	const sourceNow = await probe('graphic_designs', 'source');
-	return {
-		problems,
-		reference: sourceNow.ok
-			? 'graphic_designs.source: PRESENTE (0167 applicata). Se sparisse, la sonda risponderebbe 42703 come per __colonna_che_non_esiste__ qui sopra.'
-			: `graphic_designs.source: ASSENTE — ${sourceNow.code} ${sourceNow.message}`
-	};
+	return { problems, reference: 'profiles.id: riferimento comune al vecchio e al nuovo schema.' };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

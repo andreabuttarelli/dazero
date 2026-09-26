@@ -24,8 +24,6 @@
    * mostrare un messaggio allora. L'unica difesa onesta è che la via d'uscita ci sia già.
    */
   import ExternalLink from '@lucide/svelte/icons/external-link';
-  import { ADDABLE_LABEL } from '$lib/canvas/addable';
-  import { ADDABLE_ICON } from '$lib/canvas/addable-icons';
   import { embedBox } from '$lib/canvas/iframe-scale';
   import {
     EMBED_REFUSAL_HINT,
@@ -35,8 +33,6 @@
     type IframeNode,
     type IframeSource
   } from '$lib/canvas/iframe-node';
-
-  const FrameIcon = ADDABLE_ICON.iframe;
 
   let {
     node,
@@ -161,14 +157,6 @@
 </script>
 
 <div class="frame">
-  <!-- La targhetta resta SEMPRE: da lontano una pagina incorporata e un'immagine sono due
-       rettangoli, e con lo zoom stretto il contenuto non si legge. Nome e icona dal registro, gli
-       stessi della barra in basso. -->
-  <div class="frame-tag">
-    <FrameIcon size={13} strokeWidth={1.8} />
-    <span>{ADDABLE_LABEL.iframe}</span>
-  </div>
-
   <header class="frame-head">
     <div class="frame-modes" role="group" aria-label="Da dove viene il contenuto">
       <button
@@ -273,13 +261,11 @@
      sparisce a zoom ridotto, e l'ombra è quel che dice dove finisce il nodo e comincia lo sfondo.
      Due nodi che galleggiano in modo diverso si leggono come due prodotti diversi. */
   .frame {
-    /* Il riferimento della targhetta, che galleggia sul suo angolo. */
     position: relative;
     display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    border-radius: 16px;
     background: var(--paper, #fff);
     border: 1px solid var(--line, #e5e5e5);
     box-shadow:
@@ -299,27 +285,6 @@
     }
   }
 
-  /* Sull'angolo alto e fuori dal flusso: dentro toglierebbe spazio alla pagina incorporata, che
-     è la cosa che si guarda. `pointer-events: none` perché è un'etichetta, non un bersaglio —
-     sotto ci sono i controlli del modo, e intercettarne i clic sarebbe peggio che non averla. */
-  .frame-tag {
-    position: absolute;
-    z-index: 2;
-    top: 8px;
-    right: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px 3px 6px;
-    font-size: 11px;
-    color: var(--ink-soft, #6e6e73);
-    background: color-mix(in srgb, var(--paper, #fff) 86%, transparent);
-    border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 999px;
-    backdrop-filter: blur(6px);
-    pointer-events: none;
-  }
-
   .frame-head {
     display: flex;
     align-items: center;
@@ -333,7 +298,6 @@
     display: inline-flex;
     flex: none;
     padding: 2px;
-    border-radius: 8px;
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
   }
@@ -344,7 +308,6 @@
     color: var(--ink-soft, #6e6e73);
     background: none;
     border: none;
-    border-radius: 6px;
     cursor: pointer;
   }
   .frame-modes button.is-on {
@@ -361,7 +324,6 @@
     color: var(--ink, #1d1d1f);
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 7px;
   }
   .frame-field:focus {
     outline: none;
@@ -375,7 +337,6 @@
     justify-content: center;
     width: 24px;
     height: 24px;
-    border-radius: 7px;
     color: var(--ink-soft, #6e6e73);
   }
   .frame-open:hover {
@@ -423,7 +384,6 @@
     font: inherit;
     font-size: 12px;
     border: none;
-    border-radius: 8px;
     background: var(--ink, #1d1d1f);
     color: var(--paper, #fff);
     cursor: pointer;
@@ -459,7 +419,6 @@
     color: var(--ink, #1d1d1f);
     background: var(--paper-2, #f9f9f9);
     border: 1px solid var(--line-2, #d2d2d7);
-    border-radius: 9px;
   }
   .frame-code:focus {
     outline: none;

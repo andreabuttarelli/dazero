@@ -3,30 +3,40 @@ import { hasManyTenants } from '$lib/server/tenancy';
 import { fail, redirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { syncBrandAccounts, disconnectAccount } from '$lib/server/zernio';
-import { isPaidPlan, canConnectSocials, plansAbove } from '$lib/server/plans';
+import { canAffordSeat } from '$lib/server/social-connections';
+import { CREDIT_LADDER } from '$lib/server/credit-ladder';
 import { generateApiKey } from '$lib/server/cli-auth';
 import { sendEmail, brandInviteEmailSubject, brandInviteEmailHtml, brandInviteEmailText } from '$lib/server/email';
 import { emailLocale } from '$lib/server/email-i18n';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { RequestEvent } from '@sveltejs/kit';
 import { isChatTier, isGatewayModelTier } from '$lib/chat-tiers';
-import { isKnownTimezone } from '$lib/brand-fields';
 import { invalidateBrandNav } from '$lib/server/nav-cache';
 import { readUploadImage } from '$lib/server/raster-image';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { orgBillingForBrand } from '$lib/server/org-billing';
 import { billingLink } from '$lib/server/billing-links';
+import { billingGrantsReady } from '$lib/server/billing-readiness';
 
 const stripeApi = () => import('$lib/server/stripe');
 
-/** Shared brands (0077): members reach settings too; billing/team stay owner-only. */
+/** Shared brands: members reach settings too; billing/team stay owner-only. */
 export async function isBrandOwner(supabase: SupabaseClient, slug: string): Promise<boolean> {
-  const { data } = await supabase
-    .from('brands')
-    .select('id, organizations!inner(id)')
-    .eq('slug', slug)
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data: brand } = await supabase.from('brands').select('org_id').eq('slug', slug).maybeSingle();
+  if (!brand) return false;
+
+  const { data: membership } = await supabase
+    .from('orgs_members')
+    .select('role')
+    .eq('org_id', brand.org_id)
+    .eq('user_id', user.id)
     .maybeSingle();
-  return !!data;
+  return membership?.role === 'owner';
 }
 
 const FEEDBACK: Record<string, string> = {
@@ -52,32 +62,64 @@ export async function billingPortal({ request, params, url, locals: { supabase }
   });
   if (link.refusal === 'no_org_billing') return fail(404, { billingError: 'Brand not found' });
   if (link.refusal === 'no_customer' || link.refusal === 'no_subscription') {
-    throw redirect(303, `/app/${params.brand}/activate`);
+    throw redirect(303, '/app/billing');
   }
   if (link.refusal) return fail(500, { billingError: link.message || 'Could not open billing' });
 
   throw redirect(303, link.url);
 }
 
+const PURCHASES_NOT_READY = 'Purchases open soon.';
+
 export async function upgrade({ request, params, url, locals: { supabase } }: Ev) {
   if (!(await isBrandOwner(supabase, params.brand!))) return fail(403, { billingError: 'Owner only' });
+  if (!(await billingGrantsReady(supabase))) return fail(409, { billingError: PURCHASES_NOT_READY });
   const data = await request.formData();
-  const plan = String(data.get('plan') ?? '');
+  const usd = Number(data.get('usd') ?? '');
+
+  // The rungs the subscription checkout offers — the portal names no price of its own (see
+  // billing-links.ts), so the choice made here has to be one of ours.
+  const rung = CREDIT_LADDER.find((r) => r.price === usd);
+  if (!rung) return fail(400, { billingError: 'Unknown subscription tier' });
 
   const billing = await orgBillingForBrand(supabase, { slug: params.brand! });
   if (!billing) return fail(404, { billingError: 'Brand not found' });
-  // Same ladder as the settings modal / chat widget — Go included only while FEATURE_PLAN_GO is on.
-  if (!plansAbove(billing.plan).some((p) => p.key === plan)) {
-    return fail(400, { billingError: 'Unknown plan' });
+
+  const returnUrl = `${url.origin}/app/billing`;
+
+  // No subscription yet: the hosted portal can only CHANGE one, never create the first — so this
+  // mints a real Checkout Session on the rung's Stripe Price instead of routing through it.
+  if (!billing.subscriptionId) {
+    const { subscriptionPriceIdFor, ensureOrgCustomer, createSubscriptionCheckout } = await stripeApi();
+    const priceId = subscriptionPriceIdFor(rung.price);
+    if (!priceId) {
+      return fail(400, { billingError: 'Subscriptions are not configured yet for this rung.' });
+    }
+
+    let checkoutUrl: string;
+    try {
+      const customerId = await ensureOrgCustomer({
+        id: billing.orgId,
+        name: billing.orgName,
+        stripe_customer_id: billing.customerId
+      });
+      checkoutUrl = await createSubscriptionCheckout({
+        customerId,
+        orgId: billing.orgId,
+        priceId,
+        credits: rung.creditsSubscription,
+        successUrl: returnUrl,
+        cancelUrl: returnUrl
+      });
+    } catch (e) {
+      return fail(500, { billingError: e instanceof Error ? e.message : 'Could not start the upgrade' });
+    }
+    throw redirect(303, checkoutUrl);
   }
 
-  const link = await billingLink(supabase, {
-    slug: params.brand!,
-    returnUrl: `${url.origin}/app/${params.brand}/settings/billing`,
-    flow: 'upgrade'
-  });
+  const link = await billingLink(supabase, { slug: params.brand!, returnUrl, flow: 'upgrade' });
   if (link.refusal === 'no_customer' || link.refusal === 'no_subscription') {
-    throw redirect(303, `/app/${params.brand}/activate?plan=${encodeURIComponent(plan)}`);
+    throw redirect(303, '/app/billing');
   }
   if (link.refusal) return fail(500, { billingError: link.message || 'Could not start the upgrade' });
 
@@ -108,7 +150,6 @@ export async function cancelPlan({ request, params, locals: { supabase } }: Ev) 
   const comment = String(data.get('explanation') ?? '').trim();
 
   const billing = await orgBillingForBrand(supabase, { slug: params.brand! });
-  if (!isPaidPlan(billing?.plan)) return fail(400, { billingError: 'No paid plan to cancel.' });
   if (!billing?.subscriptionId) return fail(400, { billingError: 'No active subscription.' });
 
   let endsAt: string | null = null;
@@ -201,16 +242,6 @@ export async function setChatDefaultTier({ request, params, locals: { supabase }
   return { chatTierSaved: true };
 }
 
-export async function setTimezone({ request, params, locals: { supabase } }: Ev) {
-  const data = await request.formData();
-  const tz = String(data.get('timezone') ?? '').trim();
-  if (!isKnownTimezone(tz)) return { error: 'Pick a timezone' };
-  const { error } = await supabase.from('brands').update({ timezone: tz }).eq('slug', params.brand!);
-  if (error) return { error: error.message };
-  invalidateBrandNav(params.brand!);
-  return { tzSaved: true };
-}
-
 /** Main brand website — drives Content Library crawl + SEO/GEO. Also mirrors onto brand_kit.source_url. */
 export async function setWebsite({ request, params, locals: { supabase } }: Ev) {
   const data = await request.formData();
@@ -240,12 +271,12 @@ export async function setWebsite({ request, params, locals: { supabase } }: Ev) 
 export async function sync({ params, locals: { supabase } }: Ev) {
   const { data: brand } = await supabase
     .from('brands')
-    .select('id, plan, status, zernio_profile_id')
+    .select('id, org_id, zernio_profile_id')
     .eq('slug', params.brand!)
     .maybeSingle();
   if (!brand) return { error: 'Brand not found' };
-  if (!canConnectSocials(brand.plan, brand.status)) {
-    return { error: 'Paid plan required' };
+  if (!(await canAffordSeat(supabase, brand.org_id))) {
+    return { error: 'Not enough credits for this month\'s account fee' };
   }
   try {
     await syncBrandAccounts(supabase, brand);
@@ -290,7 +321,7 @@ export async function invite({ request, params, url, cookies, locals: { supabase
 
   const { data: brand } = await supabase
     .from('brands')
-    .select('id, name')
+    .select('id, name, org_id')
     .eq('slug', params.brand!)
     .maybeSingle();
   if (!brand) return fail(404, { teamError: 'Brand not found' });
@@ -301,22 +332,28 @@ export async function invite({ request, params, url, cookies, locals: { supabase
   if (!user) return fail(401, { teamError: 'Not authenticated' });
   if (email === user.email?.toLowerCase()) return fail(400, { teamError: 'That’s you' });
 
-  const { error } = await supabase.from('brand_invites').insert({
-    brand_id: brand.id,
-    email,
-    brand_name: brand.name,
-    inviter_email: user.email ?? null,
-    invited_by: user.id
-  });
-  if (error) {
-    return fail(400, { teamError: error.code === '23505' ? 'Already invited' : error.message });
+  // orgs_invites è a livello di organizzazione (nessun brand_id): invitare da una pagina di
+  // settings di UN brand invita comunque nell'org intera — è per questo che ogni brand la vede.
+  const { createInvite } = await import('$lib/server/repos/invites');
+  let token: string;
+  try {
+    ({ token } = await createInvite(supabase, {
+      orgId: brand.org_id,
+      email,
+      role: 'member',
+      invitedBy: user.id
+    }));
+  } catch (e) {
+    const code = (e as { code?: string } | null)?.code;
+    const message = e instanceof Error ? e.message : 'Could not create the invite';
+    return fail(400, { teamError: code === '23505' ? 'Already invited' : message });
   }
 
   let emailSent = true;
   try {
     const locale = emailLocale(cookies.get('locale'));
     const inviter = user.email ?? 'A teammate';
-    const acceptUrl = `${url.origin}/app?view=invites`;
+    const acceptUrl = `${url.origin}/app?view=invites&invite_token=${encodeURIComponent(token)}`;
     await sendEmail({
       to: email,
       subject: brandInviteEmailSubject(locale, brand.name, inviter),
@@ -329,23 +366,24 @@ export async function invite({ request, params, url, cookies, locals: { supabase
   return { teamInvited: true, emailSent };
 }
 
-export async function revokeInvite({ request, locals: { supabase } }: Ev) {
+export async function revokeInvite({ request, params, locals: { supabase } }: Ev) {
   const fd = await request.formData();
   const id = String(fd.get('invite_id') ?? '');
   if (!id) return fail(400, { teamError: 'Missing invite' });
 
-  const { data: inv } = await supabase
-    .from('brand_invites')
-    .select('id, brand_id, accepted_by')
-    .eq('id', id)
+  const { data: brand } = await supabase
+    .from('brands')
+    .select('org_id')
+    .eq('slug', params.brand!)
     .maybeSingle();
-  if (!inv) return fail(404, { teamError: 'Invite not found' });
+  if (!brand) return fail(404, { teamError: 'Brand not found' });
 
-  if (inv.accepted_by) {
-    await supabase.from('brand_members').delete().eq('brand_id', inv.brand_id).eq('user_id', inv.accepted_by);
+  const { revokeInvite: revokeInviteRepo } = await import('$lib/server/repos/invites');
+  try {
+    await revokeInviteRepo(supabase, { orgId: brand.org_id, inviteId: id });
+  } catch (e) {
+    return fail(500, { teamError: e instanceof Error ? e.message : 'Could not revoke the invite' });
   }
-  const { error } = await supabase.from('brand_invites').delete().eq('id', inv.id);
-  if (error) return fail(500, { teamError: error.message });
   return { teamRevoked: true };
 }
 
@@ -353,21 +391,18 @@ export async function createApiKey({ request, params, locals: { supabase } }: Ev
   const data = await request.formData();
   const name = String(data.get('key_name') ?? '').trim() || 'API Key';
   const writeAccess = String(data.get('write') ?? '') === 'true';
-  const allBrands = String(data.get('all_brands') ?? '') === 'true';
 
+  // api_keys.org_id è NOT NULL e non c'è una colonna per limitare la chiave a un sottoinsieme dei
+  // brand dell'org (vedi ApiKeyInfo in cli-auth.ts): ogni chiave vale già per ogni brand dell'org.
   const { data: brand } = await supabase
     .from('brands')
-    .select('id')
+    .select('org_id')
     .eq('slug', params.brand!)
     .maybeSingle();
   if (!brand) return fail(404, { apiKeyError: 'Brand not found' });
 
   const { raw, hash, prefix } = await generateApiKey();
-
-  const permissions = {
-    brand_ids: allBrands ? '*' : [brand.id],
-    scopes: writeAccess ? ['read', 'write'] : ['read']
-  };
+  const scopes = writeAccess ? ['read', 'write'] : ['read'];
 
   const {
     data: { user }
@@ -376,19 +411,26 @@ export async function createApiKey({ request, params, locals: { supabase } }: Ev
 
   const { error } = await supabase
     .from('api_keys')
-    .insert({ user_id: user.id, name, key_hash: hash, key_prefix: prefix, permissions });
+    .insert({ org_id: brand.org_id, user_id: user.id, name, key_hash: hash, key_prefix: prefix, scopes });
 
   if (error) return fail(500, { apiKeyError: error.message });
 
   return { apiKeyCreated: true, apiKeyRaw: raw, apiKeyName: name };
 }
 
-export async function revokeApiKey({ request, locals: { supabase } }: Ev) {
+export async function revokeApiKey({ request, params, locals: { supabase } }: Ev) {
   const data = await request.formData();
   const id = String(data.get('key_id') ?? '');
   if (!id) return fail(400, { apiKeyError: 'Missing key ID' });
 
-  const { error } = await supabase.from('api_keys').delete().eq('id', id);
+  const { data: brand } = await supabase
+    .from('brands')
+    .select('org_id')
+    .eq('slug', params.brand!)
+    .maybeSingle();
+  if (!brand) return fail(404, { apiKeyError: 'Brand not found' });
+
+  const { error } = await supabase.from('api_keys').delete().eq('id', id).eq('org_id', brand.org_id);
   if (error) return fail(500, { apiKeyError: error.message });
 
   return { apiKeyRevoked: true };

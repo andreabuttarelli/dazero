@@ -5,7 +5,7 @@ const LinkSchema = z
   .string()
   .describe('One-time Stripe URL. Give it to the account owner and keep no copy');
 
-const PlanSchema = z.object({ key: z.string(), label: z.string() });
+const PlanSchema = z.object({ usd: z.number(), label: z.string() });
 
 const PortalInputSchema = z.object({}).strict();
 
@@ -16,18 +16,18 @@ const PortalResultSchema = z.object({
 
 const CheckoutInputSchema = z
   .object({
-    plan: z
-      .string()
-      .min(1)
+    usd: z
+      .number()
+      .positive()
       .optional()
-      .describe('Plan key the human wants, e.g. "pro". Refused if the org cannot move up to it')
+      .describe('Monthly subscription rung the human wants, e.g. 30. Must be one of CREDIT_LADDER\'s prices')
   })
   .strict();
 
 const CheckoutResultSchema = z.object({
   ok: z.literal(true),
   url: LinkSchema,
-  plans: z.array(PlanSchema).describe('The plans the hosted page will offer')
+  plans: z.array(PlanSchema).describe('The subscription rungs the hosted page will offer')
 });
 
 /**
@@ -39,7 +39,8 @@ const BILLING_FAILURES: readonly EndpointFailure[] = [
   { error: 'not_org_owner', status: 403 },
   { error: 'no_customer', status: 409 },
   { error: 'no_org_billing', status: 500 },
-  { error: 'stripe_unavailable', status: 502 }
+  { error: 'stripe_unavailable', status: 502 },
+  { error: 'purchases_not_ready', status: 409 }
 ];
 
 export type BillingPortalLinkResult = z.infer<typeof PortalResultSchema>;
@@ -83,7 +84,56 @@ export const CHECKOUT_LINK = {
   failures: [
     ...BILLING_FAILURES,
     { error: 'unknown_plan', status: 400 },
-    { error: 'no_subscription', status: 409 }
+    { error: 'no_subscription', status: 409 },
+    { error: 'subscriptions_not_configured', status: 409 }
+  ],
+  destructive: false
+} satisfies BrandEndpoint;
+
+const OneTimeCheckoutInputSchema = z
+  .object({
+    usd: z
+      .number()
+      .positive()
+      .describe('A one-time ladder rung, e.g. 30. Must be one of CREDIT_LADDER\'s prices')
+  })
+  .strict();
+
+const OneTimeCheckoutResultSchema = z.object({
+  ok: z.literal(true),
+  url: LinkSchema,
+  credits: z.number().describe('Credits this purchase grants. Never expires.')
+});
+
+export type OneTimeCheckoutLinkInput = z.infer<typeof OneTimeCheckoutInputSchema>;
+export type OneTimeCheckoutLinkResult = z.infer<typeof OneTimeCheckoutResultSchema>;
+
+/**
+ * A separate tool from CHECKOUT_LINK on purpose: a one-time purchase never touches a subscription
+ * and never needs one to exist first (unlike the subscription rungs, which need a Stripe Price
+ * configured per rung — see `subscriptionPriceIdFor` in `$lib/server/stripe`). It works for an
+ * organization that has never subscribed and never will.
+ */
+export const ONE_TIME_CHECKOUT_LINK = {
+  tool: 'create_one_time_checkout_link',
+  title: 'One-time credit purchase link',
+  description:
+    'Mint a one-time link where the human buys a fixed batch of credits once, on Stripe\'s own ' +
+    'hosted page — never a subscription. You never pay, never change a plan and never cancel ' +
+    'anything: you return the URL, they complete it. These credits never expire. Only the ' +
+    'organization owner can mint one. An organization with no Stripe customer yet gets one ' +
+    'created on the spot — unlike the subscription link, there is nothing to check out AGAINST ' +
+    'first.',
+  method: 'POST',
+  pathUnderBrand: '/billing/checkout/one-time',
+  input: OneTimeCheckoutInputSchema,
+  output: OneTimeCheckoutResultSchema,
+  failures: [
+    { error: 'not_org_owner', status: 403 },
+    { error: 'no_org_billing', status: 500 },
+    { error: 'stripe_unavailable', status: 502 },
+    { error: 'unknown_plan', status: 400 },
+    { error: 'purchases_not_ready', status: 409 }
   ],
   destructive: false
 } satisfies BrandEndpoint;

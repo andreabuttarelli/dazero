@@ -42,17 +42,10 @@ const KIND = (t) =>
 
 /** Il gruppo e' il soggetto su cui il tool lavora, dedotto dal nome: serve a leggere, non a decidere. */
 const GROUPS = [
-  ['Post', /post|slide|caption|carousel|schedule|render/],
-  ['Piano editoriale e settimana', /plan|week|brief|seed/],
-  ['Media', /media|image|video|graphic|motion/],
-  ['Blog e articoli', /article|blog|web/],
-  ['Studio: chi e cosa', /competitor|person|product|document|note|talent/],
-  ['Brand: identita e impostazioni', /brand|voice|colors|appearance|bio|identity|setting/],
-  ['Memoria e conoscenza', /memory|knowledge|skill/],
-  ['SEO, GEO, ads', /seo|geo|ads|keyword|rank|gsc|backlink/],
-  ['Radar e mercato', /radar|market|news|idea|field/],
-  ['Accesso diretto al database', /^(query|insert_row|update_row)$/],
-  ['Account, condivisione, fatturazione', /brand|share|checkout|billing|social|connect|automation|history/]
+  ['Accesso diretto al database', /^(query|insert_row|update_row|delete_row|describe_node_types)$/],
+  ['Post', /post/],
+  ['Ads', /ad_campaign/],
+  ['Nodi e generazione', /node/]
 ];
 const groupOf = (name) => (GROUPS.find(([, re]) => re.test(name)) ?? ['Altro'])[0];
 
@@ -83,7 +76,7 @@ function render(result) {
   }
 
   const out = [];
-  out.push('# I tool MCP di Anomalia');
+  out.push('# I tool MCP di feega');
   out.push('');
   out.push('> Generato da `node scripts/mcp-inventory.mjs --write`, leggendo `tools/list` dal server vero.');
   out.push('> Non si modifica a mano: il prossimo che rigenera cancella le correzioni.');

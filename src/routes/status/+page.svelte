@@ -44,13 +44,13 @@
 </script>
 
 <svelte:head>
-  <title>Anomalia — Status</title>
+  <title>feega — Status</title>
   <meta name="robots" content="noindex" />
 </svelte:head>
 
 <main class="status-page">
   <header>
-    <a class="logo" href="/">Anomalia</a>
+    <a class="logo" href="/">feega</a>
     <h1>System Status</h1>
   </header>
 
@@ -133,7 +133,6 @@
     align-items: center;
     gap: 0.6rem;
     padding: 1rem 1.25rem;
-    border-radius: 12px;
     font-weight: 600;
     font-size: 0.95rem;
     margin-bottom: 1.5rem;
@@ -164,7 +163,6 @@
   .dot {
     width: 10px;
     height: 10px;
-    border-radius: 50%;
     flex-shrink: 0;
   }
 
@@ -190,7 +188,6 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.9rem 1.25rem;
-    border-radius: 10px;
     background: #fff;
     border: 1px solid #e5e7eb;
     transition: border-color 0.2s;

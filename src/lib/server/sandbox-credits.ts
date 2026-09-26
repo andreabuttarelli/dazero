@@ -26,7 +26,7 @@
  * all'infinito gratis, e sarebbe la prima cosa che fa un agente in loop. Il fallimento però si
  * vede: la riga porta `ok: false`, quindi in bolletta si distingue.
  */
-import { CREDITS_PER_USD } from '$lib/ads-fee';
+import { billedCreditsFor } from '$lib/server/credit-ladder';
 import { logAiCall } from '$lib/server/ai-log';
 import { env } from '$env/dynamic/private';
 
@@ -67,7 +67,7 @@ export function sandboxCredits(seconds: number): number {
   const s = Number(seconds);
   if (!Number.isFinite(s) || s <= 0) return 0;
   const usd = s * sandboxUsdPerSecond() * sandboxMarkup();
-  return Math.max(1, Math.ceil(usd * CREDITS_PER_USD));
+  return Math.max(1, billedCreditsFor(usd));
 }
 
 export type SandboxUse = 'motion_render' | 'motion_stills' | 'graphic_still' | 'agent';
@@ -83,13 +83,14 @@ export function chargeSandboxCredits(opts: {
   /** Il messaggio del fallimento, quando c'è: senza, il registro dice quanto e non cosa. */
   error?: string;
 }): number {
+  const usd = Math.max(0, opts.seconds) * sandboxUsdPerSecond() * sandboxMarkup();
   const credits = sandboxCredits(opts.seconds);
   if (credits <= 0) return 0;
   logAiCall({
     label: `sandbox.${opts.use}`,
     provider: 'sandbox',
     model: opts.use,
-    flatCostUsd: credits / CREDITS_PER_USD,
+    flatCostUsd: usd,
     ms: Math.round(opts.seconds * 1000),
     // `ok` dice com'è andato il render, NON se l'addebito vale: la macchina è stata accesa in
     // entrambi i casi. Serve a distinguerli in bolletta, non a esentare il fallimento.

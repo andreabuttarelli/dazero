@@ -12,14 +12,14 @@
  *
  *   Nessuna LETTERA NUDA. Il registro globale usa `g` come prefisso: dopo `g`, QUALUNQUE lettera
  *   è la seconda di una sequenza (`matchShortcut` lo dice esplicitamente). Una `d` nuda qui
- *   sarebbe «duplica» e insieme la `g d` che porta ai Leads, e a decidere sarebbe l'ordine in cui
- *   due ascoltatori su `window` ricevono lo stesso evento. Un gesto, due padroni: scartata.
+ *   sarebbe «duplica» e insieme la seconda lettera di una `g d`, e a decidere sarebbe l'ordine in
+ *   cui due ascoltatori su `window` ricevono lo stesso evento. Un gesto, due padroni: scartata.
  *
- *   DUPLICARE non c'è. ⌘D è del browser (segnalibro) e il registro globale lo dichiara già preso;
- *   ⌘⇧D sarebbe libero, ma duplicare una tile vuol dire scrivere una riga nuova nel database, e
- *   quella scrittura oggi non esiste. Un tasto che copia solo il disegno darebbe una tile che
- *   sparisce alla prossima apertura: peggio di un tasto che non c'è, perché il lavoro perso si
- *   scopre dopo. Il tasto si aggiunge il giorno che la scrittura esiste, non prima.
+ *   DUPLICA/COPIA/INCOLLA su ⌘D/⌘C/⌘V, non su ⌘⇧D o una lettera nuda: sono i tasti che ogni altro
+ *   programma usa per lo stesso gesto, e ⌘D che il browser legge come segnalibro non è mai in un
+ *   campo di testo — qui `isTypingTarget` li spegne comunque, come ogni altra combinazione. La
+ *   scrittura che rendeva questi tasti prematuri (una riga nuova nel database, non solo un disegno
+ *   che sparisce alla prossima apertura) esiste ora in `duplicateNodes`.
  *
  *   Backspace e Delete per cancellare, com'è su ogni tela che esista. Il ritorno alla pagina
  *   precedente su Backspace è stato tolto da Chrome nel 2016 e non è mai esistito su Safari.
@@ -54,7 +54,12 @@ export type CanvasCommandId =
   | 'fit'
   | 'zoom-in'
   | 'zoom-out'
-  | 'nudge';
+  | 'nudge'
+  | 'duplicate'
+  | 'copy'
+  | 'paste'
+  | 'undo'
+  | 'redo';
 
 /**
  * Il comando riconosciuto. `add` e `nudge` portano con sé il loro argomento perché è il tasto a
@@ -64,6 +69,8 @@ export type CanvasCommand =
   | { id: 'add'; what: Addable }
   | { id: 'nudge'; dx: number; dy: number }
   | { id: Exclude<CanvasCommandId, 'add' | 'nudge'> };
+
+const PASTE_MOD_KEYS: Record<string, 'duplicate' | 'copy' | 'paste'> = { d: 'duplicate', c: 'copy', v: 'paste' };
 
 /** L'argomento di `add`, per chi ha in mano un comando e non sa ancora quale sia. */
 export function addableOf(c: CanvasCommand): Addable | null {
@@ -100,7 +107,14 @@ export function matchCanvasShortcut(e: KeyboardEvent): CanvasCommand | null {
   const key = e.key;
 
   if (mod) {
-    if (key.toLowerCase() === 'a' && !e.shiftKey) return { id: 'select-all' };
+    // ⌘Z e ⇧⌘Z sono lo stesso tasto, e lo shift decide fra i due: va riconosciuto PRIMA del
+    // `return null` che lo shift porta per ogni altro comando con modificatore, o ⇧⌘Z non
+    // arriverebbe mai qui.
+    if (key.toLowerCase() === 'z') return { id: e.shiftKey ? 'redo' : 'undo' };
+    if (e.shiftKey) return null;
+    if (key.toLowerCase() === 'a') return { id: 'select-all' };
+    const command = PASTE_MOD_KEYS[key.toLowerCase()];
+    if (command) return { id: command };
     // Tutto il resto con modificatore è del browser o del registro globale (⌘K, ⌘,).
     return null;
   }
@@ -151,6 +165,11 @@ export const CANVAS_SHORTCUTS: readonly CanvasShortcutRow[] = [
   { id: 'delete', keys: ['⌫'], label: 'Elimina la selezione' },
   { id: 'select-all', keys: ['mod', 'A'], label: 'Seleziona tutto' },
   { id: 'deselect', keys: ['Esc'], label: 'Deseleziona' },
+  { id: 'undo', keys: ['mod', 'Z'], label: 'Annulla' },
+  { id: 'redo', keys: ['⇧', 'mod', 'Z'], label: 'Ripeti' },
+  { id: 'duplicate', keys: ['mod', 'D'], label: 'Duplica la selezione' },
+  { id: 'copy', keys: ['mod', 'C'], label: 'Copia la selezione' },
+  { id: 'paste', keys: ['mod', 'V'], label: 'Incolla' },
   { id: 'nudge', keys: ['←', '↑', '↓', '→'], label: 'Sposta la selezione (⇧ di più)' },
   { id: 'fit', keys: ['0'], label: 'Inquadra tutto' },
   { id: 'zoom-in', keys: ['+'], label: 'Ingrandisci' },

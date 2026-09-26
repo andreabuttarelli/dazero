@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Install Anomalia CLI skill for ALL AI coding assistants
+# Install feega CLI skill for ALL AI coding assistants
 #
 # Supported tools:
 #   Claude Code, Cursor, GitHub Copilot, Windsurf, Cline,
@@ -8,9 +8,9 @@
 #   Antigravity CLI, and any tool that reads AGENTS.md or llms.txt
 #
 # Usage:
-#   curl -sSL https://anomalia.so/install-skill.sh | bash              # Interactive
-#   curl -sSL https://anomalia.so/install-skill.sh | bash -s -- --global   # Global
-#   curl -sSL https://anomalia.so/install-skill.sh | bash -s -- --project  # Current project
+#   curl -sSL https://feega.app/install-skill.sh | bash              # Interactive
+#   curl -sSL https://feega.app/install-skill.sh | bash -s -- --global   # Global
+#   curl -sSL https://feega.app/install-skill.sh | bash -s -- --project  # Current project
 #
 
 set -euo pipefail
@@ -32,37 +32,37 @@ warn()    { echo -e "${YELLOW}⚠${NC} $1"; }
 
 read_skill_content() {
   # Try to download from GitHub, fallback to embedded
-  local url="https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/skills/anomalia-cli.md"
+  local url="https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/skills/feega-cli.md"
   local content
   content=$(curl -sSL "$url" 2>/dev/null) || true
 
-  if [[ -z "$content" ]] || ! echo "$content" | grep -q "Anomalia Skill"; then
+  if [[ -z "$content" ]] || ! echo "$content" | grep -q "feega Skill"; then
     # Embedded fallback (MCP + CLI)
     read -r -d '' content << 'SKILL_EOF' || true
-# Anomalia Skill (MCP + CLI)
+# feega Skill (MCP + CLI)
 
-Prefer Anomalia MCP tools when connected; otherwise use the `anomalia` CLI.
-OAuth only — session at ~/.config/anomalia/session.json. No static API tokens.
+Prefer feega MCP tools when connected; otherwise use the `feega` CLI.
+OAuth only — session at ~/.config/feega/session.json. No static API tokens.
 
 ## MCP (preferred)
 
-Stdio: bun run /path/to/anomalia-cli/mcp/stdio.ts
-HTTP: https://mcp.anomalia.so/mcp (Bearer required remotely)
+Stdio: bun run /path/to/feega-cli/mcp/stdio.ts
+HTTP: https://mcp.feega.app/mcp (Bearer required remotely)
 Start with list_brands / whoami. Use specific tools; chat for open-ended work.
 
 ## CLI quick reference
 
 ```bash
-anomalia login
-anomalia brands
-anomalia dashboard <slug>
-anomalia content <slug> --status pending_user
-anomalia approve <slug> --all
-anomalia post <slug> <id> edit --caption "..."
-anomalia plan <slug> propose
-anomalia weekly-plan <slug> plan --week 0
-anomalia weekly-plan <slug> produce --week 0
-anomalia studio <slug> add-note --text "..."
+feega login
+feega brands
+feega dashboard <slug>
+feega content <slug> --status pending_user
+feega approve <slug> --all
+feega post <slug> <id> edit --caption "..."
+feega plan <slug> propose
+feega weekly-plan <slug> plan --week 0
+feega weekly-plan <slug> produce --week 0
+feega studio <slug> add-note --text "..."
 ```
 
 ## Tips
@@ -79,16 +79,16 @@ SKILL_EOF
 install_cursor_skill() {
   local dest_dir="$1"
   local label="$2"
-  local base="https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/skills/anomalia"
+  local base="https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/skills/feega"
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   local local_skill=""
 
   # Prefer local package when installer runs from this repo
-  if [[ -f "$script_dir/../skills/anomalia/SKILL.md" ]]; then
-    local_skill="$script_dir/../skills/anomalia"
-  elif [[ -f "./skills/anomalia/SKILL.md" ]]; then
-    local_skill="./skills/anomalia"
+  if [[ -f "$script_dir/../skills/feega/SKILL.md" ]]; then
+    local_skill="$script_dir/../skills/feega"
+  elif [[ -f "./skills/feega/SKILL.md" ]]; then
+    local_skill="./skills/feega"
   fi
 
   mkdir -p "$dest_dir/references"
@@ -102,7 +102,7 @@ install_cursor_skill() {
     return
   fi
 
-  if curl -sSL "$base/SKILL.md" -o "$dest_dir/SKILL.md" 2>/dev/null && grep -q "name: anomalia" "$dest_dir/SKILL.md" 2>/dev/null; then
+  if curl -sSL "$base/SKILL.md" -o "$dest_dir/SKILL.md" 2>/dev/null && grep -q "name: feega" "$dest_dir/SKILL.md" 2>/dev/null; then
     for f in mcp.md tools.md cli.md; do
       curl -sSL "$base/references/$f" -o "$dest_dir/references/$f" 2>/dev/null || true
     done
@@ -110,8 +110,8 @@ install_cursor_skill() {
   else
     {
       echo '---'
-      echo 'name: anomalia'
-      echo 'description: Operate Anomalia via MCP tools or the anomalia CLI.'
+      echo 'name: feega'
+      echo 'description: Operate feega via MCP tools or the feega CLI.'
       echo '---'
       echo ''
       echo "$SKILL_CONTENT"
@@ -128,14 +128,14 @@ while [[ $# -gt 0 ]]; do
     --global)   MODE="global"; shift ;;
     --project)  MODE="project"; shift ;;
     -h|--help)
-      echo "Usage: curl -sSL https://anomalia.so/install-skill.sh | bash"
+      echo "Usage: curl -sSL https://feega.app/install-skill.sh | bash"
       echo ""
       echo "Options:"
       echo "  --global    Install globally (~/.claude/skills/ + ~/.cursor/skills/)"
       echo "  --project   Install in current project (all tools)"
       echo ""
       echo "Publishable skill (skills.sh / npx skills):"
-      echo "  npx skills add anomaliaso/anomalia --skill anomalia"
+      echo "  npx skills add andreabuttarelli/feega --skill feega"
       echo ""
       echo "Supported tools:"
       echo "  Claude Code, Cursor, GitHub Copilot, Windsurf, Cline,"
@@ -158,7 +158,7 @@ install_file() {
   mkdir -p "$dir"
 
   # If file exists and already has our content, skip
-  if [[ -f "$target" ]] && grep -qE "Anomalia (CLI|Skill)" "$target" 2>/dev/null; then
+  if [[ -f "$target" ]] && grep -qE "feega (CLI|Skill)" "$target" 2>/dev/null; then
     info "$label già configurato"
     return
   fi
@@ -177,7 +177,7 @@ install_file() {
 # ── Main ───────────────────────────────────────────────────────────────
 
 echo ""
-echo -e "${BOLD}Anomalia CLI — AI Skill Installer${NC}"
+echo -e "${BOLD}feega CLI — AI Skill Installer${NC}"
 echo ""
 
 # Ask mode if not specified
@@ -211,18 +211,18 @@ echo ""
 
 if [[ "$MODE" == "global" ]]; then
   # Global: Claude Code + Cursor Agent Skills
-  install_file "$HOME/.claude/skills/anomalia-cli.md" "Claude Code (globale)"
-  install_cursor_skill "$HOME/.cursor/skills/anomalia" "Cursor Agent Skill (globale)"
+  install_file "$HOME/.claude/skills/feega-cli.md" "Claude Code (globale)"
+  install_cursor_skill "$HOME/.cursor/skills/feega" "Cursor Agent Skill (globale)"
 else
   # Project: all tools
 
   # Claude Code (uses CLAUDE.md which is auto-read)
   install_file "CLAUDE.md" "Claude Code (CLAUDE.md)"
-  install_file ".claude/skills/anomalia-cli.md" "Claude Code skill file"
+  install_file ".claude/skills/feega-cli.md" "Claude Code skill file"
 
   # Cursor (legacy rules + Agent Skills)
   install_file ".cursorrules" "Cursor (.cursorrules)"
-  install_cursor_skill ".cursor/skills/anomalia" "Cursor Agent Skill"
+  install_cursor_skill ".cursor/skills/feega" "Cursor Agent Skill"
 
   # GitHub Copilot
   install_file ".github/copilot-instructions.md" "GitHub Copilot"
@@ -238,9 +238,9 @@ else
 
   # Aider
   if [[ -f ".aider.conf.yml" ]]; then
-    if ! grep -qE "Anomalia (CLI|Skill)" ".aider.conf.yml" 2>/dev/null; then
+    if ! grep -qE "feega (CLI|Skill)" ".aider.conf.yml" 2>/dev/null; then
       echo "" >> ".aider.conf.yml"
-      echo "# Anomalia Skill" >> ".aider.conf.yml"
+      echo "# feega Skill" >> ".aider.conf.yml"
       echo "$SKILL_CONTENT" >> ".aider.conf.yml"
       success "Aider aggiornato → .aider.conf.yml"
     else
@@ -249,8 +249,8 @@ else
   else
     # Aider uses YAML, create a proper file
     cat > ".aider.conf.yml" << AIDER_EOF
-# Anomalia Skill instructions
-# See: https://anomalia.so
+# feega Skill instructions
+# See: https://feega.app
 AIDER_EOF
     echo "$SKILL_CONTENT" >> ".aider.conf.yml"
     success "Aider creato → .aider.conf.yml"
@@ -261,7 +261,7 @@ AIDER_EOF
 
   # llms.txt (universal standard)
   if [[ ! -f "llms.txt" ]]; then
-    curl -sSL "https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/llms.txt" -o "llms.txt" 2>/dev/null && \
+    curl -sSL "https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/llms.txt" -o "llms.txt" 2>/dev/null && \
       success "llms.txt creato" || true
   else
     info "llms.txt già esistente"
@@ -276,8 +276,8 @@ echo ""
 
 if [[ "$MODE" == "project" ]]; then
   echo "  File installati:"
-  [[ -f ".claude/skills/anomalia-cli.md" ]] && echo "    • .claude/skills/anomalia-cli.md  (Claude Code)"
-  [[ -f ".cursor/skills/anomalia/SKILL.md" ]] && echo "    • .cursor/skills/anomalia/SKILL.md  (Cursor Agent Skill)"
+  [[ -f ".claude/skills/feega-cli.md" ]] && echo "    • .claude/skills/feega-cli.md  (Claude Code)"
+  [[ -f ".cursor/skills/feega/SKILL.md" ]] && echo "    • .cursor/skills/feega/SKILL.md  (Cursor Agent Skill)"
   [[ -f ".cursorrules" ]] && echo "    • .cursorrules                (Cursor)"
   [[ -f ".github/copilot-instructions.md" ]] && echo "    • .github/copilot-instructions.md  (Copilot)"
   [[ -f ".windsurfrules" ]] && echo "    • .windsurfrules              (Windsurf)"
@@ -290,9 +290,9 @@ fi
 
 echo ""
 echo "  Ora puoi dire alla tua AI:"
-echo -e "  ${BOLD}\"Usa Anomalia MCP (o la CLI) per elencare i brand\"${NC}"
+echo -e "  ${BOLD}\"Usa feega MCP (o la CLI) per elencare i brand\"${NC}"
 echo ""
-echo "  Cursor Agent Skill: skills/anomalia/SKILL.md"
-echo "  Directory install:  npx skills add anomaliaso/anomalia --skill anomalia"
-echo "  Docs MCP: https://github.com/anomaliaso/anomalia/blob/main/cli/docs/mcp.md"
+echo "  Cursor Agent Skill: skills/feega/SKILL.md"
+echo "  Directory install:  npx skills add andreabuttarelli/feega --skill feega"
+echo "  Docs MCP: https://github.com/andreabuttarelli/feega/blob/main/cli/docs/mcp.md"
 echo ""

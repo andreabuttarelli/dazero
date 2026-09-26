@@ -69,6 +69,40 @@ describe('mcp observability', () => {
   });
 });
 
+describe('getSupabaseAdmin cache', () => {
+  /**
+   * `bun test` gira tutti i file dentro un solo processo: una chiamata a `mcpLogAsync` senza
+   * `SUPABASE_SERVICE_ROLE_KEY` (come sopra) memoizzava `null` per sempre, e un test file
+   * successivo che RIPRISTINA la chiave restava comunque senza client — `mcp_logs` mai scritta,
+   * silenziosamente, per il resto del processo.
+   */
+  test('una chiamata senza chiave non impedisce a una successiva, con la chiave, di scrivere', async () => {
+    await logWithoutEnv(1);
+
+    const prevUrl = process.env.PUBLIC_SUPABASE_URL;
+    const prevKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    process.env.PUBLIC_SUPABASE_URL = 'http://127.0.0.1:1';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'now-set';
+
+    const written: string[] = [];
+    const realError = console.error;
+    console.error = (...args: unknown[]) => void written.push(args.join(' '));
+
+    try {
+      await mcpLogAsync({ level: 'info', event: 'test.event', message: 'hello again' });
+    } finally {
+      console.error = realError;
+      if (prevUrl !== undefined) process.env.PUBLIC_SUPABASE_URL = prevUrl;
+      else delete process.env.PUBLIC_SUPABASE_URL;
+      if (prevKey !== undefined) process.env.SUPABASE_SERVICE_ROLE_KEY = prevKey;
+      else delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    }
+
+    expect(written.some((line) => line.includes('mcp_logs disabled'))).toBe(false);
+    expect(written.some((line) => line.includes('supabase mcp_logs insert failed'))).toBe(true);
+  });
+});
+
 describe('mcp http router', () => {
   test('health via router', async () => {
     const res = await routeMcpHttp(new Request('http://localhost/health'));

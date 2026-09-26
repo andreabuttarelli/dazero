@@ -46,9 +46,9 @@ describe('il craft del modello arriva al prompt video', () => {
     expect(p.indexOf(SCENE)).toBeLessThan(p.indexOf('MODEL NOTES'));
   });
 
-  // Il fotogramma pulito chiude i rami che lo emettono — freeform e UGC. Negli altri due la
-  // stessa cosa la dice FIDELITY, e il craft non deve finire dopo nessuna delle due: una regola
-  // assoluta con una nota di mestiere in coda sembra negoziabile.
+  // Il fotogramma pulito chiude il ramo freeform. Nell'altro la stessa cosa la dice FIDELITY, e
+  // il craft non deve finire dopo nessuna delle due: una regola assoluta con una nota di mestiere
+  // in coda sembra negoziabile.
   // Il cavo vero: non basta che `buildVideoPrompt` SAPPIA usare il modello, deve riceverlo dal
   // percorso che rende davvero. È il punto in cui il pavimento delle immagini si era staccato.
   it('il percorso di render passa il modello che ha risolto, non lo lascia indietro', async () => {

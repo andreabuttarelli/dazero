@@ -24,23 +24,23 @@ vi.mock('$lib/server/video-render-queue', () => ({
 }));
 vi.mock('$lib/server/brand-media', () => ({ resolveBrandImageIds: async () => ['https://x/y.png'] }));
 vi.mock('$lib/server/usage', () => ({ remaining: async () => ({ videos: 5 }) }));
-vi.mock('$lib/server/ai-log', () => ({ withBrandContext: <T>(_b: string, fn: () => T) => fn() }));
+vi.mock('$lib/server/ai-log', () => ({ withOrgContext: <T>(_o: string, fn: () => T) => fn() }));
+// Questo file misura la durata, non il catalogo: il modello passato e' sempre uno che il canvas
+// offrirebbe davvero, quindi il cancello di `canvasModelAccepts` lo lascia passare senza dover
+// simulare `ai_models` riga per riga.
+vi.mock('$lib/server/offerable-models', () => ({
+  offerableModels: async () => ({
+    synced: true,
+    choices: [{ id: 'grok-imagine-video-1-5-preview' }, { id: 'bytedance/seedance-2-5' }]
+  })
+}));
 
 const admin = {
   from: (table: string) => ({
     select: () => ({
-      eq: () =>
-        table === 'brand_media'
-          ? { limit: async () => ({ data: [], error: null }) }
-          : {
-              maybeSingle: async () => ({
-                data:
-                  table === 'brands'
-                    ? { plan: 'pro', timezone: 'Europe/Rome', content_prefs: {} }
-                    : { id: 'job-1' },
-                error: null
-              })
-            }
+      eq: () => ({
+        maybeSingle: async () => ({ data: { id: 'job-1' }, error: null })
+      })
     })
   })
 } as never;
@@ -52,9 +52,9 @@ beforeEach(() => {
 });
 
 const run = async (over: Record<string, unknown> = {}) => {
-  const { generateBrandVideo } = await import('./media-generate');
-  return generateBrandVideo({
-    brandId: 'brand-1',
+  const { generateVideoWithoutBrand } = await import('./media-generate');
+  return generateVideoWithoutBrand({
+    orgId: 'org-1',
     userId: 'user-1',
     prompt: 'un carrello lento',
     ...over

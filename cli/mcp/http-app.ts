@@ -52,7 +52,7 @@ export async function handleMcpFetch(req: Request): Promise<Response> {
   if (url.pathname === '/health' || url.pathname === '/') {
     return json({
       ok: true,
-      name: 'anomalia-mcp',
+      name: 'feega-mcp',
       transport: 'streamable-http',
       mcp: '/mcp',
     });
@@ -62,7 +62,7 @@ export async function handleMcpFetch(req: Request): Promise<Response> {
     return json({
       resource: mcpResourceUrl(req),
       authorization_servers: authServers(),
-      scopes_supported: ['anomalia'],
+      scopes_supported: ['feega'],
       bearer_methods_supported: ['header'],
     });
   }
@@ -92,7 +92,7 @@ export async function handleMcpFetch(req: Request): Promise<Response> {
           error: {
             code: -32001,
             message:
-              'Unauthorized. Pass Authorization: Bearer <access_token> from an Anomalia OAuth session.',
+              'Unauthorized. Pass Authorization: Bearer <access_token> from a feega OAuth session.',
           },
           id: null,
         }),
@@ -100,7 +100,7 @@ export async function handleMcpFetch(req: Request): Promise<Response> {
           status: 401,
           headers: {
             'Content-Type': 'application/json',
-            'WWW-Authenticate': `Bearer realm="anomalia", resource_metadata="${new URL('/.well-known/oauth-protected-resource', req.url).toString()}"`,
+            'WWW-Authenticate': `Bearer realm="feega", resource_metadata="${new URL('/.well-known/oauth-protected-resource', req.url).toString()}"`,
           },
         },
       ),
@@ -111,9 +111,9 @@ export async function handleMcpFetch(req: Request): Promise<Response> {
     const { WebStandardStreamableHTTPServerTransport } = await import(
       '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
     );
-    const { createAnomaliaMcpServer } = await import('./server.ts');
+    const { createFeegaMcpServer } = await import('./server.ts');
 
-    const server = createAnomaliaMcpServer();
+    const server = createFeegaMcpServer();
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,

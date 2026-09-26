@@ -26,7 +26,7 @@ import { IMAGE_PART_MAX_BYTES } from '$lib/raster-image';
 import type { ImagePart, ImagePartRefusal } from '$lib/server/brand-context';
 import { safeProviderReason } from '$lib/server/provider-reason';
 import { markImage, DIGITAL_SOURCE_TYPE } from '$lib/server/content-credentials';
-import type { AspectRatio } from '$lib/server/content-preview';
+import type { AspectRatio } from '$lib/server/media-generate.images';
 
 export type GeneratedMedia = {
   /**
@@ -61,6 +61,24 @@ export type GenerateMediaOpts = {
   baseMediaId?: string;
   /** Secondi. Assente → la preferenza del brand. */
   durationSeconds?: number;
+  /** '480p' | '720p'. Assente → la preferenza del brand, poi il default del prodotto
+   *  (`clampVideoResolution`). Solo video: l'immagine non ha ancora una resa scelta dal modello. */
+  resolution?: string;
+  /**
+   * Il fotogramma FINALE — richiede `baseMediaId` come iniziale, e vale solo sulla famiglia
+   * Seedance (`RenderVideoOpts.lastFrameUrl`): un modello senza riferimenti multimodali lo ignora,
+   * lo stesso posto che decide quanti ne prende (`videoRefCapacity`, `video-models.ts`).
+   */
+  lastFrameUrl?: string;
+  /** Riferimenti multimodali OLTRE al fotogramma iniziale. URL pubblici già firmati: questo
+   *  percorso senza brand non ha una libreria da cui risolverli per id. */
+  referenceImageUrls?: string[];
+  referenceAudioUrls?: string[];
+  referenceVideoUrls?: string[];
+  /** I campi extra dichiarati dal modello scelto (`ai_models.param_schema`) — `generate_audio`,
+   *  `seed`… Solo video: `runImageJob` non li legge ancora, un'immagine non ne dichiara oltre
+   *  quelli con controllo dedicato al momento di scrivere questo. */
+  params?: Record<string, unknown>;
 };
 
 export type GenerateMediaResult =
@@ -95,6 +113,24 @@ export type GenerateMediaResult =
     }
   | { ok: false; error: 'duration_out_of_range'; reason: string }
   | { ok: false; error: 'model_not_for_slot'; allowed: string[] };
+
+/**
+ * Il cancello contro cui il canvas valida un modello scelto per chiamata, non lo slot a ruolo.
+ *
+ * Sotto un brand `slotAccepts` resta il cancello giusto: uno slot di `content_prefs` governa un
+ * MESTIERE fisso (rigenera, anima), e un modello sincronizzato senza spec non sa ancora dichiarare
+ * il suo ruolo. Il canvas non promette un ruolo — offre "quello che il menu ha mostrato" — e il
+ * menu è `offerableModels`: lo stesso elenco, letto qui invece di un secondo cancello.
+ */
+async function canvasModelAccepts(
+  admin: SupabaseClient,
+  medium: 'image' | 'video',
+  model: string
+): Promise<boolean> {
+  const { offerableModels } = await import('$lib/server/offerable-models');
+  const { choices } = await offerableModels(admin, medium);
+  return choices.some((c) => c.id === model);
+}
 
 const IMAGE_MIME = 'image/png';
 
@@ -187,7 +223,7 @@ function ownStoragePath(userId: string, handle: string): string | null {
   return path;
 }
 
-function storedKind(path: string): RefinedKind {
+function storedKind(path: string): 'image' | 'video' {
   return CLIP_EXTENSION.test(path) ? 'video' : 'image';
 }
 
@@ -212,18 +248,24 @@ type StoredDrawing = {
   height: number | null;
 };
 
+export type DrawingStoreFailure = { reason: string };
+
 /**
  * I byte nel bucket privato, e nient'altro: né una riga, né un id. Il primo segmento del percorso
  * è ciò che le policy dello storage guardano, quindi è sempre lo user — con o senza un brand
  * sotto, il file resta suo.
+ *
+ * L'esito porta SEMPRE il motivo del fornitore, `dataUrlBytes` a parte: un bucket assente e una
+ * scrittura respinta sono due difetti diversi, e schiacciarli sullo stesso `null` è quanto
+ * rendeva `store_failed` indebuggabile dall'interfaccia.
  */
 async function storeDrawing(
   supabase: SupabaseClient,
   folder: string,
   dataUrl: string
-): Promise<StoredDrawing | null> {
+): Promise<StoredDrawing | DrawingStoreFailure> {
   const decoded = dataUrlBytes(dataUrl);
-  if (!decoded) return null;
+  if (!decoded) return { reason: 'the model returned no image data' };
 
   // Marcata sintetica prima di toccare lo storage: un'immagine di modello che gira senza la sua
   // provenienza è un problema che non si ripara a valle.
@@ -233,12 +275,18 @@ async function storeDrawing(
   const storagePath = `${folder}/${fileName}`;
 
   const stored = await storeBrandMediaBytes(supabase, storagePath, bytes, decoded.mime);
-  if (stored.error) return null;
+  if (stored.error) return { reason: stored.error };
 
   const { width, height } = await probeImageDimensions(bytes);
 
   return { storagePath, fileName, mime: decoded.mime, bytes: bytes.length, width, height };
 }
+
+function isStoredDrawing(result: StoredDrawing | DrawingStoreFailure): result is StoredDrawing {
+  return 'storagePath' in result;
+}
+
+type DepositOutcome = { ok: true; media: GeneratedMedia } | { ok: false; reason: string };
 
 /**
  * Un'immagine generata finisce nel bucket privato della libreria, non fra i media pubblici dei
@@ -248,11 +296,11 @@ async function depositImage(
   supabase: SupabaseClient,
   opts: { brandId: string; userId: string; prompt: string; title?: string },
   dataUrl: string
-): Promise<GeneratedMedia | null> {
+): Promise<DepositOutcome> {
   const drawn = await storeDrawing(supabase, `${opts.userId}/${opts.brandId}/media`, dataUrl);
-  if (!drawn) return null;
+  if (!isStoredDrawing(drawn)) return { ok: false, reason: drawn.reason };
 
-  const { row } = await insertBrandMedia(supabase, {
+  const { row, error } = await insertBrandMedia(supabase, {
     brandId: opts.brandId,
     userId: opts.userId,
     storagePath: drawn.storagePath,
@@ -264,15 +312,18 @@ async function depositImage(
     source: 'generate',
     title: opts.title?.trim() || opts.prompt.slice(0, 80)
   });
-  if (!row) return null;
+  if (!row) return { ok: false, reason: error ?? 'the library row could not be written' };
 
   return {
-    id: row.id,
-    kind: row.kind,
-    mime: drawn.mime,
-    width: drawn.width,
-    height: drawn.height,
-    url: mediaUrl(row.short_code)
+    ok: true,
+    media: {
+      id: row.id,
+      kind: row.kind,
+      mime: drawn.mime,
+      width: drawn.width,
+      height: drawn.height,
+      url: mediaUrl(row.short_code)
+    }
   };
 }
 
@@ -286,24 +337,27 @@ async function handOverImage(
   supabase: SupabaseClient,
   opts: { userId: string },
   dataUrl: string
-): Promise<GeneratedMedia | null> {
+): Promise<DepositOutcome> {
   const drawn = await storeDrawing(supabase, `${opts.userId}/media`, dataUrl);
-  if (!drawn) return null;
+  if (!isStoredDrawing(drawn)) return { ok: false, reason: drawn.reason };
 
   // Senza un id, la firma è l'UNICO modo di raggiungere il file: consegnarla nulla lascerebbe chi
   // legge `ok` con un render pagato e niente da aprire.
   const signed = await signKnowledgePaths(supabase, [drawn.storagePath]);
   const url = signed.get(drawn.storagePath);
-  if (!url) return null;
+  if (!url) return { ok: false, reason: 'the file was stored but could not be signed for reading' };
 
   return {
-    id: null,
-    kind: 'image',
-    mime: drawn.mime,
-    width: drawn.width,
-    height: drawn.height,
-    url,
-    storage_path: drawn.storagePath
+    ok: true,
+    media: {
+      id: null,
+      kind: 'image',
+      mime: drawn.mime,
+      width: drawn.width,
+      height: drawn.height,
+      url,
+      storage_path: drawn.storagePath
+    }
   };
 }
 
@@ -321,12 +375,18 @@ export type ImageJob = {
   prompt: string;
   count?: number;
   aspectRatio?: AspectRatio;
+  /** '1K' | '2K' | '4K' — solo i modelli che lo dichiarano (`ModelChoice.resolutions`).
+   *  Assente = la resa di default del modello. */
+  resolution?: string;
   title?: string;
   /** Vale per QUESTA chiamata: non tocca `content_prefs`, che è il mestiere di set_media_model. */
   model?: string;
   /** L'immagine della libreria da cui partire. Presente → è una modifica. */
   baseMediaId?: string;
   brandStyle?: BrandStyleUse;
+  /** I campi extra che il modello scelto dichiara (`ai_models.param_schema`), già filtrati e
+   *  col loro nome esatto — `model-params.ts` decide cosa entra, questo file lo porta soltanto. */
+  params?: Record<string, unknown>;
 };
 
 export type BrandStyleUse = 'apply' | 'ignore';
@@ -344,7 +404,7 @@ export type ImageJobResult =
        */
       costUsd: number | null;
     }
-  | { ok: false; error: 'render_failed' | 'store_failed' | 'source_not_found' }
+  | { ok: false; error: 'render_failed' | 'store_failed' | 'source_not_found'; reason?: string }
   | SourceTooLarge
   | { ok: false; error: 'model_not_for_slot'; allowed: string[] };
 
@@ -417,7 +477,7 @@ async function runImageJob(
     { imageModelFor, imageRefineModelFor },
     { mediaModelSlot, slotAccepts, slotChoices }
   ] = await Promise.all([
-    import('$lib/server/content-preview'),
+    import('$lib/server/media-generate.images'),
     import('$lib/image-models'),
     import('$lib/media-model-slots')
   ]);
@@ -425,10 +485,23 @@ async function runImageJob(
   // Il catalogo è quello vero, lo stesso che governa set_media_model: un secondo elenco
   // divergerebbe dal primo al prossimo modello aggiunto, e la metà vecchia rifiuterebbe in
   // silenzio un modello valido.
+  //
+  // Il canvas (`job.brandId === null`) non ha uno slot a ruolo: valida contro `offerableModels`,
+  // lo stesso elenco che il menu del nodo ha già mostrato — un modello sincronizzato senza spec
+  // passa qui anche se `slotAccepts` lo rifiuterebbe, perché quel cancello guarda un ruolo che il
+  // canvas non promette.
   const refining = !!job.baseMediaId;
-  const slot = mediaModelSlot(refining ? 'imageRefineModel' : 'imageModel');
-  if (job.model && slot && !slotAccepts(slot, job.model)) {
-    return { ok: false, error: 'model_not_for_slot', allowed: slotChoices(slot).map((c) => c.id) };
+  if (job.model && job.brandId === null) {
+    const { createAdminClient } = await import('$lib/server/supabase-admin');
+    const accepted = await canvasModelAccepts(createAdminClient(), 'image', job.model);
+    if (!accepted) {
+      return { ok: false, error: 'model_not_for_slot', allowed: [] };
+    }
+  } else {
+    const slot = mediaModelSlot(refining ? 'imageRefineModel' : 'imageModel');
+    if (job.model && slot && !slotAccepts(slot, job.model)) {
+      return { ok: false, error: 'model_not_for_slot', allowed: slotChoices(slot).map((c) => c.id) };
+    }
   }
 
   // Senza brand non c'è niente da leggere: valgono i default del prodotto. Andarci lo stesso
@@ -458,7 +531,9 @@ async function runImageJob(
     model: refining ? imageModelFor(prefs) : (job.model ?? imageModelFor(prefs)),
     refineModel: refining ? (job.model ?? imageRefineModelFor(prefs)) : imageRefineModelFor(prefs),
     baseImage,
-    aspectRatio: job.aspectRatio
+    aspectRatio: job.aspectRatio,
+    resolution: job.resolution,
+    params: job.params
   };
 
   // Il modello riportato viene dalla STESSA funzione che costruisce la richiesta, non da una copia
@@ -478,9 +553,9 @@ async function runImageJob(
     const filed = job.brandId
       ? await depositImage(supabase, { ...job, brandId: job.brandId }, dataUrl)
       : await handOverImage(supabase, job, dataUrl);
-    if (!filed) return { ok: false, error: 'store_failed' };
+    if (!filed.ok) return { ok: false, error: 'store_failed', reason: filed.reason };
 
-    media.push(filed);
+    media.push(filed.media);
   }
 
   // Nessuna alternativa prodotta è un fallimento, non un successo vuoto: chi legge `ok` deve poter
@@ -493,15 +568,6 @@ async function runImageJob(
   return { ok: true, media, model: chosen, renders, costUsd: billedUsdInScope() ?? null };
 }
 
-export async function generateBrandImages(
-  supabase: SupabaseClient,
-  job: Omit<ImageJob, 'baseMediaId'> & { brandId: string }
-): Promise<ImageJobResult> {
-  const { withBrandContext } = await import('$lib/server/ai-log');
-
-  return withBrandContext(job.brandId, () => runImageJob(supabase, job));
-}
-
 /**
  * Il disegno estemporaneo: nessuno slug, nessun brand, niente da scegliere. Paga
  * l'organizzazione, che lo scope nomina — senza, la riga in `ai_calls` non atterrerebbe da nessuna
@@ -509,225 +575,11 @@ export async function generateBrandImages(
  */
 export async function generateImagesWithoutBrand(
   supabase: SupabaseClient,
-  job: Omit<ImageJob, 'baseMediaId' | 'brandId' | 'title'> & { orgId: string }
+  job: Omit<ImageJob, 'brandId' | 'title'> & { orgId: string }
 ): Promise<ImageJobResult> {
   const { withOrgContext } = await import('$lib/server/ai-log');
 
   return withOrgContext(job.orgId, () => runImageJob(supabase, { ...job, brandId: null }));
-}
-
-export type RefineMediaJob = {
-  /** `null` = nessun brand: la sorgente è un percorso consegnato, non una riga di libreria. */
-  brandId: string | null;
-  userId: string;
-  /** L'asset di partenza. Il SUO tipo sceglie il motore: non lo dichiara chi chiama. */
-  baseMediaId: string;
-  instruction: string;
-  count?: number;
-  model?: string;
-  brandStyle?: BrandStyleUse;
-  title?: string;
-};
-
-export type RefinedKind = 'image' | 'video';
-
-export type RefineMediaResult =
-  | { ok: true; kind: RefinedKind; media: GeneratedMedia[]; model: string | null; renders: number }
-  | {
-      ok: false;
-      error: 'source_not_found' | 'kind_not_refinable' | 'no_refine_model' | 'render_failed' | 'store_failed';
-    }
-  | SourceTooLarge
-  | { ok: false; error: 'model_not_for_slot'; allowed: string[] };
-
-type Refiner = (
-  supabase: SupabaseClient,
-  job: RefineMediaJob & { sourceId: string }
-) => Promise<RefineMediaResult>;
-
-async function refineLibraryImage(
-  supabase: SupabaseClient,
-  job: RefineMediaJob & { sourceId: string }
-): Promise<RefineMediaResult> {
-  const out = await runImageJob(supabase, {
-    brandId: job.brandId,
-    userId: job.userId,
-    prompt: job.instruction,
-    baseMediaId: job.sourceId,
-    count: job.count,
-    model: job.model,
-    brandStyle: job.brandStyle,
-    title: job.title
-  });
-  if (!out.ok) return out;
-
-  return { ok: true, kind: 'image', media: out.media, model: out.model, renders: out.renders };
-}
-
-/** Il link permanente di una riga appena scritta, letto dalla riga e non ricostruito a mano. */
-async function libraryLink(supabase: SupabaseClient, mediaId: string): Promise<string | null> {
-  const { data } = await supabase.from('brand_media').select('short_code').eq('id', mediaId).maybeSingle();
-
-  return mediaUrl((data?.short_code ?? null) as string | null);
-}
-
-async function signedSourceUrl(
-  supabase: SupabaseClient,
-  brandId: string,
-  mediaId: string
-): Promise<string | null> {
-  const { data } = await supabase
-    .from('brand_media')
-    .select('storage_path')
-    .eq('id', mediaId)
-    .eq('brand_id', brandId)
-    .maybeSingle();
-  const path = String(data?.storage_path ?? '');
-  if (!path) return null;
-
-  return signedPath(supabase, path);
-}
-
-/**
- * Il poll di `transformVideo` arriva a 600s, la funzione muore a 300 (`maxDuration` sulla rotta):
- * senza un tetto proprio il client non riceve un errore, riceve una connessione che cade. Qui si
- * smette PRIMA del muro, così la risposta esiste e dice `render_failed`.
- *
- * È un soffitto noto, non una soluzione: una clip più lenta di questo resta pagata e non
- * consegnata. La strada per toglierlo è la coda `video_renders`, che `generate_video` usa già —
- * si sottomette, si torna con un job_id, e il reconciler del cron la deposita.
- */
-const VIDEO_REFINE_BUDGET_MS = 280_000;
-
-/**
- * Riscrivere una clip è un mestiere con un modello suo, e un brand può non averlo ancora scelto:
- * `videoRefineModel` esiste in `set_media_model` da prima di questo percorso e finora nessun tool
- * lo chiamava. Senza modello si RIFIUTA — filmare da capo consegnerebbe una clip nuova a chi ha
- * chiesto di correggere la sua, che è il difetto da cui questo percorso nasce.
- */
-async function refineLibraryVideo(
-  supabase: SupabaseClient,
-  job: RefineMediaJob & { sourceId: string }
-): Promise<RefineMediaResult> {
-  const [{ mediaModelSlot, slotAccepts, slotChoices }, { videoModelForRole }] = await Promise.all([
-    import('$lib/media-model-slots'),
-    import('$lib/video-models')
-  ]);
-
-  const slot = mediaModelSlot('videoRefineModel');
-  if (job.model && slot && !slotAccepts(slot, job.model)) {
-    return { ok: false, error: 'model_not_for_slot', allowed: slotChoices(slot).map((c) => c.id) };
-  }
-
-  // Senza brand non c'è un `content_prefs` da leggere: il modello lo nomina chi chiama, o si
-  // rifiuta — rifilmare da capo consegnerebbe un clip nuovo a chi ha chiesto di correggere il suo.
-  const prefs = job.brandId ? await brandContentPrefs(supabase, job.brandId) : {};
-  if (!job.model && !videoModelForRole(prefs, 'refine')) return { ok: false, error: 'no_refine_model' };
-
-  const videoUrl = job.brandId
-    ? await signedSourceUrl(supabase, job.brandId, job.sourceId)
-    : await signedPath(supabase, job.sourceId);
-  if (!videoUrl) return { ok: false, error: 'source_not_found' };
-
-  const { transformVideo } = await import('$lib/server/video');
-  const out = await transformVideo({
-    supabase,
-    userId: job.userId,
-    role: 'refine',
-    videoUrl,
-    prompt: job.instruction,
-    model: job.model,
-    prefs,
-    abortSignal: AbortSignal.timeout(VIDEO_REFINE_BUDGET_MS)
-  });
-  if (!out) return { ok: false, error: 'render_failed' };
-
-  // `transformVideo` riospita già il montaggio sotto lo user e torna un URL permanente: senza una
-  // libreria in cui depositarlo, quell'URL È il clip — e vale come maniglia per rifinirlo ancora.
-  if (!job.brandId) {
-    return {
-      ok: true,
-      kind: 'video',
-      media: [{ id: null, kind: 'video', mime: 'video/mp4', width: null, height: null, url: out.url }],
-      model: out.model,
-      renders: 1
-    };
-  }
-
-  const { saveRenderedVideoToLibrary } = await import('$lib/server/brand-media');
-  const saved = await saveRenderedVideoToLibrary(supabase, {
-    brandId: job.brandId,
-    userId: job.userId,
-    url: out.url,
-    title: job.title?.trim() || job.instruction.slice(0, 80),
-    sourceRef: out.taskId
-  });
-  if (!('mediaId' in saved)) return { ok: false, error: 'store_failed' };
-
-  return {
-    ok: true,
-    kind: 'video',
-    media: [
-      {
-        id: saved.mediaId,
-        kind: 'video',
-        mime: 'video/mp4',
-        width: null,
-        height: null,
-        url: await libraryLink(supabase, saved.mediaId)
-      }
-    ],
-    model: out.model,
-    renders: 1
-  };
-}
-
-/**
- * Come si rifinisce ogni tipo di asset della libreria: UNA riga per tipo, accanto al modello che
- * la governa. Il tipo successivo si aggiunge qui, e nessun ramo sparso altrove deve saperlo.
- *
- * Le grafiche non sono una riga: in `brand_media` un logo o una illustrazione È un'immagine —
- * `kind` vale image, ed è `media_kind` del catalogo a distinguerle — quindi le rifinisce il motore
- * delle immagini. Il motion graphic programmatico (Remotion) non è un modello generativo e non
- * passa di qui.
- */
-const REFINERS: Record<string, Refiner> = {
-  image: refineLibraryImage,
-  video: refineLibraryVideo
-};
-
-export async function refineBrandMedia(
-  supabase: SupabaseClient,
-  job: RefineMediaJob & { brandId: string }
-): Promise<RefineMediaResult> {
-  const source = await resolveLibraryId(supabase, job.brandId, job.baseMediaId);
-  if (!source) return { ok: false, error: 'source_not_found' };
-
-  const refine = REFINERS[source.kind];
-  if (!refine) return { ok: false, error: 'kind_not_refinable' };
-
-  const { withBrandContext } = await import('$lib/server/ai-log');
-
-  return withBrandContext(job.brandId, () => refine(supabase, { ...job, sourceId: source.id }));
-}
-
-/**
- * Rifinire quando una libreria non c'è. Cambia SOLO da dove viene la sorgente — un percorso
- * consegnato invece di una riga — e chi paga. I due motori sotto sono gli stessi: il tipo lo dice
- * il file, mai chi chiama, esattamente come sotto il brand lo dice la riga.
- */
-export async function refineMediaWithoutBrand(
-  supabase: SupabaseClient,
-  job: Omit<RefineMediaJob, 'brandId' | 'brandStyle' | 'title'> & { orgId: string }
-): Promise<RefineMediaResult> {
-  const path = ownStoragePath(job.userId, job.baseMediaId);
-  if (!path) return { ok: false, error: 'source_not_found' };
-
-  const { withOrgContext } = await import('$lib/server/ai-log');
-
-  return withOrgContext(job.orgId, () =>
-    REFINERS[storedKind(path)](supabase, { ...job, brandId: null, sourceId: path })
-  );
 }
 
 /**
@@ -805,11 +657,10 @@ export type VideoJobResult =
   | Extract<GenerateMediaResult, { ok: false }>;
 
 async function startVideo(opts: GenerateMediaOpts): Promise<VideoJobResult> {
-  const [{ createAdminClient }, { countOutstandingVideoRenders, submitAndTrackVideoRender }] =
-    await Promise.all([
-      import('$lib/server/supabase-admin'),
-      import('$lib/server/video-render-queue')
-    ]);
+  const [{ createAdminClient }, { submitAndTrackVideoRender }] = await Promise.all([
+    import('$lib/server/supabase-admin'),
+    import('$lib/server/video-render-queue')
+  ]);
   const admin = createAdminClient();
 
   // Senza brand non c'è niente da leggere: valgono i default del prodotto. Andarci lo stesso
@@ -829,10 +680,19 @@ async function startVideo(opts: GenerateMediaOpts): Promise<VideoJobResult> {
   // Animare una foto e filmare da un prompt sono due MESTIERI, e il catalogo lo sa gia': lo slot
   // cambia, quindi cambia anche l'elenco dei modelli ammessi. Sceglierne uno solo accetterebbe un
   // modello che poi il renderer scarta.
-  const { mediaModelSlot, slotAccepts, slotChoices } = await import('$lib/media-model-slots');
-  const slot = mediaModelSlot(opts.baseMediaId ? 'videoImageModel' : 'videoModel');
-  if (opts.model && slot && !slotAccepts(slot, opts.model)) {
-    return { ok: false, error: 'model_not_for_slot', allowed: slotChoices(slot).map((c) => c.id) };
+  // Stessa distinzione della gemella immagine: il canvas valida contro `offerableModels` (nessun
+  // ruolo promesso), lo slot a ruolo resta il cancello dei mestieri sotto un brand.
+  if (opts.model && opts.brandId === null) {
+    const accepted = await canvasModelAccepts(admin, 'video', opts.model);
+    if (!accepted) {
+      return { ok: false, error: 'model_not_for_slot', allowed: [] };
+    }
+  } else {
+    const { mediaModelSlot, slotAccepts, slotChoices } = await import('$lib/media-model-slots');
+    const slot = mediaModelSlot(opts.baseMediaId ? 'videoImageModel' : 'videoModel');
+    if (opts.model && slot && !slotAccepts(slot, opts.model)) {
+      return { ok: false, error: 'model_not_for_slot', allowed: slotChoices(slot).map((c) => c.id) };
+    }
   }
 
   // La copertina e' l'immagine da animare, e vive nella libreria di QUESTO brand: la risoluzione
@@ -873,17 +733,9 @@ async function startVideo(opts: GenerateMediaOpts): Promise<VideoJobResult> {
     }
   }
 
-  // L'allocazione mensile dei video è del PIANO di un brand. Senza brand non c'è un piano da
-  // interrogare: il tetto è il saldo crediti dell'organizzazione, che la rotta guarda prima di qui.
-  if (opts.brandId) {
-    const { remaining } = await import('$lib/server/usage');
-    const budget = await remaining(admin, opts.brandId, brand?.plan, brand?.timezone ?? 'Europe/Rome');
-
-    // I render in volo contano sull'allowance: il numero mensile si addebita quando il clip atterra,
-    // e guardare solo `usage` lascerebbe spendere lo stesso budget più volte di fila.
-    const inFlight = await countOutstandingVideoRenders(admin, opts.brandId);
-    if (budget.videos - inFlight <= 0) return { ok: false, error: 'video_budget_exhausted' };
-  }
+  // Il tetto è il saldo crediti dell'organizzazione — `gateAiAction`/`gateOrgAiAction` lo guardano
+  // già prima di qui, a monte di questa funzione. `brand_usage` non esiste più: non c'è una
+  // seconda allocazione mensile da controllare.
 
   let submitReason: string | undefined;
   const submitted = await submitAndTrackVideoRender({
@@ -905,13 +757,20 @@ async function startVideo(opts: GenerateMediaOpts): Promise<VideoJobResult> {
       // Con una copertina il modello parte da quei pixel: soggetto, scena e stile sono gia' li',
       // e il prompt dirige il MOVIMENTO.
       imageUrl: coverUrl,
+      // Un fotogramma finale senza quello iniziale non ha un percorso da chiudere: si ignora
+      // invece di mandarlo al provider, che lo scarterebbe comunque (`RenderVideoOpts.lastFrameUrl`).
+      lastFrameUrl: coverUrl ? opts.lastFrameUrl : undefined,
+      referenceImageUrls: opts.referenceImageUrls,
+      referenceAudioUrls: opts.referenceAudioUrls,
+      referenceVideoUrls: opts.referenceVideoUrls,
       duration: opts.durationSeconds ?? (prefs.videoDuration as number | undefined),
       visualStyle,
       instructions: prefs.videoInstructions as string | null | undefined,
-      resolution: prefs.videoResolution as string | null | undefined,
+      resolution: opts.resolution ?? (prefs.videoResolution as string | null | undefined),
       model:
         opts.model ??
-        ((opts.baseMediaId ? prefs.videoImageModel : prefs.videoModel) as string | null | undefined)
+        ((opts.baseMediaId ? prefs.videoImageModel : prefs.videoModel) as string | null | undefined),
+      params: opts.params
     }
   });
   if (!submitted) return { ok: false, error: 'render_failed', ...(submitReason ? { reason: submitReason } : {}) };
@@ -934,98 +793,9 @@ async function startVideo(opts: GenerateMediaOpts): Promise<VideoJobResult> {
   };
 }
 
-export type CarouselJob = {
-  brandId: string | null;
-  userId: string;
-  brief: string;
-  slides?: number;
-  aspectRatio?: AspectRatio;
-  model?: string;
-  title?: string;
-};
-
-export type CarouselResult =
-  | { ok: true; media: GeneratedMedia[]; continuityTokens: string[]; model: string | null; renders: number }
-  | { ok: false; error: 'plan_failed' | 'render_failed' | 'store_failed' }
-  | { ok: false; error: 'model_not_for_slot'; allowed: string[] };
-
-/**
- * Un carosello: N slide che si leggono come una serie. Si pianifica una volta (i gettoni di
- * continuita' nascono li'), poi si rende una slide per prompt riusando lo stesso motore delle
- * immagini singole — un render per slide, e il conto lo dice.
- */
-async function runCarousel(supabase: SupabaseClient, opts: CarouselJob): Promise<CarouselResult> {
-  const { planCarousel, clampSlideCount } = await import('$lib/server/carousel-generate');
-
-  const slides = clampSlideCount(opts.slides);
-  const plan = await planCarousel(supabase, {
-    brandId: opts.brandId,
-    brief: opts.brief,
-    slides
-  });
-  if ('error' in plan) return { ok: false, error: 'plan_failed' };
-
-  const media: GeneratedMedia[] = [];
-  let renders = 0;
-  let model: string | null = null;
-
-  for (const [index, prompt] of plan.slidePrompts.entries()) {
-    const out = await runImageJob(supabase, {
-      brandId: opts.brandId,
-      userId: opts.userId,
-      prompt,
-      aspectRatio: opts.aspectRatio,
-      model: opts.model,
-      title: opts.title ? `${opts.title} ${index + 1}` : undefined
-    });
-    // Un modello rifiutato lo e' per tutte le slide: fermarsi alla prima evita di pagarne altre.
-    if (!out.ok && out.error === 'model_not_for_slot') return out;
-    if (!out.ok) break;
-
-    renders += out.renders;
-    model = out.model;
-    media.push(...out.media);
-  }
-
-  // Una serie sotto il minimo non e' un carosello piu' corto: e' un carosello mancato, e dirlo
-  // riuscito lascerebbe il chiamante a comporre un post con meno slide di quante ne ha pagate.
-  if (media.length < plan.slidePrompts.length) {
-    return { ok: false, error: media.length ? 'store_failed' : 'render_failed' };
-  }
-
-  return { ok: true, media, continuityTokens: plan.continuityTokens, model, renders };
-}
-
-export async function generateBrandCarousel(
-  supabase: SupabaseClient,
-  opts: CarouselJob & { brandId: string }
-): Promise<CarouselResult> {
-  const { withBrandContext } = await import('$lib/server/ai-log');
-
-  return withBrandContext(opts.brandId, () => runCarousel(supabase, opts));
-}
-
-export async function generateCarouselWithoutBrand(
-  supabase: SupabaseClient,
-  opts: Omit<CarouselJob, 'brandId' | 'title'> & { orgId: string }
-): Promise<CarouselResult> {
-  const { withOrgContext } = await import('$lib/server/ai-log');
-
-  return withOrgContext(opts.orgId, () => runCarousel(supabase, { ...opts, brandId: null }));
-}
-
-export async function generateBrandVideo(
-  opts: GenerateMediaOpts & { brandId: string }
-): Promise<VideoJobResult> {
-  const { withBrandContext } = await import('$lib/server/ai-log');
-
-  return withBrandContext(opts.brandId, () => startVideo(opts));
-}
-
 /**
  * Un clip senza brand. Non torna pronto — kie ci mette minuti — e non c'è una libreria in cui
- * depositarlo: il risultato vive sulla riga della coda, che porta addosso chi paga, ed è da lì che
- * `GET /api/v1/videos` lo ritrova quando è atterrato.
+ * depositarlo: il risultato vive sulla riga della coda, che porta addosso chi paga.
  */
 export async function generateVideoWithoutBrand(
   opts: Omit<GenerateMediaOpts, 'brandId' | 'kind' | 'title'> & { orgId: string }
@@ -1033,109 +803,4 @@ export async function generateVideoWithoutBrand(
   const { withOrgContext } = await import('$lib/server/ai-log');
 
   return withOrgContext(opts.orgId, () => startVideo({ ...opts, brandId: null, kind: 'video' }));
-}
-
-export async function generateBrandMedia(
-  supabase: SupabaseClient,
-  opts: GenerateMediaOpts & { brandId: string }
-): Promise<GenerateMediaResult> {
-  if (opts.kind === 'video') return generateBrandVideo(opts);
-
-  const out = await generateBrandImages(supabase, opts);
-  if (!out.ok) return out;
-
-  return { ok: true, status: 'ready', media: out.media, jobId: null, model: out.model, renders: out.renders };
-}
-
-export type MediaJob = {
-  id: string;
-  status: string;
-  media_id: string | null;
-  error: string | null;
-  submitted_at: string | null;
-};
-
-const JOBS_PAGE = 20;
-
-export const CLIP_NOT_IN_LIBRARY = 'not_in_library';
-const NOTHING_CLAIMED_IT =
-  'the clip rendered and is stored, but it never reached the library, so there is no media_id to ' +
-  'use — generating it again would pay for a second copy';
-
-/**
- * I lavori di questo brand, e SOLO di questo brand: l'id arriva da `loadBrandForUser`, mai dal
- * chiamante, quindi un job_id indovinato di un altro brand non trova niente.
- */
-export async function listMediaJobs(
-  supabase: SupabaseClient,
-  brandId: string,
-  jobId?: string
-): Promise<MediaJob[]> {
-  let query = supabase
-    .from('video_renders')
-    .select('id, status, error, submitted_at')
-    .eq('brand_id', brandId)
-    .is('post_id', null)
-    .order('submitted_at', { ascending: false })
-    .limit(JOBS_PAGE);
-  if (jobId) query = query.eq('id', jobId);
-
-  const { data } = await query;
-  const rows = (data ?? []) as Array<Omit<MediaJob, 'media_id'>>;
-  if (!rows.length) return [];
-
-  // L'asset depositato porta l'id del job in `source_ref`: è così che un lavoro finito diventa un
-  // media_id che create_post accetta, senza una colonna in più su video_renders.
-  const { data: assets } = await supabase
-    .from('brand_media')
-    .select('id, source_ref')
-    .eq('brand_id', brandId)
-    .in('source_ref', rows.map((r) => r.id));
-  const byJob = new Map(
-    ((assets ?? []) as Array<{ id: string; source_ref: string }>).map((a) => [a.source_ref, a.id])
-  );
-
-  return rows.map((r) => {
-    const mediaId = byJob.get(r.id) ?? null;
-    if (r.status !== 'done' || mediaId) return { ...r, media_id: mediaId };
-
-    return { ...r, media_id: null, status: CLIP_NOT_IN_LIBRARY, error: NOTHING_CLAIMED_IT };
-  });
-}
-
-export type OrgMediaJob = {
-  id: string;
-  status: string;
-  /** Dov'è il clip. Prende il posto di `media_id`: senza brand non c'è una libreria da indicizzare. */
-  media_url: string | null;
-  error: string | null;
-  submitted_at: string | null;
-};
-
-/**
- * I lavori di questa organizzazione, e SOLO suoi: l'id arriva da `ensureOrgForUser`, mai dal
- * chiamante, quindi un job_id indovinato di un'altra organizzazione non trova niente.
- */
-export async function listOrgMediaJobs(
-  supabase: SupabaseClient,
-  orgId: string,
-  jobId?: string
-): Promise<OrgMediaJob[]> {
-  let query = supabase
-    .from('video_renders')
-    .select('id, status, error, submitted_at, media_url')
-    .eq('org_id', orgId)
-    .order('submitted_at', { ascending: false })
-    .limit(JOBS_PAGE);
-  if (jobId) query = query.eq('id', jobId);
-
-  const { data } = await query;
-
-  return ((data ?? []) as OrgMediaJob[]).map((r) => ({
-    id: r.id,
-    status: r.status,
-    media_url: r.media_url ?? null,
-    error: r.error ?? null,
-    submitted_at: r.submitted_at ?? null
-  }));
 }

@@ -1,7 +1,4 @@
-import { api } from '../lib/api.ts';
 import { loadSession, type StoredSession } from '../lib/auth.ts';
-import type { BrandResource } from '../lib/contracts/index.ts';
-import { resolveByPrefix } from '../lib/select.ts';
 import { getRequestAuth } from './context.ts';
 
 export type ToolResult = {
@@ -52,8 +49,8 @@ export async function requireAuth(): Promise<
     return {
       ok: false,
       result: fail(
-        'Not authenticated. Locally: run `anomalia login` in a terminal — the CLI and this server share one session file. ' +
-          'For remote HTTP (mcp.anomalia.so): send Authorization: Bearer <access_token> from your Anomalia OAuth session. ' +
+        'Not authenticated. Locally: run `feega login` in a terminal — the CLI and this server share one session file. ' +
+          'For remote HTTP (mcp.feega.app): send Authorization: Bearer <access_token> from your feega OAuth session. ' +
           'No static API tokens are supported.',
       ),
     };
@@ -72,47 +69,4 @@ export async function withAuth(
   } catch (e) {
     return fail(e instanceof Error ? e.message : String(e));
   }
-}
-
-type IdResolver = (token: string, slug: string, idOrPrefix: string) => Promise<string>;
-
-function byPrefix<T extends { id: string }>(
-  noun: string,
-  list: (token: string, slug: string) => Promise<T[]>,
-): IdResolver {
-  return async (token, slug, idOrPrefix) => {
-    const match = resolveByPrefix(await list(token, slug), idOrPrefix);
-    if (match.ok) return match.item.id;
-    if (match.reason === 'ambiguous') {
-      throw new Error(
-        `Ambiguous ${noun} id prefix "${idOrPrefix}" (${match.count} matches). Use a longer prefix.`,
-      );
-    }
-    throw new Error(`No ${noun} found for id/prefix "${idOrPrefix}". List ${noun}s first.`);
-  };
-}
-
-export const resolvePostId: IdResolver = byPrefix('post', (token, slug) => api.getPosts(token, slug));
-
-export const resolveArticleId: IdResolver = byPrefix('article', async (token, slug) => {
-  const { articles } = await api.getWeb(token, slug, 'all');
-  return articles;
-});
-
-const RESOLVE_ID: Record<BrandResource, IdResolver> = {
-  post: resolvePostId,
-  article: resolveArticleId,
-  product: byPrefix('product', async (token, slug) => (await api.listProducts(token, slug)).products),
-  person: byPrefix('person', async (token, slug) => (await api.getStudio(token, slug)).people),
-  competitor: byPrefix('competitor', async (token, slug) => (await api.getStudio(token, slug)).competitors),
-  document: byPrefix('document', async (token, slug) => (await api.getStudio(token, slug)).documents),
-};
-
-export function resolveResourceId(
-  resource: BrandResource,
-  token: string,
-  slug: string,
-  idOrPrefix: string,
-): Promise<string> {
-  return RESOLVE_ID[resource](token, slug, idOrPrefix);
 }

@@ -32,7 +32,6 @@
   <div class="cc" role="dialog" aria-labelledby="cc-title">
     <p id="cc-title">
       {$_('cookie.text')}
-      <a href="/privacy">{$_('cookie.learnMore')}</a>.
     </p>
     <div class="cc-actions">
       <button class="cc-btn ghost" type="button" onclick={() => setConsent('denied')}>{$_('cookie.reject')}</button>
@@ -51,7 +50,6 @@
     max-width: 320px;
     background: #fff;
     border: 1px solid #d2d2d7;
-    border-radius: 14px;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
     padding: 14px 14px 12px;
     font-family: var(--sans, Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial,
@@ -89,7 +87,6 @@
   .cc-btn {
     appearance: none;
     border: 1px solid transparent;
-    border-radius: 980px;
     padding: 7px 14px;
     font: inherit;
     font-size: 13px;

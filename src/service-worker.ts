@@ -30,19 +30,19 @@ sw.addEventListener('push', (event) => {
 				data = { body: event.data?.text() };
 			}
 
-			// Chat-style alerts: don't interrupt if the user is already looking at Anomalia.
+			// Chat-style alerts: don't interrupt if the user is already looking at feega.
 			if (data.skipIfFocused) {
 				const clients = await sw.clients.matchAll({ type: 'window', includeUncontrolled: true });
 				if (clients.some((c) => (c as WindowClient).focused)) return;
 			}
 
-			const title = data.title || 'Anomalia';
+			const title = data.title || 'feega';
 			const targetUrl = toAbsoluteUrl(data.url || '/');
 			const options: NotificationOptions = {
 				body: data.body || '',
 				icon: data.icon || '/icon-192.png',
 				badge: '/icon-192.png',
-				tag: data.tag || 'anomalia',
+				tag: data.tag || 'feega',
 				data: { url: targetUrl },
 				renotify: true
 			};

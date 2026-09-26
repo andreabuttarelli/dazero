@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser } from '$lib/server/cli-auth';
-import { QUERY_DATABASE } from '@anomalia/api-contracts';
-import { createQueryTool } from '$lib/server/chat/query-tool';
+import { QUERY_DATABASE } from '@feega/api-contracts';
+import { createQueryTool } from '$lib/server/brand-data/query-tool';
 
 /**
  * `query` sopra REST, e quindi sopra CLI e MCP. Non riscrive niente: monta lo STESSO tool della

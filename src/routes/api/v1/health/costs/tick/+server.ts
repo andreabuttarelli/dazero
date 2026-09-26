@@ -20,13 +20,13 @@ const INCIDENT_KIND = 'unattributed_ai_cost';
 /**
  * The incidents table requires a brand_id (NOT NULL FK → brands, migration 0084), so a
  * platform-level alert can't be stored with a null brand. It is attached to the platform's
- * own brand (slug 'anomalia') when one exists; otherwise the alert is logged only.
+ * own brand (slug 'dazero') when one exists; otherwise the alert is logged only.
  */
 async function sentinelBrandId(admin: Awaited<ReturnType<typeof createAdminClient>>): Promise<string | null> {
   const { data: active } = await admin
     .from('brands')
     .select('id')
-    .eq('slug', 'anomalia')
+    .eq('slug', 'dazero')
     .eq('status', 'active')
     .limit(1)
     .maybeSingle();
@@ -34,7 +34,7 @@ async function sentinelBrandId(admin: Awaited<ReturnType<typeof createAdminClien
   const { data: anyRow } = await admin
     .from('brands')
     .select('id')
-    .eq('slug', 'anomalia')
+    .eq('slug', 'dazero')
     .limit(1)
     .maybeSingle();
   return anyRow?.id ?? null;
@@ -108,7 +108,7 @@ async function run(request: Request): Promise<Response> {
           }
         }
       } else {
-        console.error('[cost-alert] no sentinel brand (slug=anomalia) found — alert logged without incident row.');
+        console.error('[cost-alert] no sentinel brand (slug=dazero) found — alert logged without incident row.');
       }
     } catch (e) {
       console.error('[cost-alert] incident handling failed:', e instanceof Error ? e.message : e);

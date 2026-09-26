@@ -1,15 +1,12 @@
 <script lang="ts">
-  import { page } from '$app/stores';
   import { _ } from 'svelte-i18n';
 
   // Un messaggio "crediti finiti" senza uscita è peggio del silenzio: l'utente resta fermo e
-  // non sa cosa fare. Punta a settings/billing perché è l'UNICA pagina che mostra i piani —
-  // /app/{slug}/upgrade senza ?plan rimbalza su /settings, cioè su un altro vicolo cieco.
-  let { slug = '' }: { slug?: string } = $props();
-  const href = $derived(`/app/${slug || ($page.params.brand ?? '')}/settings/billing`);
+  // non sa cosa fare. /app/billing è l'unica pagina che mostra i piani — billing è dell'org, non
+  // del brand, quindi nessuno slug serve a raggiungerla.
 </script>
 
-<a class="upgrade-link" {href}>{$_('app.nav.upgrade')} →</a>
+<a class="upgrade-link" href="/app/billing">{$_('app.nav.upgrade')} →</a>
 
 <style>
   .upgrade-link {

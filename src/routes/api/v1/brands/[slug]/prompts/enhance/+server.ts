@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, gateAiAction } from '$lib/server/cli-auth';
 import { enhancePrompt } from '$lib/server/prompt-enhance';
 import { withBrandContext } from '$lib/server/ai-log';
-import { ENHANCE_PROMPT } from '@anomalia/api-contracts';
+import { ENHANCE_PROMPT } from '@feega/api-contracts';
 
 export const POST: RequestHandler = async ({ request, params }) => {
   const { supabase, error, apiKey } = await authenticate(request);

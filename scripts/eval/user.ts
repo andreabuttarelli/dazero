@@ -7,7 +7,7 @@ export type EvalUser = {
   password: string;
 };
 
-const EMAIL_DOMAIN = 'anomalia.so';
+const EMAIL_DOMAIN = 'feega.app';
 const PAGE_SIZE = 1000;
 const USER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

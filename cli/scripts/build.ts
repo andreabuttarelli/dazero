@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Build script for Anomalia CLI.
+ * Build script for feega CLI.
  * Compiles the CLI into standalone binaries using `bun build --compile`.
  *
  * Usage:
@@ -56,11 +56,11 @@ if (!buildAll) {
   }
 }
 
-console.log(`Building Anomalia CLI for: ${selectedTargets.map(t => t.name).join(', ')}\n`);
+console.log(`Building feega CLI for: ${selectedTargets.map(t => t.name).join(', ')}\n`);
 
 // Build each target
 for (const target of selectedTargets) {
-  const outName = `anomalia-${target.name}`;
+  const outName = `feega-${target.name}`;
   const outPath = join(DIST, outName);
 
   console.log(`  Building ${outName}...`);
@@ -103,7 +103,7 @@ try {
 
 // Homebrew formulas prefer archives over raw binaries.
 for (const target of selectedTargets) {
-  const outName = `anomalia-${target.name}`;
+  const outName = `feega-${target.name}`;
   const outPath = join(DIST, outName);
   if (!existsSync(outPath)) continue;
   const tarPath = `${outPath}.tar.gz`;
@@ -121,6 +121,6 @@ for (const target of selectedTargets) {
 
 console.log('\nDone! Binaries are in dist/');
 console.log('\nTo install locally:');
-console.log('  sudo cp dist/anomalia-macos-arm64 /usr/local/bin/anomalia');
+console.log('  sudo cp dist/feega-macos-arm64 /usr/local/bin/feega');
 console.log('\nTo distribute:');
 console.log('  Upload dist/ files to your hosting or create a GitHub release');

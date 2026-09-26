@@ -97,6 +97,14 @@ export type VideoModelCaps = {
   supportsUpscale: boolean;
   /** Whether the job input accepts generate_audio (Seedance). */
   generateAudio: boolean;
+  /**
+   * I SOLI secondi che il provider accetta, quando NON è un intervallo continuo — un modello che
+   * documenta "5s o 10s" e rifiuta 7. Assente (il caso di ogni modello qui oggi: Grok, Seedance,
+   * Kling accettano qualunque intero fra `minDuration` e `maxDuration`) vuol dire intervallo
+   * continuo, e `videoDurationOptions` offre ogni secondo di quella finestra — non un gradino
+   * arbitrario, che avrebbe nascosto durate che il provider accetta davvero.
+   */
+  durations?: readonly number[];
 };
 
 export type VideoModelSpec = VideoModelCaps & {
@@ -312,7 +320,7 @@ export function clampVideoPrompt(prompt: string, model: string): string {
 export function videoModelSpec(value: unknown): VideoModelSpec | undefined {
   const v = String(value ?? '').trim();
   if (!v) return undefined;
-  return SPECS.find((s) => s.id === v || s.match.test(v));
+  return SPECS.find((s) => s.id === v) ?? SPECS.find((s) => s.match.test(v));
 }
 
 /** I modelli che sanno fare QUESTO mestiere: quelli che il selettore di quel ruolo puo' offrire. */
@@ -347,6 +355,41 @@ export function videoModelForRole(
 /** Capabilities of a video model id. Unknown ids fall back to the conservative Grok window. */
 export function videoModelCaps(model: string): VideoModelCaps {
   return videoModelSpec(model) ?? UNKNOWN_CAPS;
+}
+
+/**
+ * I GRADINI CHE UN SELETTORE OFFRE.
+ *
+ * Un modello con `durations` (nessuno, oggi) offre ESATTAMENTE quell'elenco: sono i soli valori
+ * che il provider accetta, e un secondo in più o in meno tornerebbe un rifiuto dopo un giro di
+ * rete. Un modello senza (Grok, Seedance, Kling: min/max soli, qualunque intero in mezzo è
+ * accettato) offre OGNI secondo fra `minDuration` e `maxDuration` — non un gradino arbitrario:
+ * un passo di 2s o 3s nasconderebbe durate che il provider fattura comunque.
+ */
+export function videoDurationOptions(model?: string | null): number[] {
+  const spec = videoModelSpec(String(model ?? '').trim());
+  const caps = spec ?? UNKNOWN_CAPS;
+
+  if (spec?.durations) {
+    return [...spec.durations].sort((a, b) => a - b);
+  }
+
+  const opts: number[] = [];
+  for (let s = caps.minDuration; s <= caps.maxDuration; s++) opts.push(s);
+  return opts;
+}
+
+/**
+ * La durata salvata, se ancora valida per il modello appena scelto; altrimenti il gradino più
+ * vicino — mai un valore fuori dai gradini offerti, o il campo mostrerebbe un numero che il menu
+ * non elenca.
+ */
+export function nearestVideoDuration(options: readonly number[], wanted: number): number {
+  if (!options.length) return wanted;
+  if (options.includes(wanted)) return wanted;
+  return options.reduce((best, candidate) =>
+    Math.abs(candidate - wanted) < Math.abs(best - wanted) ? candidate : best
+  );
 }
 
 /**

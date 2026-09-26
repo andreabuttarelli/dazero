@@ -19,6 +19,7 @@ import { nearestAspectRatio } from '$lib/aspect-ratio';
 export const NANO_BANANA_PRO_MODEL = 'nano-banana-pro';
 export const NANO_BANANA_2_MODEL = 'nano-banana-2';
 export const NANO_BANANA_2_LITE_MODEL = 'nano-banana-2-lite';
+export const SEEDREAM_5_LITE_MODEL = 'seedream-5-lite';
 export const SEEDREAM_5_PRO_MODEL = 'seedream-5-pro';
 export const GPT_IMAGE_2_MODEL = 'gpt-image-2';
 export const GPT_IMAGE_25_SUNBURST_MODEL = 'gpt-image-2.5-sunburst';
@@ -50,6 +51,22 @@ export type ImageModelSpec = {
 const NANO_ASPECTS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'];
 
 const SPECS: ImageModelSpec[] = [
+  /**
+   * Il default: primo dell'elenco, e `choices[0]` in `GenNode.svelte` lo prende cosi`, senza un
+   * campo `isDefault` in piu` da tenere allineato a questo ordine. Seedream Lite e Pro condividono
+   * lo stesso listino di parametri su `/images/models` (`resolution, aspect_ratio, n,
+   * input_references, seed`) — nessun tetto numerico ne` elenco di rapporti pubblicato, la
+   * differenza fra le due taglie e` qualita`/costo, non contratto — quindi ereditano lo stesso
+   * `maxRefs` e gli stessi rapporti gia` misurati per Pro.
+   */
+  {
+    id: SEEDREAM_5_LITE_MODEL,
+    label: 'Seedream 5 Lite',
+    google: null,
+    openrouterImages: 'bytedance-seed/seedream-5-0-lite',
+    maxRefs: 10,
+    aspectRatios: ['1:1', '4:3', '3:4', '16:9', '9:16', '2:3', '3:2', '21:9'],
+  },
   {
     id: NANO_BANANA_2_LITE_MODEL,
     label: 'Nano Banana 2 Lite',

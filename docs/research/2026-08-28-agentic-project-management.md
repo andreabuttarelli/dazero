@@ -1,4 +1,4 @@
-# APM (Agentic Project Management) — cosa può servire ad Anomalia
+# APM (Agentic Project Management) — cosa può servire ad feega
 
 Data: 2026-08-28 · Task #8 · Riferimento: https://github.com/sdi2200262/agentic-project-management (MPL-2.0, ~2.4k star)
 
@@ -16,16 +16,16 @@ Il punto dichiarato del progetto: i Worker NON ripartono freschi a ogni task —
 conoscenza di dominio tra assegnazioni; quando il contesto si riempie, un **Handoff** strutturato
 trasferisce il know-how a una nuova istanza invece di buttarlo.
 
-## Differenza strutturale con Anomalia
+## Differenza strutturale con feega
 
 APM è **human-in-the-loop**: l'utente media OGNI scambio fra agenti (lui lancia i comandi nella
 conversazione giusta). È una scelta dichiarata di trasparenza — ogni assegnazione passa per
-l'umano. Anomalia è l'opposto per costruzione: autopilot, la squadra agisce e l'utente decide.
+l'umano. feega è l'opposto per costruzione: autopilot, la squadra agisce e l'utente decide.
 **Il framework non è adottabile come orchestratore; al massimo sono adottabili dei principi.**
 
 ## Principi riutilizzabili (e cosa ne abbiamo già)
 
-| Principio APM | Stato in Anomalia |
+| Principio APM | Stato in feega |
 |---|---|
 | Ruoli per dominio, contesto separato | ✅ Già nostro: 5 specialisti + thread per agente; i subagent girano in contesti puliti |
 | Worker persistenti che accumulano conoscenza di dominio | ✅ Team thread = diario permanente; brand memory condivisa; per-agent skills (PR #27) |

@@ -1,4 +1,7 @@
-/** Anomalia management fee on top of platform ad spend (model A: pass-through + markup). */
+import { billedCreditsFor } from '$lib/server/credit-ladder';
+import { formatCredits } from '$lib/components/credit-amount-format';
+
+/** feega management fee on top of platform ad spend (model A: pass-through + markup). */
 export const AD_MANAGEMENT_FEE_RATE = 0.12;
 
 /**
@@ -17,22 +20,21 @@ export function adsSelfServeEnabled(preview = false): boolean {
   return ADS_SELF_SERVE || preview;
 }
 
-/** Credits per USD, same rate as the AI meter (src/lib/server/credits.ts). */
-export const CREDITS_PER_USD = 100;
-
 /**
  * The management fee, billed in AI credits instead of an invoice: launching a campaign and every
- * day it keeps spending draws down the same balance content generation uses.
+ * day it keeps spending draws down the same balance content generation uses. Same rate
+ * `ai-log.ts` bills every other AI call at (`billedCreditsFor`, credit-ladder.ts) — the fee is a
+ * provider cost to us like any other, not a separately-priced credit.
  *
  * ponytail: no FX — one unit of the ad account's currency counts as one dollar. EUR/USD drift is
  * ±10% on a 12% fee; add a rate lookup here if a brand ever runs a far-off currency.
  */
 export function creditsForSpend(spend: number): number {
-  return Math.round(feeBreakdown(spend).fee * CREDITS_PER_USD);
+  return billedCreditsFor(feeBreakdown(spend).fee);
 }
 
 /**
- * Accept what a human (or the AI) actually types: "anomalia.so" is a URL to everyone except
+ * Accept what a human (or the AI) actually types: "feega.app" is a URL to everyone except
  * `<input type="url">` and `new URL()`. Adds the scheme when it is missing rather than rejecting
  * the value. Returns '' for anything that still isn't a usable http(s) URL.
  */
@@ -56,7 +58,10 @@ export function normalizeUrl(raw: string | null | undefined): string {
 export function adsErrorMessage(error: string): { key: string; values: Record<string, string> } {
   const [code, needed, left] = error.split(':');
   if (code === 'credits_exhausted') {
-    return { key: 'app.ads.err.credits_exhausted', values: { needed: needed ?? '', left: left ?? '0' } };
+    return {
+      key: 'app.ads.err.credits_exhausted',
+      values: { needed: needed ? formatCredits(Number(needed)) : '', left: formatCredits(Number(left ?? '0')) }
+    };
   }
   // Codes may carry a payload after a colon (`goal_not_supported:conversions`,
   // `invalid_status:active`). Key off the code alone, or the whole string became the key, no

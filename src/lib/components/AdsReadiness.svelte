@@ -3,6 +3,7 @@
   import Check from '@lucide/svelte/icons/check';
   import AlertTriangle from '@lucide/svelte/icons/triangle-alert';
   import Minus from '@lucide/svelte/icons/minus';
+  import { formatCredits } from '$lib/components/credit-amount-format';
 
   // Mirrors AdsCheck in src/lib/server/ads.ts — kept local so this stays a client-safe import.
   type CheckRow = { key: string; ok: boolean; blocking: boolean; fix?: string; detail?: string };
@@ -59,7 +60,10 @@
               {c.ok && c.detail
                 ? c.detail
                 : $_(`app.ads.readiness.checks.${c.key}.${c.ok ? 'ok' : 'todo'}`, {
-                    values: { channel: $_(`app.ads.channel.${channel}`), detail: c.detail ?? '' }
+                    values: {
+                      channel: $_(`app.ads.channel.${channel}`),
+                      detail: c.key === 'credits' && c.detail ? formatCredits(Number(c.detail)) : (c.detail ?? '')
+                    }
                   })}
             </span>
           </span>
@@ -83,7 +87,7 @@
   .right { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
   .status {
     font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
-    padding: 5px 12px; border-radius: 980px;
+    padding: 5px 12px;
     background: rgba(var(--accent-rgb), 0.1); color: var(--accent);
   }
   .status.err { background: #fdecea; color: #c0392b; }
@@ -99,7 +103,7 @@
   }
   .checks li:last-child { border-bottom: none; }
   .mark {
-    width: 24px; height: 24px; border-radius: 50%; flex: 0 0 auto;
+    width: 24px; height: 24px; flex: 0 0 auto;
     display: inline-flex; align-items: center; justify-content: center;
     background: var(--paper-2); color: var(--ink-faint); border: 1px solid var(--line);
   }

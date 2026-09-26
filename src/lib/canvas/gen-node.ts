@@ -13,6 +13,7 @@
  * nodo nasce senza formato — il vuoto è onesto, un «1:1» inventato no.
  */
 import { MEDIUMS, type Medium } from './graph';
+import type { ModelParam } from './model-params';
 
 /** I tre medium che un nodo può produrre: gli stessi della tela, non un secondo elenco. */
 export const GEN_MEDIUMS = MEDIUMS;
@@ -28,18 +29,51 @@ export type ModelChoice = {
   id: string;
   label: string;
   aspectRatios: string[];
+  /** Chi ha fatto questo modello (`model-provider.ts::providerOf`), dall'id sul filo — mai
+   *  ricalcolato lato client dall'id interno, che per immagine e video non ha il prefisso. */
+  provider: string;
+  providerLabel: string;
   maxRefs?: number;
   minDuration?: number;
   maxDuration?: number;
+  /** I gradini che il selettore di durata offre — assente per l'immagine, che non ha durata. */
+  durationOptions?: number[];
   maxPromptChars?: number;
   generateAudio?: boolean;
+  /** Le risoluzioni che il modello sa produrre, quando ne dichiara più di una. Assente = una
+   *  sola resa, e la barra non mostra il selettore. */
+  resolutions?: string[];
+  /** `ai_models.input_modalities` sincronizzate per questo modello — quel che `connectorsFor`
+   *  (`canvas/connectors.ts`) traduce nelle porte del nodo. Assente per il testo, che non passa
+   *  da `offerable-models.ts` e non ha porte oltre a quella fissa. */
+  inputModalities?: string[];
+  /** I crediti per UN giro di questo modello, alla durata `minDuration` per un video — dallo
+   *  stesso listino di `content-cost.ts` (`billedCreditsFor`), calcolato una volta sul server e
+   *  spedito qui perché il client non ha (e non deve avere) le tariffe. Assente = prezzo ignoto:
+   *  `gen-cost.ts::creditsForRun` torna `null`, mai un numero inventato. */
+  unitCredits?: number;
+  /** I campi extra dichiarati da `ai_models.param_schema` per questo modello, oltre a quelli con
+   *  un controllo già dedicato (`aspectRatio`, `resolution`…) — v. `model-params.ts`. Assente per
+   *  un modello che non passa da `offerable-models.ts` (il testo) o dichiara zero campi extra. */
+  params?: ModelParam[];
 };
 
 /** Quel che l'utente ha scelto nell'overlay. Non è il catalogo: è la scelta dentro al catalogo. */
 export type GenParams = {
   aspectRatio?: string;
   duration?: number;
+  /** Assente = la resa di default del modello. Solo per i modelli con più di una risoluzione. */
+  resolution?: string;
   audio?: boolean;
+  /** Riscrive il prompt con le buone pratiche del modello scelto prima di generare
+   *  (`prompt-enhance.ts`). Default off — mai a insaputa dell'utente. */
+  enhancePrompt?: boolean;
+  /** Quante varianti semplici in loop, quando il nodo non ha archi `iterate` (`loop-plan.ts`,
+   *  CLAUDE.md — "repeat N"). Con degli assi collegati non conta: le combinazioni le dettano i
+   *  valori, non questo numero. */
+  repeat?: number;
+  /** Cartesiano (default, assente) o accoppiato indice-per-indice — `loop-plan.ts::LoopCombine`. */
+  combine?: 'product' | 'zip';
 };
 
 /**
@@ -55,6 +89,8 @@ export type GenRun = {
   prompt: string;
   model: string | null;
   createdAt: string;
+  /** Il testo generato, quando il giro ha prodotto testo: l'immagine non ha nulla da mettere qui. */
+  text?: string | null;
 };
 
 export type GenNode = {
@@ -75,18 +111,51 @@ export type GenNode = {
    */
   runs: GenRun[];
   running?: boolean;
+  /** Perché l'ultimo giro non è atterrato. Null quando non c'è nulla da dire. */
+  error?: string | null;
 };
 
 /**
  * `running` VINCE SU TUTTO, anche su un nodo che ha già prodotto: chi sta rifacendo un'immagine
  * deve vedere che sta girando, non il risultato di prima con un bottone che invita a rilanciare.
  */
-export type RunState = 'empty' | 'ready' | 'running' | 'done';
+export type RunState = 'empty' | 'ready' | 'running' | 'done' | 'failed';
 
-export function runStateOf(node: GenNode): RunState {
+export type UpstreamTextAvailability = { hasUpstreamText: boolean };
+
+/**
+ * SE QUESTO NODO HA UN PROMPT DA CUI GIRARE: il proprio, o — in sua assenza — un testo a monte
+ * collegato. UN SOLO POSTO decide questa regola: `runStateOf` (sotto) e `blockedReason`
+ * (`gen-history.ts`) la chiamano entrambi, invece di ripetere `node.prompt.trim()` ciascuno con
+ * la propria dimenticanza di guardare a monte — il difetto segnalato («B non conta il testo di
+ * A collegato») era esattamente due copie della stessa domanda, una delle due sbagliata.
+ */
+export function hasPrompt(node: GenNode, upstream: UpstreamTextAvailability = { hasUpstreamText: false }): boolean {
+  return Boolean(node.prompt.trim()) || upstream.hasUpstreamText;
+}
+
+export function runStateOf(node: GenNode, upstream: UpstreamTextAvailability = { hasUpstreamText: false }): RunState {
   if (node.running) return 'running';
+  if (node.error) return 'failed';
   if (node.refId) return 'done';
-  return node.prompt.trim() ? 'ready' : 'empty';
+  return hasPrompt(node, upstream) ? 'ready' : 'empty';
+}
+
+/**
+ * IL NODO COME LO SI VEDE SUBITO DOPO IL CLIC, prima ancora che il server sappia del giro:
+ * `unlockRun` è il rollback simmetrico, chiamato quando il server rifiuta.
+ */
+export function startRun(node: GenNode): GenNode {
+  return { ...node, running: true, error: null };
+}
+
+/**
+ * Sblocca un nodo rimasto in corsa. Il video parte e torna dopo: se la risposta non arriva più,
+ * `running` resterebbe alzato per sempre e il bottone spento — l'utente deve poter riprendere.
+ * L'errore si toglie insieme: o si riparte, o si torna a prima del giro.
+ */
+export function unlockRun(node: GenNode): GenNode {
+  return { ...node, running: false, error: null };
 }
 
 /**
@@ -103,6 +172,22 @@ export function defaultParamsFor(choice: ModelChoice): GenParams {
   if (typeof choice.generateAudio === 'boolean') params.audio = choice.generateAudio;
 
   return params;
+}
+
+/**
+ * La risoluzione salvata, se ancora offerta dal modello appena scelto; altrimenti il default del
+ * modello — mai un valore fuori da `choice.resolutions`, o il campo mostrerebbe un token che il
+ * fornitore rifiuta (v. `video_renders` cb1de6e2, `happyhorse-1.0` senza 480p; lo stesso vale per
+ * un'immagine passata da Seedream 5 Lite, `[2K,4K]`, a Seedream 5 Pro, `[1K,2K]`). Assente =
+ * nessun selettore per questo modello: il default e' quello del provider, non nostro. Un solo
+ * gradino di snap per i due medium che hanno risoluzioni — `ModelChoice.resolutions` non dice da
+ * quale medium viene.
+ */
+export function snapResolution(choice: ModelChoice, saved: string | undefined): string | undefined {
+  const options = choice.resolutions;
+  if (!options?.length) return undefined;
+  if (saved && options.includes(saved)) return saved;
+  return options[0];
 }
 
 /** Il provider rifiuterebbe questo prompt? Si chiede prima di spendere il giro. */

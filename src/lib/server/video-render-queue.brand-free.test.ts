@@ -20,7 +20,6 @@ const finishVideoRender = vi.fn();
 const withBrandContext = vi.fn();
 const withOrgContext = vi.fn();
 const saveRenderedVideoToLibrary = vi.fn();
-const addUsage = vi.fn();
 
 vi.mock('$lib/server/video', () => ({
   finishVideoRender: (...args: unknown[]) => finishVideoRender(...args)
@@ -37,10 +36,6 @@ vi.mock('$lib/server/ai-log', () => ({
 }));
 vi.mock('$lib/server/brand-media', () => ({
   saveRenderedVideoToLibrary: (...args: unknown[]) => saveRenderedVideoToLibrary(...args)
-}));
-vi.mock('$lib/server/usage', () => ({
-  addUsage: (...args: unknown[]) => addUsage(...args),
-  monthKey: () => '2026-09'
 }));
 
 function makeDb(seed: Record<string, Row[]>) {
@@ -134,7 +129,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   finishVideoRender.mockResolvedValue(LANDED);
   saveRenderedVideoToLibrary.mockResolvedValue({ mediaId: 'media-1' });
-  addUsage.mockResolvedValue(undefined);
 });
 
 describe('un clip senza brand', () => {
@@ -175,15 +169,6 @@ describe('un clip senza brand', () => {
     expect(withBrandContext).not.toHaveBeenCalled();
   });
 
-  /** L'allocazione mensile dei video è del PIANO di un brand. Qui non c'è un piano da consumare. */
-  it('non consuma l allocazione mensile di nessuno', async () => {
-    const { client } = makeDb({ video_renders: [orgRow()] });
-
-    await reconcile(client);
-
-    expect(addUsage).not.toHaveBeenCalled();
-  });
-
   it('un fallimento resta un fallimento, con il motivo scritto sulla riga', async () => {
     finishVideoRender.mockResolvedValue({ status: 'failed', error: 'kie ha rifiutato' });
     const { tables, client } = makeDb({ video_renders: [orgRow()] });
@@ -196,13 +181,12 @@ describe('un clip senza brand', () => {
 describe('con un brand, niente è cambiato', () => {
   const branded = orgRow({ brand_id: 'brand-1', org_id: null });
 
-  it('deposita in libreria e addebita il mese del brand', async () => {
+  it('deposita in libreria', async () => {
     const { client } = makeDb({ video_renders: [branded], brands: [{ id: 'brand-1', timezone: 'Europe/Rome' }] });
 
     await reconcile(client);
 
     expect(saveRenderedVideoToLibrary).toHaveBeenCalled();
-    expect(addUsage).toHaveBeenCalled();
   });
 
   it('resta nello scope del brand: è così che la spesa gli arriva', async () => {

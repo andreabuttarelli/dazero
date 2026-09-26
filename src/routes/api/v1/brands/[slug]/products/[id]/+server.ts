@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { authenticate, loadBrandForUser, checkApiKeyWriteAccess } from '$lib/server/cli-auth';
 import { updateBrandRow, deleteBrandRow } from '$lib/server/brand-rows';
-import { UPDATE_PRODUCT } from '@anomalia/api-contracts';
+import { UPDATE_PRODUCT } from '@feega/api-contracts';
 
 export const PUT: RequestHandler = async ({ request, params }) => {
   const { supabase, error, apiKey } = await authenticate(request);

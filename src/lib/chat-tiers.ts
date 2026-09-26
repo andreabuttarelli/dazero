@@ -16,7 +16,7 @@
  * Every model is billed at 100% of list, on every plan — including Gemini Flash and Nano Banana
  * Pro, which carried a per-plan discount until 2026-08.
  */
-import type { ModelFamilyId } from '@anomalia/agent-contracts/contracts';
+import type { ModelFamilyId } from '$lib/models/families';
 
 const CHAT_CUSTOM_MODEL_IDS = ['deepseek-pro', 'gpt-terra', 'gpt-sol'] as const satisfies readonly ModelFamilyId[];
 export type ChatCustomModel = (typeof CHAT_CUSTOM_MODEL_IDS)[number];

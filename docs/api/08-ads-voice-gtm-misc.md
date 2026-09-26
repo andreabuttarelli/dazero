@@ -1,7 +1,6 @@
-# API — 08 · Ads, voice, GTM e gestione
+# API — 08 · Ads, prodotti e API key
 
-Ads (campagne + remix), voice framework, piano GTM, rubriche, prodotti, API key, banco
-idee, field watch e diagnosi del Radar.
+Ads (campagne + remix), catalogo prodotti, API key.
 Errori comuni di auth: vedi [01-overview](01-overview.md).
 
 ## `GET /api/v1/brands/:slug/ads`
@@ -53,7 +52,7 @@ Riepilogo campagne paid (campagne, totali, serie storica), candidati al boost (p
           "period_end": "2026-08-13",
           "synced_at": "2026-08-13T08:00:00Z"
         },
-        "source": "anomalia"
+        "source": "feega"
       }
     ],
     "totals": { "spend": 4.2, "impressions": 2100, "clicks": 88, "reach": 1900, "conversions": 2, "active": 1, "proposed": 2 },
@@ -93,7 +92,7 @@ Riepilogo campagne paid (campagne, totali, serie storica), candidati al boost (p
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/ads?sync=1" \
+curl -s "https://feega.app/api/v1/brands/mio-brand/ads?sync=1" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -151,7 +150,7 @@ Esegue un'azione sulle campagne ads, selezionata dal campo `action` del body.
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/ads" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/ads" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"action":"approve","campaignId":"0f3d...","budgetAmount":15,"goal":"engagement"}'
 ```
@@ -195,7 +194,7 @@ Elenco dei remix brief attuali del brand, ordinati per rank.
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/ads/remix" \
+curl -s "https://feega.app/api/v1/brands/mio-brand/ads/remix" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -253,306 +252,9 @@ Analizza gli ad dei competitor con la visione AI e sostituisce i remix brief pre
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/ads/remix" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/ads/remix" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"ads":[{"adArchiveId":"1012345678","pageName":"Competitor X","body":"...","cta":"Shop Now"}]}'
-```
-
----
-
-## `GET /api/v1/brands/:slug/voice`
-
-Framework di voice del brand: modalità, campi del framework, regole per piattaforma, parole vietate.
-
-**Response** `200`:
-
-```json
-{
-  "platforms": ["instagram", "linkedin"],
-  "voiceMode": "manual",
-  "voiceFramework": {
-    "mood": "Competente e rassicurante",
-    "tone": "Diretto, mai tecnico",
-    "register": 3,
-    "emotion": "Curiosità",
-    "character": "Guida esperta",
-    "syntax": "Frasi brevi"
-  },
-  "platformRules": {},
-  "avoid": ["sconti", "urgente"],
-  "platformInstructions": {
-    "instagram": "Emoji moderate, hashtag 3-5",
-    "linkedin": "Tono professionale, no emoji"
-  },
-  "studioPct": 75
-}
-```
-
-**Esempio**:
-
-```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/voice" -H "Authorization: Bearer $TOKEN"
-```
-
----
-
-## `POST /api/v1/brands/:slug/voice/update`
-
-Aggiorna il framework di voice del brand (sempre in modalità `manual` dopo l'update) e le istruzioni per piattaforma.
-
-**Body**
-
-| Campo | Tipo | Obbligatorio | Descrizione |
-|---|---|---|---|
-| `mood` | string | No | Mood |
-| `tone` | string | No | Tono |
-| `register` | number | No | Registro |
-| `emotion` | string | No | Emozione dominante |
-| `character` | string | No | Personaggio/ruolo |
-| `syntax` | string | No | Sintassi |
-| `platform_instructions` | object | No | Mappa `piattaforma → istruzioni`; fa merge con le esistenti |
-| `avoid` | string[] | No | Lista parole vietate (sostituisce l'intera lista) |
-
-**Response** `200`:
-
-```json
-{ "ok": true }
-```
-
-**Errori specifici**: `500` `{"error":"<messaggio Supabase>"}`
-
-**Esempio**:
-
-```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/voice/update" \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"mood":"Ispirante","avoid":["urgente"],"platform_instructions":{"instagram":"No più di 5 hashtag"}}'
-```
-
----
-
-## `GET /api/v1/brands/:slug/gtm`
-
-Piano GTM attivo, eventuale proposta pendente, stato delle fasi e completezza dello studio.
-
-**Response** `200`:
-
-```json
-{
-  "gtm": {
-    "id": "uuid",
-    "status": "active",
-    "horizon": "90d",
-    "objective": "Lancio del nuovo kit sul mercato DACH",
-    "phases": [
-      {
-        "name": "Teaser",
-        "objective": "Generare curiosità pre-lancio",
-        "start_date": "2026-08-01",
-        "end_date": "2026-08-14",
-        "platform_weights": { "instagram": 0.6, "linkedin": 0.4 },
-        "pillars": ["Educazione", "Prova sociale"]
-      }
-    ],
-    "parent_id": null,
-    "revision_feedback": null,
-    "reply": null,
-    "changes_summary": null,
-    "source": "ai",
-    "created_at": "2026-07-20T10:00:00Z",
-    "activated_at": "2026-07-21T09:00:00Z"
-  },
-  "proposed": null,
-  "proposedFeedback": null,
-  "currentPhase": 0,
-  "phaseStatuses": ["now"],
-  "horizons": ["90d", "6m", "1y", "2y"],
-  "studioPct": 75
-}
-```
-
-**Esempio**:
-
-```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/gtm" -H "Authorization: Bearer $TOKEN"
-```
-
----
-
-## `POST /api/v1/brands/:slug/gtm/update`
-
-Aggiorna l'obiettivo del piano GTM attivo e/o una singola fase (per indice).
-
-**Body**
-
-| Campo | Tipo | Obbligatorio | Descrizione |
-|---|---|---|---|
-| `objective` | string | No | Nuovo obiettivo del piano |
-| `phase_index` | number | No | Indice 0-based della fase (ignorato se fuori range) |
-| `phase_name` | string | No | Nuovo nome fase (serve `phase_index`) |
-| `phase_objective` | string | No | Nuovo obiettivo fase (serve `phase_index`) |
-| `platform_weights` | object | No | Pesi per piattaforma (serve `phase_index`) |
-| `pillars` | string[] | No | Pilastri della fase (serve `phase_index`) |
-
-**Response** `200`:
-
-```json
-{ "ok": true }
-```
-
-**Errori specifici**
-
-| Status | Body |
-|---|---|
-| `404` | `{"error":"No active GTM plan"}` |
-| `400` | `{"error":"No fields to update"}` |
-| `500` | `{"error":"<messaggio Supabase>"}` |
-
-**Esempio**:
-
-```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/gtm/update" \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"objective":"Nuovo obiettivo","phase_index":0,"phase_name":"Lancio","pillars":["Educazione"]}'
-```
-
----
-
-## `GET /api/v1/brands/:slug/rubrics`
-
-Stato rubriche: set APPROVATO (che guida i planner) e batch PROPOSTA più recente in attesa di revisione.
-
-**Response** `200`:
-
-```json
-{
-  "ok": true,
-  "approved": [
-    {
-      "id": "uuid",
-      "batch_id": "uuid",
-      "status": "approved",
-      "name": "Dietro le quinte del lab",
-      "promise": "Ogni episodio mostra come nasce un nostro prodotto",
-      "strategic_role": "consideration: prova concreta del metodo",
-      "format": "carousel",
-      "cadence": "1/week",
-      "differentiation": "Nessun competitor mostra il processo reale",
-      "rationale": "Rende concreto il claim di trasparenza",
-      "created_at": "2026-07-15T10:00:00Z",
-      "approved_at": "2026-07-16T09:00:00Z"
-    }
-  ],
-  "proposed": []
-}
-```
-
-Note: `format` ∈ `single_image`, `carousel`, `text_post`, `link_post`, `video`.
-
-**Esempio**:
-
-```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/rubrics" -H "Authorization: Bearer $TOKEN"
-```
-
----
-
-## `POST /api/v1/brands/:slug/rubrics/propose`
-
-Genera con AI una nuova batch di 5–8 rubriche candidate e sostituisce la batch pendente precedente. **Consuma crediti.**
-
-**Body**
-
-| Campo | Tipo | Obbligatorio | Descrizione |
-|---|---|---|---|
-| `language` | string | No | Lingua di output; default italiano |
-
-**Response** `200`:
-
-```json
-{
-  "ok": true,
-  "proposed": [
-    {
-      "id": "uuid",
-      "batch_id": "uuid",
-      "status": "proposed",
-      "name": "Mercoledì metodo",
-      "promise": "...",
-      "strategic_role": "consideration: ...",
-      "format": "carousel",
-      "cadence": "1/week",
-      "differentiation": "...",
-      "rationale": "...",
-      "created_at": "2026-08-13T10:00:00Z",
-      "approved_at": null
-    }
-  ]
-}
-```
-
-**Errori specifici**: `500` `{"error":"Propose failed: <messaggio>"}`
-
-**Esempio**:
-
-```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/rubrics/propose" \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"language":"Italian"}'
-```
-
----
-
-## `POST /api/v1/brands/:slug/rubrics/approve`
-
-Approva un sottoinsieme della batch proposta: le rubriche selezionate (con eventuali modifiche) diventano il NUOVO set approvato; il precedente è superato; le non selezionate rifiutate.
-
-**Body**
-
-| Campo | Tipo | Obbligatorio | Descrizione |
-|---|---|---|---|
-| `picks` | object[] | Sì | Almeno un elemento |
-| `picks[].id` | string | Sì | ID della rubrica `proposed` |
-| `picks[].edits` | object | No | Modifiche: `name`, `promise`, `strategic_role`, `format`, `cadence`, `differentiation` |
-
-**Response** `200`:
-
-```json
-{
-  "ok": true,
-  "approved": 2,
-  "rubrics": [
-    {
-      "id": "uuid",
-      "batch_id": "uuid",
-      "status": "approved",
-      "name": "Dietro le quinte del lab",
-      "promise": "...",
-      "strategic_role": "...",
-      "format": "carousel",
-      "cadence": "1/week",
-      "differentiation": "...",
-      "rationale": "...",
-      "created_at": "2026-08-13T10:00:00Z",
-      "approved_at": "2026-08-13T11:00:00Z"
-    }
-  ]
-}
-```
-
-**Errori specifici**
-
-| Status | Body |
-|---|---|
-| `400` | `{"error":"picks is required (at least one rubric id)"}` |
-| `400` | `{"error":"No proposed rubric matched the given ids"}` |
-
-**Esempio**:
-
-```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/rubrics/approve" \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"picks":[{"id":"uuid","edits":{"cadence":"2/week"}}]}'
 ```
 
 ---
@@ -581,7 +283,7 @@ Elenca tutti i prodotti del catalogo (ordinati per data di creazione).
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/products" -H "Authorization: Bearer $TOKEN"
+curl -s "https://feega.app/api/v1/brands/mio-brand/products" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -610,7 +312,7 @@ Ri-sincronizza l'intero catalogo dal sito e-commerce del brand (Shopify / WooCom
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/products" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/products" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -648,7 +350,7 @@ Aggiorna i campi di un singolo prodotto. Solo i campi presenti nel body cambiano
 **Esempio**:
 
 ```bash
-curl -s -X PUT "https://anomalia.so/api/v1/brands/mio-brand/products/PRODUCT_ID" \
+curl -s -X PUT "https://feega.app/api/v1/brands/mio-brand/products/PRODUCT_ID" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"featured":true,"pricing":"€99"}'
 ```
@@ -675,7 +377,7 @@ Elimina un prodotto del brand. Tool MCP: `delete_product`.
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://anomalia.so/api/v1/brands/mio-brand/products/PRODUCT_ID" \
+curl -s -X DELETE "https://feega.app/api/v1/brands/mio-brand/products/PRODUCT_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -693,7 +395,7 @@ Elenca le API key dell'utente che hanno accesso a questo brand (mai le chiavi ra
     {
       "id": "uuid",
       "name": "CI deploy",
-      "key_prefix": "anomalia_live_a1",
+      "key_prefix": "feega_live_a1",
       "permissions": { "brand_ids": ["BRAND_ID"], "scopes": ["read", "write"] },
       "created_at": "2026-06-01T10:00:00Z",
       "last_used_at": "2026-08-12T09:00:00Z"
@@ -712,7 +414,7 @@ Elenca le API key dell'utente che hanno accesso a questo brand (mai le chiavi ra
 **Esempio**:
 
 ```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/api-keys" -H "Authorization: Bearer $TOKEN"
+curl -s "https://feega.app/api/v1/brands/mio-brand/api-keys" -H "Authorization: Bearer $TOKEN"
 ```
 
 ---
@@ -736,10 +438,10 @@ Crea una nuova API key. Richiede JWT (le API key non possono crearne altre). La 
   "key": {
     "id": "uuid",
     "name": "CI deploy",
-    "key_prefix": "anomalia_live_a1",
+    "key_prefix": "feega_live_a1",
     "permissions": { "brand_ids": ["BRAND_ID"], "scopes": ["read", "write"] },
     "created_at": "2026-08-13T10:00:00Z",
-    "raw": "anomalia_live_<48 hex>"
+    "raw": "feega_live_<48 hex>"
   },
   "message": "Copy this key now — you will not be able to see it again."
 }
@@ -755,7 +457,7 @@ Crea una nuova API key. Richiede JWT (le API key non possono crearne altre). La 
 **Esempio**:
 
 ```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/api-keys" \
+curl -s -X POST "https://feega.app/api/v1/brands/mio-brand/api-keys" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"name":"CI deploy","scopes":["read","write"]}'
 ```
@@ -782,232 +484,6 @@ Revoca una API key. La key deve appartenere all'utente autenticato ed essere sco
 **Esempio**:
 
 ```bash
-curl -s -X DELETE "https://anomalia.so/api/v1/brands/mio-brand/api-keys/KEY_ID" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
----
-
-## `GET /api/v1/brands/:slug/ideas`
-
-Tool MCP: nessuno — la lettura è `query` su `disruptive_ideas`.
-
-Il banco delle idee dirompenti del brand — quello che gli agenti salvano mentre lavorano
-(`save_disruptive_idea`). Nessuna chiamata AI: lettura pura.
-
-**Query**
-
-| Param | Default | Note |
-|---|---|---|
-| `status` | *(vive)* | `new` · `shortlisted` · `used` · `archived` · `all`. Omesso = solo `new` + `shortlisted` |
-| `limit` | `50` | max 200 |
-
-**Response** `200`:
-
-```json
-{
-  "count": 1,
-  "ideas": [
-    {
-      "id": "…",
-      "title": "La maglia che brucia",
-      "idea": "Qualcuno brucia una maglia ultra low-cost, marchio mai inquadrato…",
-      "device": "destroy_the_alternative",
-      "why_it_contrasts": "Nessuno mostra la fine del prodotto che vende",
-      "who_it_annoys": "Chi vende fast fashion",
-      "format": "comparison",
-      "score": 88,
-      "status": "new",
-      "surface": "ugc",
-      "created_at": "2026-08-20T10:00:00Z"
-    }
-  ]
-}
-```
-
-**Esempio**:
-
-```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/ideas?status=all&limit=20" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
----
-
-## `POST /api/v1/brands/:slug/ideas`
-
-Due usi, distinti dalla presenza di `id`:
-
-- **Nuova idea** — `title` e `idea` obbligatori; opzionali `device` (una delle dodici leve di
-  `src/lib/disruptive.ts`), `why_it_contrasts`, `who_it_annoys`, `format`, `score` (0-100).
-  Ri-inviare lo stesso `title` **aggiorna** la riga invece di duplicarla (`duplicate: true`).
-- **Cambio di stato** — `id` + `status` (`new` · `shortlisted` · `used` · `archived`).
-
-Richiede una key con scope `write`.
-
-**Response** `200`: `{ "ok": true, "idea": { … }, "duplicate": false }`
-
-**Errori specifici**
-
-| Status | Body |
-|---|---|
-| `400` | `{"error":"title and idea are required"}` |
-| `400` | `{"error":"status must be new \| shortlisted \| used \| archived"}` |
-| `403` | `{"error":"API key is read-only"}` |
-| `404` | `{"error":"Idea not found"}` |
-
-**Esempio**:
-
-```bash
-curl -s -X POST "https://anomalia.so/api/v1/brands/mio-brand/ideas" \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"title":"La maglia che brucia","idea":"Brucia una maglia low-cost, marchio mai inquadrato","device":"destroy_the_alternative","who_it_annoys":"Chi vende fast fashion"}'
-```
-
----
-
-## `GET /api/v1/brands/:slug/market/field`
-
-Nessun tool MCP: su MCP questa lettura è `query` su `brand_field_posts`, `market_posts`,
-`market_teardowns` e `brand_market_references`. La rotta REST resta, e la CLI la chiama.
-
-Cosa si muove nel **campo** del brand: i topic osservati, il playbook distillato da quello che
-gira, e i post catalogati con il loro teardown — perché quel post ha girato, e cosa se ne può
-portare via. Lettura pura: nessuna chiamata AI, nessun credito. La passata che riempie queste
-tabelle è il `POST` sotto, di norma fatto dal cron.
-
-**Query**
-
-| Param | Default | Note |
-|---|---|---|
-| `limit` | `20` | quanti post del campo, max 50 |
-
-**Response** `200`:
-
-```json
-{
-  "topics": { "queries": ["crm per agenzie"], "hashtags": ["#agencylife"] },
-  "playbook": {
-    "summary": "Il campo apre con un costo e chiude con un invito a dissentire",
-    "hooks": [{ "pattern": "numero + categoria", "example": "3 cose che le agenzie sbagliano" }],
-    "tones": ["esperto seccato"],
-    "fieldRagebait": 4,
-    "moves": [{ "move": "chiama la categoria per nome", "why": "…", "howToAdapt": "…", "ragebait": 3 }],
-    "avoid": ["callout con nome"],
-    "postsSeen": 42,
-    "updatedAt": "2026-09-01T08:00:00Z"
-  },
-  "updatedAt": "2026-09-01T08:00:00Z",
-  "posts": [
-    {
-      "id": "…",
-      "platform": "threads",
-      "url": "https://www.threads.net/@tizio/post/…",
-      "account_key": "threads:tizio",
-      "content": "…",
-      "media_type": "text",
-      "engagement": 1820,
-      "published_at": "2026-08-30T18:00:00Z",
-      "query": "crm per agenzie",
-      "relevance": 0.72,
-      "discoveredAt": "2026-08-31T04:00:00Z",
-      "teardown": {
-        "market_post_id": "…",
-        "tone_of_voice": "amico che ti avverte",
-        "communication": "prima persona, frasi corte",
-        "format": "lista numerata",
-        "hook_type": "promessa di un errore da evitare",
-        "spread_strategy": ["chiama in causa una categoria per nome"],
-        "ragebait": 4,
-        "ragebait_levers": ["hot take contro il consenso"],
-        "why_it_spread": "dice ad alta voce una cosa che tutti pensano",
-        "transferable": ["aprire con il costo reale"],
-        "avoid": null
-      }
-    }
-  ]
-}
-```
-
-Un campo mai osservato risponde `200` con `topics`, `playbook` e `updatedAt` a `null` e `posts`
-vuoto: è uno stato, non un errore. `teardown` è `null` finché il post non è stato smontato.
-
-**Esempio**:
-
-```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/market/field?limit=10" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
----
-
-## `GET /api/v1/brands/:slug/radar/diagnose`
-
-Tool MCP: `diagnose_radar`.
-
-L'autodiagnosi delle fonti Radar: **interroga ogni sorgente configurata dal vivo** e dice, per
-ognuna, quanti item sono tornati o perché è stata saltata — spenta, esclusa dal piano, piattaforma
-disattivata in Settings, o endpoint in errore. È la risposta a «perché il Radar non trova niente».
-
-Nessuna chiamata AI, nessun credito, nessuna scrittura, niente in coda. Ma esce di casa: fa una
-richiesta di rete per fonte, quindi può metterci secondi (`maxDuration` 300). Le ricerche
-dinamiche per keyword non vengono sondate qui — costano un credito di scraping ciascuna e sono
-già registrate per scansione in `radar_searches`.
-
-**Query params**: nessuno
-
-**Response** `200`:
-
-```json
-{
-  "enabled": true,
-  "plan": "pro",
-  "proLeads": true,
-  "scrapecreatorsConfigured": true,
-  "platforms": { "reddit": true, "threads": true, "x": false },
-  "engagePlatforms": ["reddit", "threads", "x", "linkedin"],
-  "sources": [
-    {
-      "kind": "rss",
-      "value": "https://esempio.it/feed",
-      "active": true,
-      "allowedByPlan": true,
-      "enabled": true,
-      "platform": null,
-      "items": 12,
-      "windowHours": 48,
-      "sample": [{ "title": "…", "url": "https://esempio.it/articolo" }]
-    },
-    {
-      "kind": "reddit",
-      "value": "r/agency",
-      "active": false,
-      "allowedByPlan": true,
-      "enabled": true,
-      "platform": "reddit",
-      "items": 0,
-      "skipped": "source is off"
-    },
-    {
-      "kind": "rss",
-      "value": "https://rotto.it/feed",
-      "active": true,
-      "allowedByPlan": true,
-      "enabled": true,
-      "platform": null,
-      "items": 0,
-      "error": "HTTP 503"
-    }
-  ],
-  "note": "Dynamic keyword searches are reported per scan in radar_searches, not probed here."
-}
-```
-
-Una fonte porta sempre `items`; `skipped` ed `error` si escludono a vicenda e spiegano lo zero.
-
-**Esempio**:
-
-```bash
-curl -s "https://anomalia.so/api/v1/brands/mio-brand/radar/diagnose" \
+curl -s -X DELETE "https://feega.app/api/v1/brands/mio-brand/api-keys/KEY_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```

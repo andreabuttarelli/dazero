@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_APP_URL: 'https://anomalia.so' } }));
+vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_APP_URL: 'https://feega.app' } }));
 
 const listBrandMedia = vi.fn();
 
@@ -44,9 +44,9 @@ beforeEach(() => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const call = () =>
   GET({
-    request: new Request('https://anomalia.so/api/v1/brands/demo/media'),
+    request: new Request('https://feega.app/api/v1/brands/demo/media'),
     params: { slug: 'demo' },
-    url: new URL('https://anomalia.so/api/v1/brands/demo/media')
+    url: new URL('https://feega.app/api/v1/brands/demo/media')
   } as any);
 
 describe('GET /api/v1/brands/:slug/media', () => {
@@ -55,7 +55,7 @@ describe('GET /api/v1/brands/:slug/media', () => {
   it('hands out the short permanent link, never the signed storage URL', async () => {
     const body = await (await call()).json();
 
-    expect(body.media[0].url).toBe('https://anomalia.so/a/K7BX2MQ4');
+    expect(body.media[0].url).toBe('https://feega.app/a/K7BX2MQ4');
     expect(JSON.stringify(body)).not.toContain('token=');
     expect(body.media[0].signed_url).toBeUndefined();
   });

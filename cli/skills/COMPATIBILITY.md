@@ -2,35 +2,35 @@
 
 ## Publishable Agent Skill (recommended)
 
-Package: [`skills/anomalia/`](./anomalia/) — follows [agentskills.io](https://agentskills.io/specification).  
-Canonical for `npx skills` / skills.sh. The Claude/Codex plugin mirrors the same tree at [`plugins/anomalia/skills/anomalia/`](../plugins/anomalia/skills/anomalia/) — run `bash scripts/sync-plugin-skill.sh` after skill edits.
+Package: [`skills/feega/`](./feega/) — follows [agentskills.io](https://agentskills.io/specification).  
+Canonical for `npx skills` / skills.sh. The Claude/Codex plugin mirrors the same tree at [`plugins/feega/skills/feega/`](../plugins/feega/skills/feega/) — run `bash scripts/sync-plugin-skill.sh` after skill edits.
 
 ```bash
-npx skills add anomaliaso/anomalia --skill anomalia
-npx skills add anomaliaso/anomalia --skill anomalia -g   # global
+npx skills add andreabuttarelli/feega --skill feega
+npx skills add andreabuttarelli/feega --skill feega -g   # global
 ```
 
 Appears on directories that index public GitHub skills (e.g. skills.sh) via install telemetry — no separate submission.
 
 | File | Role |
 |------|------|
-| `anomalia/SKILL.md` | Frontmatter + short instructions |
-| `anomalia/references/mcp.md` | MCP connect / auth |
-| `anomalia/references/tools.md` | Tool ↔ CLI map |
-| `anomalia/references/cli.md` | CLI install + commands |
+| `feega/SKILL.md` | Frontmatter + short instructions |
+| `feega/references/mcp.md` | MCP connect / auth |
+| `feega/references/tools.md` | Tool ↔ CLI map |
+| `feega/references/cli.md` | CLI install + commands |
 
 ## Claude Code & Codex plugins (marketplace submit)
 
-Installable plugin: [`plugins/anomalia/`](../plugins/anomalia/) (skill + remote MCP).  
+Installable plugin: [`plugins/feega/`](../plugins/feega/) (skill + remote MCP).  
 Full submit checklist: [`docs/plugins.md`](../docs/plugins.md).
 
 ```bash
 # Claude Code — add this repo as a marketplace, then install
-/plugin marketplace add anomaliaso/anomalia
-/plugin install anomalia@anomalia
+/plugin marketplace add andreabuttarelli/feega
+/plugin install feega@feega
 
 # Codex — add marketplace from the repo
-codex plugin marketplace add anomaliaso/anomalia
+codex plugin marketplace add andreabuttarelli/feega
 ```
 
 Public directory submit forms:
@@ -40,12 +40,12 @@ Public directory submit forms:
 
 ## Legacy / multi-tool installer
 
-[`anomalia-cli.md`](./anomalia-cli.md) + `bash scripts/install-skill.sh` still copies into Claude, `.cursorrules`, `AGENTS.md`, etc.
+[`feega-cli.md`](./feega-cli.md) + `bash scripts/install-skill.sh` still copies into Claude, `.cursorrules`, `AGENTS.md`, etc.
 
 | Tool | File | Location |
 |------|------|----------|
-| **Cursor Agent Skills** | `SKILL.md` | `.cursor/skills/anomalia/` |
-| **Claude Code** | `anomalia-cli.md` or skill dir | `.claude/skills/` |
+| **Cursor Agent Skills** | `SKILL.md` | `.cursor/skills/feega/` |
+| **Claude Code** | `feega-cli.md` or skill dir | `.claude/skills/` |
 | **Cursor rules** | `.cursorrules` | Project root |
 | **GitHub Copilot** | `copilot-instructions.md` | `.github/` |
 | **AGENTS.md / llms.txt** | project docs | Root |

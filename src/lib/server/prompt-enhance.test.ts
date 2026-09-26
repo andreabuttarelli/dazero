@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { enhancePrompt, buildEnhanceSystem, type EnhanceRunner } from './prompt-enhance';
 import { GPT_IMAGE_2_MODEL, SEEDREAM_5_PRO_MODEL } from '$lib/image-models';
 import { SEEDANCE_25_MODEL } from '$lib/video-models';
@@ -205,5 +205,53 @@ describe('enhancePrompt', () => {
     });
 
     expect(out.prompt.length).toBeLessThan(once.length * 2);
+  });
+});
+
+/**
+ * IL RISCRITTORE PASSA DAL TUBO CENTRALE, NON DA `generateText` NUDO.
+ *
+ * Chiamare l'SDK direttamente saltava `logAiCall`: si pagava il provider e nessuna riga in
+ * `ai_calls` teneva il conto — un `ENHANCE_PROMPT_MODEL` mai fatturato a nessuno. `runWithModel`
+ * deve passare da `llmText`, che scrive quella riga da sé.
+ */
+describe('enhancePrompt paga da dove tutto il resto paga', () => {
+  const M = vi.hoisted(() => ({
+    llmText: vi.fn(async (_opts: { label?: string; prompt: string }) => ({ text: '', citations: [] as Array<{ uri: string; title: string }> }))
+  }));
+
+  vi.mock('$lib/server/llm', async () => ({
+    ...(await vi.importActual<typeof import('$lib/server/llm')>('$lib/server/llm')),
+    llmText: M.llmText
+  }));
+
+  beforeEach(() => {
+    M.llmText.mockReset();
+  });
+
+  it('chiama llmText con label prompt.enhance: una sola riga ai_calls per riscrittura', async () => {
+    M.llmText.mockResolvedValue({
+      text: 'Scene: a linen cloth on a counter\nSubject: a sealed jar of honey, lit from the left',
+      citations: []
+    });
+
+    const out = await enhancePrompt({ prompt: PROMPT, model: GPT_IMAGE_2_MODEL });
+
+    expect(M.llmText).toHaveBeenCalledTimes(1);
+    expect(M.llmText.mock.calls[0][0]).toMatchObject({ label: 'prompt.enhance', prompt: PROMPT });
+    expect(out.changed).toBe(true);
+  });
+
+  it('un rifiuto di checkRewrite chiama comunque llmText una volta: si paga lo stesso', async () => {
+    M.llmText.mockResolvedValue({
+      text: 'Scene: a kitchen counter with a golden retriever asleep under it',
+      citations: []
+    });
+
+    const out = await enhancePrompt({ prompt: PROMPT, model: GPT_IMAGE_2_MODEL });
+
+    expect(M.llmText).toHaveBeenCalledTimes(1);
+    expect(out.changed).toBe(false);
+    expect(out.prompt).toBe(PROMPT);
   });
 });

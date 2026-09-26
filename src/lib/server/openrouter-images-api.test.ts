@@ -87,6 +87,25 @@ describe('il render sull’API immagini di OpenRouter', () => {
     expect(body.size).toBeUndefined();
   });
 
+  it('la risoluzione scelta viaggia come "resolution", il tetto che l’endpoint accetta', async () => {
+    const f = reply(ok());
+    vi.stubGlobal('fetch', f);
+    const { generateImageOnOpenrouterImages } = await import('./openrouter-images-api');
+    await generateImageOnOpenrouterImages({
+      ...REQ,
+      config: { imageConfig: { aspectRatio: '9:16', resolution: '2K' } }
+    });
+    expect(sentBody(f).resolution).toBe('2K');
+  });
+
+  it('senza risoluzione scelta, il campo non compare: la resa di default del modello', async () => {
+    const f = reply(ok());
+    vi.stubGlobal('fetch', f);
+    const { generateImageOnOpenrouterImages } = await import('./openrouter-images-api');
+    await generateImageOnOpenrouterImages(REQ);
+    expect(sentBody(f).resolution).toBeUndefined();
+  });
+
   it('i riferimenti viaggiano nella forma che l’endpoint accetta davvero', async () => {
     const f = reply(ok());
     vi.stubGlobal('fetch', f);
@@ -132,6 +151,44 @@ describe('il render sull’API immagini di OpenRouter', () => {
     const { generateImageOnOpenrouterImages } = await import('./openrouter-images-api');
     await expect(generateImageOnOpenrouterImages(REQ)).rejects.toThrow(/Provider rejection/);
     expect(M.logged.at(-1)).toMatchObject({ ok: false });
+  });
+
+  it('un id senza spec nostro passa così com\'è: è già l\'id sul filo', async () => {
+    // Un modello sincronizzato da OpenRouter ma senza una riga in image-models.ts (nessuna
+    // famiglia integrata a mano): non è nostro da chiamare in un altro modo, quindi si manda
+    // l'id esatto che offerableModels ha già risolto sul filo.
+    const f = reply(ok());
+    vi.stubGlobal('fetch', f);
+    const { generateImageOnOpenrouterImages } = await import('./openrouter-images-api');
+    await generateImageOnOpenrouterImages({
+      ...REQ,
+      model: 'meta/muse-image',
+      config: { imageConfig: { aspectRatio: '1:1' } }
+    });
+    expect(sentBody(f).model).toBe('meta/muse-image');
+  });
+
+  it('manda i params dichiarati dal modello (quality, background…) col loro nome esatto', async () => {
+    const f = reply(ok());
+    vi.stubGlobal('fetch', f);
+    const { generateImageOnOpenrouterImages } = await import('./openrouter-images-api');
+    await generateImageOnOpenrouterImages({
+      ...REQ,
+      config: { imageConfig: { aspectRatio: '1:1', params: { quality: 'low', background: 'transparent' } } }
+    });
+    const body = sentBody(f);
+    expect(body.quality).toBe('low');
+    expect(body.background).toBe('transparent');
+  });
+
+  it('senza params dichiarati, il corpo non porta nessuna chiave extra', async () => {
+    const f = reply(ok());
+    vi.stubGlobal('fetch', f);
+    const { generateImageOnOpenrouterImages } = await import('./openrouter-images-api');
+    await generateImageOnOpenrouterImages(REQ);
+    const body = sentBody(f);
+    expect(body.quality).toBeUndefined();
+    expect(body.background).toBeUndefined();
   });
 
   it('senza chiave non ci prova nemmeno', async () => {

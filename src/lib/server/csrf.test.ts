@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { isCsrfForbidden } from './csrf';
 
-const url = (path: string) => new URL(`https://www.anomalia.so${path}`);
+const url = (path: string) => new URL(`https://www.feega.app${path}`);
 
 function req(init: { method?: string; type?: string; origin?: string } = {}) {
   const headers = new Headers();
   if (init.type) headers.set('content-type', init.type);
   if (init.origin) headers.set('origin', init.origin);
-  return new Request('https://www.anomalia.so/x', { method: init.method ?? 'POST', headers });
+  return new Request('https://www.feega.app/x', { method: init.method ?? 'POST', headers });
 }
 
 const FORM = 'application/x-www-form-urlencoded';
@@ -22,7 +22,7 @@ describe('isCsrfForbidden', () => {
   });
 
   it('allows a same-origin form POST, charset and casing included', () => {
-    const same = { type: `${FORM}; charset=UTF-8`.toUpperCase(), origin: 'https://www.anomalia.so' };
+    const same = { type: `${FORM}; charset=UTF-8`.toUpperCase(), origin: 'https://www.feega.app' };
     expect(isCsrfForbidden(req(same), url('/oauth/authorize'))).toBe(false);
   });
 

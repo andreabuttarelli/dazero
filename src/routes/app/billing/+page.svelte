@@ -1,18 +1,9 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
   import '$lib/styles/settings-shell.css';
+  import CreditAmount from '$lib/components/CreditAmount.svelte';
 
   let { data, form } = $props();
-
-  const PLAN_LABELS: Record<string, string> = { go: 'Go', starter: 'Starter', pro: 'Pro' };
-  const planName = $derived(data.org.plan ? (PLAN_LABELS[data.org.plan] ?? data.org.plan) : null);
-  const planLabel = $derived(
-    planName
-      ? $_('app.settings.billing.planActive', { values: { plan: planName } })
-      : $_('app.settings.billing.noPlan')
-  );
-
-  const fmt = (iso: string) => new Date(iso).toLocaleDateString();
 </script>
 
 <section class="panel">
@@ -20,7 +11,7 @@
 
   <div class="field">
     <div class="ftxt">
-      <div class="fh">{planLabel}</div>
+      <div class="fh">{$_('app.account.billing.poolTitle')}</div>
       <div class="fs">{$_('app.account.billing.poolDesc')}</div>
     </div>
   </div>
@@ -38,45 +29,60 @@
       <div class="field"><div class="fs" style="color:#c0392b;">{form.billingError}</div></div>
     {/if}
 
-    {#if data.credits}
-      <div class="field">
-        <div class="ftxt">
-          <div class="fh">{$_('app.account.billing.poolTitle')}</div>
+    <div class="field">
+      <div class="ftxt">
+        <div class="fh">{$_('app.settings.usage.creditsUsed')}</div>
+        <div class="fs"><CreditAmount amount={data.credits.balance} /></div>
+        {#if data.credits.atRisk.length}
           <div class="fs">
-            {$_('app.settings.usage.creditsUsed')}: {data.credits.used} / {data.credits.quota}
-            · {$_('app.account.billing.periodLabel', {
-              values: { start: fmt(data.credits.periodStart), end: fmt(data.credits.periodEnd) }
-            })}
-          </div>
-        </div>
-      </div>
-    {/if}
-
-    {#if data.hasBilling}
-      {#if data.atTopPlan}
-        <div class="field">
-          <div class="ftxt">
-            <div class="fh">{$_('app.settings.billing.topPlanTitle')}</div>
-            <div class="fs">{$_('app.settings.billing.topPlanDesc')}</div>
-          </div>
-          <a class="bbtn primary" href={`mailto:hi@anomalia.so?subject=${encodeURIComponent('Custom plan — ' + data.org.name)}`}>{$_('app.settings.billing.talkToUs')}</a>
-        </div>
-      {:else}
-        <div class="field">
-          <div class="ftxt">
-            <div class="fh">{$_('app.settings.billing.upgradeTitle')}</div>
-            <div class="fs">{$_('app.settings.billing.upgradeDesc')}</div>
-          </div>
-          <div class="bill-actions">
-            {#each data.upgrades as p (p.key)}
-              <form method="POST" action={`?/upgrade`}>
-                <input type="hidden" name="plan" value={p.key} />
-                <button class="bbtn primary" type="submit">{$_('app.settings.upgrade.choose', { values: { plan: p.label } })}</button>
-              </form>
+            {#each data.credits.atRisk as risk (risk.expiresAt)}
+              <CreditAmount amount={risk.amount} /> expire {new Date(risk.expiresAt).toLocaleDateString()}
             {/each}
           </div>
-        </div>
+        {/if}
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="ftxt">
+        <div class="fh">{$_('app.account.billing.ladderTitle')}</div>
+        <div class="fs">{$_('app.account.billing.ladderDesc')}</div>
+      </div>
+      {#if !data.purchasesReady}
+        <div class="fs">{$_('app.account.billing.purchasesNotReady')}</div>
+      {:else}
+        <table class="ladder">
+          <thead>
+            <tr>
+              <th>{$_('app.account.billing.priceCol')}</th>
+              <th>{$_('app.account.billing.subscriptionCol')}</th>
+              <th>{$_('app.account.billing.oneTimeCol')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each data.credits.ladder as rung (rung.price)}
+              <tr>
+                <td>${rung.price}</td>
+                <td>
+                  <form method="POST" action={`?/upgrade`}>
+                    <input type="hidden" name="usd" value={rung.price} />
+                    <button class="bbtn primary" type="submit"><CreditAmount amount={rung.creditsSubscription} /> — /mo</button>
+                  </form>
+                </td>
+                <td>
+                  <form method="POST" action={`?/buyOneTime`}>
+                    <input type="hidden" name="usd" value={rung.price} />
+                    <button class="bbtn" type="submit"><CreditAmount amount={rung.creditsOneTime} /> — {$_('app.account.billing.neverExpires')}</button>
+                  </form>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
       {/if}
+    </div>
+
+    {#if data.hasBilling}
       <div class="field">
         <div class="ftxt">
           <div class="fh">{$_('app.settings.billing.manage')}</div>
@@ -87,8 +93,6 @@
           <form method="POST" action={`?/billingPortal`}><input type="hidden" name="flow" value="payment_method" /><button class="bbtn" type="submit">{$_('app.settings.billing.changePayment')}</button></form>
         </div>
       </div>
-    {:else}
-      <div class="field"><a class="bbtn primary" href={`/app/${data.billingBrandSlug}/activate`}>{$_('app.settings.billing.choosePlan')}</a></div>
     {/if}
   {/if}
 </section>
@@ -103,8 +107,8 @@
       <tbody>
         {#each data.brands as b (b.id)}
           <tr>
-            <td><a href={`/app/${b.slug}`}>{b.name}</a></td>
-            <td class="num">{b.credits}</td>
+            <td>{b.name}</td>
+            <td class="num"><CreditAmount amount={b.credits} /></td>
           </tr>
         {/each}
       </tbody>
@@ -113,6 +117,23 @@
 {/if}
 
 <style>
+  .ladder {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+  }
+  .ladder th,
+  .ladder td {
+    padding: 0.6rem 1rem;
+    text-align: left;
+    border-top: 1px solid var(--line, #e5e5e5);
+  }
+  .ladder th {
+    font-weight: 500;
+    opacity: 0.7;
+  }
+
   .brand-usage {
     width: 100%;
     border-collapse: collapse;

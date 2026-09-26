@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 function runningPath(): string {
   // Compiled Bun binary: execPath is the CLI itself.
   const exec = process.execPath.replace(/\\/g, '/');
-  if (/(^|\/)anomalia(-|$)/.test(exec.split('/').pop() ?? '')) return exec;
+  if (/(^|\/)feega(-|$)/.test(exec.split('/').pop() ?? '')) return exec;
   // Node/npm: argv[1] is the entry script under node_modules.
   if (process.argv[1]) return process.argv[1].replace(/\\/g, '/');
   return exec;
@@ -25,7 +25,7 @@ function detectInstallChannel(path: string): 'source' | 'homebrew' | 'npm' | 'bi
 }
 
 export async function cmdUpdate() {
-  console.log(c.bold('\nAggiornamento Anomalia CLI…\n'));
+  console.log(c.bold('\nAggiornamento feega CLI…\n'));
 
   const platform = process.platform;
   const arch = process.arch;
@@ -55,20 +55,20 @@ export async function cmdUpdate() {
   if (channel === 'homebrew') {
     console.log('  Installazione Homebrew rilevata');
     console.log(`\n  Per aggiornare:`);
-    console.log(`  brew update && brew upgrade anomalia\n`);
+    console.log(`  brew update && brew upgrade feega\n`);
     return;
   }
 
   if (channel === 'npm') {
     console.log('  Installazione npm rilevata');
     console.log(`\n  Per aggiornare:`);
-    console.log(`  npm install -g anomalia-cli@latest\n`);
+    console.log(`  npm install -g feega-cli@latest\n`);
     return;
   }
 
   console.log('  Download in corso…');
 
-  const url = `https://github.com/anomaliaso/anomalia/releases/latest/download/anomalia-${platformName}`;
+  const url = `https://github.com/andreabuttarelli/feega/releases/latest/download/feega-${platformName}`;
   const binPath = selfPath;
 
   try {
@@ -76,7 +76,7 @@ export async function cmdUpdate() {
     if (!res.ok) {
       if (res.status === 404) {
         console.error(`  ✗ Release non trovata per ${platformName}`);
-        console.log(`  Scarica manualmente da: https://github.com/anomaliaso/anomalia/releases`);
+        console.log(`  Scarica manualmente da: https://github.com/andreabuttarelli/feega/releases`);
       } else {
         console.error(`  ✗ Errore download: ${res.status}`);
       }
@@ -88,12 +88,12 @@ export async function cmdUpdate() {
     chmodSync(tempPath, 0o755);
     renameSync(tempPath, binPath);
 
-    console.log(`\n  ${c.green('✓')} Anomalia CLI aggiornato!`);
+    console.log(`\n  ${c.green('✓')} feega CLI aggiornato!`);
     console.log(`  Riavvia la CLI per usare la nuova versione.\n`);
   } catch (e) {
     console.error(`  ✗ Errore: ${String(e)}`);
     console.log(`\n  Aggiorna manualmente:`);
-    console.log(`  curl -sSL https://raw.githubusercontent.com/anomaliaso/anomalia/main/cli/scripts/install.sh | bash\n`);
+    console.log(`  curl -sSL https://raw.githubusercontent.com/andreabuttarelli/feega/main/cli/scripts/install.sh | bash\n`);
     process.exit(1);
   }
 }

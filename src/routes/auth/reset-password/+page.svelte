@@ -10,7 +10,7 @@
 
 <div class="wrap">
   <div class="card">
-    <a class="brand" href="/">Anomalia</a>
+    <a class="brand" href="/">feega</a>
     <h1>{$_('login.resetPage.title')}</h1>
     <p class="sub">{$_('login.resetPage.sub')}</p>
 
@@ -106,7 +106,6 @@
     box-sizing: border-box;
     font-size: 16px;
     padding: 14px 18px;
-    border-radius: 14px;
     border: 1px solid var(--line-2, #d2d2d7);
     outline: none;
   }
@@ -138,7 +137,6 @@
     background: var(--ink, #1d1d1f);
     color: #fff;
     border: none;
-    border-radius: 14px;
     padding: 14px 22px;
     font-size: 15px;
     font-weight: 600;
@@ -153,7 +151,6 @@
     height: 15px;
     border: 2px solid rgba(255, 255, 255, 0.35);
     border-top-color: #fff;
-    border-radius: 50%;
     animation: spin 0.7s linear infinite;
   }
   @keyframes spin {

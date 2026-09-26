@@ -56,9 +56,7 @@
     const postsL = $_('pricing.card.statPosts');
     const videosL = $_('pricing.card.statVideos');
     const articlesL = $_('pricing.card.statArticles');
-    const leadsL = $_('pricing.card.statLeads');
     const perMo = $_('pricing.card.perMonth');
-    const perDay = $_('pricing.card.perDay');
     const videos = videosFromCredits(p.credits);
     const prev = prevPlan(p);
 
@@ -66,8 +64,7 @@
       return [
         `~${p.postsPerMonth} ${postsL} ${perMo}`,
         `~${videos} ${videosL}`,
-        `~${p.articlesPerMonth} ${articlesL} ${perMo}`,
-        `~${p.leadsPerDay.min}–${p.leadsPerDay.max} ${leadsL} ${perDay}`
+        `~${p.articlesPerMonth} ${articlesL} ${perMo}`
       ];
     }
 
@@ -141,7 +138,7 @@
         <div class="plan-cta">
           {#if customCta}
             {@render customCta()}
-          {:else}
+          {:else if BOOKING_URL}
             <a class="pcta is-ghost" href={BOOKING_URL} target="_blank" rel="noopener">
               {$_('pricing.card.customCta')}
             </a>
@@ -208,7 +205,6 @@
     width: 100%;
     text-align: center;
     padding: 12px 18px;
-    border-radius: 980px;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;

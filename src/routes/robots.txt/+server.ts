@@ -2,8 +2,8 @@ import type { RequestHandler } from './$types';
 import { siteUrl } from '$lib/seo';
 import { createAdminClient } from '$lib/server/supabase-admin';
 
-// Crawlers may index the marketing pages; keep them out of the app, API, auth and the
-// personalised waitlist confirmation. Points to the sitemap for discovery — plus one Sitemap:
+// Crawlers may index the marketing pages; keep them out of the app, API and auth.
+// Points to the sitemap for discovery — plus one Sitemap:
 // line per hosted blog so Google finds every per-blog article sitemap (they are not linked from
 // the main sitemap, and robots.txt is the crawlable place Google reads them from).
 export const GET: RequestHandler = async ({ url }) => {
@@ -45,8 +45,6 @@ Disallow: /api
 Disallow: /auth
 Disallow: /approve
 Disallow: /share
-Disallow: /waitlist
-Disallow: /it/waitlist
 
 Sitemap: ${site}/sitemap.xml
 ${blogSitemaps}

@@ -276,7 +276,6 @@
     gap: 18px;
     margin: 0 0 64px;
     padding: 18px;
-    border-radius: 18px;
     border: 1px solid var(--line);
     background: var(--paper);
   }
@@ -291,18 +290,15 @@
     align-items: center;
     gap: 8px;
     padding: 12px 8px;
-    border-radius: 14px;
     background: color-mix(in srgb, var(--paper-2) 70%, var(--paper));
   }
   .wb-shimmer-ring {
     width: 72px;
     height: 72px;
-    border-radius: 50%;
     flex-shrink: 0;
   }
   .wb-shimmer-queue {
     height: 148px;
-    border-radius: 16px;
   }
   .wb-shimmer-section {
     margin: 0 0 64px;
@@ -315,7 +311,6 @@
   }
   .wb-shimmer-panel {
     background: var(--paper);
-    border-radius: 16px;
   }
   .wb-shimmer-metric {
     height: 26px;
@@ -345,11 +340,9 @@
   .wb-shimmer-canvas {
     width: 100%;
     height: 100%;
-    border-radius: 0;
   }
 
   .wb-shimmer-block {
-    border-radius: 10px;
     background: linear-gradient(
       90deg,
       color-mix(in srgb, var(--ink) 4%, var(--paper)) 0%,
@@ -370,7 +363,6 @@
   .wb-shimmer-avatar {
     width: 72px;
     height: 72px;
-    border-radius: 20px;
   }
   .wb-shimmer-title {
     width: min(220px, 55%);
@@ -384,7 +376,6 @@
     width: 100%;
     max-width: none;
     height: 112px;
-    border-radius: 16px;
     margin-top: 8px;
   }
   .wb-shimmer-prompt.dock {
@@ -392,7 +383,6 @@
     max-width: var(--chat-col);
     margin-inline: auto;
     height: 96px;
-    border-radius: 18px;
     flex-shrink: 0;
   }
 
@@ -409,7 +399,6 @@
     flex-direction: column;
     gap: 10px;
     padding: 16px;
-    border-radius: 14px;
     border: 1px solid var(--line);
     background: color-mix(in srgb, var(--paper-2) 65%, var(--paper));
   }
@@ -418,7 +407,6 @@
     width: min(280px, 42%);
     height: 1.85rem;
     margin-top: 0;
-    border-radius: 8px;
   }
   .wb-shimmer-line {
     height: 12px;
@@ -432,7 +420,6 @@
   .wb-shimmer-chip {
     width: 72px;
     height: 28px;
-    border-radius: 999px;
   }
   .wb-shimmer-chip.wide {
     width: 96px;
@@ -447,13 +434,11 @@
     align-items: center;
     gap: 12px;
     padding: 12px;
-    border-radius: 12px;
     border: 1px solid var(--line);
   }
   .wb-shimmer-thumb {
     width: 48px;
     height: 48px;
-    border-radius: 10px;
     flex-shrink: 0;
   }
   .wb-shimmer-row-text {
@@ -482,7 +467,6 @@
     gap: 8px;
     max-width: 72%;
     padding: 14px 16px;
-    border-radius: 16px;
     background: color-mix(in srgb, var(--ink) 3%, var(--paper));
     border: 1px solid var(--line);
   }
@@ -514,13 +498,11 @@
   .wb-shimmer-nav {
     width: 32px;
     height: 32px;
-    border-radius: 9px;
     flex-shrink: 0;
   }
   .wb-shimmer-month {
     width: 120px;
     height: 18px;
-    border-radius: 6px;
   }
   .wb-shimmer-cal-tools {
     margin-left: auto;
@@ -553,7 +535,6 @@
   .wb-shimmer-dow {
     height: 10px;
     width: 42%;
-    border-radius: 4px;
   }
   .wb-shimmer-cal-cell {
     min-height: 188px;
@@ -574,12 +555,10 @@
   .wb-shimmer-daynum {
     width: 22px;
     height: 22px;
-    border-radius: 50%;
     flex-shrink: 0;
   }
   .wb-shimmer-cal-post {
     border: 1px solid var(--line);
-    border-radius: 10px;
     overflow: hidden;
     background: var(--paper);
     display: flex;
@@ -589,7 +568,6 @@
     width: 100%;
     aspect-ratio: 4 / 3;
     max-height: 72px;
-    border-radius: 0;
   }
   .wb-shimmer-cal-meta {
     display: flex;
@@ -631,7 +609,6 @@
   .wb-shimmer-media-history {
     width: 110px;
     height: 32px;
-    border-radius: 999px;
     flex-shrink: 0;
   }
   .wb-shimmer-masonry {
@@ -647,7 +624,6 @@
     width: 100%;
     break-inside: avoid;
     margin: 0 0 12px;
-    border-radius: 14px;
   }
   .wb-shimmer-media-tile.tall {
     aspect-ratio: 4 / 5;
@@ -672,11 +648,9 @@
   }
   .wb-shimmer-media-banner {
     height: 52px;
-    border-radius: 14px;
   }
   .wb-shimmer-media-composer {
     height: 108px;
-    border-radius: 22px;
   }
 
   /* A shimmer that never stops reads as "broken" to anyone who needs reduced motion. */
@@ -721,7 +695,6 @@
     }
     .wb-shimmer-media-composer {
       height: 96px;
-      border-radius: 18px;
     }
   }
   @media (max-width: 560px) {

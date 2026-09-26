@@ -9,7 +9,6 @@ import type { ScrapeTarget } from '$lib/server/scrapecreators';
 import type { NormalizedAd } from '$lib/server/competitor-ads';
 import { createAdminClient } from '$lib/server/supabase-admin';
 import { aiStructured } from '$lib/server/ai-text';
-import { formatFieldPlaybook, type FieldPlaybook } from '$lib/server/market-field';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRec = Record<string, any>;
@@ -67,12 +66,6 @@ export type MarketReferencesRow = {
   sources: Array<{ competitor: string; platform: string; handle: string }>;
   /** Meta Ad Library trending / competitor ads snapshot (ScrapeCreators). */
   ads: NormalizedAd[];
-  /**
-   * Field watch (market-field.ts): cosa gira nel CAMPO del brand, non solo presso i competitor già
-   * schedati. Vive su questa riga di proposito — così il brief del planner resta una sola lettura e
-   * i due consumatori esistenti lo ricevono senza toccare nulla.
-   */
-  field_playbook: FieldPlaybook | null;
   updated_at: string;
 };
 
@@ -95,7 +88,7 @@ function preferVideoRank(a: { mediaType?: string | null; engagement: number }, b
 }
 
 /** Compact planner/chat block — empty string when nothing useful. */
-export function formatMarketBrief(row: Pick<MarketReferencesRow, 'summary' | 'catalog' | 'references'> & Partial<Pick<MarketReferencesRow, 'field_playbook'>> | null): string {
+export function formatMarketBrief(row: Pick<MarketReferencesRow, 'summary' | 'catalog' | 'references'> | null): string {
   if (!row) return '';
   const lines: string[] = [];
   if (row.summary?.trim()) lines.push(row.summary.trim());
@@ -134,16 +127,11 @@ export function formatMarketBrief(row: Pick<MarketReferencesRow, 'summary' | 'ca
     }
   }
 
-  // Il playbook di campo è una fonte diversa dalle reference dei competitor — chi sta ottenendo
-  // attenzione nel campo, anche se non è nella lista dei concorrenti — quindi entra come blocco a
-  // sé invece di essere mescolato alle righe sopra.
-  const field = formatFieldPlaybook(row.field_playbook ?? null);
-
-  if (!lines.length) return field;
-  const competitorBrief =
+  if (!lines.length) return '';
+  return (
     `MARKET TRENDING REFERENCES (refreshed ~weekly from competitor socials — use as STRUCTURAL inspiration for hooks/formats/angles; never imitate their visual look or copy their words):\n` +
-    lines.join('\n');
-  return field ? `${competitorBrief}\n\n${field}` : competitorBrief;
+    lines.join('\n')
+  );
 }
 
 async function ownerIdForBrand(supabase: SupabaseClient, brandId: string): Promise<string | null> {
@@ -501,8 +489,6 @@ export async function refreshMarketReferences(
       summary: existing?.summary ?? '',
       sources: sources.length ? sources : (existing?.sources ?? []),
       ads: trendingAds,
-      // Il field watch ha una sua cadenza e una sua scrittura: qui si porta avanti quello che c'è.
-      field_playbook: existing?.field_playbook ?? null,
       updated_at
     };
     await persistMarketReferences(brandId, row);
@@ -571,22 +557,12 @@ export async function refreshMarketReferences(
   const summary = distilled?.summary?.trim() || '';
   const updated_at = new Date().toISOString();
 
-  // Il playbook di campo sta sulla stessa riga ma ha un'altra cadenza (market-field.ts). In DB
-  // sopravvive — `persistMarketReferences` non lo tocca — ma questo oggetto è quello che il planner
-  // formatta subito dopo il refresh: senza riportarlo avanti, quel brief lo perderebbe.
-  const { data: fieldRow } = await supabase
-    .from('brand_market_references')
-    .select('field_playbook')
-    .eq('brand_id', brandId)
-    .maybeSingle();
-
   const row: MarketReferencesRow = {
     references: refs,
     catalog,
     summary,
     sources,
     ads: trendingAds,
-    field_playbook: ((fieldRow as AnyRec)?.field_playbook ?? null) as FieldPlaybook | null,
     updated_at
   };
   await persistMarketReferences(brandId, row);
@@ -600,7 +576,7 @@ export async function loadMarketReferences(
 ): Promise<MarketReferencesRow | null> {
   const { data, error } = await supabase
     .from('brand_market_references')
-    .select('references, catalog, summary, sources, ads, field_playbook, updated_at')
+    .select('references, catalog, summary, sources, ads, updated_at')
     .eq('brand_id', brandId)
     .maybeSingle();
   if (error || !data) return null;
@@ -610,7 +586,6 @@ export async function loadMarketReferences(
     summary: String(data.summary ?? ''),
     sources: (Array.isArray(data.sources) ? data.sources : []) as MarketReferencesRow['sources'],
     ads: (Array.isArray((data as AnyRec).ads) ? (data as AnyRec).ads : []) as MarketReferencesRow['ads'],
-    field_playbook: ((data as AnyRec).field_playbook ?? null) as FieldPlaybook | null,
     updated_at: String(data.updated_at)
   };
 }

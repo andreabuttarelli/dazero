@@ -122,13 +122,13 @@
   .box {
     display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
     min-height: var(--control-h, 40px); padding: 6px 10px;
-    border: 1px solid var(--line-2); border-radius: 12px;
+    border: 1px solid var(--line-2);
     background: var(--paper); color: var(--ink); cursor: text;
   }
   .box.open { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.1); }
   .chip {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 3px 6px 3px 9px; border-radius: 980px;
+    padding: 3px 6px 3px 9px;
     background: var(--paper-2); border: 1px solid var(--line);
     font-size: 12.5px; font-weight: 600; white-space: nowrap;
   }
@@ -146,12 +146,12 @@
   .menu {
     position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0;
     max-height: 260px; overflow-y: auto; margin: 0; padding: 4px; list-style: none;
-    background: var(--paper); border: 1px solid var(--line-2); border-radius: 12px;
+    background: var(--paper); border: 1px solid var(--line-2);
     box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.35);
   }
   .menu li button {
     display: flex; align-items: center; gap: 8px; width: 100%;
-    padding: 7px 10px; border: 0; border-radius: 8px; background: none;
+    padding: 7px 10px; border: 0; background: none;
     color: var(--ink); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer;
   }
   .menu li button:hover, .menu li button:focus-visible { background: var(--paper-2); }

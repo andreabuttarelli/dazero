@@ -27,14 +27,14 @@ type BrandRef = { id: string; name: string; zernio_profile_id: string | null };
 /**
  * Written with the service role and not with the caller's session: this id is the profile the brand
  * publishes THROUGH, so another tenant's value on this row would inherit their connected accounts.
- * `20260905210000_self_write_columns.sql` keeps `authenticated` out of the column.
+ * `20260924_brands_zernio_profile.sql` keeps `authenticated` out of the column with a trigger.
  */
 export async function ensureBrandProfile(brand: BrandRef): Promise<string> {
   if (brand.zernio_profile_id) return brand.zernio_profile_id;
 
   const profileId = await publisher.createProfile({
-    name: `Anomalia · ${brand.name}`,
-    description: `Anomalia brand ${brand.id}`
+    name: `feega · ${brand.name}`,
+    description: `feega brand ${brand.id}`
   });
   const { createAdminClient } = await import('./supabase-admin');
   await createAdminClient().from('brands').update({ zernio_profile_id: profileId }).eq('id', brand.id);
@@ -107,7 +107,7 @@ export async function selectFacebookPage(opts: {
 
 export async function syncBrandAccounts(
   supabase: SupabaseClient,
-  brand: { id: string; zernio_profile_id: string | null }
+  brand: { id: string; org_id: string; zernio_profile_id: string | null }
 ): Promise<void> {
   if (!brand.zernio_profile_id) return;
 
@@ -116,18 +116,28 @@ export async function syncBrandAccounts(
 
   for (const acc of accounts) {
     live.add(acc.id);
-    await supabase.from('social_accounts').upsert(
-      {
-        brand_id: brand.id,
-        zernio_account_id: acc.id,
-        platform: fromZernioPlatform(acc.platform),
-        username: acc.username,
-        display_name: acc.displayName,
-        profile_url: acc.profileUrl,
-        status: acc.active ? 'active' : 'disconnected'
-      },
-      { onConflict: 'brand_id,zernio_account_id' }
-    );
+    const { data: row } = await supabase
+      .from('social_accounts')
+      .upsert(
+        {
+          brand_id: brand.id,
+          zernio_account_id: acc.id,
+          platform: fromZernioPlatform(acc.platform),
+          handle: acc.username,
+          display_name: acc.displayName,
+          status: acc.active ? 'active' : 'disconnected'
+        },
+        { onConflict: 'brand_id,zernio_account_id' }
+      )
+      .select('id')
+      .single();
+
+    // Idempotent per account+month (credit_ledger_social_seat_month_idx): a re-sync of an
+    // already-charged account is a no-op, not a second debit.
+    if (acc.active && row?.id) {
+      const { chargeAccountSeat } = await import('./account-billing');
+      await chargeAccountSeat(supabase, { accountId: row.id, orgId: brand.org_id });
+    }
   }
 
   const { data: stored } = await supabase

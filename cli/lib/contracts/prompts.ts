@@ -7,8 +7,8 @@ export const ENHANCE_PROMPT = {
   description:
     'Rewrites a brief into the SHAPE the model you are about to render with wants — one reads ' +
     'labelled sections, another one flowing paragraph, another a command when it edits. Pass the ' +
-    '`model` (`get_media_models` lists them) and give the `prompt` that comes back to ' +
-    'generate_image, generate_video or generate_carousel. It rewrites, it never invents: a rewrite ' +
+    '`model` (`get_media_models` lists them) and use the `prompt` that comes back to render. ' +
+    'It rewrites, it never invents: a rewrite ' +
     'that adds a subject, asks for readable text or states an aspect ratio is thrown away and the ' +
     'original returns with `changed: false` and the reason in `notes`, as does a model we have no ' +
     'guide for. Draws nothing, files nothing. Spends credits.',
