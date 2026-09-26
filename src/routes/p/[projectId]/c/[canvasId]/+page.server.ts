@@ -54,6 +54,7 @@ import { suggestNextSteps } from '$lib/canvas/suggest-next-steps';
 import { actionFrequencyFor } from '$lib/server/next-step-stats';
 import { decideWithJev } from '$lib/server/jev';
 import { applyEffectsNode } from '$lib/server/canvas/apply-effects';
+import { nodeAcceptsConnection } from '$lib/canvas/connector-ports';
 
 // L'azione `run` aspetta la generazione DENTRO la richiesta — un'immagine ci mette fino a un
 // minuto, e il default della piattaforma è sotto quella soglia. Senza, la richiesta muore a metà
@@ -975,9 +976,20 @@ export const actions: Actions = {
 
     // Il verso viaggia sull'attacco: `nodes_connections` non ha una colonna `kind`, e perderlo
     // qui vorrebbe dire riaprire la tela con ogni linea tornata «nasce da».
-    const nodeIds = new Set((await listNodes(scope.db, scope)).map((node) => node.id));
+    const canvasNodes = await listNodes(scope.db, scope);
+    const nodeIds = new Set(canvasNodes.map((node) => node.id));
     if (sourceNodeId === targetNodeId || !nodeIds.has(sourceNodeId) || !nodeIds.has(targetNodeId)) {
       return fail(400, { error: 'collegamento non valido' });
+    }
+
+    const targetNode = canvasNodes.find((node) => node.id === targetNodeId);
+    const existing = (await listConnections(scope.db, scope)).map((edge) => ({
+      id: edge.id,
+      target: edge.targetNodeId,
+      targetHandle: edge.targetHandle
+    }));
+    if (!nodeAcceptsConnection(existing, targetNodeId, targetNode?.type ?? '')) {
+      return fail(400, { error: 'un nodo effetti prende un solo media' });
     }
 
     const connection = await createConnection(scope.db, {
@@ -1225,7 +1237,7 @@ export const actions: Actions = {
 
     const frequency = await actionFrequencyFor(scope.db, scope.orgId, node.type);
     const decide = process.env.TYPESAFE_API_KEY ? decideWithJev : null;
-    const suggestions = await suggestNextSteps(node.type, frequency, decide);
+    const suggestions = await suggestNextSteps(node.type, frequency, decide, node.data);
 
     return {
       suggestions: suggestions.map((s) => ({

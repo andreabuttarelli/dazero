@@ -24,7 +24,7 @@
     nodeId,
     onpick
   }: {
-    box: { x: number; y: number; width: number } | null;
+    box: { x: number; y: number; width: number; height: number } | null;
     zoom?: number;
     /** Il nodo unico selezionato — niente suggerimenti su una selezione multipla. */
     nodeId: string | null;
@@ -76,7 +76,7 @@
 {#if box && suggestions.length}
   <div
     class="chips"
-    style={`left:${box.x + box.width / 2}px; top:${box.y + 40}px; --chips-scale:${zoom}`}
+    style={`left:${box.x + box.width / 2}px; top:${box.y + box.height + 8}px; --chips-scale:${zoom}`}
     role="group"
     aria-label="Suggerimenti"
   >
@@ -94,7 +94,9 @@
     z-index: 14;
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 4px;
+    width: max-content;
     max-width: 260px;
     transform-origin: center top;
     transform: translate(-50%, 0);

@@ -75,5 +75,6 @@
     height: 100%;
     display: block;
     background: #000;
+    pointer-events: none;
   }
 </style>

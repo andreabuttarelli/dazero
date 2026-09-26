@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { connectorOccupied, connectorAccepts } from './connector-ports';
+import { connectorOccupied, connectorAccepts, nodeAcceptsConnection } from './connector-ports';
 
 type Edge = { id: string; source: string; target: string; targetHandle: string | null };
 
@@ -8,6 +8,17 @@ const edge = (id: string, target: string, targetHandle: string | null, source = 
   source,
   target,
   targetHandle
+});
+
+describe('nodeAcceptsConnection', () => {
+  it('effects rifiuta qualsiasi secondo media, anche su una porta diversa', () => {
+    const edges = [edge('e1', 'fx', 'images')];
+    expect(nodeAcceptsConnection(edges, 'fx', 'effects')).toBe(false);
+  });
+
+  it('effects accetta il primo media', () => {
+    expect(nodeAcceptsConnection([], 'fx', 'effects')).toBe(true);
+  });
 });
 
 describe('connectorOccupied — un connettore a valore singolo porta un filo solo', () => {

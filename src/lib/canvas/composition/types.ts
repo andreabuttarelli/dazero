@@ -13,6 +13,8 @@ export type LayoutId =
 	| 'media-cloud'
 	| 'media-ring'
 	| 'helix'
+	| 'explorer-grid'
+	| 'staggered-grid'
 	| 'vertical-flow'
 	| 'coverflow';
 

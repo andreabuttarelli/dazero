@@ -20,3 +20,11 @@ export function connectorAccepts(
   );
   return occupying.length === 0;
 }
+
+export function nodeAcceptsConnection(edges: PortEdge[], targetId: string, nodeType: string): boolean {
+  if (nodeType !== 'effects') {
+    return true;
+  }
+
+  return !edges.some((edge) => edge.target === targetId);
+}

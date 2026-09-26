@@ -25,7 +25,7 @@
   let {
     onchange
   }: {
-    onchange: (state: { ids: string[]; box: { x: number; y: number; width: number } | null; zoom: number }) => void;
+    onchange: (state: { ids: string[]; box: { x: number; y: number; width: number; height: number } | null; zoom: number }) => void;
   } = $props();
 
   const nodesStore = useNodes();
@@ -43,10 +43,16 @@
     const bounds = getNodesBounds(selected);
     const topLeft = flowToScreenPosition({ x: bounds.x, y: bounds.y - LABEL_CLEARANCE_FLOW });
     const topRight = flowToScreenPosition({ x: bounds.x + bounds.width, y: bounds.y - LABEL_CLEARANCE_FLOW });
+    const bottomLeft = flowToScreenPosition({ x: bounds.x, y: bounds.y + bounds.height });
 
     onchange({
       ids: selected.map((n) => n.id),
-      box: { x: topLeft.x, y: topLeft.y, width: topRight.x - topLeft.x },
+      box: {
+        x: topLeft.x,
+        y: topLeft.y,
+        width: topRight.x - topLeft.x,
+        height: bottomLeft.y - topLeft.y
+      },
       zoom
     });
   });

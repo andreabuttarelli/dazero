@@ -430,7 +430,8 @@
     if (n.type === 'select') {
       return n.data.item_kind === 'text' ? 'text' : 'images';
     }
-    return outputConnectorOf(n.type, n.data.mediaKind === 'video' ? 'video' : 'image');
+    const effectsKind = n.type === 'effects' ? upstreamEffectsMediaOf(n.id)?.kind : null;
+    return outputConnectorOf(n.type, effectsKind ?? (n.data.mediaKind === 'video' ? 'video' : 'image'));
   }
 
   /**
@@ -1773,7 +1774,7 @@
           <EffectsNode
             node={{ ...effects, mediaKind: effectsInput?.kind ?? effects.mediaKind }}
             imageUrl={assetUrl(effects.refId)}
-            sourceImageUrl={assetUrl(effects.sourceRefId ?? effectsInput?.refId ?? null)}
+            sourceImageUrl={assetUrl(effectsInput?.refId ?? effects.sourceRefId)}
             inputChanged={inputChanged(effects.sourceRefId, effectsInput?.refId ?? null)}
             onopeneditor={() => (effectsEditorId = id)}
           />
@@ -1782,6 +1783,7 @@
             node={composition}
             posterUrl={assetUrl(composition.refId)}
             mediaUrls={upstreamCompositionRefsOf(id).map((refId) => assetUrl(refId)).filter((url): url is string => url !== null)}
+            previewActive={compositionEditorId !== id}
             imageCount={upstreamCompositionRefsOf(id).length}
             onopeneditor={() => openCompositionEditor(id)}
           />

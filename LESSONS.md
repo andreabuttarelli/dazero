@@ -238,6 +238,14 @@ Un giudizio LLM su un artefatto reso va provato su DUE input, o non è provato: 
 
 ## Testare la piattaforma nel browser: worker locale ed ambiente
 
+### Un import dinamico può tornare dopo che il canvas è già morto
+
+Aprendo un editor WebGL mentre una scrittura rinfrescava la tela, l'import di Three.js riprendeva
+dopo lo smontaggio e passava `null` a `WebGLRenderer`. Segnale: il run di un nodo sembra ricaricare
+l'intera app e la console cade su `Cannot read properties of null (reading 'width')`. Mossa:
+catturare l'elemento prima dell'`await` e creare la scena solo se, al ritorno, è ancora lo stesso
+canvas montato. Il test deve trattenere l'import, smontare, poi rilasciarlo.
+
 ### Il websocket Realtime non si collega dalla stack locale: quello che arriva per broadcast non lo verifichi qui
 Il broadcast HTTP del server risponde 202 e il container lo logga, ma il browser non apre mai il canale: `channel(...).subscribe()` non risolve, e in `read_network_requests` non c'è una sola richiesta verso `localhost:8000`. Tutto quello che il prodotto consegna via `thread-changed` / `turn-state` / `kit_stream` — il turno scritto dal worker che deve comparire da solo, il pallino in sidebar, il riaggancio a uno stream partito altrove — nella stack locale non si vede, e la tentazione è di dichiararlo rotto nel codice. Segnale: il POST `/api/broadcast/...` esce 202, i log di `realtime-dev.dazero-realtime` non mostrano nessun join di canale, e la UI resta ferma. Mossa: verifica quel percorso dal lato che NON dipende dal socket — scrivi la riga in `chat_messages` mentre la scheda è nascosta e torna sulla scheda: se il ricontrollo al focus la porta a schermo, il difetto non è lì. E dillo nel PR invece di far passare per verificato ciò che la macchina non poteva provare.
 

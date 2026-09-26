@@ -41,6 +41,22 @@ describe('suggestNextSteps', () => {
     expect(top?.confidence).toBe(0.95);
   });
 
+  it('gives the decide port the selected node content', async () => {
+    let state: unknown;
+    const decide: Decide = async (_question, receivedState) => {
+      state = receivedState;
+      return { kind: 'choose-one', value: 'write-caption', confidence: 0.9 };
+    };
+
+    await suggestNextSteps('image', {}, decide, { prompt: 'A red shoe on marble' });
+
+    expect(state).toEqual({
+      nodeType: 'image',
+      nodeData: { prompt: 'A red shoe on marble' },
+      options: ['animate-into-video', 'write-caption', 'loop-variants', 'create-post', 'describe-image', 'resize-for-stories']
+    });
+  });
+
   it('ignores a Jev answer outside the fallback-validated action set', async () => {
     const decide: Decide = async () => ({ kind: 'choose-one', value: 'not-a-real-action', confidence: 0.99 });
     const withoutJev = await suggestNextSteps('image', {}, null);

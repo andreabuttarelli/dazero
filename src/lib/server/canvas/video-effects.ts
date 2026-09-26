@@ -6,7 +6,7 @@ import sharp from 'sharp';
 import { ensureFfmpegPath } from '$lib/server/ffmpeg-bin';
 import { applyStack, type EffectStep, type Pixels } from '$lib/canvas/effects';
 
-const OUTPUT_FPS = 30;
+const FALLBACK_FPS = 30;
 
 export type RenderedEffectsVideo = {
   bytes: Buffer;
@@ -28,7 +28,8 @@ export async function renderVideoEffects(input: Buffer, steps: EffectStep[]): Pr
 
   try {
     await writeFile(source, input);
-    await run(ffmpeg, ['-i', source, '-vf', `fps=${OUTPUT_FPS}`, '-y', frames]);
+    const metadata = await run(ffmpeg, ['-i', source, '-vsync', '0', '-y', frames]);
+    const fps = sourceFps(metadata);
 
     const names = (await readdir(dir)).filter((name) => name.startsWith('frame-')).sort();
     if (names.length === 0) {
@@ -45,13 +46,20 @@ export async function renderVideoEffects(input: Buffer, steps: EffectStep[]): Pr
       await writeFile(path, await encode(applyStack(decoded, steps)));
     }
 
-    await run(ffmpeg, [
-      '-framerate', String(OUTPUT_FPS), '-i', frames,
+    const encodeArgs = [
+      '-framerate', String(fps), '-i', frames,
       '-i', source,
       '-map', '0:v:0', '-map', '1:a?',
       '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-      '-c:a', 'aac', '-shortest', '-movflags', '+faststart', '-y', output
-    ]);
+      '-c:a', 'copy', '-shortest', '-movflags', '+faststart', '-y', output
+    ];
+    try {
+      await run(ffmpeg, encodeArgs);
+    } catch {
+      const audioCodec = encodeArgs.indexOf('copy');
+      encodeArgs[audioCodec] = 'aac';
+      await run(ffmpeg, encodeArgs);
+    }
 
     return { bytes: await readFile(output), mimeType: 'video/mp4', width, height };
   } finally {
@@ -59,14 +67,20 @@ export async function renderVideoEffects(input: Buffer, steps: EffectStep[]): Pr
   }
 }
 
-function run(bin: string, args: string[]): Promise<void> {
+function run(bin: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(bin, args);
     let stderr = '';
     child.stderr.on('data', (chunk) => { stderr += String(chunk); });
     child.on('error', reject);
-    child.on('close', (code) => code === 0 ? resolve() : reject(new Error(stderr)));
+    child.on('close', (code) => code === 0 ? resolve(stderr) : reject(new Error(stderr)));
   });
+}
+
+function sourceFps(metadata: string): number {
+  const match = metadata.match(/,\s*(\d+(?:\.\d+)?)\s+fps/);
+  const fps = Number(match?.[1]);
+  return Number.isFinite(fps) && fps > 0 ? fps : FALLBACK_FPS;
 }
 
 async function decode(bytes: Buffer): Promise<Pixels> {

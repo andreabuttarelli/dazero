@@ -15,7 +15,13 @@ describe('composition motion quality', () => {
 	for (const id of Object.keys(LAYOUTS) as LayoutId[]) {
 		it(`${id} has a social-safe default density`, () => {
 			const params = defaultsFor(id);
-			expect(instanceCountFor(id, MEDIA_COUNT, params)).toBeLessThanOrEqual(9);
+			const count = instanceCountFor(id, MEDIA_COUNT, params);
+			const camera = defaultCamera();
+			const visible = layoutAt(id, count, params, 0).filter(
+				(transform) => (transform.opacity ?? 1) >= 0.1 && inFrame(transform, camera)
+			);
+
+			expect(visible.length).toBeLessThanOrEqual(9);
 		});
 
 		it(`${id} has no abrupt jumps at its defaults`, () => {
@@ -90,6 +96,13 @@ function makeCamera(state: ReturnType<typeof cameraAt>): THREE.PerspectiveCamera
 	camera.updateMatrixWorld();
 	camera.updateProjectionMatrix();
 	return camera;
+}
+
+function defaultCamera(): THREE.PerspectiveCamera {
+	const params = Object.fromEntries(
+		CAMERA_PRESETS['slow-orbit'].params.map((param) => [param.name, param.default])
+	);
+	return makeCamera(cameraAt('slow-orbit', params, 0));
 }
 
 function inFrame(transform: Transform, camera: THREE.PerspectiveCamera): boolean {

@@ -34,17 +34,23 @@ export function rankedFallback(nodeType: string, frequency: Record<string, numbe
 export async function suggestNextSteps(
   nodeType: string,
   frequency: Record<string, number>,
-  decide: Decide | null
+  decide: Decide | null,
+  nodeData: Record<string, unknown> = {}
 ): Promise<NextStepSuggestion[]> {
   const fallback = rankedFallback(nodeType, frequency);
   if (!fallback.length) return [];
 
-  const reranked = decide ? await rerankWithJev(fallback, decide) : fallback;
+  const reranked = decide ? await rerankWithJev(fallback, decide, nodeType, nodeData) : fallback;
 
   return reranked.filter((s) => s.confidence >= NEXT_STEP_CONFIDENCE_THRESHOLD).sort(byConfidenceDesc);
 }
 
-async function rerankWithJev(fallback: NextStepSuggestion[], decide: Decide): Promise<NextStepSuggestion[]> {
+async function rerankWithJev(
+  fallback: NextStepSuggestion[],
+  decide: Decide,
+  nodeType: string,
+  nodeData: Record<string, unknown>
+): Promise<NextStepSuggestion[]> {
   const validIds = new Set(fallback.map((s) => s.action.id));
   const options = fallback.map((s) => s.action.id);
 
@@ -54,7 +60,7 @@ async function rerankWithJev(fallback: NextStepSuggestion[], decide: Decide): Pr
     options
   };
 
-  const decision = await decide(question, { options });
+  const decision = await decide(question, { nodeType, nodeData, options });
   if (!decision || decision.kind !== 'choose-one') return fallback;
 
   const chosenId = decision.value as NextStepActionId;

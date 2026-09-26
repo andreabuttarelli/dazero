@@ -7,21 +7,28 @@
     node,
     posterUrl = null,
     mediaUrls = [],
+    previewActive = true,
     imageCount = 0,
     onopeneditor
   }: {
     node: CompositionNode;
     posterUrl?: string | null;
     mediaUrls?: string[];
+    previewActive?: boolean;
     imageCount?: number;
     onopeneditor: () => void;
   } = $props();
+
+  const ASPECT_RATIO = { '9:16': 9 / 16, '1:1': 1, '16:9': 16 / 9 } as const;
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="composition" ondblclick={onopeneditor}>
-  {#if mediaUrls.length > 0}
-    <div class="composition-preview" style:aspect-ratio={node.aspect.replace(':', ' / ')}>
+  {#if mediaUrls.length > 0 && previewActive}
+    <div
+      class="composition-preview"
+      style={`--preview-ratio: ${ASPECT_RATIO[node.aspect]}; aspect-ratio: ${ASPECT_RATIO[node.aspect]}`}
+    >
       <CompositionPreview {node} {mediaUrls} />
     </div>
   {:else if node.refId && posterUrl}
@@ -57,6 +64,7 @@
       0 1px 2px rgb(0 0 0 / 0.05),
       0 8px 24px -12px rgb(0 0 0 / 0.2);
     overflow: hidden;
+    container-type: size;
     transition: box-shadow 140ms ease;
   }
   .composition:hover {
@@ -65,7 +73,7 @@
       0 12px 32px -14px rgb(0 0 0 / 0.26);
   }
   @media (prefers-reduced-motion: reduce) {
-    .composition {
+  .composition {
       transition: none;
     }
   }
@@ -80,7 +88,8 @@
   .composition-preview {
     max-width: 100%;
     max-height: 100%;
-    height: 100%;
+    width: min(100%, calc(100cqh * var(--preview-ratio)));
+    height: auto;
     overflow: hidden;
   }
 

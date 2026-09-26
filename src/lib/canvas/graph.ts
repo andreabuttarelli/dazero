@@ -106,8 +106,7 @@ export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
   // Una lista raccoglie immagini o testo dai nodi collegati. Quale dei due lo decide la sua porta
   // (`list-node.ts::listConnectors`), non questa riga: qui non si sa ancora cosa contiene.
   list: { medium: null, generated: true, accepts: ['text', 'image'], requires: [] },
-  // Un nodo `effects` applica una pila di filtri a UN'immagine a monte: produce un'immagine, ne
-  // richiede una — non un prompt, la pila di effetti non è testo da scrivere qui.
+  // Un nodo `effects` applica una pila di filtri a un solo media e ne conserva il tipo.
   effects: { medium: null, generated: true, accepts: ['image', 'video'], requires: [], requiresOneOf: ['image', 'video'] },
   // Un nodo `composition` compone più immagini in una scena 3D animata: produce un video (fase 3),
   // richiede almeno un'immagine collegata — senza materiale la scena non ha cosa mostrare.

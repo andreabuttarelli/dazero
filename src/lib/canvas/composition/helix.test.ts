@@ -20,4 +20,14 @@ describe('helix transforms', () => {
 
 		expect(scales.size).toBeGreaterThan(2);
 	});
+
+	it('keeps the default spiral centered and fully inside the social frame', () => {
+		const result = transforms(7, DEFAULTS, 0.37);
+		const centerX = result.reduce((sum, item) => sum + item.position.x, 0) / result.length;
+
+		expect(centerX).toBeCloseTo(0, 5);
+		expect(Math.max(...result.map((item) => Math.abs(item.position.x)))).toBeLessThanOrEqual(3);
+		expect(Math.max(...result.map((item) => Math.abs(item.position.y)))).toBeLessThanOrEqual(2.5);
+		expect(Math.max(...result.map((item) => Math.abs(item.rotation.y)))).toBeLessThan(0.25);
+	});
 });

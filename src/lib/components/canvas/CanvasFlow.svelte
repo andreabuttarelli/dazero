@@ -43,7 +43,7 @@
   import { CANVAS_EDGE_KINDS, EDGE_KIND_LABEL, WIRE_MODES, WIRE_MODE_LABEL, type CanvasEdgeKind, type FlowEdge, type WireMode } from '$lib/canvas-edges';
   import { isAddable, type Addable } from '$lib/canvas/addable';
   import { DEFAULT_EDGE_KIND, edgeKindsFor, verdictBetween } from '$lib/canvas/connect-rules';
-  import { connectorAccepts } from '$lib/canvas/connector-ports';
+  import { connectorAccepts, nodeAcceptsConnection } from '$lib/canvas/connector-ports';
   import { anyPortAccepts, landingPort, portListValued, type ConnectorType } from '$lib/canvas/connectors';
   import { setTileRender } from '$lib/canvas/tile-render-context';
   import { setTileResize } from '$lib/canvas/tile-resize-context';
@@ -333,13 +333,17 @@
     const connector = targetHandle as ConnectorType | null | undefined;
     const connectors = connectorsOf.get(target);
     const output = tiles.find((t) => t.id === source)?.output ?? null;
+    const targetKind = tiles.find((t) => t.id === target)?.kind ?? '';
+    const portEdges = edges.map((e) => ({ id: e.id, target: e.target, targetHandle: e.targetHandle ?? null }));
+    if (!nodeAcceptsConnection(portEdges, target, targetKind)) {
+      refusal = 'un nodo effetti prende un solo media';
+      return false;
+    }
     if (output && connectors?.length && !anyPortAccepts(connectors, output)) {
       refusal = `nessuna porta accetta ${output}`;
       return false;
     }
     if (connector && connectors?.includes(connector)) {
-      const portEdges = edges.map((e) => ({ id: e.id, target: e.target, targetHandle: e.targetHandle ?? null }));
-      const targetKind = tiles.find((t) => t.id === target)?.kind ?? '';
       const free = connectorAccepts(portEdges, target, connector, portListValued(targetKind, connector));
       if (!free) {
         refusal = `porta ${connector} già occupata`;
@@ -437,7 +441,7 @@
    * riquadro a ogni cambio — la barra stessa vive fuori, sotto, perché non ha bisogno del contesto
    * della libreria, solo di coordinate già pronte.
    */
-  let selection = $state<{ ids: string[]; box: { x: number; y: number; width: number } | null; zoom: number }>({
+  let selection = $state<{ ids: string[]; box: { x: number; y: number; width: number; height: number } | null; zoom: number }>({
     ids: [],
     box: null,
     zoom: 1

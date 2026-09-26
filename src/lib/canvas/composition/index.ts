@@ -1,6 +1,8 @@
 import * as carousel3d from './carousel-3d';
 import * as coverflow from './coverflow';
+import * as explorerGrid from './explorer-grid';
 import * as helix from './helix';
+import * as staggeredGrid from './staggered-grid';
 import * as mediaCloud from './media-cloud';
 import * as mediaRing from './media-ring';
 import * as tiltedGrid from './tilted-grid';
@@ -35,8 +37,8 @@ export const LAYOUTS: Record<LayoutId, LayoutDefinition> = {
 	},
 	'media-cloud': {
 		label: 'Nube cinematica',
-		motion: 'ping-pong',
-		camera: 'selected',
+		motion: 'cycle',
+		camera: 'fixed',
 		params: mediaCloud.params,
 		instances: (mediaCount, values) => filledCount(mediaCount, valueOf(values, 'density', 10)),
 		transforms: mediaCloud.transforms
@@ -57,6 +59,23 @@ export const LAYOUTS: Record<LayoutId, LayoutDefinition> = {
 		params: helix.params,
 		instances: (mediaCount, values) => filledCount(mediaCount, valueOf(values, 'items', 10)),
 		transforms: helix.transforms
+	},
+	'explorer-grid': {
+		label: 'Griglia esplorativa',
+		motion: 'cycle',
+		camera: 'fixed',
+		params: explorerGrid.params,
+		instances: explorerGrid.instanceCount,
+		transforms: explorerGrid.transforms
+	},
+	'staggered-grid': {
+		label: 'Colonne oblique',
+		motion: 'cycle',
+		camera: 'fixed',
+		params: staggeredGrid.params,
+		instances: (mediaCount, values) =>
+			filledCount(mediaCount, valueOf(values, 'columns', 3) * valueOf(values, 'rows', 3)),
+		transforms: staggeredGrid.transforms
 	},
 	'vertical-flow': {
 		label: 'Flusso verticale',
@@ -82,6 +101,43 @@ export function layoutAt(id: LayoutId, count: number, params: LayoutParams, t: n
 
 export function instanceCountFor(id: LayoutId, mediaCount: number, params: LayoutParams): number {
 	return LAYOUTS[id].instances(mediaCount, params);
+}
+
+export function mediaIndexFor(
+	id: LayoutId,
+	index: number,
+	_count: number,
+	params: LayoutParams,
+	mediaCount: number
+): number {
+	if (mediaCount <= 1) {
+		return 0;
+	}
+
+	if (id === 'tilted-grid' || id === 'explorer-grid') {
+		const columns = id === 'explorer-grid'
+			? explorerGrid.renderColumns(params)
+			: valueOf(params, 'columns', 3);
+		const column = index % columns;
+		const row = Math.floor(index / columns);
+		return (column + row) % mediaCount;
+	}
+
+	if (id === 'staggered-grid') {
+		const rows = valueOf(params, 'rows', 3);
+		const column = Math.floor(index / rows);
+		const row = index % rows;
+		return (column + row) % mediaCount;
+	}
+
+	if (id === 'media-ring') {
+		const rings = valueOf(params, 'rings', 1);
+		const ring = index % rings;
+		const ringIndex = Math.floor(index / rings);
+		return (ringIndex + ring) % mediaCount;
+	}
+
+	return index % mediaCount;
 }
 
 function valueOf(params: LayoutParams, name: string, fallback: number): number {

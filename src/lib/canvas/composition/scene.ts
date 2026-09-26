@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CAMERA_PRESETS, cameraAt, type CameraPresetId } from './camera';
-import { instanceCountFor, LAYOUTS } from './index';
+import { fitViewport } from './explorer-grid';
+import { instanceCountFor, LAYOUTS, mediaIndexFor } from './index';
 import { closedExpoPhase, closedExpoProgress } from './motion';
 import type { LayoutId, LayoutParams } from './types';
 
@@ -54,7 +55,8 @@ export function createCompositionScene(canvas: HTMLCanvasElement, options: Compo
 		const motionTime = layout.motion === 'cycle'
 			? closedExpoPhase(t, current.duration)
 			: closedExpoProgress(t, current.duration);
-		const transforms = LAYOUTS[current.layout].transforms(meshes.length, current.layoutParams, motionTime);
+		const layoutParams = activeLayoutParams();
+		const transforms = LAYOUTS[current.layout].transforms(meshes.length, layoutParams, motionTime);
 		for (let i = 0; i < meshes.length; i++) {
 			applyTransform(meshes[i], transforms[i]);
 		}
@@ -87,6 +89,7 @@ export function createCompositionScene(canvas: HTMLCanvasElement, options: Compo
 		renderer.setSize(width, height, false);
 		camera.aspect = width / height;
 		camera.updateProjectionMatrix();
+		syncInstances();
 	}
 
 	function update(next: CompositionSceneUpdate): void {
@@ -104,7 +107,8 @@ export function createCompositionScene(canvas: HTMLCanvasElement, options: Compo
 	}
 
 	function syncInstances(): void {
-		const desired = instanceCountFor(current.layout, current.media.length, current.layoutParams);
+		const layoutParams = activeLayoutParams();
+		const desired = instanceCountFor(current.layout, current.media.length, layoutParams);
 
 		while (built.length > desired) {
 			const item = built.pop();
@@ -115,24 +119,64 @@ export function createCompositionScene(canvas: HTMLCanvasElement, options: Compo
 		}
 
 		while (built.length < desired) {
-			const media = current.media[built.length % current.media.length];
+			const mediaIndex = mediaIndexFor(
+				current.layout,
+				built.length,
+				desired,
+				layoutParams,
+				current.media.length
+			);
+			const media = current.media[mediaIndex];
 			if (!media) {
 				break;
 			}
 
-			const item = createMesh(media, current.onTextureReady);
+			const item = createMesh(media, mediaIndex, current.onTextureReady);
 			built.push(item);
 			scene.add(item.mesh);
 		}
+
+		for (let index = 0; index < built.length; index++) {
+			const mediaIndex = mediaIndexFor(
+				current.layout,
+				index,
+				desired,
+				layoutParams,
+				current.media.length
+			);
+			if (built[index].mediaIndex === mediaIndex) {
+				continue;
+			}
+
+			const media = current.media[mediaIndex];
+			if (!media) {
+				continue;
+			}
+
+			scene.remove(built[index].mesh);
+			disposeMedia(built[index]);
+			built[index] = createMesh(media, mediaIndex, current.onTextureReady);
+			scene.add(built[index].mesh);
+		}
+	}
+
+	function activeLayoutParams(): LayoutParams {
+		if (current.layout !== 'explorer-grid') {
+			return current.layoutParams;
+		}
+
+		const state = cameraAt(current.camera, current.cameraParams, 0);
+		return fitViewport(current.layoutParams, state, camera.aspect).params;
 	}
 
 	return { renderAt, resize, update, dispose };
 }
 
-type BuiltMedia = { mesh: THREE.Mesh; video: HTMLVideoElement | null };
+type BuiltMedia = { mesh: THREE.Mesh; video: HTMLVideoElement | null; mediaIndex: number };
 
 function createMesh(
 	media: CompositionMedia,
+	mediaIndex: number,
 	onTextureReady?: () => void
 ): BuiltMedia {
 	const geometry = new THREE.PlaneGeometry(media.aspect, 1);
@@ -143,21 +187,28 @@ function createMesh(
 		const loader = new THREE.TextureLoader();
 		loader.setCrossOrigin('anonymous');
 		loader.load(media.url, (texture) => {
-			texture.colorSpace = THREE.SRGBColorSpace;
+			configureMediaTexture(texture);
 			material.uniforms.mediaTexture.value = texture;
 			material.uniforms.hasTexture.value = 1;
 			onTextureReady?.();
 		});
-		return { mesh, video: null };
+		return { mesh, video: null, mediaIndex };
 	}
 
 	const video = createVideoElement(media.url);
 	const texture = new THREE.VideoTexture(video);
-	texture.colorSpace = THREE.SRGBColorSpace;
+	configureMediaTexture(texture);
 	material.uniforms.mediaTexture.value = texture;
 	material.uniforms.hasTexture.value = 1;
 	video.addEventListener('loadeddata', () => onTextureReady?.(), { once: true });
-	return { mesh, video };
+	return { mesh, video, mediaIndex };
+}
+
+export function configureMediaTexture(texture: THREE.Texture): void {
+	texture.colorSpace = THREE.SRGBColorSpace;
+	texture.flipY = false;
+	texture.premultiplyAlpha = false;
+	texture.needsUpdate = true;
 }
 
 function disposeMedia({ mesh, video }: BuiltMedia): void {
@@ -188,7 +239,7 @@ function createMediaMaterial(): THREE.ShaderMaterial {
 		vertexShader: `
 			varying vec2 mediaUv;
 			void main() {
-				mediaUv = uv;
+				mediaUv = vec2(uv.x, 1.0 - uv.y);
 				gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 			}
 		`,

@@ -1,6 +1,7 @@
 <script lang="ts">
   import ImageIcon from '@lucide/svelte/icons/image';
   import type { EffectsNode } from '$lib/canvas/effects-node';
+  import EffectsPreview from './EffectsPreview.svelte';
 
   let {
     node,
@@ -19,23 +20,15 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="effects" ondblclick={onopeneditor}>
-  {#if node.refId && imageUrl}
-    {#if node.mediaKind === 'video'}
-      <!-- svelte-ignore a11y_media_has_caption -->
-      <video class="effects-photo" src={imageUrl} autoplay muted loop playsinline></video>
-    {:else}
-      <img class="effects-photo" src={imageUrl} alt="Risultato" loading="lazy" />
-    {/if}
-  {:else if node.sourceRefId && sourceImageUrl}
-    <div class="effects-unapplied">
-      {#if node.mediaKind === 'video'}
-        <!-- svelte-ignore a11y_media_has_caption -->
-        <video class="effects-photo" src={sourceImageUrl} autoplay muted loop playsinline></video>
-      {:else}
-        <img class="effects-photo" src={sourceImageUrl} alt="Immagine collegata" loading="lazy" />
-      {/if}
+  {#if sourceImageUrl || imageUrl}
+    <EffectsPreview
+      url={sourceImageUrl ?? imageUrl ?? ''}
+      kind={node.mediaKind}
+      effects={sourceImageUrl ? node.effects : []}
+    />
+    {#if !node.refId}
       <span class="effects-badge">Non applicato</span>
-    </div>
+    {/if}
   {:else}
     <div class="effects-empty">
       <ImageIcon size={22} strokeWidth={1.5} />
@@ -76,19 +69,6 @@
     .effects {
       transition: none;
     }
-  }
-
-  .effects-photo {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    background: var(--paper-2, #f9f9f9);
-  }
-
-  .effects-unapplied {
-    position: relative;
-    width: 100%;
-    height: 100%;
   }
 
   .effects-badge {
