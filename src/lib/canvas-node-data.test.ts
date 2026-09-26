@@ -370,7 +370,8 @@ describe('un nodo effects, letto dalla riga', () => {
       id: 'n1',
       effects: [],
       refId: null,
-      sourceRefId: null
+      sourceRefId: null,
+      mediaKind: 'image'
     });
   });
 
@@ -379,13 +380,14 @@ describe('un nodo effects, letto dalla riga', () => {
       effectsOf({
         id: 'n1',
         type: 'effects',
-        data: { effects: [{ id: 'pixelate', params: { blockSize: 8 } }], refId: 'a1', sourceRefId: 'a0' }
+        data: { effects: [{ id: 'pixelate', params: { blockSize: 8 } }], refId: 'a1', sourceRefId: 'a0', mediaKind: 'video' }
       })
     ).toEqual({
       id: 'n1',
       effects: [{ id: 'pixelate', params: { blockSize: 8 }, enabled: true }],
       refId: 'a1',
-      sourceRefId: 'a0'
+      sourceRefId: 'a0',
+      mediaKind: 'video'
     });
   });
 
@@ -415,7 +417,7 @@ describe('un nodo effects, letto dalla riga', () => {
     const node = effectsOf({
       id: 'n1',
       type: 'effects',
-      data: { effects: [{ id: 'posterize', params: { levels: 4 } }], refId: 'a1', sourceRefId: 'a0' }
+      data: { effects: [{ id: 'posterize', params: { levels: 4 } }], refId: 'a1', sourceRefId: 'a0', mediaKind: 'video' }
     })!;
     const written = effectsData(node);
     expect(effectsOf({ id: 'n1', type: 'effects', data: written })).toEqual(node);

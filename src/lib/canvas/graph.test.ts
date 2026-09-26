@@ -214,7 +214,7 @@ describe('canConnect — una lista riceve immagini o testo, mai video', () => {
   });
 });
 
-describe('canConnect — un nodo effects prende solo un\'immagine, mai testo o video', () => {
+describe('canConnect — un nodo effects prende un solo media, immagine o video', () => {
   it('un\'immagine alimenta un effects', () => {
     expect(canConnect(node('i', 'image'), node('e', 'effects')).ok).toBe(true);
   });
@@ -223,12 +223,23 @@ describe('canConnect — un nodo effects prende solo un\'immagine, mai testo o v
     expect(canConnect(node('t', 'text'), node('e', 'effects')).ok).toBe(false);
   });
 
-  it('un video non alimenta un effects', () => {
-    expect(canConnect(node('v', 'video'), node('e', 'effects')).ok).toBe(false);
+  it('un video alimenta un effects', () => {
+    expect(canConnect(node('v', 'video'), node('e', 'effects')).ok).toBe(true);
   });
 
   it('un effects richiede un\'immagine per essere pronto', () => {
     expect(missingInputs(node('e', 'effects'), [])).toEqual(['image']);
     expect(missingInputs(node('e', 'effects'), [node('i', 'image')])).toEqual([]);
+    expect(missingInputs(node('e', 'effects'), [node('v', 'video')])).toEqual([]);
+  });
+
+  it('un effects video produce video', () => {
+    expect(mediumOf(node('e', 'effects', { mediaKind: 'video' }))).toBe('video');
+  });
+
+  it('accetta un solo media totale', () => {
+    const result = acceptedInputs(node('e', 'effects'), [node('i', 'image'), node('v', 'video')]);
+    expect(result.accepted.map((input) => input.id)).toEqual(['i']);
+    expect(result.rejected.map((input) => input.id)).toEqual(['v']);
   });
 });

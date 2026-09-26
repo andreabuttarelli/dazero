@@ -48,6 +48,9 @@ export function isListValued(connector: ConnectorType): boolean {
 
 /** Una `list` raccoglie: ogni sua porta prende più fili, anche `text`, che altrove è uno solo. */
 export function portListValued(nodeType: string, connector: ConnectorType): boolean {
+  if (nodeType === 'effects') {
+    return false;
+  }
   return nodeType === 'list' || isListValued(connector);
 }
 
@@ -108,7 +111,10 @@ const NODE_OUTPUT: Partial<Record<string, ConnectorType>> = {
   composition: 'videos'
 };
 
-export function outputConnectorOf(nodeType: string): ConnectorType | null {
+export function outputConnectorOf(nodeType: string, mediaKind?: 'image' | 'video'): ConnectorType | null {
+  if (nodeType === 'effects' && mediaKind === 'video') {
+    return 'videos';
+  }
   return NODE_OUTPUT[nodeType] ?? null;
 }
 

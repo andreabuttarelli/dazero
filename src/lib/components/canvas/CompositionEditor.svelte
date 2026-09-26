@@ -8,7 +8,7 @@
   import { CAMERA_PRESETS, type CameraPresetId } from '$lib/canvas/composition/camera';
   import type { LayoutId, LayoutParams } from '$lib/canvas/composition/types';
   import type { CompositionMedia, CompositionScene } from '$lib/canvas/composition/scene';
-  import { clampDuration, defaultParamsFor, setLayoutParam } from '$lib/canvas/composition-editor';
+  import { clampDuration, createSceneWhenMounted, defaultParamsFor, setLayoutParam } from '$lib/canvas/composition-editor';
   import type { CompositionAspect, CompositionNode } from '$lib/canvas/composition-node';
   import CompositionParamControl from './CompositionParamControl.svelte';
 
@@ -66,21 +66,31 @@
     if (!canvas) {
       return;
     }
+    const activeCanvas = canvas;
     scene?.dispose();
     scene = null;
 
-    const { createCompositionScene } = await import('$lib/canvas/composition/scene');
-    scene = createCompositionScene(canvas, {
-      media: mediaFromUrls(mediaUrls),
-      layout,
-      layoutParams,
-      camera: cameraPreset,
-      cameraParams,
-      background: backgroundColor,
-      duration,
-      onTextureReady: () => scene?.renderAt(time)
-    });
-    scene.resize(canvas.clientWidth, canvas.clientHeight);
+    scene = await createSceneWhenMounted(
+      activeCanvas,
+      () => canvas === activeCanvas,
+      async () => {
+        const { createCompositionScene } = await import('$lib/canvas/composition/scene');
+        return (target) => createCompositionScene(target, {
+          media: mediaFromUrls(mediaUrls),
+          layout,
+          layoutParams,
+          camera: cameraPreset,
+          cameraParams,
+          background: backgroundColor,
+          duration,
+          onTextureReady: () => scene?.renderAt(time)
+        });
+      }
+    );
+    if (!scene) {
+      return;
+    }
+    scene.resize(activeCanvas.clientWidth, activeCanvas.clientHeight);
     scene.renderAt(time);
   }
 

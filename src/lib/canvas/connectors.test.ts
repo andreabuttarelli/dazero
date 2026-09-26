@@ -145,6 +145,15 @@ describe('porte visibili: colore ed etichetta per ogni tipo', () => {
   it("un nodo effects esce come un'immagine — la stessa porta di un nodo image", () => {
     expect(outputConnectorOf('effects')).toBe('images');
   });
+
+  it('un nodo effects video esce come video', () => {
+    expect(outputConnectorOf('effects', 'video')).toBe('videos');
+  });
+
+  it('le porte media di effects accettano un solo filo', () => {
+    expect(portListValued('effects', 'images')).toBe(false);
+    expect(portListValued('effects', 'videos')).toBe(false);
+  });
 });
 
 describe('modalityBadges — le icone di un modello nel menù, una per modalità', () => {

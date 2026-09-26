@@ -53,6 +53,7 @@ import { listNodesByIds } from '$lib/server/repos/canvas';
 import { suggestNextSteps } from '$lib/canvas/suggest-next-steps';
 import { actionFrequencyFor } from '$lib/server/next-step-stats';
 import { decideWithJev } from '$lib/server/jev';
+import { applyEffectsNode } from '$lib/server/canvas/apply-effects';
 
 // L'azione `run` aspetta la generazione DENTRO la richiesta — un'immagine ci mette fino a un
 // minuto, e il default della piattaforma è sotto quella soglia. Senza, la richiesta muore a metà
@@ -842,6 +843,30 @@ export const actions: Actions = {
     }
 
     return { node: written.node };
+  },
+
+  apply_effects: async ({ request, params, locals }) => {
+    const scope = await scopeFor(locals, params.canvasId);
+    const fd = await request.formData();
+    const nodeId = String(fd.get('node_id') ?? '');
+    if (!nodeId) {
+      return fail(400, { error: 'nodo mancante' });
+    }
+
+    const outcome = await applyEffectsNode(scope.db, {
+      orgId: scope.orgId,
+      nodeId,
+      actor: userActor(scope)
+    });
+    if (outcome.outcome === 'refused') {
+      return fail(400, { error: outcome.error });
+    }
+    if (outcome.outcome === 'conflict') {
+      return fail(409, { conflict: true });
+    }
+
+    const node = await findNode(scope.db, { orgId: scope.orgId, nodeId });
+    return { asset: outcome.asset, node };
   },
 
   /**

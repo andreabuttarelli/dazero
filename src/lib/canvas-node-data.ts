@@ -227,7 +227,8 @@ export function effectsOf(row: NodeRow): EffectsNode | null {
     id: row.id,
     effects,
     refId: nullableStr(row.data.refId),
-    sourceRefId: nullableStr(row.data.sourceRefId)
+    sourceRefId: nullableStr(row.data.sourceRefId),
+    mediaKind: row.data.mediaKind === 'video' ? 'video' : 'image'
   };
 }
 
@@ -389,5 +390,5 @@ export function selectData(node: SelectNode): Record<string, unknown> {
 }
 
 export function effectsData(node: EffectsNode): Record<string, unknown> {
-  return { effects: node.effects, refId: node.refId, sourceRefId: node.sourceRefId };
+  return { effects: node.effects, refId: node.refId, sourceRefId: node.sourceRefId, mediaKind: node.mediaKind };
 }

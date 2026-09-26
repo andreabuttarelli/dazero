@@ -6,9 +6,10 @@ import { CANVAS_ASSET_BUCKET } from '$lib/server/repos/asset-storage';
 import type { Actor } from '$lib/server/repos/actor';
 import { applyStack } from '$lib/canvas/effects';
 import type { EffectStep, Pixels } from '$lib/canvas/effects';
+import { renderVideoEffects } from './video-effects';
 
 export type ApplyEffectsOutcome =
-  | { outcome: 'applied'; asset: Asset; pngBytes: Buffer }
+  | { outcome: 'applied'; asset: Asset; bytes: Buffer; pngBytes?: Buffer }
   | { outcome: 'refused'; error: string }
   | { outcome: 'conflict' };
 
@@ -46,15 +47,17 @@ export async function applyEffectsNode(
     return { outcome: 'refused', error: 'impossibile scaricare l\'immagine sorgente' };
   }
 
-  const pixels = await decodeToPixels(inputBytes);
   const steps = Array.isArray(node.data.effects) ? (node.data.effects as EffectStep[]) : [];
-  const result = applyStack(pixels, steps);
-  const pngBytes = await encodePng(result);
+  const isVideo = sourceAsset.type === 'video' || node.data.mediaKind === 'video';
+  const rendered = isVideo
+    ? await renderVideoEffects(inputBytes, steps)
+    : await renderImageEffects(inputBytes, steps);
 
-  const path = `${input.orgId}/${node.projectId}/effects/${node.id}-${Date.now()}.png`;
+  const extension = isVideo ? 'mp4' : 'png';
+  const path = `${input.orgId}/${node.projectId}/effects/${node.id}-${Date.now()}.${extension}`;
   const { error: uploadError } = await db.storage
     .from(CANVAS_ASSET_BUCKET)
-    .upload(path, pngBytes, { contentType: 'image/png', upsert: false });
+    .upload(path, rendered.bytes, { contentType: rendered.mimeType, upsert: false });
   if (uploadError) {
     return { outcome: 'refused', error: `store_failed: ${uploadError.message}` };
   }
@@ -62,20 +65,21 @@ export async function applyEffectsNode(
   const asset = await insertAsset(db, {
     orgId: input.orgId,
     projectId: node.projectId,
-    type: 'image',
+    type: isVideo ? 'video' : 'image',
     source: 'generated',
     url: path,
-    mimeType: 'image/png',
-    width: result.width,
-    height: result.height,
-    bytes: pngBytes.length,
+    mimeType: rendered.mimeType,
+    width: rendered.width,
+    height: rendered.height,
+    durationS: isVideo ? sourceAsset.durationS : undefined,
+    bytes: rendered.bytes.length,
     sourceNodeId: node.id
   });
 
   const write = await writeNodeData(db, {
     orgId: input.orgId,
     nodeId: node.id,
-    data: { ...node.data, refId: asset.id, sourceRefId },
+    data: { ...node.data, refId: asset.id, sourceRefId, mediaKind: isVideo ? 'video' : 'image' },
     expectedVersion: node.version,
     actor: input.actor
   });
@@ -84,7 +88,18 @@ export async function applyEffectsNode(
     return { outcome: 'conflict' };
   }
 
-  return { outcome: 'applied', asset, pngBytes };
+  return { outcome: 'applied', asset, bytes: rendered.bytes, ...(isVideo ? {} : { pngBytes: rendered.bytes }) };
+}
+
+async function renderImageEffects(inputBytes: Buffer, steps: EffectStep[]) {
+  const pixels = await decodeToPixels(inputBytes);
+  const result = applyStack(pixels, steps);
+  return {
+    bytes: await encodePng(result),
+    mimeType: 'image/png' as const,
+    width: result.width,
+    height: result.height
+  };
 }
 
 async function downloadAssetBytes(db: Db, url: string): Promise<Buffer | null> {

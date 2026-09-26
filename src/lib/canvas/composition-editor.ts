@@ -36,6 +36,19 @@ export function setLayoutParam(params: LayoutParams, name: string, value: number
 	return { ...params, [name]: value };
 }
 
+export async function createSceneWhenMounted<T>(
+	canvas: HTMLCanvasElement,
+	isMounted: () => boolean,
+	load: () => Promise<(canvas: HTMLCanvasElement) => T>
+): Promise<T | null> {
+	const create = await load();
+	if (!isMounted()) {
+		return null;
+	}
+
+	return create(canvas);
+}
+
 export type CompositionEditorState = {
 	layout: string;
 	layoutParams: LayoutParams;

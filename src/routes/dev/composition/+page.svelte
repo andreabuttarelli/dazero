@@ -5,11 +5,12 @@
   import type { LayoutId, LayoutParams } from '$lib/canvas/composition/types';
   import type { CompositionMedia, CompositionScene } from '$lib/canvas/composition/scene';
   import CompositionParamControl from '$lib/components/canvas/CompositionParamControl.svelte';
+  import { createSceneWhenMounted } from '$lib/canvas/composition-editor';
 
   const PLACEHOLDER_COLORS = ['#e4572e', '#29335c', '#f3a712', '#669900', '#a288e3', '#2ec4b6'];
   const PLACEHOLDER_SIZE = 512;
 
-  let canvas: HTMLCanvasElement;
+  let canvas: HTMLCanvasElement | null = null;
   let layoutId = $state<LayoutId>('tilted-grid');
   let cameraId = $state<CameraPresetId>('slow-orbit');
   let layoutParams = $state<LayoutParams>(defaultParams(LAYOUTS['tilted-grid'].params));
@@ -49,21 +50,30 @@
   }
 
   async function rebuildScene() {
+    if (!canvas) {
+      return;
+    }
+    const activeCanvas = canvas;
     scene?.dispose();
     scene = null;
 
-    const { createCompositionScene } = await import('$lib/canvas/composition/scene');
-    scene = createCompositionScene(canvas, {
-      media: placeholderMedia(),
-      layout: layoutId,
-      layoutParams,
-      camera: cameraId,
-      cameraParams,
-      background: '#000000',
-      duration: 8,
-      onTextureReady: () => scene?.renderAt(time)
+    scene = await createSceneWhenMounted(activeCanvas, () => canvas === activeCanvas, async () => {
+      const { createCompositionScene } = await import('$lib/canvas/composition/scene');
+      return (target) => createCompositionScene(target, {
+        media: placeholderMedia(),
+        layout: layoutId,
+        layoutParams,
+        camera: cameraId,
+        cameraParams,
+        background: '#000000',
+        duration: 8,
+        onTextureReady: () => scene?.renderAt(time)
+      });
     });
-    scene.resize(canvas.clientWidth, canvas.clientHeight);
+    if (!scene) {
+      return;
+    }
+    scene.resize(activeCanvas.clientWidth, activeCanvas.clientHeight);
     scene.renderAt(time);
   }
 

@@ -16,10 +16,10 @@ already logs the call — success or failure, accepted or rejected by
 `checkRewrite` — so it's billed exactly once per rewrite attempt, same as
 every other text call.
 
-Both callers already run inside an org/brand context
-(`src/routes/api/v1/prompts/enhance/+server.ts` uses `withOrgContext`,
-`src/routes/api/v1/brands/[slug]/prompts/enhance/+server.ts` uses
-`withBrandContext`), so no caller change was needed.
+The HTTP callers already run inside an org/brand context. Canvas generation
+did not: it enhanced the prompt before entering the generation scope. The
+canvas path now wraps the rewrite in `withOrgContext(input.orgId)`, so its
+`prompt.enhance` row has the same payer as the render that follows it.
 
 Behaviour of `enhancePrompt`, `checkRewrite` and the system prompt is
 unchanged — only how the model call is made and logged.

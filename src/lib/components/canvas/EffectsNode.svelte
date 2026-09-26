@@ -20,16 +20,26 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="effects" ondblclick={onopeneditor}>
   {#if node.refId && imageUrl}
-    <img class="effects-photo" src={imageUrl} alt="Risultato" loading="lazy" />
+    {#if node.mediaKind === 'video'}
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <video class="effects-photo" src={imageUrl} autoplay muted loop playsinline></video>
+    {:else}
+      <img class="effects-photo" src={imageUrl} alt="Risultato" loading="lazy" />
+    {/if}
   {:else if node.sourceRefId && sourceImageUrl}
     <div class="effects-unapplied">
-      <img class="effects-photo" src={sourceImageUrl} alt="Immagine collegata" loading="lazy" />
+      {#if node.mediaKind === 'video'}
+        <!-- svelte-ignore a11y_media_has_caption -->
+        <video class="effects-photo" src={sourceImageUrl} autoplay muted loop playsinline></video>
+      {:else}
+        <img class="effects-photo" src={sourceImageUrl} alt="Immagine collegata" loading="lazy" />
+      {/if}
       <span class="effects-badge">Non applicato</span>
     </div>
   {:else}
     <div class="effects-empty">
       <ImageIcon size={22} strokeWidth={1.5} />
-      <p>Collega un'immagine</p>
+      <p>Collega un’immagine o un video</p>
     </div>
   {/if}
 
@@ -71,7 +81,7 @@
   .effects-photo {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     background: var(--paper-2, #f9f9f9);
   }
 

@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fakeDb } from '$lib/server/db/fake-db';
 import type { Db } from '$lib/server/db/client';
 import { expireStuckRuns, reconcileVideoNodeRuns, runGenNode, RUN_STALE_MS } from './generate';
+import { getOrgContext } from '$lib/server/ai-log';
 
 const ORG = '11111111-1111-1111-1111-111111111111';
 const NODE = '22222222-2222-2222-2222-222222222222';
@@ -411,11 +412,14 @@ describe('params.enhancePrompt riscrive il prompt prima di generare', () => {
   });
 
   it('acceso: passa il prompt riscritto al fornitore, non l\'originale', async () => {
-    enhancePrompt.mockResolvedValue({
-      prompt: 'a photorealistic cat, studio lighting',
-      model: 'openai/gpt-image',
-      changed: true,
-      notes: ['riscritto']
+    enhancePrompt.mockImplementation(async () => {
+      expect(getOrgContext()).toBe(ORG);
+      return {
+        prompt: 'a photorealistic cat, studio lighting',
+        model: 'openai/gpt-image',
+        changed: true,
+        notes: ['riscritto']
+      };
     });
 
     const imageNodeRow = { ...freshNodeRow, type: 'image' };

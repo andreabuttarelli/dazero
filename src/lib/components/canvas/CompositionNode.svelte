@@ -1,15 +1,18 @@
 <script lang="ts">
   import Orbit from '@lucide/svelte/icons/orbit';
   import type { CompositionNode } from '$lib/canvas/composition-node';
+  import CompositionPreview from './CompositionPreview.svelte';
 
   let {
     node,
     posterUrl = null,
+    mediaUrls = [],
     imageCount = 0,
     onopeneditor
   }: {
     node: CompositionNode;
     posterUrl?: string | null;
+    mediaUrls?: string[];
     imageCount?: number;
     onopeneditor: () => void;
   } = $props();
@@ -17,7 +20,11 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="composition" ondblclick={onopeneditor}>
-  {#if node.refId && posterUrl}
+  {#if mediaUrls.length > 0}
+    <div class="composition-preview" style:aspect-ratio={node.aspect.replace(':', ' / ')}>
+      <CompositionPreview {node} {mediaUrls} />
+    </div>
+  {:else if node.refId && posterUrl}
     <img class="composition-photo" src={posterUrl} alt="Composizione" loading="lazy" />
   {:else if imageCount > 0}
     <div class="composition-ready">
@@ -66,8 +73,15 @@
   .composition-photo {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     background: var(--paper-2, #f9f9f9);
+  }
+
+  .composition-preview {
+    max-width: 100%;
+    max-height: 100%;
+    height: 100%;
+    overflow: hidden;
   }
 
   .composition-actions {

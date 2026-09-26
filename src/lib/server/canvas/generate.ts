@@ -216,9 +216,11 @@ async function enhancedPromptFor(input: StartRun, prompt: string): Promise<strin
     return prompt;
   }
 
+  const model = input.model;
   const { enhancePrompt } = await import('$lib/server/prompt-enhance');
+  const { withOrgContext } = await import('$lib/server/ai-log');
   try {
-    const out = await enhancePrompt({ prompt, model: input.model });
+    const out = await withOrgContext(input.orgId, () => enhancePrompt({ prompt, model }));
     return out.prompt || prompt;
   } catch {
     return prompt;

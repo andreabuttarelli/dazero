@@ -14,6 +14,7 @@ export type EffectsNode = {
   effects: EffectStep[];
   refId: string | null;
   sourceRefId: string | null;
+  mediaKind: 'image' | 'video';
 };
 
 const EFFECTS_NODE_SIZE = { w: 280, h: 220 };
@@ -47,6 +48,31 @@ export function newEffectsNodeAt(at: { x: number; y: number }): NewEffectsTile {
 }
 
 const IMAGE_REF_FIELDS = ['refId', 'assetId'] as const;
+
+export type EffectsMedia = { refId: string; kind: 'image' | 'video' };
+
+export function upstreamMedia(
+  targetId: string,
+  edges: { source: string; target: string }[],
+  nodes: { id: string; type: string; data: Record<string, unknown> }[]
+): EffectsMedia | null {
+  for (const edge of edges) {
+    if (edge.target !== targetId) {
+      continue;
+    }
+
+    const source = nodes.find((node) => node.id === edge.source);
+    const refId = IMAGE_REF_FIELDS.map((field) => source?.data[field]).find((value) => typeof value === 'string' && value);
+    if (typeof refId !== 'string') {
+      continue;
+    }
+
+    const kind = source?.type === 'video' || source?.data.mediaKind === 'video' ? 'video' : 'image';
+    return { refId, kind };
+  }
+
+  return null;
+}
 
 export function upstreamImageRef(
   targetId: string,

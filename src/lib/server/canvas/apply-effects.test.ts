@@ -3,6 +3,9 @@ import sharp from 'sharp';
 import type { Db } from '$lib/server/db/client';
 import { applyEffectsNode } from './apply-effects';
 
+const { renderVideoEffects } = vi.hoisted(() => ({ renderVideoEffects: vi.fn() }));
+vi.mock('./video-effects', () => ({ renderVideoEffects }));
+
 const orgId = 'org-1';
 const nodeId = 'node-1';
 const actor = { kind: 'user' as const, id: 'user-1' };
@@ -162,6 +165,22 @@ describe('applyEffectsNode', () => {
     expect(result.outcome).toBe('refused');
     if (result.outcome === 'refused') {
       expect(result.error).toMatch(/sourceRefId|sorgente/i);
+    }
+  });
+
+  it('un video produce un video e conserva la durata del sorgente', async () => {
+    renderVideoEffects.mockResolvedValue({ bytes: Buffer.from('video-out'), mimeType: 'video/mp4', width: 32, height: 18 });
+    const node = { ...baseNode, data: { ...baseNode.data, mediaKind: 'video' } };
+    const source = { ...sourceAssetRow, type: 'video', mime_type: 'video/mp4', duration_s: 4 };
+    const { db } = fakeDb({ node, sourceAsset: source, inputBytes: Buffer.from('video-in') });
+
+    const result = await applyEffectsNode(db, { orgId, nodeId, actor });
+
+    expect(renderVideoEffects).toHaveBeenCalledWith(expect.any(Buffer), baseNode.data.effects);
+    expect(result.outcome).toBe('applied');
+    if (result.outcome === 'applied') {
+      expect(result.asset.type).toBe('video');
+      expect(result.asset.durationS).toBe(4);
     }
   });
 

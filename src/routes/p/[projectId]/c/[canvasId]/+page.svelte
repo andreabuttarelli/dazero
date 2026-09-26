@@ -36,7 +36,7 @@
   import EffectsEditor from '$lib/components/canvas/EffectsEditor.svelte';
   import CompositionNode from '$lib/components/canvas/CompositionNode.svelte';
   import { inputChanged } from '$lib/canvas/effects/editor';
-  import { upstreamImageRef } from '$lib/canvas/effects-node';
+  import { upstreamMedia } from '$lib/canvas/effects-node';
   import type { EffectStep } from '$lib/canvas/effects';
   import { upstreamImageRefs } from '$lib/canvas/composition-node';
   import type { CompositionNode as CompositionNodeState } from '$lib/canvas/composition-node';
@@ -353,8 +353,8 @@
     return values ? { id: source.id, itemKind: values.itemKind, items: values.values.map((v) => v.item) } : null;
   }
 
-  function upstreamImageRefOf(effectsId: string): string | null {
-    return upstreamImageRef(effectsId, edges, nodes);
+  function upstreamEffectsMediaOf(effectsId: string) {
+    return upstreamMedia(effectsId, edges, nodes);
   }
 
   function upstreamCompositionRefsOf(compositionId: string): string[] {
@@ -409,7 +409,7 @@
    */
   function connectorsOfNode(n: Tile): ConnectorType[] | undefined {
     if (n.type === 'list') { return listPortsByNode[n.id]; }
-    if (n.type === 'effects') { return ['images']; }
+    if (n.type === 'effects') { return ['images', 'videos']; }
     if (n.type === 'composition') { return ['images']; }
     if (n.type !== 'text' && n.type !== 'image' && n.type !== 'video') { return undefined; }
     const model = typeof n.data.model === 'string' ? n.data.model : null;
@@ -430,7 +430,7 @@
     if (n.type === 'select') {
       return n.data.item_kind === 'text' ? 'text' : 'images';
     }
-    return outputConnectorOf(n.type);
+    return outputConnectorOf(n.type, n.data.mediaKind === 'video' ? 'video' : 'image');
   }
 
   /**
@@ -459,7 +459,9 @@
       select: n.select,
       minW: nodeSize(n.type).w,
       minH: nodeSize(n.type).h,
-      node: tileNode({
+      node: n.type === 'effects'
+        ? { id: n.id, kind: 'effects' as const, mediaKind: n.data.mediaKind === 'video' ? 'video' as const : 'image' as const }
+        : tileNode({
         id: n.id,
         medium: n.type === 'iframe' || n.type === 'document' || n.type === 'doc' ? null : (n.type as 'text' | 'image' | 'video'),
         model: typeof n.data.model === 'string' ? n.data.model : null
@@ -670,14 +672,27 @@
     return true;
   }
 
-  async function applyEffects(id: string, steps: EffectStep[], output: Blob): Promise<boolean> {
-    const sourceRefId = upstreamImageRefOf(id);
-    const refId = await uploadToLibrary(new File([output], `effetti-${id}.png`, { type: 'image/png' }));
-    if (!refId) {
+  async function applyEffects(id: string, steps: EffectStep[], _output: Blob | null = null): Promise<boolean> {
+    const source = upstreamEffectsMediaOf(id);
+    if (!source) {
       return false;
     }
 
-    write(id, effectsData({ id, effects: steps, refId, sourceRefId }));
+    const current = effectsEditing;
+    if (!current) {
+      return false;
+    }
+    const saved = await write(id, effectsData({ ...current, effects: steps, sourceRefId: source.refId, mediaKind: source.kind }));
+    if (!saved) {
+      return false;
+    }
+
+    const result = await post('apply_effects', { node_id: id });
+    const written = result?.node as CanvasNodeRecord | undefined;
+    if (!written) {
+      return false;
+    }
+    nodes = nodes.map((node) => node.id === id ? toTile(written) : node);
     return true;
   }
 
@@ -1021,13 +1036,14 @@
     return url ? { url } : null;
   }
 
-  function write(id: string, patch: Record<string, unknown>) {
+  async function write(id: string, patch: Record<string, unknown>): Promise<boolean> {
     const current = nodes.find((node) => node.id === id);
-    if (!current) { return; }
+    if (!current) { return false; }
     const next = { ...current.data, ...patch };
     nodes = nodes.map((node) => node.id === id ? { ...node, data: next } : node);
     pending += 1;
-    void enqueue(id, async () => {
+    let saved = false;
+    await enqueue(id, async () => {
       const before = nodes.find((node) => node.id === id);
       if (!before) { pending -= 1; return; }
       const result = await post('write', {
@@ -1039,6 +1055,7 @@
         failed = 'Contenuto non salvato: ricarica prima di continuare';
         return;
       }
+      saved = true;
       nodes = nodes.map((node) => node.id === id ? { ...node, version: written.version } : node);
       pushGesture({
         items: [
@@ -1053,6 +1070,7 @@
       });
       if (!pending) { void refresh(); }
     });
+    return saved;
   }
 
   /**
@@ -1751,17 +1769,19 @@
             onchange={(patch) => write(id, selectData({ ...select, ...patch }))}
           />
         {:else if effects}
+          {@const effectsInput = upstreamEffectsMediaOf(id)}
           <EffectsNode
-            node={effects}
+            node={{ ...effects, mediaKind: effectsInput?.kind ?? effects.mediaKind }}
             imageUrl={assetUrl(effects.refId)}
-            sourceImageUrl={assetUrl(effects.sourceRefId ?? upstreamImageRefOf(id))}
-            inputChanged={inputChanged(effects.sourceRefId, upstreamImageRefOf(id))}
+            sourceImageUrl={assetUrl(effects.sourceRefId ?? effectsInput?.refId ?? null)}
+            inputChanged={inputChanged(effects.sourceRefId, effectsInput?.refId ?? null)}
             onopeneditor={() => (effectsEditorId = id)}
           />
         {:else if composition}
           <CompositionNode
             node={composition}
             posterUrl={assetUrl(composition.refId)}
+            mediaUrls={upstreamCompositionRefsOf(id).map((refId) => assetUrl(refId)).filter((url): url is string => url !== null)}
             imageCount={upstreamCompositionRefsOf(id).length}
             onopeneditor={() => openCompositionEditor(id)}
           />
@@ -1775,7 +1795,8 @@
     {#key editingId}
       <EffectsEditor
         initialSteps={effectsEditing.effects}
-        inputUrl={assetUrl(upstreamImageRefOf(editingId))}
+        inputUrl={assetUrl(upstreamEffectsMediaOf(editingId)?.refId ?? null)}
+        inputKind={upstreamEffectsMediaOf(editingId)?.kind ?? 'image'}
         onapply={(steps, output) => applyEffects(editingId, steps, output)}
         onclose={() => (effectsEditorId = null)}
       />

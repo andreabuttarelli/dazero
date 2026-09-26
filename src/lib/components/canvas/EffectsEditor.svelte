@@ -19,12 +19,14 @@
   let {
     initialSteps,
     inputUrl,
+    inputKind = 'image',
     onapply,
     onclose
   }: {
     initialSteps: EffectStep[];
     inputUrl: string | null;
-    onapply: (steps: EffectStep[], output: Blob) => Promise<boolean>;
+    inputKind?: 'image' | 'video';
+    onapply: (steps: EffectStep[], output: Blob | null) => Promise<boolean>;
     onclose: () => void;
   } = $props();
 
@@ -34,6 +36,7 @@
   let loadError = $state<string | null>(null);
   let canvas = $state<HTMLCanvasElement | null>(null);
   let bitmap = $state.raw<ImageBitmap | null>(null);
+  let video = $state.raw<HTMLVideoElement | null>(null);
   let preview: Pixels | null = null;
 
   const effectIds = Object.keys(EFFECTS) as EffectId[];
@@ -47,7 +50,7 @@
     return createImageBitmap(await res.blob());
   }
 
-  function pixelsOf(source: ImageBitmap, size: { width: number; height: number }): Pixels {
+  function pixelsOf(source: CanvasImageSource, size: { width: number; height: number }): Pixels {
     const scratch = document.createElement('canvas');
     scratch.width = size.width;
     scratch.height = size.height;
@@ -74,6 +77,31 @@
     }
 
     let cancelled = false;
+    if (inputKind === 'video') {
+      const loaded = document.createElement('video');
+      loaded.src = inputUrl;
+      loaded.crossOrigin = 'anonymous';
+      loaded.muted = true;
+      loaded.loop = true;
+      loaded.playsInline = true;
+      loaded.onloadedmetadata = () => {
+        if (cancelled) {
+          return;
+        }
+        video = loaded;
+        preview = pixelsOf(loaded, fitWithin(loaded.videoWidth, loaded.videoHeight, PREVIEW_MAX_SIDE));
+        void loaded.play();
+      };
+      loaded.onerror = () => { loadError = 'video non leggibile'; };
+      return () => {
+        cancelled = true;
+        loaded.pause();
+        loaded.removeAttribute('src');
+        loaded.load();
+        video = null;
+      };
+    }
+
     loadBitmap(inputUrl)
       .then((loaded) => {
         if (cancelled) {
@@ -96,8 +124,24 @@
     if (!canvas || !preview) {
       return;
     }
+    if (video && video.readyState >= video.HAVE_CURRENT_DATA) {
+      preview = pixelsOf(video, fitWithin(video.videoWidth, video.videoHeight, PREVIEW_MAX_SIDE));
+    }
     draw(canvas, view === 'before' ? preview : applyStack(copyOf(preview), $state.snapshot(steps) as EffectStep[]));
   }
+
+  $effect(() => {
+    if (!video) {
+      return;
+    }
+    let frame = 0;
+    const render = () => {
+      redraw();
+      frame = requestAnimationFrame(render);
+    };
+    frame = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(frame);
+  });
 
   $effect(() => {
     JSON.stringify(steps);
@@ -131,7 +175,7 @@
   }
 
   async function apply() {
-    if (!bitmap || busy) {
+    if ((!bitmap && !video) || busy) {
       return;
     }
 
@@ -139,8 +183,8 @@
     await new Promise((resolve) => requestAnimationFrame(resolve));
     try {
       const current = $state.snapshot(steps) as EffectStep[];
-      const output = await outputBlob(applyStack(pixelsOf(bitmap, bitmap), current));
-      if (!output) {
+      const output = bitmap ? await outputBlob(applyStack(pixelsOf(bitmap, bitmap), current)) : null;
+      if (bitmap && !output) {
         loadError = 'impossibile esportare l’immagine';
         return;
       }
@@ -223,7 +267,7 @@
 
       <footer class="fx-foot">
         <button type="button" class="fx-button" onclick={close} disabled={busy}>Annulla</button>
-        <button type="button" class="fx-button is-primary" onclick={apply} disabled={busy || !bitmap}>
+        <button type="button" class="fx-button is-primary" onclick={apply} disabled={busy || (!bitmap && !video)}>
           {#if busy}<LoaderCircle size={14} class="fx-spin" />{/if}
           Applica
         </button>

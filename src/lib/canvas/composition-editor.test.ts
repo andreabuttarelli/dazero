@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   clampDuration,
   controlFor,
+  createSceneWhenMounted,
   defaultParamsFor,
   knobAngle,
   knobValueFromDrag,
@@ -77,5 +78,25 @@ describe('knob interaction', () => {
     expect(stepKnob(5, 1, 0, 10, 0.5)).toBe(5.5);
     expect(stepKnob(10, 1, 0, 10, 0.5)).toBe(10);
     expect(stepKnob(0, -1, 0, 10, 0.5)).toBe(0);
+  });
+});
+
+describe('composition scene lifecycle', () => {
+  it('does not create WebGL after its canvas was unmounted during import', async () => {
+    const canvas = {} as HTMLCanvasElement;
+    let mounted = true;
+    let release = () => {};
+    const imported = new Promise<void>((resolve) => { release = resolve; });
+    const create = vi.fn(() => ({ dispose: vi.fn() }));
+
+    const pending = createSceneWhenMounted(canvas, () => mounted, async () => {
+      await imported;
+      return create;
+    });
+    mounted = false;
+    release();
+
+    await expect(pending).resolves.toBeNull();
+    expect(create).not.toHaveBeenCalled();
   });
 });

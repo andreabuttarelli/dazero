@@ -73,6 +73,7 @@ type NodeSpec = {
   accepts: readonly Medium[];
   /** Quelli senza cui non si può eseguire. Il resto è facoltativo. */
   requires: readonly Medium[];
+  requiresOneOf?: readonly Medium[];
 };
 
 export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
@@ -107,7 +108,7 @@ export const CANVAS_NODE_SPECS: Record<NodeKind, NodeSpec> = {
   list: { medium: null, generated: true, accepts: ['text', 'image'], requires: [] },
   // Un nodo `effects` applica una pila di filtri a UN'immagine a monte: produce un'immagine, ne
   // richiede una — non un prompt, la pila di effetti non è testo da scrivere qui.
-  effects: { medium: 'image', generated: true, accepts: ['image'], requires: ['image'] },
+  effects: { medium: null, generated: true, accepts: ['image', 'video'], requires: [], requiresOneOf: ['image', 'video'] },
   // Un nodo `composition` compone più immagini in una scena 3D animata: produce un video (fase 3),
   // richiede almeno un'immagine collegata — senza materiale la scena non ha cosa mostrare.
   composition: { medium: 'video', generated: true, accepts: ['image'], requires: ['image'] }
@@ -124,6 +125,7 @@ function mediumFromContentType(contentType: string | null | undefined): Medium {
 /** Cosa questo nodo È. */
 export function mediumOf(node: CanvasNode): Medium {
   const spec = CANVAS_NODE_SPECS[node.kind];
+  if (node.kind === 'effects') return node.mediaKind === 'video' ? 'video' : 'image';
   if (spec?.medium) return spec.medium;
   if (node.kind === 'media') return node.mediaKind === 'video' ? 'video' : 'image';
   if (node.kind === 'post') return mediumFromContentType(node.contentType);
@@ -161,6 +163,9 @@ export function missingInputs(node: CanvasNode, incoming: CanvasNode[]): Medium[
   const spec = CANVAS_NODE_SPECS[node.kind];
   if (!spec?.generated) return [];
   const have = new Set(incoming.map(mediumOf));
+  if (spec.requiresOneOf && !spec.requiresOneOf.some((medium) => have.has(medium))) {
+    return [spec.requiresOneOf[0]];
+  }
   return spec.requires.filter((m) => !have.has(m));
 }
 
@@ -205,6 +210,11 @@ export function acceptedInputs(node: CanvasNode, incoming: CanvasNode[]): InputV
       why ??= `un ${ITALIAN[medium]} non alimenta questo nodo`;
       continue;
     }
+    if (node.kind === 'effects' && accepted.length > 0) {
+      rejected.push(source);
+      why ??= 'un nodo effetti prende un solo media';
+      continue;
+    }
     if (used[medium] >= room) {
       rejected.push(source);
       why ??=
@@ -221,6 +231,7 @@ export function acceptedInputs(node: CanvasNode, incoming: CanvasNode[]): InputV
 
 /** Quanti ingressi per medium: dal modello quando c'è, altrimenti uno per tipo. */
 function capacityOf(node: CanvasNode): Record<Medium, number> {
+  if (node.kind === 'effects') return { text: 0, image: 1, video: 1 };
   if (node.kind === 'video') {
     const caps = videoRefCapacity(node.model);
     // Il prompt è sempre uno: due prompt sono due video, non un video con due prompt.
